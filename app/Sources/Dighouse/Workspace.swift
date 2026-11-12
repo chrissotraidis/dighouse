@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 /// The archaeology side of the window: the terrain, the candidate records, and the project's notes.
 struct WorkspaceView: View {
@@ -15,11 +16,14 @@ struct WorkspaceView: View {
                             if tab == .records, !store.candidates.isEmpty {
                                 Text("\(store.candidates.count)").foregroundStyle(Theme.faint)
                             }
+                            if tab == .sources, store.candidates.contains(where: { !$0.sources.isEmpty }) {
+                                Text("\(Set(store.candidates.flatMap(\.sources).map(\.title)).count)").foregroundStyle(Theme.faint)
+                            }
                         }
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(app.tab == tab ? Theme.text : Theme.dim)
                         .padding(.horizontal, 12).frame(height: 30)
-                        .background(Capsule().fill(app.tab == tab ? Color.white.opacity(0.1) : .clear))
+                        .background(Capsule().fill(app.tab == tab ? Theme.ink.opacity(0.1) : .clear))
                         .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -32,6 +36,7 @@ struct WorkspaceView: View {
             case .map: MapView()
             case .records: RecordsView()
             case .notes: NotesView()
+            case .sources: SourcesView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -567,7 +572,7 @@ struct NotesView: View {
                                 Text(name).font(.system(size: 12, design: .monospaced)).lineLimit(1)
                                     .foregroundStyle(name == file ? Theme.text : Theme.dim)
                                     .padding(.horizontal, 10).frame(height: 26)
-                                    .background(Capsule().fill(name == file ? Color.white.opacity(0.1) : .clear))
+                                    .background(Capsule().fill(name == file ? Theme.ink.opacity(0.1) : .clear))
                                     .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
@@ -592,5 +597,116 @@ struct NotesView: View {
                 .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
             }
         }
+    }
+}
+
+// MARK: - Sources
+
+/// A web page inside the app.
+struct WebPage: NSViewRepresentable {
+    let url: URL?
+
+    func makeNSView(context: Context) -> WKWebView {
+        let view = WKWebView()
+        view.allowsBackForwardNavigationGestures = true
+        return view
+    }
+
+    func updateNSView(_ view: WKWebView, context: Context) {
+        if let url, view.url != url, context.coordinator.last != url {
+            context.coordinator.last = url
+            view.load(URLRequest(url: url))
+        }
+    }
+
+    func makeCoordinator() -> Memory { Memory() }
+    final class Memory { var last: URL? }
+}
+
+/// What the agent has read for this project, and a browser to open any of it yourself.
+struct SourcesView: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+    @State private var address = ""
+
+    private var sources: [Source] {
+        var seen = Set<String>()
+        return store.candidates.flatMap(\.sources).filter { seen.insert($0.title).inserted }
+    }
+
+    private func color(_ status: String) -> Color {
+        status == "read" ? Theme.green : status == "could_not_open" ? Theme.amber : Theme.faint
+    }
+
+    private func go(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let full = trimmed.contains("://") ? trimmed : trimmed.contains(".") && !trimmed.contains(" ")
+            ? "https://" + trimmed : "https://duckduckgo.com/?q=" + (trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
+        app.browserURL = URL(string: full)
+        address = full
+    }
+
+    var body: some View {
+        let all = sources
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "globe").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                TextField("Open a web address, or search", text: $address).textFieldStyle(.plain).font(.system(size: 13)).onSubmit { go(address) }
+                if let url = app.browserURL {
+                    Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.forward.square") }
+                        .buttonStyle(IconButton(size: 26)).help("Open in your browser")
+                    Button { app.ask("Read this page with read_source and tell me what it says about this project's candidates: \(url.absoluteString)") } label: {
+                        Text("Ask the agent to read it").font(.system(size: 12))
+                    }
+                    .buttonStyle(SecondaryButton())
+                }
+            }
+            .padding(.horizontal, 12).frame(height: 42)
+            Hairline()
+            if app.browserURL != nil {
+                WebPage(url: app.browserURL)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(all.isEmpty ? "No sources yet" : "\(all.count) sources on this project's records").font(.system(size: 18, weight: .semibold))
+                        Text("Each source the agent logs appears here as read, could not open, or not relevant. Click one to open it. Publishers often refuse a program and let a person in, so the ones marked could not open are worth opening yourself.")
+                            .font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        list(all)
+                    }
+                    .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .onChange(of: app.browserURL) { address = app.browserURL?.absoluteString ?? "" }
+        .overlay(alignment: .bottomLeading) {
+            if app.browserURL != nil {
+                Button("Back to the list") { app.browserURL = nil }.buttonStyle(SecondaryButton())
+                    .background(Capsule().fill(Theme.bg)).padding(12)
+            }
+        }
+    }
+
+    private func list(_ all: [Source]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(all.enumerated()), id: \.element.id) { index, source in
+                if index > 0 { Hairline() }
+                Button { if !source.link.isEmpty { go(source.link) } } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle().fill(color(source.status)).frame(width: 7, height: 7).padding(.top, 6)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(source.title).font(.system(size: 13, weight: .medium)).multilineTextAlignment(.leading)
+                            Text("\(source.status.replacingOccurrences(of: "_", with: " ").capitalized) · \(source.finding)")
+                                .font(.system(size: 12)).foregroundStyle(Theme.dim).lineLimit(3).multilineTextAlignment(.leading)
+                        }
+                        Spacer(minLength: 6)
+                        if !source.link.isEmpty { Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint) }
+                    }
+                    .padding(.vertical, 5)
+                }
+                .buttonStyle(RowButton()).disabled(source.link.isEmpty)
+            }
+        }
+        .padding(4).panel(radius: 12)
     }
 }

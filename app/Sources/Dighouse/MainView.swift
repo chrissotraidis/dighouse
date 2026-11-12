@@ -173,7 +173,7 @@ struct LayoutSwitch: View {
             option(.workspace, "map", "Workspace only")
         }
         .padding(2)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.05)))
     }
 
     private func option(_ layout: PaneLayout, _ icon: String, _ help: String) -> some View {
@@ -193,7 +193,13 @@ struct Sidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Color.clear.frame(height: 46).background(WindowDragArea())
+            Color.clear.frame(height: 40).background(WindowDragArea())
+            HStack(spacing: 9) {
+                MoundMark().frame(width: 34, height: 15)
+                Text("Dighouse").font(.system(size: 15, weight: .bold))
+                Spacer()
+            }
+            .padding(.horizontal, 10).padding(.bottom, 8)
             nav("square.and.pencil", "New chat", selected: app.route == .chat && store.current == nil && chat.active == nil) { app.newChat() }
             nav("house", "Home", selected: app.route == .home) { app.goHome() }
             nav("wrench.and.screwdriver", "Toolbox", selected: app.route == .toolbox) { app.show(.toolbox) }

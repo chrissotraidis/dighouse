@@ -64,6 +64,7 @@ def open_surveys(keyword: str = "") -> list[dict]:
 
     Each has its footprint, why it matched, and whether its points can be fetched without an account.
     checked_start is a small box known to hold ground data, for surveys whose fetch has been tested.
+    known_problem says why a survey that can be downloaded still cannot be used. Do not propose those.
     """
     return discover.open_surveys(keyword)
 
@@ -72,10 +73,40 @@ def open_surveys(keyword: str = "") -> list[dict]:
 def survey_area(west: float, south: float, east: float, north: float) -> dict:
     """Size up an area before committing to it: which open lidar covers it and which sites are already recorded.
 
-    Use it on areas up to 2 degrees across. Recorded sites come from Wikidata and are listed by name,
-    distance and direction from the centre of the area.
+    Use it on areas up to 2 degrees across. Recorded sites come from Wikidata, OpenStreetMap and the public
+    US National Register, and are listed by name, distance and direction from the centre of the area.
     """
     return discover.survey_area([west, south, east, north])
+
+
+@tool
+def find_gaps(west: float, south: float, east: float, north: float) -> dict:
+    """Rank the parts of a region by where a search could add most: open lidar, and few sites on open record.
+
+    The region (up to 2 degrees across) is cut into a 4 by 4 grid. Cells covered by lidar flown for archaeology
+    come first, then cells with the fewest recorded sites. Read how_to_read before telling anyone a cell is empty.
+    """
+    return discover.find_gaps([west, south, east, north])
+
+
+@tool
+def open_resources(topic: str = "") -> list[dict]:
+    """List the open archives a search can draw on: what each holds, how big it is, and which tools read it.
+
+    Use it when someone asks what to research or where archaeologists look. topic filters the list, for example
+    "lidar", "recorded sites", "literature" or a region.
+    """
+    return discover.open_resources(topic)
+
+
+@tool
+def search_records(query: str, west: float = 0, south: float = 0, east: float = 0, north: float = 0) -> dict:
+    """Search Open Context for published excavation and survey records, optionally inside a lon/lat box.
+
+    Returns how many records match and the first ten, each with its project, place and date range.
+    """
+    box = [west, south, east, north] if east > west and north > south else None
+    return discover.search_records(query, box)
 
 
 @tool
@@ -274,11 +305,13 @@ def read_source(project: str, url: str, start: int = 0) -> dict:
 def log_source(project: str, candidate: str, title: str, status: str, finding: str, link: str = "") -> dict:
     """Log one source against a candidate. status is read, could_not_open or not_relevant.
 
-    finding says what the source shows about this place, without coordinates.
+    finding says what the source shows about this place, without coordinates. candidate may be one id,
+    several separated by commas, or "all" when the source bears on every candidate in the project.
     """
     p = Project(project).check()
-    meta = ledger.add_source(p, candidate, title, status, finding, link)
-    return {"candidate": candidate, "sources": len(meta["sources"])}
+    ids = [c["id"] for c in ledger.everything(p)] if candidate.strip().lower() == "all" else [c.strip() for c in candidate.split(",") if c.strip()]
+    counts = {cid: len(ledger.add_source(p, cid, title, status, finding, link)["sources"]) for cid in ids}
+    return {"logged_on": counts}
 
 
 @tool

@@ -10,7 +10,7 @@ enum ToolGuide {
 
     /// One stage of a search: what happens, why it matters, and the tools that do it.
     struct Pack: Identifiable {
-        let title: String, icon: String, summary: String, why: String
+        let title: String, short: String, icon: String, summary: String, why: String
         /// A picture from the tour folder, or "reveal" for the forest and bare-ground pair.
         let image: String?
         /// The workflow that runs this stage.
@@ -32,6 +32,8 @@ enum ToolGuide {
 
     struct DataSource: Identifiable {
         let name: String, what: String, gives: String, usedFor: String, url: String, probe: String
+        /// A picture made from this source, what it shows, and a question that puts the source to work.
+        var image = "", caption = "", ask = ""
         var id: String { name }
     }
 
@@ -43,22 +45,24 @@ enum ToolGuide {
     static var toolCount: Int { packs.map(\.tools.count).reduce(0, +) }
 
     static let packs: [Pack] = [
-        Pack(title: "Choose where to look", icon: "binoculars",
+        Pack(title: "Choose where to look", short: "Choose", icon: "binoculars",
              summary: "Before anything is downloaded, the agent works out where a search is worth doing: which places have open lidar, and what is already recorded there.",
              why: "A search adds most where the lidar is open and few sites are on record.",
              image: nil, flow: "choose",
              tools: [Tool(name: "find_place", title: "Find a place", does: "Turns a place name into an area on the map."),
                      Tool(name: "open_surveys", title: "List open surveys", does: "Lists open lidar surveys flown with archaeology in mind."),
                      Tool(name: "survey_area", title: "Size up an area", does: "Shows which open lidar covers an area and which sites are already recorded there."),
-                     Tool(name: "find_data", title: "Find lidar for an area", does: "Lists every open lidar dataset that overlaps a search area.")]),
-        Pack(title: "Strip the forest away", icon: "mountain.2",
+                     Tool(name: "find_data", title: "Find lidar for an area", does: "Lists every open lidar dataset that overlaps a search area."),
+                     Tool(name: "find_gaps", title: "Find the gaps", does: "Ranks the parts of a region by open lidar and by how few sites are on open record."),
+                     Tool(name: "open_resources", title: "List open archives", does: "Says which open archives exist, how big they are, and which of them these tools read.")]),
+        Pack(title: "Strip the forest away", short: "Bare ground", icon: "mountain.2",
              summary: "The agent downloads the raw laser points for the area and keeps only the ones that reached the ground. What is left is the bare ground, as if the trees were gone.",
              why: "Low walls, mounds and platforms are hidden in a photograph and plain in the bare ground.",
              image: "reveal", flow: "terrain",
              tools: [Tool(name: "fetch_terrain", title: "Fetch terrain", does: "Downloads the points for an area, builds the ground model, and reports how dense the ground returns are."),
                      Tool(name: "view_terrain", title: "View the terrain", does: "Shows the whole terrain at reduced size."),
                      Tool(name: "make_tiles", title: "Cut into tiles", does: "Cuts the terrain into overlapping tiles for screening.")]),
-        Pack(title: "Look at every tile", icon: "square.grid.3x3",
+        Pack(title: "Look at every tile", short: "Screen", icon: "square.grid.3x3",
              summary: "The terrain is cut into tiles about 250 m across. The agent looks at each one in more than one rendering and writes down what it sees: nothing, natural, modern, possible, or built.",
              why: "Nothing is skipped, and a tile the laser never reached is marked unreadable, never empty.",
              image: "tile", flow: "screen",
@@ -66,7 +70,7 @@ enum ToolGuide {
                      Tool(name: "view_tile", title: "Look at a tile", does: "Shows one tile as shaded relief, slope, or local relief."),
                      Tool(name: "record_verdict", title: "Record a verdict", does: "Records what a tile shows: nothing, natural, modern, possible or built."),
                      Tool(name: "flag_candidate", title: "Flag a candidate", does: "Opens a record for something that looks built.")]),
-        Pack(title: "Check every flag", icon: "checkmark.seal",
+        Pack(title: "Check every flag", short: "Check", icon: "checkmark.seal",
              summary: "Each flag gets three tests. A slice through the raw points shows whether the shape is in the ground or in the trees. A second, different model looks at the same tile without seeing the first opinion. Open maps are checked for roads, buildings and sites already mapped.",
              why: "This is where false finds are caught, and it is the step a lone chatbot skips.",
              image: "section", flow: "check",
@@ -74,14 +78,15 @@ enum ToolGuide {
                      Tool(name: "second_look", title: "Second look", does: "Records the opinion of a second, different model."),
                      Tool(name: "check_modern", title: "Check for modern features", does: "Checks open maps for roads, buildings and sites already mapped nearby."),
                      Tool(name: "add_control", title: "Add a known site", does: "Registers a published site the run should find again, as a test of the run itself.")]),
-        Pack(title: "Search what is published", icon: "book",
+        Pack(title: "Search what is published", short: "Read", icon: "book",
              summary: "The agent searches an open index of scholarly work, opens what it finds, and logs each source as read, could not open, or not relevant.",
              why: "Most of what a search turns up is already known. The record says exactly what was read, so a short search is never mistaken for a discovery.",
              image: nil, flow: "prior",
              tools: [Tool(name: "search_literature", title: "Search the literature", does: "Searches an open index of scholarly works and returns abstracts."),
+                     Tool(name: "search_records", title: "Search published records", does: "Searches Open Context for published excavation and survey records."),
                      Tool(name: "read_source", title: "Open a source", does: "Opens a web page or a PDF and returns its text."),
                      Tool(name: "log_source", title: "Log a source", does: "Logs a source as read, could not open, or not relevant, with what it shows.")]),
-        Pack(title: "Keep the record, and you decide", icon: "doc.text",
+        Pack(title: "Keep the record, and you decide", short: "Record", icon: "doc.text",
              summary: "Every candidate is a page with its pictures, measurements, checks and sources. The tools refuse a status the evidence does not support, and the last call is yours.",
              why: "A project is a plain folder of Markdown, so it can be shared, reviewed, or handed to an archaeologist.",
              image: "record-relief", flow: "decide",
@@ -107,6 +112,12 @@ enum ToolGuide {
     ]
 
     static let workflows: [Workflow] = [
+        Workflow(id: "research", title: "What should I research?", icon: "sparkle.magnifyingglass",
+                 summary: "The agent reads the open archives, weighs where lidar is open against what is already on record, and proposes three searches worth doing.",
+                 prompt: "I want to contribute but do not know what to research. Work it out for me. Use open_resources to see which archives there are, open_surveys for lidar flown for archaeology, and find_gaps on one or two regions that look promising, together with what you know about archaeology. Then propose three concrete searches I could run with these tools. For each, give the place, the lidar that covers it, what is already on open record and from which sources, what kind of feature to expect, and what a search could add. Say plainly what the open record cannot show. Ask me at most one question first.",
+                 scope: .general,
+                 steps: [Handoff(who: "Agent", does: "Reads the archives and the survey catalog"), Handoff(who: "Agent", does: "Ranks regions by lidar and recorded sites"),
+                         Handoff(who: "You", does: "Pick one"), Handoff(who: "Agent", does: "Creates the project")]),
         Workflow(id: "choose", title: "Help me choose a place", icon: "binoculars",
                  summary: "The agent asks what interests you, then suggests areas with open lidar and says what is already known at each.",
                  prompt: "Help me choose a place to search. Ask me what region, period or kind of site I care about, then suggest two or three areas that have open lidar, and say what is already recorded at each. When I pick one, create the project.",
@@ -158,32 +169,60 @@ enum ToolGuide {
                  scope: .project, steps: [Handoff(who: "Agent", does: "Drafts the report"), Handoff(who: "You", does: "Review and send")]),
     ]
 
+    static var allSources: [DataSource] { sources + moreSources }
+
     static let sources: [DataSource] = [
         DataSource(name: "OpenTopography",
                    what: "A US research archive of lidar surveys, including ones flown for archaeologists.",
                    gives: "The list of surveys and their raw laser points, from the files it publishes without an account.",
                    usedFor: "Choosing a place · Bare ground",
-                   url: "https://opentopography.org", probe: "https://portal.opentopography.org/API/otCatalog?productFormat=PointCloud&minx=-90.1&miny=38.6&maxx=-90&maxy=38.7&detail=false&outputFormat=json&include_federated=false"),
+                   url: "https://opentopography.org", probe: "https://portal.opentopography.org/API/otCatalog?productFormat=PointCloud&minx=-90.1&miny=38.6&maxx=-90&maxy=38.7&detail=false&outputFormat=json&include_federated=false",
+                   image: "start:yucatan", caption: "Bare ground under Yucatán forest, from a NASA survey OpenTopography hosts.",
+                   ask: "List the open lidar surveys on OpenTopography that were flown with archaeology in mind, and say which can be fetched without an account."),
         DataSource(name: "USGS 3DEP",
                    what: "The US Geological Survey's lidar of most of the United States, in the public domain.",
                    gives: "Raw laser points for any area it covers.",
                    usedFor: "Bare ground · Sections",
-                   url: "https://www.usgs.gov/3d-elevation-program", probe: "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/IL_10CoNRCS_3_D23/ept.json"),
+                   url: "https://www.usgs.gov/3d-elevation-program", probe: "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/IL_10CoNRCS_3_D23/ept.json",
+                   image: "start:newark", caption: "The Newark Great Circle in Ohio, built from USGS points.",
+                   ask: "Is there open USGS lidar over Poverty Point in Louisiana? Say which dataset and when it was flown."),
         DataSource(name: "Wikidata",
                    what: "The open database behind Wikipedia.",
                    gives: "Archaeological sites that are already on record near an area. It is far from complete.",
                    usedFor: "Choosing a place",
-                   url: "https://www.wikidata.org", probe: "https://www.wikidata.org/w/api.php?action=query&meta=siteinfo&format=json"),
+                   url: "https://www.wikidata.org", probe: "https://www.wikidata.org/w/api.php?action=query&meta=siteinfo&format=json",
+                   image: "data-wikidata", caption: "Sites on record within about 24 km of Cahokia. Each dot is one Wikidata entry.",
+                   ask: "Which archaeological sites are already on record around Moundville, Alabama, and how far is each from it?"),
         DataSource(name: "OpenStreetMap",
                    what: "The open map of the world.",
                    gives: "Place names, and the roads, buildings and mapped historic sites near a find.",
                    usedFor: "Choosing a place · Checks",
-                   url: "https://www.openstreetmap.org", probe: "https://nominatim.openstreetmap.org/status?format=json"),
+                   url: "https://www.openstreetmap.org", probe: "https://nominatim.openstreetmap.org/status?format=json",
+                   image: "data-osm", caption: "What OpenStreetMap has around Monks Mound: roads, buildings, and the mounds already mapped.",
+                   ask: "Find Serpent Mound in Ohio and tell me which open lidar covers it."),
         DataSource(name: "OpenAlex",
                    what: "An open index of scholarly books and papers.",
                    gives: "Titles, abstracts and links to open copies for the literature search.",
                    usedFor: "Prior art",
-                   url: "https://openalex.org", probe: "https://api.openalex.org/works?per-page=1"),
+                   url: "https://openalex.org", probe: "https://api.openalex.org/works?per-page=1",
+                   image: "papers", caption: "What a search for Monks Mound returns. Two of these have open copies the agent can read.",
+                   ask: "What has been published about lidar and Maya settlement in the Usumacinta region? Give titles, years, and which have open copies."),
+    ]
+
+    static let moreSources: [DataSource] = [
+        DataSource(name: "Open Context",
+                   what: "An open archive of published excavation and survey data, with about 2.4 million records. It also hosts state site files from the Digital Index of North American Archaeology, placed at county level.",
+                   gives: "Records that match a search, each with its project, place and dates.",
+                   usedFor: "Choosing a place · Prior art",
+                   url: "https://opencontext.org", probe: "https://opencontext.org/query/.json?rows=1",
+                   image: "records", caption: "Site-file entries Open Context returns around Cahokia. It holds 2,083 there, against 9 named sites on the other open lists.",
+                   ask: "Search the published records for mounds in Madison County, Illinois, and tell me which projects they come from."),
+        DataSource(name: "National Register of Historic Places",
+                   what: "The US National Park Service's list of historic places. The public layer has about 74,600 listings.",
+                   gives: "Listed sites near an area. Sites with restricted locations are left out on purpose.",
+                   usedFor: "Choosing a place",
+                   url: "https://www.nps.gov/subjects/nationalregister", probe: "https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer?f=json",
+                   image: "", caption: "", ask: "Which sites on the National Register are within 20 km of Moundville, Alabama?"),
     ]
 
     static let rules = [
@@ -202,6 +241,9 @@ enum ToolGuide {
         switch tool {
         case "find_place": return ("mappin.and.ellipse", "Looked up \(s("query"))")
         case "open_surveys": return ("list.bullet.rectangle", "Read the open survey catalog")
+        case "find_gaps": return ("square.grid.3x3.topleft.filled", "Ranked a region by open lidar and recorded sites")
+        case "open_resources": return ("building.columns", "Listed the open archives")
+        case "search_records": return ("tray.full", "Searched published records: \(s("query"))")
         case "survey_area": return ("binoculars", "Sized up an area: lidar coverage and recorded sites")
         case "init_project": return ("folder.badge.plus", "Created the project \(s("name"))")
         case "find_data": return ("magnifyingglass", "Looked for open lidar over the area")

@@ -15,6 +15,11 @@ from . import sources
 
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 WIKIDATA = "https://query.wikidata.org/sparql"
+# Surveys that are offered for download but did not build into usable terrain when tested on 2026-11-12.
+PROBLEMS = {
+    "ot:NM16_Dorshow": "fetch_terrain fails on it: its tile index has no readable map projection.",
+    "ot:NM10_Dorshow": "almost none of its points are classed as ground (0.01 per square metre where tested), so the bare ground cannot be built.",
+}
 ARCHAEOLOGY = re.compile(
     r"archaeolog|\bmaya\b|prehispanic|pre-?columbian|\bruins\b|cultural heritage|ancient (agricultur|settlement|cit)|"
     r"\bpueblo\b|chaco canyon|hillfort|earthworks", re.IGNORECASE)
@@ -111,33 +116,120 @@ def open_surveys(keyword: str = "") -> list[dict]:
     for survey, ok in zip(found, ready):
         survey["fetchable_without_account"] = ok
         survey["checked_start"] = CHECKED.get(survey["id"]) if ok else None
+        if survey["id"] in PROBLEMS:
+            survey["known_problem"] = PROBLEMS[survey["id"]]
     return sorted(found, key=lambda s: (s["checked_start"] is None, not s["fetchable_without_account"], s["title"]))
 
+# ------------------------------------------------------------ what is already recorded
 
-def known_sites(bbox: list[float], limit: int = 200) -> list[dict]:
-    """Archaeological sites Wikidata records inside a lon/lat box."""
+OVERPASS_HOSTS = (("https://overpass-api.de/api/interpreter", 35), ("https://overpass.private.coffee/api/interpreter", 20))
+NRHP = "https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/0/query"
+OPENCONTEXT = "https://opencontext.org/query/.json"
+
+
+def _wikidata_sites(bbox: list[float]) -> list[dict]:
     w, s, e, n = bbox
     query = f"""SELECT DISTINCT ?item ?itemLabel ?kindLabel ?loc WHERE {{
   SERVICE wikibase:box {{ ?item wdt:P625 ?loc .
     bd:serviceParam wikibase:cornerSouthWest "Point({w} {s})"^^geo:wktLiteral .
     bd:serviceParam wikibase:cornerNorthEast "Point({e} {n})"^^geo:wktLiteral . }}
   ?item wdt:P31 ?kind . ?kind wdt:P279* wd:Q839954 .
-  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }} }} LIMIT {limit}"""
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }} }} LIMIT 2000"""
     r = _client.get(WIKIDATA, params={"query": query}, headers={"Accept": "application/sparql-results+json"})
     r.raise_for_status()
-    cx, cy = (w + e) / 2, (s + n) / 2
     sites: dict[str, dict] = {}
     for row in r.json()["results"]["bindings"]:
         lon, lat = (float(v) for v in re.findall(r"-?\d+\.?\d*", row["loc"]["value"])[:2])
-        east_km = (lon - cx) * 111.32 * math.cos(math.radians(cy))
-        north_km = (lat - cy) * 110.54
+        sites.setdefault(row["item"]["value"], {"name": row["itemLabel"]["value"], "kind": row["kindLabel"]["value"],
+                                                "lon": lon, "lat": lat, "source": "Wikidata", "record": row["item"]["value"]})
+    return list(sites.values())
+
+
+def _osm_sites(bbox: list[float]) -> list[dict]:
+    w, s, e, n = bbox
+    query = f"[out:json][timeout:25];nwr[historic=archaeological_site]({s},{w},{n},{e});out center tags 3000;"
+    r, failure = None, "no answer"
+    for host, patience in OVERPASS_HOSTS:  # the public map services are often busy, so try each in turn
+        try:
+            r = _client.post(host, data={"data": query}, timeout=patience)
+        except httpx.HTTPError as exc:
+            failure = str(exc)[:80]
+            continue
+        if r.status_code == 200:
+            break
+        failure = f"status {r.status_code}"
+    if r is None or r.status_code != 200:
+        raise RuntimeError(f"the open map service did not answer ({failure})")
+    out = []
+    for el in r.json().get("elements", []):
+        at = el if "lat" in el else el.get("center")
+        if not at:
+            continue
+        tags = el.get("tags", {})
+        kind = tags.get("site_type") or tags.get("archaeological_site") or "archaeological site"
+        out.append({"name": tags.get("name") or f"Unnamed {kind.replace('_', ' ')}", "kind": kind.replace("_", " "),
+                    "lon": at["lon"], "lat": at["lat"], "source": "OpenStreetMap",
+                    "record": f"https://www.openstreetmap.org/{el['type']}/{el['id']}"})
+    return out
+
+
+def _nrhp_sites(bbox: list[float]) -> list[dict]:
+    w, s, e, n = bbox
+    if not (-180 <= w <= -64 and 17 <= n <= 72):  # the register covers the United States only
+        return []
+    r = _client.get(NRHP, params={
+        "where": "ResType='site'", "geometry": f"{w},{s},{e},{n}", "geometryType": "esriGeometryEnvelope", "inSR": 4326,
+        "spatialRel": "esriSpatialRelIntersects", "outFields": "RESNAME,NRIS_Refnum", "returnGeometry": "true",
+        "outSR": 4326, "resultRecordCount": 2000, "f": "json"})
+    r.raise_for_status()
+    return [{"name": f["attributes"]["RESNAME"], "kind": "site on the National Register", "lon": f["geometry"]["x"],
+             "lat": f["geometry"]["y"], "source": "National Register of Historic Places",
+             "record": f"NRIS {f['attributes'].get('NRIS_Refnum')}"}
+            for f in r.json().get("features", []) if f.get("geometry")]
+
+
+def recorded_sites(bbox: list[float]) -> tuple[list[dict], list[str]]:
+    """Sites on open record inside a box, from every source that answers, and the sources that did not."""
+    readers = {"Wikidata": _wikidata_sites, "OpenStreetMap": _osm_sites, "National Register of Historic Places": _nrhp_sites}
+    sites, silent, seen = [], [], set()
+    with ThreadPoolExecutor(3) as pool:
+        jobs = {name: pool.submit(reader, bbox) for name, reader in readers.items()}
+    for name, job in jobs.items():
+        try:
+            found = job.result()
+        except Exception as exc:  # one source being down should not hide the others
+            silent.append(f"{name}: {str(exc)[:120]}")
+            continue
+        for site in found:
+            key = (re.sub(r"\W+", "", site["name"].lower()), round(site["lon"], 2), round(site["lat"], 2))
+            if key not in seen:
+                seen.add(key)
+                sites.append(site)
+    return sites, silent
+
+
+def known_sites(bbox: list[float]) -> dict:
+    """Recorded sites inside a box, listed by name, distance and direction from its centre. No coordinates."""
+    w, s, e, n = bbox
+    cx, cy = (w + e) / 2, (s + n) / 2
+    sites, silent = recorded_sites(bbox)
+    listed = []
+    for site in sites:
+        east_km = (site["lon"] - cx) * 111.32 * math.cos(math.radians(cy))
+        north_km = (site["lat"] - cy) * 110.54
         bearing = (math.degrees(math.atan2(east_km, north_km)) + 360) % 360
-        sites.setdefault(row["item"]["value"], {
-            "name": row["itemLabel"]["value"], "kind": row["kindLabel"]["value"],
-            "km_from_centre": round(math.hypot(east_km, north_km), 1),
-            "direction": ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][int((bearing + 22.5) // 45) % 8],
-            "record": row["item"]["value"]})
-    return sorted(sites.values(), key=lambda site: site["km_from_centre"])
+        listed.append({"name": site["name"], "kind": site["kind"], "source": site["source"],
+                       "km_from_centre": round(math.hypot(east_km, north_km), 1),
+                       "direction": ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][int((bearing + 22.5) // 45) % 8],
+                       "record": site["record"]})
+    listed.sort(key=lambda site: site["km_from_centre"])
+    by_source: dict[str, int] = {}
+    for site in listed:
+        by_source[site["source"]] = by_source.get(site["source"], 0) + 1
+    out = {"count": len(listed), "by_source": by_source, "nearest": listed[:40]}
+    if silent:
+        out["sources_that_did_not_answer"] = silent
+    return out
 
 
 def survey_area(bbox: list[float]) -> dict:
@@ -148,11 +240,138 @@ def survey_area(bbox: list[float]) -> dict:
     out: dict = {"area_km2": round((e - w) * 111.32 * math.cos(math.radians((s + n) / 2)) * (n - s) * 110.54)}
     lidar = sources.find_data(bbox)
     out["open_lidar"] = [{k: d.get(k) for k in ("id", "source", "title", "collected")} for d in lidar if d.get("id")]
-    try:
-        sites = known_sites(bbox)
-        out["known_sites"] = {"count": len(sites), "nearest": sites[:40]}
-    except httpx.HTTPError as exc:
-        out["known_sites"] = {"error": f"Wikidata did not answer: {exc}"}
-    out["how_to_read"] = ("Open lidar with few recorded sites is where a search adds most. Recorded sites are from Wikidata, "
-                          "which is far from complete: an empty list does not mean nothing is known there.")
+    out["known_sites"] = known_sites(bbox)
+    out["how_to_read"] = RECORD_CAVEAT
     return out
+
+
+RECORD_CAVEAT = ("Open lidar with few recorded sites is where a search adds most. The site lists come from Wikidata, "
+                 "OpenStreetMap and the public part of the US National Register. All three are far from complete: in the "
+                 "United States the full site files are held by each State Historic Preservation Office and are not "
+                 "public, and other countries keep theirs with a heritage authority. A short list does not mean nothing "
+                 "is known there. records_in_open_context counts published records in the region, which in the United States "
+                 "includes state site-file entries placed only at county level: it shows how much is known that the named "
+                 "lists miss. Only the literature and the authority can settle what is known at one spot.")
+
+
+def find_gaps(bbox: list[float], cells: int = 4) -> dict:
+    """Split a region into a grid and rank the cells: open lidar first, then the fewest sites on open record."""
+    w, s, e, n = bbox
+    if e - w > 2 or n - s > 2:
+        raise ValueError("Keep the region under 2 degrees on a side. Use find_place to narrow it down first.")
+    sites, silent = recorded_sites(bbox)
+    usgs = [f for f in sources._usgs_index() if sources._overlaps(f["geometry"], bbox)]
+    surveys = []
+    for d in _catalog():
+        box = _bounds((d.get("spatialCoverage") or {}).get("geo"))
+        if box and not (box[2] < w or box[0] > e or box[3] < s or box[1] > n) and d.get("alternateName"):
+            text = f"{d.get('name', '')}. {d.get('keywords') or ''}. {d.get('description') or ''}"
+            surveys.append((f"ot:{d['alternateName']}", box, bool(ARCHAEOLOGY.search(text))))
+    dx, dy = (e - w) / cells, (n - s) / cells
+    grid = []
+    for row in range(cells):
+        for col in range(cells):
+            cw, cs = w + col * dx, n - (row + 1) * dy
+            cell = [cw, cs, cw + dx, cs + dy]
+            lidar = [f"usgs:{f['properties']['name']}" for f in usgs if sources._overlaps(f["geometry"], cell)]
+            flown = [sid for sid, box, arch in surveys
+                     if arch and not (box[2] < cell[0] or box[0] > cell[2] or box[3] < cell[1] or box[1] > cell[3])]
+            lidar += [sid for sid, box, _ in surveys
+                      if not (box[2] < cell[0] or box[0] > cell[2] or box[3] < cell[1] or box[1] > cell[3])]
+            inside = [x for x in sites if cell[0] <= x["lon"] < cell[2] and cell[1] <= x["lat"] < cell[3]]
+            by_source: dict[str, int] = {}
+            for x in inside:
+                by_source[x["source"]] = by_source.get(x["source"], 0) + 1
+            grid.append({
+                "cell": f"{'ABCDEFGH'[row]}{col + 1}", "west": round(cell[0], 4), "south": round(cell[1], 4),
+                "east": round(cell[2], 4), "north": round(cell[3], 4),
+                "area_km2": round(dx * 111.32 * math.cos(math.radians(cs + dy / 2)) * dy * 110.54),
+                "open_lidar_datasets": len(lidar), "open_lidar": lidar[:4], "flown_for_archaeology": flown,
+                "recorded_sites": len(inside), "by_source": by_source, "examples": [x["name"] for x in inside[:4]]})
+    covered = [c for c in grid if c["open_lidar_datasets"]]
+    covered.sort(key=lambda c: (not c["flown_for_archaeology"], c["recorded_sites"]))
+    try:
+        published = search_records("", bbox, 1)["total"]
+    except Exception:
+        published = None
+    out = {"grid": f"{cells} by {cells}, rows A (north) to {'ABCDEFGH'[cells - 1]} (south), columns 1 (west) to {cells} (east)",
+           "sites_on_open_record": len(sites), "records_in_open_context": published, "cells_with_open_lidar": len(covered),
+           "cells_without_open_lidar": len(grid) - len(covered), "ranked": covered[:8], "how_to_read": RECORD_CAVEAT}
+    if silent:
+        out["sources_that_did_not_answer"] = silent
+    return out
+
+
+def search_records(query: str, bbox: list[float] | None = None, limit: int = 10) -> dict:
+    """Search Open Context, an open archive of published excavation and survey data."""
+    params = {"rows": min(limit, 50), "response": "metadata,uri-meta"}
+    if query:
+        params["q"] = query
+    if bbox:
+        params["bbox"] = ",".join(str(v) for v in bbox)
+    r = _client.get(OPENCONTEXT, params=params, timeout=60)
+    r.raise_for_status()
+    data = r.json()
+    rows = data.get("oc-api:has-results") or (data if isinstance(data, list) else [])
+    return {"total": data.get("totalResults") if isinstance(data, dict) else len(rows), "records": [{
+        "label": x.get("label"), "kind": x.get("item category"), "project": x.get("project label"),
+        "where": x.get("context label"), "from_year": x.get("early bce/ce"), "to_year": x.get("late bce/ce"),
+        "link": x.get("href")} for x in rows[:limit]]}
+
+
+def open_resources(topic: str = "") -> list[dict]:
+    """The open archives a search can draw on: what each holds, how big it is, and whether these tools read it."""
+    try:
+        surveys = len(_catalog())
+    except Exception:
+        surveys = None
+    try:
+        usgs = len(sources._usgs_index())
+    except Exception:
+        usgs = None
+    rows = [
+        {"name": "USGS 3DEP", "kind": "lidar", "region": "United States",
+         "holds": "Public-domain lidar point clouds covering most of the United States.",
+         "size": f"{usgs} collections in the public index" if usgs else "size not read", "read_by": "find_data, fetch_terrain, find_gaps",
+         "note": "Flown for mapping, not archaeology, so most of it has never been searched for earthworks."},
+        {"name": "OpenTopography", "kind": "lidar", "region": "World, mostly the Americas",
+         "holds": "Research lidar surveys, including ones flown for archaeologists.",
+         "size": f"{surveys} point-cloud datasets in its catalog" if surveys else "size not read", "read_by": "open_surveys, find_data, fetch_terrain",
+         "note": "Only datasets published as bulk files can be fetched without an account. open_surveys says which."},
+        {"name": "OpenStreetMap", "kind": "recorded sites", "region": "World",
+         "holds": "Places mapped by volunteers, including archaeological sites.",
+         "size": "231,107 features tagged as archaeological sites (taginfo, 12 November 2026)", "read_by": "survey_area, find_gaps, check_modern",
+         "note": "Coverage is uneven: dense in parts of Europe, thin elsewhere."},
+        {"name": "National Register of Historic Places", "kind": "recorded sites", "region": "United States",
+         "holds": "The public, non-restricted listings of the US National Park Service.",
+         "size": "74,636 point listings and 22,905 mapped boundaries (queried 12 November 2026)", "read_by": "survey_area, find_gaps",
+         "note": "Archaeological sites with restricted locations are left out of the public layer on purpose."},
+        {"name": "Wikidata", "kind": "recorded sites", "region": "World",
+         "holds": "The open database behind Wikipedia, with archaeological sites that have an entry.",
+         "size": "not counted", "read_by": "survey_area, find_gaps", "note": "Holds well-known sites; thin for ordinary ones."},
+        {"name": "Open Context", "kind": "published records", "region": "World",
+         "holds": "Published excavation and survey data: finds, features, site files, images. It also hosts the Digital "
+                  "Index of North American Archaeology.",
+         "size": "2,439,980 records (queried 12 November 2026)", "read_by": "search_records",
+         "note": "Records are what projects chose to publish, so a place with none may still be well studied."},
+        {"name": "OpenAlex", "kind": "literature", "region": "World", "holds": "An open index of scholarly books and papers.",
+         "size": "not counted", "read_by": "search_literature, read_source",
+         "note": "Finds titles and abstracts. Many publishers refuse to show the full text to a program."},
+        {"name": "Pleiades", "kind": "recorded sites", "region": "Ancient Mediterranean and Near East",
+         "holds": "A gazetteer of ancient places.", "size": "about 36,500 places, with a daily open download",
+         "read_by": "read_source, one place page at a time", "note": "Not yet read in bulk by these tools."},
+        {"name": "tDAR, the Digital Archaeological Record", "kind": "published records", "region": "Mostly the Americas",
+         "holds": "Reports, datasets and images deposited by archaeologists.", "size": "several hundred thousand resources by its own account",
+         "read_by": "read_source, one page at a time", "note": "Its search interface for programs needs approval from its staff."},
+        {"name": "State and national site files", "kind": "recorded sites", "region": "Each state or country",
+         "holds": "The full official record of known sites, held by a State Historic Preservation Office or a national heritage authority.",
+         "size": "not public", "read_by": "none",
+         "note": "This is why nothing found here is called new. A find that matches no open source is reported to the authority, which checks its own files."},
+        {"name": "Not yet checked by Dighouse", "kind": "other", "region": "Various",
+         "holds": "The Archaeology Data Service (UK), EAMENA (Middle East and North Africa), declassified CORONA satellite "
+                  "imagery, and national lidar outside the United States (for example England, the Netherlands, Denmark, Slovenia).",
+         "size": "not checked", "read_by": "none", "note": "Named so you know they exist. These tools do not read them and their sizes were not verified."},
+    ]
+    if topic:
+        rows = [x for x in rows if topic.lower() in json.dumps(x).lower()]
+    return rows

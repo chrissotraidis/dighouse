@@ -4,19 +4,72 @@ import UniformTypeIdentifiers
 
 typealias JSON = [String: Any]
 
+/// A colour scheme for the whole app.
+struct Palette {
+    let bg, side, raised, pop, ink, text, dim, faint, accent, accentDeep, tan, green, amber, primary: Color
+
+    private static func rgb(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+    }
+
+    /// The colours of the app icon: dark soil, the tan ground line, the green canopy.
+    static let earth = Palette(
+        bg: rgb(0x261E17), side: rgb(0x1A1410), raised: rgb(0x362B21), pop: rgb(0x382D23), ink: rgb(0xFFE6C4),
+        text: rgb(0xF3EBDF), dim: rgb(0xC4B4A0), faint: rgb(0x92826F), accent: rgb(0x7DD666), accentDeep: rgb(0x3F8433),
+        tan: rgb(0xE2B170), green: rgb(0x7DD666), amber: rgb(0xF2A640), primary: rgb(0xF4E6CF))
+    static let canopy = Palette(
+        bg: rgb(0x141B15), side: rgb(0x0D130E), raised: rgb(0x202B22), pop: rgb(0x232E25), ink: rgb(0xE0FFE0),
+        text: rgb(0xEAF2E8), dim: rgb(0xAEBFAD), faint: rgb(0x7B8C7A), accent: rgb(0xE2B170), accentDeep: rgb(0x8A6235),
+        tan: rgb(0xE2B170), green: rgb(0x7DD666), amber: rgb(0xF2A640), primary: rgb(0xE9F3E4))
+    static let graphite = Palette(
+        bg: Color(white: 0.129), side: Color(white: 0.09), raised: Color(white: 0.185), pop: Theme.pop, ink: .white,
+        text: Color(white: 0.925), dim: Color(white: 0.7), faint: Color(white: 0.52), accent: rgb(0x5CA6FF), accentDeep: rgb(0x2B6EDB),
+        tan: rgb(0xDBB075), green: rgb(0x5CC76B), amber: rgb(0xF5AD42), primary: .white)
+}
+
+/// The looks a person can pick in Settings.
+enum Look: String, CaseIterable {
+    case earth = "Earth", canopy = "Canopy", graphite = "Graphite"
+
+    var palette: Palette {
+        switch self {
+        case .earth: return .earth
+        case .canopy: return .canopy
+        case .graphite: return .graphite
+        }
+    }
+
+    var note: String {
+        switch self {
+        case .earth: return "Soil brown with the green and tan of the Dighouse icon."
+        case .canopy: return "Forest green, with the same accents."
+        case .graphite: return "Neutral grey and blue, like the Codex app."
+        }
+    }
+}
+
 enum Theme {
-    static let bg = Color(white: 0.129)
-    static let side = Color(white: 0.09)
-    static let raised = Color(white: 0.185)
-    static let hover = Color.white.opacity(0.07)
-    static let line = Color.white.opacity(0.1)
-    static let text = Color(white: 0.925)
-    static let dim = Color(white: 0.7)
-    static let faint = Color(white: 0.52)
-    static let accent = Color(red: 0.36, green: 0.65, blue: 1.0)
-    static let tan = Color(red: 0.86, green: 0.69, blue: 0.46)
-    static let green = Color(red: 0.36, green: 0.78, blue: 0.42)
-    static let amber = Color(red: 0.96, green: 0.68, blue: 0.26)
+    static var palette = (Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth).palette
+
+    static var bg: Color { palette.bg }
+    static var side: Color { palette.side }
+    static var raised: Color { palette.raised }
+    /// The surface of menus that float over a page.
+    static var pop: Color { palette.pop }
+    /// The light colour that is laid over the background, faintly, for fills and outlines.
+    static var ink: Color { palette.ink }
+    static var hover: Color { palette.ink.opacity(0.07) }
+    static var line: Color { palette.ink.opacity(0.1) }
+    static var text: Color { palette.text }
+    static var dim: Color { palette.dim }
+    static var faint: Color { palette.faint }
+    static var accent: Color { palette.accent }
+    static var accentDeep: Color { palette.accentDeep }
+    static var tan: Color { palette.tan }
+    static var green: Color { palette.green }
+    static var amber: Color { palette.amber }
+    /// The fill of the one main button on a screen.
+    static var primary: Color { palette.primary }
 }
 
 enum Shell {
@@ -104,6 +157,7 @@ struct Tile: Identifiable {
 struct Source: Identifiable {
     let id = UUID()
     let title: String, status: String, finding: String
+    var link = ""
 }
 
 struct Candidate: Identifiable {
@@ -139,7 +193,7 @@ struct Candidate: Identifiable {
         switch status {
         case "flagged": return Theme.amber
         case "ground_confirmed", "no_match_in_sources_read", "reported": return Theme.accent
-        case "already_published": return Theme.green
+        case "already_published": return Theme.tan
         default: return Theme.faint
         }
     }

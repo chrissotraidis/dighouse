@@ -136,7 +136,7 @@ private struct ChatRow: View {
                         ForEach(item.files, id: \.self) { name in
                             Label(name, systemImage: Attachment(path: name).icon).font(.system(size: 12)).lineLimit(1)
                                 .padding(.horizontal, 10).frame(height: 28)
-                                .background(Capsule().fill(Color.white.opacity(0.06)))
+                                .background(Capsule().fill(Theme.ink.opacity(0.06)))
                         }
                     }
                 }
@@ -332,19 +332,29 @@ struct WorkflowRow: View {
 
     var body: some View {
         let state = app.state(of: flow)
+        let done = state.note == "Done"
         Button(action: action) {
             HStack(spacing: 12) {
-                IconTile(name: flow.icon, size: 30)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(flow.title).font(.system(size: 13.5, weight: .medium))
-                    Text(flow.summary).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
-                        .lineLimit(2).multilineTextAlignment(.leading)
+                if done {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).foregroundStyle(Theme.green).frame(width: 30, height: 30)
+                } else {
+                    IconTile(name: flow.icon, size: 30).opacity(state.ready ? 1 : 0.5)
                 }
-                Spacer(minLength: 4)
-                if !state.note.isEmpty { Badge(text: state.note, color: state.note == "Done" ? Theme.green : Theme.dim) }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(flow.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(state.ready || done ? Theme.text : Theme.dim)
+                    // A workflow that cannot run says why, in place of what it does.
+                    Text(state.ready || done ? flow.summary : state.note + ".").font(.system(size: 12.5))
+                        .foregroundStyle(state.ready ? Theme.dim : Theme.faint)
+                        .lineLimit(outlined ? 2 : 1).multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 8)
+                if done {
+                    Text("Done").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.green)
+                } else if state.ready, !state.note.isEmpty {
+                    Text(state.note).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.tan).lineLimit(1).fixedSize()
+                }
             }
             .padding(.vertical, 6)
-            .opacity(state.ready ? 1 : 0.5)
         }
         .buttonStyle(RowButton())
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(outlined ? Theme.line : .clear))
@@ -352,14 +362,14 @@ struct WorkflowRow: View {
     }
 }
 
-/// What a new chat shows: the workflows that make sense right now.
+/// What a new chat shows: the workflows that make sense right now, and a few questions to try.
 private struct EmptyChat: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
 
     private var flows: [ToolGuide.Workflow] {
         let all = ToolGuide.workflows
-        guard store.current != nil else { return all.filter { $0.scope == .general } }
+        guard store.current != nil else { return all.filter { $0.scope == .general && $0.id != "research" } }
         let ready = all.filter { $0.scope == .project && app.state(of: $0).ready }
         if store.status.tiles == 0 { return ready.filter { ["full", "terrain"].contains($0.id) } }
         return Array(ready.filter { !["full", "terrain"].contains($0.id) }.prefix(4))
@@ -367,7 +377,7 @@ private struct EmptyChat: View {
 
     private var heading: (String, String) {
         if store.current == nil {
-            return ("What are you looking for?", "Ask a question, or begin with one of these. The agent has the archaeology tools in every chat, so it can look things up in the open data as it answers.")
+            return ("What are you looking for?", "Every chat has the archaeology tools, so the agent can look things up in the open data as it answers.")
         }
         if store.status.tiles == 0 {
             return ("Where should we start?", "This project has no terrain yet. The agent can find open lidar for its area and build the bare ground.")
@@ -376,11 +386,11 @@ private struct EmptyChat: View {
     }
 
     /// Questions that show what the tools can answer before there is a project.
-    private let questions = [
-        "Is there open lidar over the Newark Earthworks in Ohio?",
-        "Which open surveys cover the Maya lowlands, and what is recorded near each?",
-        "How does lidar see the ground through a forest?",
-        "What has been published about Angel Mounds in Indiana?",
+    private let questions: [(String, String)] = [
+        ("map", "Is there open lidar over the Newark Earthworks in Ohio?"),
+        ("airplane", "Which open surveys cover the Maya lowlands, and what is recorded near each?"),
+        ("building.columns", "Which open archives do archaeologists use, and how big are they?"),
+        ("book", "What has been published about Angel Mounds in Indiana?"),
     ]
 
     var body: some View {
@@ -388,24 +398,16 @@ private struct EmptyChat: View {
             ScrollView {
                 VStack(spacing: 22) {
                     VStack(spacing: 8) {
+                        if store.current == nil { MoundMark().frame(width: 64, height: 28).padding(.bottom, 4) }
                         Text(heading.0).font(.system(size: 26, weight: .semibold))
-                        Text(heading.1).font(.system(size: 14)).foregroundStyle(Theme.dim).multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
+                        Text(heading.1).font(.system(size: 14)).foregroundStyle(Theme.dim).multilineTextAlignment(.center).lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 520)
                     }
-                    VStack(spacing: 8) {
-                        ForEach(flows) { flow in WorkflowRow(flow: flow) { app.run(flow) } }
-                    }
-                    .frame(maxWidth: 540)
-                    if store.current == nil {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Or try a question").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.faint)
-                            Flow(spacing: 8) {
-                                ForEach(questions, id: \.self) { question in
-                                    Button(question) { app.ask(question) }.buttonStyle(SecondaryButton())
-                                }
-                            }
+                    if store.current == nil { general } else {
+                        VStack(spacing: 8) {
+                            ForEach(flows) { flow in WorkflowRow(flow: flow) { app.run(flow) } }
                         }
-                        .frame(maxWidth: 540, alignment: .leading)
+                        .frame(maxWidth: 560)
                     }
                 }
                 .padding(.horizontal, 24).padding(.vertical, 24)
@@ -413,6 +415,82 @@ private struct EmptyChat: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var general: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if let research = ToolGuide.workflows.first(where: { $0.id == "research" }) {
+                StartTile(icon: research.icon, title: research.title, text: research.summary, strong: true) { app.run(research) }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10, alignment: .top)], spacing: 10) {
+                ForEach(flows) { flow in
+                    StartTile(icon: flow.icon, title: flow.title, text: flow.summary) { app.run(flow) }
+                }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Or ask a question").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint).padding(.leading, 10)
+                VStack(spacing: 0) {
+                    ForEach(Array(questions.enumerated()), id: \.offset) { index, question in
+                        if index > 0 { Hairline().padding(.leading, 40) }
+                        Button { app.ask(question.1) } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: question.0).font(.system(size: 12)).foregroundStyle(Theme.tan).frame(width: 18)
+                                Text(question.1).font(.system(size: 13.5)).multilineTextAlignment(.leading)
+                                Spacer(minLength: 8)
+                                Image(systemName: "arrow.up").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.faint)
+                            }
+                            .padding(.vertical, 5)
+                        }
+                        .buttonStyle(RowButton())
+                    }
+                }
+                .padding(4).panel(radius: 12)
+            }
+        }
+        .frame(maxWidth: 640)
+    }
+}
+
+/// A card that starts something: an icon, a title, and one or two lines on what happens.
+struct StartTile: View {
+    let icon: String, title: String, text: String
+    var strong = false
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if strong {
+                    HStack(alignment: .center, spacing: 14) {
+                        IconTile(name: icon, size: 42)
+                        words
+                        Spacer(minLength: 8)
+                        Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.tan)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        IconTile(name: icon, size: 30)
+                        words
+                    }
+                }
+            }
+            .padding(14).frame(maxWidth: .infinity, minHeight: strong ? 0 : 128, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.08 : strong ? 0.055 : 0.035)))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(strong ? Theme.tan.opacity(hover ? 0.9 : 0.5) : hover ? Theme.ink.opacity(0.22) : Theme.line))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .animation(.easeOut(duration: 0.12), value: hover)
+    }
+
+    private var words: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.system(size: strong ? 15.5 : 13.5, weight: .semibold))
+            Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
@@ -456,7 +534,7 @@ struct ModelControl: View {
             }
             .font(.system(size: 12.5))
             .padding(.horizontal, 12).frame(height: 30)
-            .background(Capsule().fill(Color.white.opacity(open ? 0.12 : 0.06)))
+            .background(Capsule().fill(Theme.ink.opacity(open ? 0.12 : 0.06)))
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -483,6 +561,7 @@ struct ModelControl: View {
                         }
                         StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
                         Text(Effort.note(effort)).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        Text("The steps are the ones your model list gives for this model.").font(.system(size: 11)).foregroundStyle(Theme.faint.opacity(0.8))
                     }
                     .padding(.horizontal, 20).padding(.vertical, 18).frame(width: 340)
                 }
@@ -547,7 +626,7 @@ struct Composer: View {
                                 .frame(width: 30, height: 30).clipShape(RoundedRectangle(cornerRadius: 6))
                         } else {
                             Image(systemName: file.icon).font(.system(size: 13)).foregroundStyle(Theme.tan).frame(width: 30, height: 30)
-                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.07)))
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Theme.ink.opacity(0.07)))
                         }
                         Text(file.name).font(.system(size: 12)).lineLimit(1).frame(maxWidth: 150, alignment: .leading)
                         Button { chat.attachments.removeAll { $0 == file } } label: {
@@ -557,7 +636,7 @@ struct Composer: View {
                         .buttonStyle(.plain).help("Remove")
                     }
                     .padding(.leading, 5).padding(.trailing, 6).frame(height: 40)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.05)))
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.05)))
                     .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
                 }
             }
@@ -602,13 +681,13 @@ struct Composer: View {
             if chat.running && !canSend {
                 Button { Task { await chat.stop() } } label: {
                     Image(systemName: "stop.fill").font(.system(size: 11)).foregroundStyle(.black)
-                        .frame(width: 30, height: 30).background(Circle().fill(.white))
+                        .frame(width: 30, height: 30).background(Circle().fill(Theme.primary))
                 }
                 .buttonStyle(.plain).help("Stop the run").padding(.leading, 6)
             } else {
                 Button(action: send) {
                     Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold)).foregroundStyle(.black)
-                        .frame(width: 30, height: 30).background(Circle().fill(canSend ? Color.white : Color.white.opacity(0.25)))
+                        .frame(width: 30, height: 30).background(Circle().fill(canSend ? Color.white : Theme.ink.opacity(0.25)))
                 }
                 .buttonStyle(.plain).disabled(!canSend).padding(.leading, 6)
                 .help(chat.running ? "Send this to the running agent" : "Send")
@@ -666,7 +745,7 @@ private struct WorkflowMenu: View {
             }
             .buttonStyle(RowButton())
         }
-        .padding(8).frame(width: 400)
+        .padding(8).frame(width: 440)
         .foregroundStyle(Theme.text)
     }
 }

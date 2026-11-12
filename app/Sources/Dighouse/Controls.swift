@@ -30,7 +30,7 @@ private struct Pressable<Label: View>: View {
 struct PrimaryButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Pressable(label: configuration.label, pressed: configuration.isPressed,
-                  fill: { hover, pressed in Color.white.opacity(pressed ? 0.72 : hover ? 0.86 : 1) },
+                  fill: { hover, pressed in Theme.primary.opacity(pressed ? 0.72 : hover ? 0.86 : 1) },
                   text: .black, outline: .clear)
     }
 }
@@ -39,8 +39,8 @@ struct PrimaryButton: ButtonStyle {
 struct SecondaryButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Pressable(label: configuration.label, pressed: configuration.isPressed,
-                  fill: { hover, pressed in Color.white.opacity(pressed ? 0.16 : hover ? 0.1 : 0) },
-                  text: Theme.text, outline: Color.white.opacity(0.16))
+                  fill: { hover, pressed in Theme.ink.opacity(pressed ? 0.16 : hover ? 0.1 : 0) },
+                  text: Theme.text, outline: Theme.ink.opacity(0.16))
     }
 }
 
@@ -66,7 +66,7 @@ struct IconButton: ButtonStyle {
                 .foregroundStyle((active ? Theme.text : Theme.dim).opacity(enabled ? 1 : 0.35))
                 .frame(width: size, height: size)
                 .background(RoundedRectangle(cornerRadius: 8).fill(
-                    configuration.isPressed ? Color.white.opacity(0.14) : (hover || active) ? Theme.hover : .clear))
+                    configuration.isPressed ? Theme.ink.opacity(0.14) : (hover || active) ? Theme.hover : .clear))
                 .contentShape(Rectangle())
                 .onHover { hover = $0 }
         }
@@ -91,7 +91,7 @@ struct RowButton: ButtonStyle {
                 .padding(.horizontal, 10).frame(minHeight: 32)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RoundedRectangle(cornerRadius: 8).fill(
-                    selected ? Color.white.opacity(0.1) : (hover || configuration.isPressed) ? Theme.hover : .clear))
+                    selected ? Theme.ink.opacity(0.1) : (hover || configuration.isPressed) ? Theme.hover : .clear))
                 .contentShape(Rectangle())
                 .onHover { hover = $0 }
         }
@@ -105,14 +105,14 @@ extension View {
     func field() -> some View {
         self.textFieldStyle(.plain)
             .padding(.horizontal, 11).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 9).fill(Color.white.opacity(0.05)))
+            .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ink.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.line))
     }
 
     /// A grouped surface with a hairline edge.
     func panel(padding: CGFloat = 0, radius: CGFloat = 14) -> some View {
         self.padding(padding)
-            .background(RoundedRectangle(cornerRadius: radius).fill(Color.white.opacity(0.035)))
+            .background(RoundedRectangle(cornerRadius: radius).fill(Theme.ink.opacity(0.035)))
             .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.line))
     }
 }
@@ -134,8 +134,8 @@ struct PillMenu<Content: View>: View {
             .font(.system(size: 12.5))
             .foregroundStyle(quiet ? Theme.dim : Theme.text)
             .padding(.horizontal, quiet ? 8 : 12).frame(height: 28)
-            .background(Capsule().fill(Color.white.opacity(quiet ? 0 : 0.05)))
-            .overlay(Capsule().strokeBorder(quiet ? .clear : Color.white.opacity(0.16)))
+            .background(Capsule().fill(Theme.ink.opacity(quiet ? 0 : 0.05)))
+            .overlay(Capsule().strokeBorder(quiet ? .clear : Theme.ink.opacity(0.16)))
             .contentShape(Capsule())
         }
         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
@@ -163,7 +163,7 @@ struct IconTile: View {
     var body: some View {
         Image(systemName: name).font(.system(size: size * 0.44, weight: .medium)).foregroundStyle(Theme.tan)
             .frame(width: size, height: size)
-            .background(RoundedRectangle(cornerRadius: size * 0.27).fill(Color.white.opacity(0.07)))
+            .background(RoundedRectangle(cornerRadius: size * 0.27).fill(Theme.ink.opacity(0.07)))
     }
 }
 
@@ -318,14 +318,14 @@ struct MarkdownText: View {
 extension View {
     /// The raised dark card used for menus that float over the chat.
     func floatingPanel(radius: CGFloat = 22) -> some View {
-        self.background(RoundedRectangle(cornerRadius: radius).fill(Color(white: 0.165)))
-            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Color.white.opacity(0.12)))
+        self.background(RoundedRectangle(cornerRadius: radius).fill(Theme.pop))
+            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.ink.opacity(0.12)))
             .shadow(color: .black.opacity(0.5), radius: 28, y: 10)
     }
 
     /// Gives a popover the app's dark surface, arrow included.
     func popoverSurface() -> some View {
-        self.background(Color(white: 0.165).scaleEffect(1.5))
+        self.background(Theme.pop.scaleEffect(1.5))
     }
 }
 
@@ -335,7 +335,7 @@ struct StepSlider: View {
     @Binding var value: String
     var showLabels = false
     private let knob: CGFloat = 32
-    private let track = Color(red: 0.17, green: 0.43, blue: 0.86)
+    private var track: Color { Theme.accentDeep }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -344,13 +344,13 @@ struct StepSlider: View {
                 let last = CGFloat(max(steps.count - 1, 1))
                 let x = usable * CGFloat(steps.firstIndex(of: value) ?? 0) / last
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.1))
+                    Capsule().fill(Theme.ink.opacity(0.1))
                     Capsule().fill(track).frame(width: x + knob)
                     ForEach(steps.indices, id: \.self) { i in
-                        Circle().fill(Color.white.opacity(0.4)).frame(width: 4, height: 4)
+                        Circle().fill(Theme.ink.opacity(0.4)).frame(width: 4, height: 4)
                             .position(x: knob / 2 + usable * CGFloat(i) / last, y: knob / 2)
                     }
-                    Circle().fill(.white).frame(width: knob, height: knob)
+                    Circle().fill(Theme.primary).frame(width: knob, height: knob)
                         .shadow(color: .black.opacity(0.35), radius: 3, y: 1).offset(x: x)
                 }
                 .animation(.easeOut(duration: 0.12), value: value)
@@ -407,7 +407,7 @@ struct ModelList: View {
                     TextField("Search", text: $query).textFieldStyle(.plain).font(.system(size: 13)).focused($searching)
                 }
                 .padding(.horizontal, 10).frame(height: 30)
-                .background(RoundedRectangle(cornerRadius: 9).fill(Color.white.opacity(0.06)))
+                .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ink.opacity(0.06)))
                 .padding(.horizontal, 6)
             }
             ScrollView {
@@ -457,7 +457,7 @@ struct ModelPicker: View {
             }
             .font(.system(size: 12.5)).foregroundStyle(Theme.text)
             .padding(.horizontal, 12).frame(height: 28)
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.16))).contentShape(Capsule())
+            .overlay(Capsule().strokeBorder(Theme.ink.opacity(0.16))).contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .popover(isPresented: $open, arrowEdge: .bottom) {
@@ -597,6 +597,29 @@ struct ForestReveal: View {
             RevealSlider(left: top, right: ground, leftLabel: "Treetops", rightLabel: "Bare ground", animateIn: animateIn)
                 .aspectRatio(938.0 / 586.0, contentMode: .fit)
         }
+    }
+}
+
+/// The Dighouse mark, as in the app icon: a line of ground with a mound in it, and the canopy above.
+struct MoundMark: View {
+    var body: some View {
+        Canvas { context, size in
+            let n = 15
+            let dot = size.width / CGFloat(n) * 0.62
+            func lift(_ t: CGFloat) -> CGFloat { exp(-pow((t - 0.5) / 0.17, 2)) }
+            for i in 0..<n {
+                let t = CGFloat(i) / CGFloat(n - 1)
+                let x = t * (size.width - dot)
+                let ground = size.height - dot - lift(t) * size.height * 0.34
+                context.fill(Path(ellipseIn: CGRect(x: x, y: ground, width: dot, height: dot)), with: .color(Theme.tan))
+                // The canopy follows the ground, in two staggered rows.
+                for row in 1...2 where (i + row) % 2 == 0 && i > 0 && i < n - 1 {
+                    let y = ground - CGFloat(row) * size.height * 0.27
+                    if y >= 0 { context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: dot, height: dot)), with: .color(Theme.green)) }
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

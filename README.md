@@ -8,11 +8,11 @@ The tools speak the Model Context Protocol, so they also work on their own in Co
 
 `app/` holds Dighouse for macOS: a native app that runs the Codex engine with these tools attached.
 
-- **Home** opens with a picture you can drag between the treetops and the bare ground at Serpent Mound, a table of what a chat app cannot do, and a real run at Cahokia. It has a message box and two ways in. "Help me choose a place" starts a chat in which the agent compares open surveys with what is already recorded. "I know where to look" opens a map where you place the search area and see which open lidar covers it. Below are open surveys read from OpenTopography's live catalog and published sites to learn on.
+- **Home** opens with a picture you can drag between the treetops and the bare ground at Serpent Mound, and a task-by-task comparison with a chat app. It has a message box and two ways in. "What should I research?" starts a chat in which the agent reads the open archives, ranks regions by open lidar against what is already on record, and proposes three searches. "I know where to look" opens a map where you place the search area and see which open lidar covers it. Below are open surveys read from OpenTopography's live catalog and published sites to learn on.
 - **Chat** works with or without a project. It shows the agent's plan, each step it takes, helper agents, and long runs folded into one line. The message box has one control for the model and its thinking effort, and takes images, video, audio and other files.
-- **A project** adds a workspace beside the chat: the map of bare-ground tiles, the candidate records with their checks, and the project's notes. The dividers drag: between the sidebar and the page, and between the chat and the workspace.
-- **Toolbox** explains how a search works in six stages, each with its tools and a Run button. It also lists the workflows with who does each part, the open data services and what Dighouse takes from each, and the other tools your Codex setup already has. You can add another tool server there.
-- **Settings** is a page in the window. "How it runs" explains the three parts: the AI model, the agent engine, and the archaeology tools. Other pages cover models and thinking effort, and what data goes where.
+- **A project** adds a workspace beside the chat: the map of bare-ground tiles, the candidate records with their checks, the project's notes, and its sources with a browser to open them. The dividers drag: between the sidebar and the page, and between the chat and the workspace.
+- **Toolbox** walks through one real search in six stages, each with its tools and a Run button. It also lists the workflows with who does each part, the open data services and what Dighouse takes from each, and the other tools your Codex setup already has. You can add another tool server there.
+- **Settings** is a page in the window. "Personalize" changes the colours; the default is the soil brown, tan and green of the icon. "How it runs" explains the AI model, the agent engine and the archaeology tools. Other pages cover models and thinking effort, and what data goes where.
 
 ~~~sh
 cd app
@@ -28,16 +28,16 @@ The build is signed for local use only. It is not notarized, so it is not yet a 
 
 | Stage | Tools |
 |---|---|
-| Choose where to look | `find_place`, `open_surveys`, `survey_area` |
+| Choose where to look | `find_place`, `open_surveys`, `survey_area`, `find_gaps`, `open_resources` |
 | Set up | `init_project` |
 | Find and fetch open lidar | `find_data`, `fetch_terrain` |
 | Look at the bare ground | `view_terrain`, `make_tiles`, `next_tiles`, `view_tile` |
 | Screen | `record_verdict`, `flag_candidate` |
 | Check each flag | `cut_section`, `second_look`, `check_modern` |
-| Prior art | `search_literature`, `read_source`, `log_source` |
+| Prior art | `search_literature`, `search_records`, `read_source`, `log_source` |
 | Records and run | `add_evidence`, `set_status`, `list_candidates`, `add_control`, `run_status` |
 
-Lidar comes from two public sources that need no account: [OpenTopography](https://portal.opentopography.org/datasets)'s bulk datasets and the [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/) point clouds. Place names and modern features come from OpenStreetMap, recorded sites from Wikidata, and the literature search from OpenAlex.
+Lidar comes from two public sources that need no account: [OpenTopography](https://portal.opentopography.org/datasets)'s bulk datasets and the [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/) point clouds. Place names and modern features come from OpenStreetMap, recorded sites from Wikidata, OpenStreetMap and the public US National Register, published excavation records from Open Context, and the literature search from OpenAlex.
 
 ## The rules the tools enforce
 
@@ -86,7 +86,7 @@ The live test fetches USGS lidar over Monks Mound at Cahokia, Illinois, builds t
 
 ## Status
 
-Working: everything in the table above, and the macOS app as described. Not built yet: bulk screening through a model router, a button that pushes records to Notion, a notarized download, and sections that show canopy for datasets published as ground points only.
+Working: everything in the table above, and the macOS app as described. Not built yet: an agent-driven browser, national lidar outside the United States, bulk screening through a model router, a button that pushes records to Notion, a notarized download, and sections that show canopy for datasets published as ground points only.
 
 ## Licence
 

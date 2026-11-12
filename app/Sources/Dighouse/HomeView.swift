@@ -59,8 +59,10 @@ enum StartingPoints {
             box: ["-88.9132", "19.6082", "-88.9085", "19.6128"]),
     ]
 
-    static func image(_ point: StartingPoint) -> NSImage? {
-        guard let folder = Bundle.main.resourceURL?.appendingPathComponent("starts/\(point.id).jpg") else { return nil }
+    static func image(_ point: StartingPoint) -> NSImage? { image(named: point.id) }
+
+    static func image(named id: String) -> NSImage? {
+        guard let folder = Bundle.main.resourceURL?.appendingPathComponent("starts/\(id).jpg") else { return nil }
         return Images.load(folder.path)
     }
 }
@@ -73,37 +75,27 @@ struct HomeView: View {
 
     private let cards = [GridItem(.adaptive(minimum: 230), spacing: 12, alignment: .top)]
     private let paths = [GridItem(.adaptive(minimum: 300), spacing: 12, alignment: .top)]
+    @AppStorage("startKind") private var startKind = 0
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 34) {
+            VStack(alignment: .leading, spacing: 30) {
                 hero
                 LazyVGrid(columns: paths, spacing: 12) {
-                    PathCard(icon: "binoculars", title: "Help me choose a place",
-                             text: "The agent asks what interests you, compares open surveys with what is already recorded, and suggests areas where a search can add something.") {
-                        if let flow = ToolGuide.workflows.first(where: { $0.id == "choose" }) { app.run(flow) }
+                    PathCard(icon: "sparkle.magnifyingglass", title: "What should I research?",
+                             text: "New to this? The agent reads the open archives and proposes three searches worth doing.") {
+                        if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
                     }
                     PathCard(icon: "mappin.and.ellipse", title: "I know where to look",
-                             text: "Pick an area on the map, see which open lidar covers it, and create the project.") {
+                             text: "Pick an area on the map, see which open lidar covers it, and start the project.") {
                         app.startProject()
                     }
                 }
-                if !store.projects.isEmpty { projects }
-                compare
-                example
-                surveys
-                PageSection(title: "Places with terrain ready to fetch",
-                            caption: "Seven published sites to learn on, and one strip of Yucatán forest where a 2026 catalog lists what was detected. Each was fetched from the live data service before it was listed here.") {
-                    LazyVGrid(columns: cards, alignment: .leading, spacing: 12) {
-                        ForEach(StartingPoints.all) { point in StartCard(point: point) { app.startProject(from: point) } }
-                    }
-                }
-                PageSection(title: "Work on someone else's project",
-                            caption: "A project is a folder of Markdown records, notes and source logs, so it can be shared like any folder. Locations are kept out of what is shared.") {
-                    Button("Open a project folder…") { app.chooseProjectFolder() }.buttonStyle(SecondaryButton())
-                }
+                .padding(.top, -8)
+                CompareBoard()
+                starts
             }
-            .padding(.horizontal, 32).padding(.top, 36).padding(.bottom, 40)
+            .padding(.horizontal, 32).padding(.top, 34).padding(.bottom, 40)
             .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
@@ -111,11 +103,11 @@ struct HomeView: View {
     }
 
     private var hero: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 20) {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 28) {
                     pitch.frame(minWidth: 330, idealWidth: 330, maxWidth: .infinity, alignment: .leading)
-                    reveal.frame(width: 460)
+                    reveal.frame(width: 440)
                 }
                 VStack(alignment: .leading, spacing: 18) {
                     pitch
@@ -123,221 +115,197 @@ struct HomeView: View {
                 }
             }
             Composer()
-            Button { app.show(.toolbox) } label: {
-                HStack(spacing: 6) {
-                    Text("\(ToolGuide.toolCount) archaeology tools")
-                    Text("·")
-                    Text("\(ToolGuide.sources.count) open data sources")
-                    Text("·")
-                    Text("\(engine.models.count) models")
-                    Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
-                }
-                .font(.system(size: 12.5)).foregroundStyle(Theme.faint).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain).help("Open the Toolbox").padding(.top, -10)
         }
         .frame(maxWidth: .infinity)
     }
 
     private var pitch: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("See what the forest is hiding.").font(.system(size: 34, weight: .bold)).lineSpacing(-2)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Dighouse puts AI agents to work on open lidar, the laser scans that map the ground beneath the trees. They fetch the data, strip the forest away, look for what people built, and check every find before you decide on it.")
-                .font(.system(size: 14.5)).foregroundStyle(Theme.dim).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Button("See how a search works") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
+                MoundMark().frame(width: 46, height: 20)
+                Text("OPEN ARCHAEOLOGY").font(.system(size: 11.5, weight: .bold)).kerning(1.4).foregroundStyle(Theme.tan)
             }
-            .padding(.top, 2)
+            Text("Help find what the forest is hiding.").font(.system(size: 33, weight: .bold))
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Dighouse is a free, open tool for searching public lidar, the laser scans that map the ground under the trees, for places people built. AI agents do the patient work and check every find. You decide what each one is.")
+                .font(.system(size: 14.5)).foregroundStyle(Theme.dim).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+            Button("See how a search works") { app.show(.toolbox) }.buttonStyle(SecondaryButton()).padding(.top, 2)
         }
     }
 
     private var reveal: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 6) {
             ForestReveal()
-            Text("Serpent Mound, Ohio. Drag the handle. Both sides are the same open USGS laser points: the highest returns, then only the ones that reached the ground.")
+            Text("Serpent Mound, Ohio, from open USGS lidar. Drag the handle to take the trees away.")
                 .font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private static let differences: [(String, String, String)] = [
-        ("The data", "Can describe lidar, but cannot download a survey.",
-         "Downloads the raw laser points from open archives and builds the bare ground itself."),
-        ("Looking", "Sees only the pictures you paste in.",
-         "Looks at every tile of an area in several renderings, and keeps count of what is left."),
-        ("Checking", "One model, one opinion.",
-         "Measures a slice through the raw points, asks a second model, checks open maps, and opens the literature."),
-        ("The record", "A conversation that scrolls away.",
-         "A project folder with a page per find: its pictures, measurements, checks and sources."),
-        ("Claims", "May call something a discovery with nothing behind it.",
-         "Cannot mark a find as unmatched until the checks are on its record, and then only you can."),
-        ("Models", "The models that one company sells.",
-         "Any model you have, and a different maker's model for the second opinion."),
-    ]
-
-    private var compare: some View {
-        PageSection(title: "What a chat app cannot do",
-                    caption: "ChatGPT and Claude are good at talking about archaeology. Dighouse runs the same kind of model, and gives it the tools to do the work.") {
-            VStack(spacing: 0) {
-                HStack(spacing: 14) {
-                    Text("").frame(width: 92, alignment: .leading)
-                    Text("A chat app").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Dighouse").foregroundStyle(Theme.tan).frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .font(.system(size: 12.5, weight: .semibold)).padding(.horizontal, 16).padding(.vertical, 10)
-                ForEach(Self.differences, id: \.0) { row in
-                    Hairline()
-                    HStack(alignment: .top, spacing: 14) {
-                        Text(row.0).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.faint).frame(width: 92, alignment: .leading)
-                        cell("xmark", Theme.faint, row.1, Theme.dim)
-                        cell("checkmark", Theme.green, row.2, Theme.text)
-                    }
-                    .padding(.horizontal, 16).padding(.vertical, 11)
-                }
+    /// Where a first project can begin: surveys that are still worth searching, or known sites to learn on.
+    private var starts: some View {
+        PageSection(title: "Places to start") {
+            HStack(spacing: 4) {
+                startTab(0, "Open surveys to search")
+                startTab(1, "Known sites to learn on")
+                Spacer()
+                Button("Open a shared project folder…") { app.chooseProjectFolder() }.buttonStyle(.plain)
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                    .help("A project is a folder of Markdown records, so it can be shared like any folder.")
             }
-            .panel()
-        }
-    }
-
-    private func cell(_ icon: String, _ tint: Color, _ text: String, _ color: Color) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: icon).font(.system(size: 10, weight: .bold)).foregroundStyle(tint).frame(width: 12)
-            Text(text).font(.system(size: 13)).foregroundStyle(color).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private static let run: [(String, String)] = [
-        ("Flagged", "Claude Opus 5.5 screened six tiles and flagged a terraced platform mound spanning four of them."),
-        ("Section", "A slice through the raw points measured it at 27.6 m high, with ground returns at its peak."),
-        ("Second look", "Gemini 3.8 Flash was shown the tile without the first opinion, and agreed it looks built."),
-        ("Open maps", "The map check listed Monks Mound among the historic places already mapped nearby."),
-        ("Decision", "A person marked it already published. It is Monks Mound."),
-    ]
-
-    private var example: some View {
-        PageSection(title: "A real run: Cahokia, Illinois",
-                    caption: "A test on a site everyone knows, to see whether the agents find it and what they write down. Finding it again is the right answer here.") {
-            VStack(alignment: .leading, spacing: 0) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 18) {
-                        runPictures.frame(width: 300)
-                        runSteps.frame(minWidth: 360, idealWidth: 360, maxWidth: .infinity, alignment: .leading)
-                    }
-                    VStack(alignment: .leading, spacing: 16) {
-                        runPictures.frame(maxWidth: 360)
-                        runSteps
-                    }
-                }
-                .padding(16)
-                Hairline()
-                HStack(spacing: 10) {
-                    Text("Every find gets the same checks, whatever it turns out to be.").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
-                    Spacer(minLength: 8)
-                    Button("Run this yourself") { app.startProject(from: StartingPoints.all[0]) }.buttonStyle(SecondaryButton())
-                }
-                .padding(.horizontal, 16).padding(.vertical, 10)
-            }
-            .panel()
-        }
-    }
-
-    private var runPictures: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let relief = StartingPoints.image(StartingPoints.all[0]) {
-                Image(nsImage: relief).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-            if let section = Tour.image("section") {
-                Image(nsImage: section).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            Text("Monks Mound in the bare ground, and the slice cut through it.").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
-        }
-    }
-
-    private var runSteps: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            ForEach(Self.run, id: \.0) { step in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 15)).foregroundStyle(Theme.green).padding(.top, 1)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(step.0).font(.system(size: 13.5, weight: .semibold))
-                        Text(step.1).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-        }
-    }
-
-    private var projects: some View {
-        PageSection(title: "Your projects") {
-            VStack(spacing: 0) {
-                ForEach(Array(store.projects.enumerated()), id: \.element.id) { index, project in
-                    if index > 0 { Hairline() }
-                    Button { app.open(project) } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "folder").foregroundStyle(Theme.tan).frame(width: 20)
-                            Text(project.name).font(.system(size: 13.5, weight: .medium)).lineLimit(1)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint)
-                        }
-                        .padding(.vertical, 6)
-                    }
-                    .buttonStyle(RowButton())
-                }
-            }
-            .padding(4).panel()
-        }
-    }
-
-    private var surveys: some View {
-        PageSection(title: "Open surveys to search",
-                    caption: "Lidar flown for archaeology and published openly, read from OpenTopography's live catalog. A survey is listed once its points were fetched and built into terrain by Dighouse.") {
-            if app.surveysLoading {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Reading the catalog").font(.system(size: 13)).foregroundStyle(Theme.dim)
-                }
-            } else if let problem = app.surveysProblem {
-                HStack(spacing: 10) {
-                    Text("The catalog did not answer. \(problem)").font(.system(size: 13)).foregroundStyle(Theme.amber)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button("Try again") { Task { await app.loadSurveys() } }.buttonStyle(SecondaryButton())
-                }
+            if startKind == 0 {
+                Text("Lidar flown for archaeology and published openly, read from OpenTopography's live catalog. Each one listed was fetched and built into terrain by Dighouse first.")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                surveys
             } else {
-                VStack(spacing: 0) {
-                    ForEach(app.surveys) { survey in
-                        HStack(alignment: .top, spacing: 12) {
-                            IconTile(name: "airplane", size: 30)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(survey.title).font(.system(size: 13.5, weight: .medium)).fixedSize(horizontal: false, vertical: true)
-                                Text((survey.collected.isEmpty ? "" : "Flown \(survey.collected) · ") + "OpenTopography")
-                                    .font(.system(size: 12)).foregroundStyle(Theme.faint)
-                            }
-                            Spacer(minLength: 8)
-                            Button("Ask about it") {
-                                app.ask("Tell me about the open lidar survey \"\(survey.title)\" (\(survey.id)): where it is, what it was flown for, what has been published from it, and what a search there could add.")
-                            }
-                            .buttonStyle(SecondaryButton())
-                            Button("Start a project") { app.startProject(from: survey) }.buttonStyle(SecondaryButton())
-                        }
-                        .padding(12)
-                        Hairline()
-                    }
-                    Button {
-                        if let flow = ToolGuide.workflows.first(where: { $0.id == "surveys" }) { app.run(flow) }
-                    } label: {
-                        HStack {
-                            Text("Ask the agent for every survey in the catalog").font(.system(size: 13))
-                            Spacer()
-                            Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint)
-                        }
-                        .padding(.vertical, 5)
-                    }
-                    .buttonStyle(RowButton()).padding(4)
+                Text("Seven published sites and one strip of Yucatán forest, each with terrain ready to fetch. A run on a known site shows what real earthworks look like, and whether the agents find them again.")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                LazyVGrid(columns: cards, alignment: .leading, spacing: 12) {
+                    ForEach(StartingPoints.all) { point in StartCard(point: point) { app.startProject(from: point) } }
                 }
-                .panel()
             }
+        }
+    }
+
+    private func startTab(_ kind: Int, _ title: String) -> some View {
+        Button { startKind = kind } label: {
+            Text(title).font(.system(size: 13, weight: .medium)).foregroundStyle(startKind == kind ? Theme.text : Theme.dim)
+                .padding(.horizontal, 12).frame(height: 30)
+                .background(Capsule().fill(startKind == kind ? Theme.ink.opacity(0.1) : .clear)).contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder private var surveys: some View {
+        if app.surveysLoading {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Reading the catalog").font(.system(size: 13)).foregroundStyle(Theme.dim)
+            }
+        } else if let problem = app.surveysProblem {
+            HStack(spacing: 10) {
+                Text("The catalog did not answer. \(problem)").font(.system(size: 13)).foregroundStyle(Theme.amber)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try again") { Task { await app.loadSurveys() } }.buttonStyle(SecondaryButton())
+            }
+        } else {
+            VStack(spacing: 0) {
+                ForEach(app.surveys) { survey in
+                    HStack(alignment: .center, spacing: 12) {
+                        IconTile(name: "airplane", size: 30)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(survey.title).font(.system(size: 13.5, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                            Text((survey.collected.isEmpty ? "" : "Flown \(survey.collected) · ") + "OpenTopography")
+                                .font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Ask about it") {
+                            app.askGeneral("Tell me about the open lidar survey \"\(survey.title)\" (\(survey.id)): where it is, what it was flown for, what has been published from it, and what a search there could add.")
+                        }
+                        .buttonStyle(SecondaryButton())
+                        Button("Start a project") { app.startProject(from: survey) }.buttonStyle(SecondaryButton())
+                    }
+                    .padding(12)
+                    Hairline()
+                }
+                Button {
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "surveys" }) { app.run(flow) }
+                } label: {
+                    HStack {
+                        Text("Ask the agent for every survey in the catalog").font(.system(size: 13))
+                        Spacer()
+                        Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint)
+                    }
+                    .padding(.vertical, 5)
+                }
+                .buttonStyle(RowButton()).padding(4)
+            }
+            .panel()
+        }
+    }
+}
+
+/// What a chat app does and what Dighouse does, one question at a time.
+private struct CompareBoard: View {
+    private struct Row {
+        let topic: String, icon: String, chat: String, dig: String, image: String?
+    }
+
+    private let rows = [
+        Row(topic: "Getting the data", icon: "arrow.down.circle", chat: "Can describe lidar, but cannot download a survey.",
+            dig: "Downloads the raw laser points from open archives and builds the bare ground itself.", image: "reveal"),
+        Row(topic: "Looking", icon: "square.grid.3x3", chat: "Sees only the pictures you paste in.",
+            dig: "Looks at every tile of an area in several renderings, and keeps count of what is left.", image: "tile"),
+        Row(topic: "Checking a find", icon: "checkmark.seal", chat: "One model, one opinion.",
+            dig: "Cuts a slice through the raw points, asks a second model, checks open maps, and opens the literature.", image: "section"),
+        Row(topic: "Keeping a record", icon: "doc.text", chat: "A conversation that scrolls away.",
+            dig: "A project folder with a page per find: its pictures, measurements, checks and sources.", image: "record-relief"),
+        Row(topic: "Making claims", icon: "hand.raised", chat: "May call something a discovery with nothing behind it.",
+            dig: "Cannot mark a find as unmatched until the checks are on its record, and then only you can.", image: nil),
+        Row(topic: "Choosing a model", icon: "cpu", chat: "The models one company sells.",
+            dig: "Any model set up on this Mac, with a different one for the second opinion.", image: nil),
+    ]
+    @State private var picked = 0
+
+    var body: some View {
+        PageSection(title: "Why not just ask ChatGPT?",
+                    caption: "A chat app can talk about archaeology. Dighouse gives the same kind of model the tools to do it. Pick a task.") {
+            VStack(alignment: .leading, spacing: 0) {
+                Flow(spacing: 6) {
+                    ForEach(rows.indices, id: \.self) { i in
+                        Button { withAnimation(.easeOut(duration: 0.15)) { picked = i } } label: {
+                            Label(rows[i].topic, systemImage: rows[i].icon).font(.system(size: 12.5, weight: .medium))
+                                .foregroundStyle(picked == i ? .black : Theme.dim)
+                                .padding(.horizontal, 12).frame(height: 30)
+                                .background(Capsule().fill(picked == i ? Theme.tan : Theme.ink.opacity(0.06)))
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(14)
+                Hairline()
+                let row = rows[picked]
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 18) {
+                        answers(row).frame(minWidth: 340, idealWidth: 340, maxWidth: .infinity, alignment: .leading)
+                        if row.image != nil { picture(row).frame(width: 250) }
+                    }
+                    VStack(alignment: .leading, spacing: 14) {
+                        answers(row)
+                        if row.image != nil { picture(row).frame(maxWidth: 320) }
+                    }
+                }
+                .padding(16).frame(minHeight: 150, alignment: .center)
+            }
+            .panel()
+        }
+    }
+
+    private func answers(_ row: Row) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "bubble.left").font(.system(size: 14)).foregroundStyle(Theme.faint).frame(width: 22).padding(.top, 2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("A chat app").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
+                    Text(row.chat).font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            HStack(alignment: .top, spacing: 12) {
+                MoundMark().frame(width: 22, height: 12).padding(.top, 5)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dighouse").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.tan)
+                    Text(row.dig).font(.system(size: 15, weight: .medium)).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func picture(_ row: Row) -> some View {
+        if row.image == "reveal" {
+            ForestReveal(animateIn: false)
+        } else if let name = row.image, let image = Tour.image(name) {
+            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 170)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 }
@@ -360,9 +328,9 @@ private struct PathCard: View {
                 Spacer(minLength: 0)
                 Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(hover ? Theme.text : Theme.faint)
             }
-            .padding(16).frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(hover ? 0.07 : 0.035)))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Color.white.opacity(0.22) : Theme.line))
+            .padding(16).frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Theme.ink.opacity(0.22) : Theme.line))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -381,7 +349,7 @@ struct StartCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topTrailing) {
-                    Color.white.opacity(0.04).aspectRatio(16 / 9, contentMode: .fit)
+                    Theme.ink.opacity(0.04).aspectRatio(16 / 9, contentMode: .fit)
                         .overlay {
                             if let image = StartingPoints.image(point) {
                                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
@@ -405,8 +373,8 @@ struct StartCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 270, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(hover ? 0.07 : 0.035)))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Color.white.opacity(0.22) : Theme.line))
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Theme.ink.opacity(0.22) : Theme.line))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

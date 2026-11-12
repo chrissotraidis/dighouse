@@ -48,3 +48,15 @@ def test_sources_can_be_found_and_read(tmp_path):
     assert "Cahokia" in page["text"] and page["more_from"]
     paper = server.read_source(root, "https://arxiv.org/pdf/1706.03762")
     assert paper["characters"] > 10_000 and "attention" in paper["text"].lower()
+
+
+def test_the_tools_can_say_where_to_look():
+    region = [-90.35, 38.5, -89.8, 38.85]   # around Cahokia
+    gaps = server.find_gaps(*region)
+    assert gaps["cells_with_open_lidar"] > 0 and gaps["sites_on_open_record"] > 5
+    assert all(cell["open_lidar"] for cell in gaps["ranked"])
+    assert len({site["source"] for site in server.survey_area(*region)["known_sites"]["nearest"]}) >= 2
+    found = server.search_records("mound", *region)
+    assert found["total"] > 0 and found["records"][0]["project"]
+    assert any(r["read_by"] == "search_records" for r in server.open_resources())
+    assert server.open_resources("lidar")[0]["kind"] == "lidar"

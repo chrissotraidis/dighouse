@@ -10,11 +10,11 @@ enum PaneLayout: String {
 }
 
 enum WorkTab: String, CaseIterable {
-    case map = "Map", records = "Records", notes = "Notes"
+    case map = "Map", records = "Records", notes = "Notes", sources = "Sources"
 }
 
 enum SettingsSection: String, CaseIterable {
-    case general = "General", models = "Models", engine = "How it runs", privacy = "Data and privacy", about = "About"
+    case general = "General", look = "Personalize", models = "Models", engine = "How it runs", privacy = "Data and privacy", about = "About"
 }
 
 @MainActor
@@ -44,6 +44,14 @@ final class AppState: ObservableObject {
     @Published var chatWidth = UserDefaults.standard.object(forKey: "chatWidth") as? Double ?? 440 {
         didSet { UserDefaults.standard.set(chatWidth, forKey: "chatWidth") }
     }
+    @Published var look = Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth {
+        didSet {
+            UserDefaults.standard.set(look.rawValue, forKey: "look")
+            Theme.palette = look.palette
+        }
+    }
+    /// The page shown in a project's Sources tab. It follows what the agent opens.
+    @Published var browserURL: URL?
     @Published var sidebarWidth = UserDefaults.standard.object(forKey: "sidebarWidth") as? Double ?? 256 {
         didSet { UserDefaults.standard.set(sidebarWidth, forKey: "sidebarWidth") }
     }
@@ -109,7 +117,8 @@ final class AppState: ObservableObject {
             if ["view_tile", "cut_section", "flag_candidate", "record_verdict"].contains(tool), let tile = args["tile"] as? String {
                 self.store.selectedTile = tile
             }
-            if let candidate = args["candidate"] as? String { self.store.selectedCandidate = candidate }
+            if let candidate = args["candidate"] as? String, !candidate.contains(","), candidate != "all" { self.store.selectedCandidate = candidate }
+            if tool == "read_source", let url = (args["url"] as? String).flatMap(URL.init) { self.browserURL = url }
         }
         engine.onNotification = { [weak self] method, params in
             guard let self else { return }
@@ -333,6 +342,17 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Ask a question that belongs to no project, in a new general chat.
+    func askGeneral(_ text: String) {
+        sidebarPeek = false
+        route = .chat
+        Task { @MainActor in
+            if store.current != nil { store.close() }
+            await chat.open(project: nil)
+            await chat.send(text)
+        }
+    }
+
     /// Send a message to the agent, making sure the chat is on screen.
     func ask(_ text: String, title: String? = nil) {
         sidebarPeek = false
@@ -478,5 +498,7 @@ struct RootView: View {
             }
         }
         .foregroundStyle(Theme.text)
+        .tint(Theme.accent)
+        .id(app.look)   // every colour is read when a view is built, so a new look rebuilds the window
     }
 }

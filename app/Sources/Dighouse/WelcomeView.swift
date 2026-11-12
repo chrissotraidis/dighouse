@@ -50,7 +50,7 @@ struct WelcomeView: View {
                 Button { if i < page { page = i } } label: {
                     HStack(spacing: 7) {
                         ZStack {
-                            Circle().fill(i == page ? Color.white : i < page ? Theme.green.opacity(0.9) : Theme.raised)
+                            Circle().fill(i == page ? Theme.primary : i < page ? Theme.green.opacity(0.9) : Theme.raised)
                             if i < page {
                                 Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(.black)
                             } else {
@@ -146,7 +146,7 @@ struct WelcomeView: View {
                             if !option.source.isEmpty { Badge(text: option.source) }
                         }
                         .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.035)))
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.035)))
                         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(choice == option ? Theme.accent.opacity(0.7) : Theme.line))
                         .contentShape(Rectangle())
                     }

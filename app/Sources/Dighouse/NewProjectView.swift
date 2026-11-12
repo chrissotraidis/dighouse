@@ -171,7 +171,7 @@ struct NewProjectView: View {
                             Text(km < 1 ? "\(Int(km * 1000)) m" : "\(km.formatted()) km").font(.system(size: 12))
                                 .foregroundStyle(size == km ? Theme.text : Theme.dim)
                                 .padding(.horizontal, 9).frame(height: 24)
-                                .background(Capsule().fill(size == km ? Color.white.opacity(0.12) : .clear))
+                                .background(Capsule().fill(size == km ? Theme.ink.opacity(0.12) : .clear))
                                 .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)

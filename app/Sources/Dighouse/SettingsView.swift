@@ -31,7 +31,7 @@ struct SettingsPage: View {
                                             Text(section.rawValue).font(.system(size: 13, weight: .medium))
                                                 .foregroundStyle(app.settingsSection == section ? Theme.text : Theme.dim)
                                                 .padding(.horizontal, 12).frame(height: 30)
-                                                .background(Capsule().fill(app.settingsSection == section ? Color.white.opacity(0.1) : .clear))
+                                                .background(Capsule().fill(app.settingsSection == section ? Theme.ink.opacity(0.1) : .clear))
                                                 .contentShape(Capsule())
                                         }
                                         .buttonStyle(.plain)
@@ -42,6 +42,7 @@ struct SettingsPage: View {
                         Text(app.settingsSection.rawValue).font(.system(size: 24, weight: .bold))
                         switch app.settingsSection {
                         case .general: GeneralSettings()
+                        case .look: LookSettings()
                         case .models: ModelSettings()
                         case .engine: EngineSettings()
                         case .privacy: PrivacySettings()
@@ -59,6 +60,7 @@ struct SettingsPage: View {
     private func icon(_ section: SettingsSection) -> String {
         switch section {
         case .general: return "gearshape"
+        case .look: return "paintpalette"
         case .models: return "cpu"
         case .engine: return "gearshape.2"
         case .privacy: return "lock"
@@ -130,6 +132,53 @@ private struct GeneralSettings: View {
     }
 }
 
+/// Choose the colours of the app.
+private struct LookSettings: View {
+    @EnvironmentObject var app: AppState
+
+    var body: some View {
+        Text("Dighouse wears the colours of its icon: dark soil, the tan line of the ground, and the green of the canopy above it. Pick another look if you prefer.")
+            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12, alignment: .top)], alignment: .leading, spacing: 12) {
+            ForEach(Look.allCases, id: \.self) { look in
+                let p = look.palette
+                Button { app.look = look } label: {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 0) {
+                            p.side.frame(width: 34)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Capsule().fill(p.text).frame(width: 64, height: 6)
+                                Capsule().fill(p.dim).frame(width: 96, height: 5)
+                                HStack(spacing: 5) {
+                                    Circle().fill(p.accent).frame(width: 12, height: 12)
+                                    Circle().fill(p.tan).frame(width: 12, height: 12)
+                                    Capsule().fill(p.primary).frame(width: 34, height: 12)
+                                }
+                                .padding(.top, 4)
+                            }
+                            .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(p.bg)
+                        }
+                        .frame(height: 78).clipShape(RoundedRectangle(cornerRadius: 9))
+                        HStack(spacing: 6) {
+                            Text(look.rawValue).font(.system(size: 13.5, weight: .semibold))
+                            if look == .earth { Text("Default").font(.system(size: 11.5)).foregroundStyle(Theme.faint) }
+                            Spacer()
+                            if app.look == look { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent) }
+                        }
+                        Text(look.note).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12).frame(maxWidth: .infinity, minHeight: 176, alignment: .topLeading)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(0.035)))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(app.look == look ? Theme.accent : Theme.line, lineWidth: app.look == look ? 1.5 : 1))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
 private struct ModelSettings: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
@@ -167,7 +216,7 @@ private struct ModelSettings: View {
                     .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
                     .frame(maxWidth: 420)
-                Text("Each model offers its own steps. \(model.name) has \(model.efforts.count): \(model.efforts.map(Effort.label).joined(separator: ", ")).")
+                Text("Your model list gives \(model.name) \(model.efforts.count) steps: \(model.efforts.map(Effort.label).joined(separator: ", ")). Dighouse shows what the list says and has not tested every step on every model. If a provider refuses a step, or the model itself, the chat shows the provider's message.")
                     .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("\(app.modelName) has no effort setting. It always thinks the same amount.")
@@ -178,32 +227,65 @@ private struct ModelSettings: View {
     }
 }
 
-/// One of the parts Dighouse is made of, in plain words, with whether it is working.
-private struct PartCard<Action: View>: View {
-    let icon: String, title: String, role: String, text: String
+/// One part of Dighouse: what it is in a sentence, whether it is working, and what you can do about it.
+private struct PartRow<Action: View>: View {
+    let icon: String, title: String, text: String
     let ok: Bool?
     let status: String
     @ViewBuilder let action: () -> Action
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            IconTile(name: icon, size: 40)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.system(size: 15, weight: .semibold))
-                Text(role).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.tan)
-                Text(text).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 7) {
-                    Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
-                    Text(status).font(.system(size: 12.5)).foregroundStyle(ok == false ? Theme.amber : Theme.text)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.top, 2)
-                action()
+            Image(systemName: icon).font(.system(size: 15)).foregroundStyle(Theme.tan).frame(width: 22).padding(.top, 1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.system(size: 13.5, weight: .semibold))
+                Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                action().padding(.top, 4)
             }
-            Spacer(minLength: 0)
+            Spacer(minLength: 12)
+            HStack(spacing: 6) {
+                Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
+                Text(status).font(.system(size: 12.5)).foregroundStyle(ok == false ? Theme.amber : Theme.text).lineLimit(2)
+                    .multilineTextAlignment(.trailing)
+            }
+            .frame(maxWidth: 210, alignment: .trailing)
         }
-        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// What happens when a message is sent, drawn as a loop.
+private struct LoopDiagram: View {
+    private let stops: [(String, String, String)] = [
+        ("person", "You ask", "in plain words"),
+        ("cpu", "The model decides", "the next step"),
+        ("bolt", "The engine runs", "the tool it asked for"),
+        ("wrench.and.screwdriver", "The tool reads", "open data"),
+    ]
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(Array(stops.enumerated()), id: \.offset) { index, stop in
+                    if index > 0 {
+                        Image(systemName: "arrow.right").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.faint).padding(.top, 14)
+                    }
+                    VStack(spacing: 6) {
+                        Image(systemName: stop.0).font(.system(size: 16)).foregroundStyle(index == 0 ? Theme.accent : Theme.tan)
+                            .frame(width: 40, height: 40).background(Circle().fill(Theme.ink.opacity(0.07)))
+                        Text(stop.1).font(.system(size: 12.5, weight: .semibold)).multilineTextAlignment(.center)
+                        Text(stop.2).font(.system(size: 11.5)).foregroundStyle(Theme.faint).multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.uturn.backward").font(.system(size: 10, weight: .bold))
+                Text("The result goes back to the model, and the loop repeats until the job is done.")
+            }
+            .font(.system(size: 12)).foregroundStyle(Theme.dim)
+        }
+        .padding(16).frame(maxWidth: .infinity).panel()
     }
 }
 
@@ -213,66 +295,61 @@ private struct EngineSettings: View {
     @EnvironmentObject var setup: Setup
 
     var body: some View {
-        Text("Dighouse is three parts working together: a model that thinks, an engine that lets it act, and tools that do the archaeology. All three run from this Mac. Dighouse has no account and no server of its own.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-
+        Text("Everything runs from this Mac. Dighouse has no account and no server of its own.")
+            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        LoopDiagram()
         VStack(spacing: 0) {
-            PartCard(icon: "cpu", title: "1. The AI model", role: "Does the thinking and the looking.",
-                     text: "A large AI model, like the ones behind ChatGPT and Claude. It reads your request, decides what to do next, and looks at the terrain pictures. You choose which one.",
-                     ok: engine.ready ? true : nil,
-                     status: engine.ready ? "\(app.modelName) is selected, out of \(engine.models.count) on this Mac."
-                        : app.starting ? "Starting" : "Models appear once the engine is running.") {
+            PartRow(icon: "cpu", title: "AI model",
+                    text: "Reads your request, decides each step, and looks at the terrain pictures.",
+                    ok: engine.ready ? true : nil,
+                    status: engine.ready ? "\(engine.models.count) available" : app.starting ? "Starting" : "Waiting for the engine") {
                 if engine.ready {
                     ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
                 }
             }
             Hairline()
-            PartCard(icon: "bolt", title: "2. The agent engine", role: "Lets the model act instead of only talk.",
-                     text: "On its own a model can only write text. The engine is the program in between: when the model asks for a tool, the engine runs it and hands back the result, again and again, until the job is done. It also keeps the plan, starts helper agents, and saves each chat. Dighouse uses Codex, a free open-source engine made by OpenAI. It is the same one inside the Codex app, so it uses the Codex sign-in already on this Mac.",
-                     ok: setup.codex == nil ? false : engine.ready,
-                     status: setup.codex == nil ? "Codex was not found on this Mac."
-                        : engine.ready
-                          ? setup.codexVersion + (engine.account.map { ", signed in as \($0)" + (engine.plan.map { " (\($0) plan)" } ?? "") } ?? ", not signed in")
-                          : app.starting ? "Starting" : (engine.problem ?? "Not running")) {
+            PartRow(icon: "bolt", title: "Agent engine",
+                    text: "Codex, a free open-source program from OpenAI. It runs the tools the model asks for, keeps the plan, starts helper agents and saves each chat.",
+                    ok: setup.codex == nil ? false : engine.ready,
+                    status: setup.codex == nil ? "Codex not found" : engine.ready ? setup.codexVersion : app.starting ? "Starting" : (engine.problem ?? "Not running")) {
                 HStack(spacing: 8) {
                     if setup.codex == nil, let url = URL(string: "https://github.com/openai/codex") {
                         Link("Get Codex", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
                     }
-                    Button("Restart the engine") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
+                    Button("Restart") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
                         .help("Use this after signing in to Codex or changing its settings. Running work stops.")
                     if app.starting { ProgressView().controlSize(.small) }
                 }
             }
             Hairline()
-            PartCard(icon: "wrench.and.screwdriver", title: "3. The archaeology tools", role: "What makes this more than a chat app.",
-                     text: "\(ToolGuide.toolCount) small programs that come with Dighouse and run on this Mac. They do what a model cannot do alone: download lidar, build the bare ground, cut slices through the raw laser points, check open maps, find and open the literature, and keep the records.",
-                     ok: setup.toolsReady ? true : setup.toolsBusy ? nil : false,
-                     status: setup.toolsReady ? "Installed and ready. They read public data and need no account."
-                        : setup.toolsBusy ? "Preparing. This takes about a minute."
-                        : setup.uv == nil ? "Needs uv, a small program that runs the tools." : (setup.toolsProblem ?? "Not prepared yet.")) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Flow(spacing: 6) {
-                        ForEach(ToolGuide.packs) { pack in Badge(text: "\(pack.title) · \(pack.tools.count)") }
+            PartRow(icon: "wrench.and.screwdriver", title: "Archaeology tools",
+                    text: "\(ToolGuide.toolCount) tools that come with Dighouse. They fetch lidar, build the bare ground, cut sections, check maps and archives, read the literature and keep the records.",
+                    ok: setup.toolsReady ? true : setup.toolsBusy ? nil : false,
+                    status: setup.toolsReady ? "Ready" : setup.toolsBusy ? "Preparing"
+                        : setup.uv == nil ? "Needs uv" : (setup.toolsProblem ?? "Not prepared")) {
+                HStack(spacing: 8) {
+                    Button("Open the Toolbox") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
+                    if !setup.toolsReady, !setup.toolsBusy, setup.uv != nil {
+                        Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }.buttonStyle(PrimaryButton())
                     }
-                    HStack(spacing: 8) {
-                        Button("See what each tool does") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
-                        if !setup.toolsReady, !setup.toolsBusy, setup.uv != nil {
-                            Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }.buttonStyle(PrimaryButton())
-                        }
-                        if setup.uv == nil, let url = URL(string: "https://docs.astral.sh/uv/getting-started/installation/") {
-                            Link("Get uv", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
-                        }
+                    if setup.uv == nil, let url = URL(string: "https://docs.astral.sh/uv/getting-started/installation/") {
+                        Link("Get uv", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
                     }
                 }
             }
+            Hairline()
+            PartRow(icon: "arrow.triangle.branch", title: "Model router (optional)",
+                    text: "OpenCodex adds models from other providers, so a different maker's model can give the second opinion.",
+                    ok: setup.ocxRunning ? true : nil, status: setup.ocxRunning ? "Running" : "Not running") { EmptyView() }
         }
         .panel()
-
         VStack(spacing: 0) {
-            PartCard(icon: "arrow.triangle.branch", title: "Model router", role: "Optional. Adds models from other companies.",
-                     text: "Codex alone offers the models from its own sign-in. OpenCodex is a separate free program that sits beside it and adds models from other providers, each with its own key or sign-in. That is how a different maker's model can give the second opinion.",
-                     ok: setup.ocxRunning ? true : nil,
-                     status: setup.ocxRunning ? "OpenCodex is running on this Mac." : "OpenCodex is not running. Dighouse works without it.") { EmptyView() }
+            SettingRow(title: "Account",
+                       note: engine.account.map { "Codex on this Mac is signed in as \($0)\(engine.plan.map { " (\($0) plan)" } ?? ""). The Codex models run on that account. Models added by the router use their own keys." }
+                        ?? "Codex is not signed in. Run codex login in Terminal, then restart the engine.") { EmptyView() }
+            Hairline()
+            SettingRow(title: "The web",
+                       note: "The agent can search the web through the engine, and open pages and PDFs with its own reader. Pages that need a sign-in or block programs cannot be read; you can open those yourself in a project's Sources tab.") { EmptyView() }
         }
         .panel()
     }

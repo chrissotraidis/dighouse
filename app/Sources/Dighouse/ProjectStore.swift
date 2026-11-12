@@ -120,7 +120,7 @@ final class ProjectStore: ObservableObject {
                 tile: meta["tile"] as? String ?? "", evidence: meta["evidence"] as? [String] ?? [],
                 checks: meta["checks"] as? JSON ?? [:],
                 sources: (meta["sources"] as? [JSON] ?? []).map {
-                    Source(title: $0["title"] as? String ?? "", status: $0["status"] as? String ?? "", finding: $0["finding"] as? String ?? "")
+                    Source(title: $0["title"] as? String ?? "", status: $0["status"] as? String ?? "", finding: $0["finding"] as? String ?? "", link: $0["link"] as? String ?? "")
                 },
                 decisions: decisions, folder: root + "/candidates")
             if let place = places[id] {
