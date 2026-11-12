@@ -41,3 +41,15 @@ The mound mark beside "Dighouse" animates all the time the app is open: a pass o
 The first version moved only while a run was in progress, so Chris saw it still and reported it as not animated. Fixed the same day.
 
 Checked: idle, six frames 400 ms apart all differ and show the pass moving left to right; during a short run, four frames 250 ms apart differ. Not checked: hover, Reduce Motion, and a run in a chat that is off screen.
+### 2026-11-12, N2
+
+| Check | Result |
+|---|---|
+| Click-through at half width (864 points) | Passed, 30 of 30 steps. |
+| Click-through in the narrow layout (700 points, sidebar as an overlay) | Passed, 30 of 30 steps. |
+| Click-through in the Canopy look (1380 points) | 29 of 30. The long "Run the whole search" chat opened with its content, but the check looked for a folded "N steps" line that was scrolled out of view. Opened by hand, it showed the whole run and the workspace beside it. Counted as passed. |
+| `uv run pytest -m live` | Passed, 5 of 5, in 1 min 49 s. |
+| A file dragged from Finder onto the message box | Not verified. The test tooling moves the pointer but macOS starts no drag session from it, so neither a Finder drag nor dragging a record picture onto the message box can be tested this way. Needs Chris's hand. |
+| The two edges dragged with a real mouse | Not verified, for the same reason. Asked Chris again. |
+
+N2 stays open until Chris confirms the edges and the drop.
