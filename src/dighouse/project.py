@@ -85,5 +85,16 @@ class Project:
             fh.write(f"- {dt.datetime.now():%H:%M} {text}\n")
 
 
+    def summary(self, text: str) -> str:
+        """Write the end-of-run summary as its own file in notes/, beside the dated log."""
+        f = self.path("notes", f"{today()}-run-{dt.datetime.now():%H%M}.md")
+        body = text.strip()
+        if body.startswith("# "):  # the agent often adds its own title; keep one
+            body = body.split("\n", 1)[1].strip() if "\n" in body else ""
+        f.write_text(f"# Run summary, {today()} {dt.datetime.now():%H:%M}\n\n{body}\n")
+        self.note(f"Wrote the run summary {f.name}")
+        return f.name
+
+
 def today() -> str:
     return dt.date.today().isoformat()

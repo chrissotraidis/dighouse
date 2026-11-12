@@ -53,3 +53,10 @@ Checked: idle, six frames 400 ms apart all differ and show the pass moving left 
 | The two edges dragged with a real mouse | Not verified, for the same reason. Asked Chris again. |
 
 N2 stays open until Chris confirms the edges and the drop.
+### 2026-11-12, N3
+
+The last whole run (Angel Mounds) ran out of web searches before the literature step and ended with nothing logged and no summary. Changes: a `write_summary` tool that writes the run summary to `notes/` and refuses text that looks like coordinates; the skill now says to budget every run so the prior-art step and the summary always happen; the "Run the whole search" prompt names each step, says to log every source as soon as its outcome is known, and to end with the summary even if stopped early.
+
+Check, on a fresh project made from the Serpent Mound starting point, with no input after pressing Run: about 9 minutes. The agent fetched USGS terrain (7 ground returns per square metre), cut 9 tiles, screened all 9 in two styles, flagged 4 candidates, cut a section and ran the map check on each, searched the literature and Open Context, opened 14 sources and logged all 14 (4 read, 10 refused or abstract only), added the measurements as evidence, and wrote `notes/2026-11-12-run-2012.md`. It set no statuses and recorded no second look, and listed both as waiting for the person. Passed.
+
+Not checked: stopping a run halfway to see that what was done stays logged. The summary had its title twice; fixed so only one is kept.

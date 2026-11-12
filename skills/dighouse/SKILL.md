@@ -36,6 +36,8 @@ Offer three concrete searches. For each give the place, the lidar that covers it
 
 ## The loop
 
+Finish what you start. Budget the run so the prior-art step and the summary always happen: if web searches or time run short, log what you have and write the summary before anything else. A run that stops with candidates and no logged sources leaves the person nothing to act on.
+
 1. **Plan.** Call `run_status`. If there are unscreened tiles, continue screening. If not, pick the next part of the search area.
 2. **Acquire.** `find_data` for the area, then `fetch_terrain` in boxes under 6 square km. Read the dataset description: it names earlier studies of the same data. Write those down as the first sources to read.
 3. **Prepare.** `make_tiles`. Unreadable tiles stay unreadable. Report how many there are.
@@ -47,7 +49,8 @@ Offer three concrete searches. For each give the place, the lidar that covers it
    - `check_modern`.
 7. **Prior art.** `search_literature`, starting with the dataset's own name and the studies its description cites, then the region and site type. Open the promising ones with `read_source`. `log_source` each one as read, could not open, or not relevant, with what it shows about this place. Log a source as soon as you know its outcome, one at a time, so a run that stops early still leaves its sources on the record. When one source bears on several candidates, pass their ids together, or "all". A source you know only from its abstract is logged as could not open, with what the abstract says.
 8. **Record.** `add_evidence` for measurements. `set_status` only as far as the checks support.
-9. **Stop for the person** when `run_status` lists anything under `needs_a_person`, when controls are being missed, or when data needs an account.
+9. **Summarise.** End every run, finished or not, with `write_summary`: what was done, what each candidate's checks show, the sources read and not opened, what is left, and what waits for the person.
+10. **Stop for the person** when `run_status` lists anything under `needs_a_person`, when controls are being missed, or when data needs an account.
 
 ## What built ground looks like
 

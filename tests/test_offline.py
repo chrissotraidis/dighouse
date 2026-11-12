@@ -68,6 +68,9 @@ def test_full_chain(tmp_path, survey, monkeypatch):
     server.check_modern(root, "C-001")
     server.log_source(root, "C-001", "Regional survey 2019", "read", "does not cover this hilltop")
     server.log_source(root, "C-001", "Paper using the same data", "could_not_open", "paywalled")
+    assert server.write_summary(root, "Screened one tile. C-001 has a section and a second look.")["written"].startswith("notes/")
+    with pytest.raises(ValueError, match="coordinates"):
+        server.write_summary(root, "C-001 sits at 38.66012, -90.06211")
     assert server.log_source(root, "all", "Site report 1967", "not_relevant", "about another county")["logged_on"] == {"C-001": 3}
 
     # an agent cannot mark it; a person can, and the open item is written into the record

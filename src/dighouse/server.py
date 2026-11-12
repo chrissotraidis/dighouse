@@ -356,6 +356,19 @@ def add_control(project: str, name: str, lon: float, lat: float) -> dict:
 
 
 @tool
+def write_summary(project: str, text: str) -> dict:
+    """Write the run summary in Markdown at the end of every run, even one that stopped early.
+
+    Say what was done, what each candidate's checks show, which sources were read or could not be opened,
+    what is left, and what is waiting for the person. No coordinates.
+    """
+    p = Project(project).check()
+    if re.search(r"-?\d{1,3}\.\d{4,}", text):
+        raise ValueError("The summary looks like it holds coordinates. Refer to places by candidate id instead.")
+    return {"written": f"notes/{p.summary(text)}"}
+
+
+@tool
 def run_status(project: str) -> dict:
     """Where the run stands: tile coverage, candidates by status, controls found again, and what needs a person."""
     p = Project(project).check()

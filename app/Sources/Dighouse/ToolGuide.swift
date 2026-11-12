@@ -94,7 +94,8 @@ enum ToolGuide {
                      Tool(name: "add_evidence", title: "Add evidence", does: "Adds a line of evidence to a record."),
                      Tool(name: "set_status", title: "Set a status", does: "Moves a candidate to a status, if its checks support it."),
                      Tool(name: "list_candidates", title: "List candidates", does: "Lists candidates and what each still lacks."),
-                     Tool(name: "run_status", title: "Report the run", does: "Reports coverage, candidates, controls, and what is waiting for you.")]),
+                     Tool(name: "run_status", title: "Report the run", does: "Reports coverage, candidates, controls, and what is waiting for you."),
+                     Tool(name: "write_summary", title: "Write the run summary", does: "Writes what a run did and what is left as a note in the project.")]),
     ]
 
     static let addons: [String: Addon] = [
@@ -134,7 +135,7 @@ enum ToolGuide {
                  scope: .general, steps: [Handoff(who: "You", does: "Name the place"), Handoff(who: "Agent", does: "Checks lidar coverage and recorded sites")]),
         Workflow(id: "full", title: "Run the whole search", icon: "play.circle",
                  summary: "Everything from fetching the terrain to the literature search, stopping for you at the second look and at each decision.",
-                 prompt: "Run the whole search for this project. Fetch the terrain if it is missing and cut it into tiles. Screen every tile in two styles, handing batches to sub-agents when more than 12 are left. Flag what looks built, then cut a section and check for modern features for each flag, and search and log the literature. Keep a plan as you go. Stop for me at the second look and at any decision.",
+                 prompt: "Run the whole search for this project and finish it. Fetch the terrain if it is missing and cut it into tiles. Screen every tile in two styles, handing batches to helper agents when more than 12 are left. Flag what looks built, then cut a section and check for modern features for each flag. Search the literature with search_literature and search_records, open what you can with read_source, and log every source on its records with log_source as soon as you know its outcome. Add the section measurements as evidence. Keep a plan as you go. End with write_summary, even if something stopped you early. Do not set statuses or record a second look; tell me what is waiting for me.",
                  scope: .project,
                  steps: [Handoff(who: "Agent", does: "Fetches lidar, builds the bare ground"), Handoff(who: "Agent and helpers", does: "Screen every tile"),
                          Handoff(who: "Agent", does: "Sections and modern-feature checks"), Handoff(who: "Second model", does: "Independent second look"),
@@ -264,6 +265,7 @@ enum ToolGuide {
         case "set_status": return ("checkmark.seal", "Marked \(s("candidate")) as \(Candidate.labels[s("status")]?.lowercased() ?? s("status"))")
         case "list_candidates": return ("list.bullet", "Reviewed the candidates")
         case "add_control": return ("scope", "Registered a control: \(s("name"))")
+        case "write_summary": return ("doc.richtext", "Wrote the run summary")
         case "run_status": return ("gauge", "Checked the run status")
         default: return ("wrench", tool)
         }
