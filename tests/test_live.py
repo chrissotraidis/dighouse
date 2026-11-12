@@ -60,3 +60,10 @@ def test_the_tools_can_say_where_to_look():
     assert found["total"] > 0 and found["records"][0]["project"]
     assert any(r["read_by"] == "search_records" for r in server.open_resources())
     assert server.open_resources("lidar")[0]["kind"] == "lidar"
+
+def test_map_sites_come_from_qlever_without_overpass():
+    from dighouse import discover
+    for _ in range(3):
+        sites = discover._osm_qlever([-83.6, 39.0, -82.6, 39.6])   # Ross County, Ohio
+        assert len(sites) > 10 and any("Mound" in s["name"] for s in sites)
+        assert all(s["record"].startswith("https://www.openstreetmap.org/") for s in sites)

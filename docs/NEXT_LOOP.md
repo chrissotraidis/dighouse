@@ -83,3 +83,9 @@ Found and fixed during the check:
 - With terrain built but not cut, the map, the status strip and the chat all said "No terrain yet". They now say the terrain is ready, and the map has a **Cut into tiles** button. Pressed, the agent cut 66 tiles, all readable, and the map showed them.
 
 Also seen: OpenStreetMap did not answer for two of the three regions, so their site counts were low. That is N8.
+
+### 2026-11-12, N8
+
+OpenStreetMap's archaeological sites are now read from QLever (`qlever.dev`), a public query service that holds the whole map, with the Overpass servers as the fallback and each answer cached for a week. QLever holds 229,473 objects tagged as archaeological sites and answers for a region in under a second. The Overpass servers answered once in seven tries across five mirrors on the same box, and returned different counts for the same query on different tries. When both answered, every site Overpass returned was also in QLever's answer. `find_gaps` now gives totals by source, and both `find_gaps` and `survey_area` list the sources that answered, so a short list cannot be mistaken for a source that was down. The map check for modern features now alternates between two Overpass servers.
+
+Check: with the cache cleared before each run, `survey_area` (Serpent Mound) and `find_gaps` (Middle Usumacinta) returned OpenStreetMap sites and no silent source in 3 runs out of 3, in 2 to 7 seconds. QLever alone answered 9 of 9 calls over three regions. A new live test covers it; `pytest -m live` passes 6 of 6. In the app, the agent reported 54 sites for the Usumacinta (50 from OpenStreetMap, 4 from Wikidata) where the N5 research answer, made while Overpass was failing, had 3; and for Ross County, Ohio, 37 sites with all three sources named as answering. Passed.

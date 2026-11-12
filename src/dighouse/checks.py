@@ -10,7 +10,7 @@ import time
 
 import httpx
 
-OVERPASS = "https://overpass-api.de/api/interpreter"
+OVERPASS = ("https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter")
 OPENALEX = "https://api.openalex.org/works"
 logging.getLogger("httpx").setLevel(logging.WARNING)
 _client = httpx.Client(timeout=40, follow_redirects=True,
@@ -27,10 +27,11 @@ def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
  nwr(around:2000,{lat},{lon})[historic];);
 out tags 200;"""
     r = None
-    for wait in (0, 4, 10):  # the public map service refuses requests that arrive too close together
+    # the public map services refuse requests that arrive too close together, so alternate between two and wait
+    for wait, host in ((0, OVERPASS[0]), (0, OVERPASS[1]), (6, OVERPASS[0]), (6, OVERPASS[1])):
         time.sleep(wait)
         try:
-            r = _client.post(OVERPASS, data={"data": query})
+            r = _client.post(host, data={"data": query})
         except httpx.HTTPError:
             continue
         if r.status_code == 200:

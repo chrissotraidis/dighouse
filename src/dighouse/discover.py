@@ -145,7 +145,48 @@ def _wikidata_sites(bbox: list[float]) -> list[dict]:
     return list(sites.values())
 
 
-def _osm_sites(bbox: list[float]) -> list[dict]:
+QLEVER_OSM = "https://qlever.dev/api/osm-planet"
+QLEVER_QUERY = """PREFIX osmkey: <https://www.openstreetmap.org/wiki/Key:>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+SELECT ?osm ?name ?type ?centre WHERE {{ ?osm osmkey:historic "archaeological_site" . ?osm geo:hasGeometry/geo:asWKT ?shape .
+BIND(geof:centroid(?shape) AS ?centre) BIND(geof:longitude(?centre) AS ?x) BIND(geof:latitude(?centre) AS ?y)
+FILTER(?x >= {w} && ?x <= {e} && ?y >= {s} && ?y <= {n})
+OPTIONAL {{ ?osm osmkey:name ?name }} OPTIONAL {{ ?osm osmkey:site_type ?type }} }}"""
+
+
+def _osm_site(kind: str | None, name: str | None, lon: float, lat: float, record: str) -> dict:
+    kind = (kind or "archaeological site").replace("_", " ")
+    return {"name": name or f"Unnamed {kind}", "kind": kind, "lon": lon, "lat": lat, "source": "OpenStreetMap", "record": record}
+
+
+def _tsv_value(cell: str) -> str | None:
+    cell = cell.strip()
+    if not cell:
+        return None
+    if cell.startswith("<") and cell.endswith(">"):
+        return cell[1:-1]
+    if cell.startswith('"'):
+        cell = cell[1:cell.rindex('"')] if cell.count('"') > 1 else cell[1:]
+    return cell.replace("\\t", "\t").replace("\\n", " ").replace('\\"', '"').replace("\\\\", "\\")
+
+
+def _osm_qlever(bbox: list[float]) -> list[dict]:
+    """OpenStreetMap's archaeological sites from QLever, a public query service that holds the whole map."""
+    w, s, e, n = bbox
+    r = _client.post(QLEVER_OSM, data={"query": QLEVER_QUERY.format(w=w, s=s, e=e, n=n)},
+                     headers={"Accept": "text/tab-separated-values"}, timeout=40)
+    r.raise_for_status()
+    out = []
+    for line in r.text.splitlines()[1:]:
+        osm, name, kind, centre = (_tsv_value(c) for c in (line.split("\t") + ["", "", "", ""])[:4])
+        point = re.findall(r"-?\d+\.?\d*", centre or "")
+        if osm and len(point) >= 2:
+            out.append(_osm_site(kind, name, float(point[0]), float(point[1]), osm))
+    return out
+
+
+def _osm_overpass(bbox: list[float]) -> list[dict]:
     w, s, e, n = bbox
     query = f"[out:json][timeout:25];nwr[historic=archaeological_site]({s},{w},{n},{e});out center tags 3000;"
     r, failure = None, "no answer"
@@ -159,18 +200,36 @@ def _osm_sites(bbox: list[float]) -> list[dict]:
             break
         failure = f"status {r.status_code}"
     if r is None or r.status_code != 200:
-        raise RuntimeError(f"the open map service did not answer ({failure})")
+        raise RuntimeError(f"Overpass did not answer ({failure})")
     out = []
     for el in r.json().get("elements", []):
         at = el if "lat" in el else el.get("center")
-        if not at:
-            continue
-        tags = el.get("tags", {})
-        kind = tags.get("site_type") or tags.get("archaeological_site") or "archaeological site"
-        out.append({"name": tags.get("name") or f"Unnamed {kind.replace('_', ' ')}", "kind": kind.replace("_", " "),
-                    "lon": at["lon"], "lat": at["lat"], "source": "OpenStreetMap",
-                    "record": f"https://www.openstreetmap.org/{el['type']}/{el['id']}"})
+        if at:
+            tags = el.get("tags", {})
+            out.append(_osm_site(tags.get("site_type") or tags.get("archaeological_site"), tags.get("name"),
+                                 at["lon"], at["lat"], f"https://www.openstreetmap.org/{el['type']}/{el['id']}"))
     return out
+
+
+def _osm_sites(bbox: list[float]) -> list[dict]:
+    """OpenStreetMap's archaeological sites in a box: QLever first, then Overpass, and a week-old answer as a last resort."""
+    folder = sources.cache_dir() / "osm-sites"
+    folder.mkdir(parents=True, exist_ok=True)
+    cache = folder / ("_".join(f"{v:.4f}" for v in bbox) + ".json")
+    if cache.exists() and time.time() - cache.stat().st_mtime < 7 * 86400:
+        return json.loads(cache.read_text())
+    failures = []
+    for reader in (_osm_qlever, _osm_overpass):
+        try:
+            found = reader(bbox)
+        except Exception as exc:  # each service is tried in turn
+            failures.append(f"{reader.__name__[5:]}: {str(exc)[:80]}")
+            continue
+        cache.write_text(json.dumps(found))
+        return found
+    if cache.exists():
+        return json.loads(cache.read_text())
+    raise RuntimeError("the open map services did not answer (" + "; ".join(failures) + ")")
 
 
 def _nrhp_sites(bbox: list[float]) -> list[dict]:
@@ -188,9 +247,18 @@ def _nrhp_sites(bbox: list[float]) -> list[dict]:
             for f in r.json().get("features", []) if f.get("geometry")]
 
 
+SITE_READERS = {"Wikidata": _wikidata_sites, "OpenStreetMap": _osm_sites, "National Register of Historic Places": _nrhp_sites}
+
+
+def _answered(silent: list[str]) -> list[str]:
+    """The site lists that answered, so a short list is not mistaken for a source that was down."""
+    down = {line.split(":")[0] for line in silent}
+    return [name for name in SITE_READERS if name not in down]
+
+
 def recorded_sites(bbox: list[float]) -> tuple[list[dict], list[str]]:
     """Sites on open record inside a box, from every source that answers, and the sources that did not."""
-    readers = {"Wikidata": _wikidata_sites, "OpenStreetMap": _osm_sites, "National Register of Historic Places": _nrhp_sites}
+    readers = SITE_READERS
     sites, silent, seen = [], [], set()
     with ThreadPoolExecutor(3) as pool:
         jobs = {name: pool.submit(reader, bbox) for name, reader in readers.items()}
@@ -226,7 +294,7 @@ def known_sites(bbox: list[float]) -> dict:
     by_source: dict[str, int] = {}
     for site in listed:
         by_source[site["source"]] = by_source.get(site["source"], 0) + 1
-    out = {"count": len(listed), "by_source": by_source, "nearest": listed[:40]}
+    out = {"count": len(listed), "by_source": by_source, "sources_that_answered": _answered(silent), "nearest": listed[:40]}
     if silent:
         out["sources_that_did_not_answer"] = silent
     return out
@@ -288,6 +356,9 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
                 "area_km2": round(dx * 111.32 * math.cos(math.radians(cs + dy / 2)) * dy * 110.54),
                 "open_lidar_datasets": len(lidar), "open_lidar": lidar[:4], "flown_for_archaeology": flown,
                 "recorded_sites": len(inside), "by_source": by_source, "examples": [x["name"] for x in inside[:4]]})
+    totals: dict[str, int] = {}
+    for x in sites:
+        totals[x["source"]] = totals.get(x["source"], 0) + 1
     covered = [c for c in grid if c["open_lidar_datasets"]]
     covered.sort(key=lambda c: (not c["flown_for_archaeology"], c["recorded_sites"]))
     try:
@@ -295,7 +366,8 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
     except Exception:
         published = None
     out = {"grid": f"{cells} by {cells}, rows A (north) to {'ABCDEFGH'[cells - 1]} (south), columns 1 (west) to {cells} (east)",
-           "sites_on_open_record": len(sites), "records_in_open_context": published, "cells_with_open_lidar": len(covered),
+           "sites_on_open_record": len(sites), "by_source": totals, "sources_that_answered": _answered(silent),
+           "records_in_open_context": published, "cells_with_open_lidar": len(covered),
            "cells_without_open_lidar": len(grid) - len(covered), "ranked": covered[:8], "how_to_read": RECORD_CAVEAT}
     if silent:
         out["sources_that_did_not_answer"] = silent
@@ -341,7 +413,7 @@ def open_resources(topic: str = "") -> list[dict]:
         {"name": "OpenStreetMap", "kind": "recorded sites", "region": "World",
          "holds": "Places mapped by volunteers, including archaeological sites.",
          "size": "231,107 features tagged as archaeological sites (taginfo, 12 November 2026)", "read_by": "survey_area, find_gaps, check_modern",
-         "note": "Coverage is uneven: dense in parts of Europe, thin elsewhere."},
+         "note": "Coverage is uneven: dense in parts of Europe, thin elsewhere. Sites are read through QLever, a public query service that holds the whole map, with Overpass as the fallback."},
         {"name": "National Register of Historic Places", "kind": "recorded sites", "region": "United States",
          "holds": "The public, non-restricted listings of the US National Park Service.",
          "size": "74,636 point listings and 22,905 mapped boundaries (queried 12 November 2026)", "read_by": "survey_area, find_gaps",
