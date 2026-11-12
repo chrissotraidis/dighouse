@@ -36,6 +36,8 @@ Still waiting on a decision from Chris, so not goals yet: a notarized download, 
 
 ### 2026-11-12, N1
 
-The mound mark beside "Dighouse" now animates while the agent works: a pass of light sweeps across it, the ground dots brighten and the canopy fades above it, like a lidar flight passing over. It runs while any chat has a turn in progress, during a second look, and while the engine starts, and it is drawn still when Reduce Motion is on.
+The mound mark beside "Dighouse" animates all the time the app is open: a pass of light sweeps across it, the ground dots brighten and the canopy fades above it, like a lidar flight passing over. It sweeps every 2.6 seconds when idle, every 1.2 seconds and at full strength while the agent works (any chat with a turn in progress, a second look, or the engine starting), and faster when the pointer is over it. It is still when Reduce Motion is on.
 
-Checked: during a short run, four frames 250 ms apart were all different and showed the pass moving left to right. After the run ended, three frames were identical. Not checked: a run in a chat that is off screen, and Reduce Motion on.
+The first version moved only while a run was in progress, so Chris saw it still and reported it as not animated. Fixed the same day.
+
+Checked: idle, six frames 400 ms apart all differ and show the pass moving left to right; during a short run, four frames 250 ms apart differ. Not checked: hover, Reduce Motion, and a run in a chat that is off screen.
