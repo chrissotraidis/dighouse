@@ -34,7 +34,7 @@ Offer two or three areas, each with what lidar covers it, what is already record
    - `cut_section` across the feature, starting and ending on the surrounding ground, with the candidate id.
    - `second_look` from a different model, shown the tile without the first model's note.
    - `check_modern`.
-7. **Prior art.** `search_literature`, starting with the dataset's own name and the studies its description cites, then the region and site type. Read what you find. `log_source` each one as read, could not open, or not relevant, with what it shows about this place.
+7. **Prior art.** `search_literature`, starting with the dataset's own name and the studies its description cites, then the region and site type. Open the promising ones with `read_source`. `log_source` each one as read, could not open, or not relevant, with what it shows about this place. Log a source as soon as you know its outcome, one at a time, so a run that stops early still leaves its sources on the record. A source you know only from its abstract is logged as could not open, with what the abstract says.
 8. **Record.** `add_evidence` for measurements. `set_status` only as far as the checks support.
 9. **Stop for the person** when `run_status` lists anything under `needs_a_person`, when controls are being missed, or when data needs an account.
 

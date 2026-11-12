@@ -2,7 +2,7 @@ import AppKit
 import AVFoundation
 import Foundation
 
-struct ChatThread: Identifiable, Hashable {
+struct ChatThread: Identifiable, Hashable, Codable {
     let id: String
     var title: String
 }
@@ -65,22 +65,38 @@ final class ChatModel: ObservableObject {
     var scope: String { project ?? Paths.general.path }
     var title: String { (threads + generalThreads).first { $0.id == active }?.title ?? "New chat" }
 
+    /// The chats of each folder, kept between launches. The engine needs several seconds to list one folder's chats
+    /// when there are thousands of Codex sessions on the Mac, so the lists show from here and are refreshed behind.
+    private var known: [String: [ChatThread]] = UserDefaults.standard.data(forKey: "chatLists")
+        .flatMap { try? JSONDecoder().decode([String: [ChatThread]].self, from: $0) } ?? [:]
+
     func open(project path: String?) async {
-        if path != project { threads = [] }
         project = path
         newChat()
-        await refreshThreads()
+        generalThreads = known[Paths.general.path] ?? []
+        threads = path.flatMap { known[$0] } ?? []
+        Task { @MainActor in await refreshThreads() }
     }
 
     func refreshThreads() async {
         guard let engine, engine.ready else { return }
         let scope = project
-        let general = await list(Paths.general.path)
-        let own = scope == nil ? [] : await list(scope ?? "")
-        guard scope == project else { return }
+        async let general = list(Paths.general.path)
+        async let own = list(scope)
+        let (fresh, mine) = await (general, own)
         // A chat that was just started may not be in the engine's list yet, so keep the open one.
-        generalThreads = keepingOpen(general, from: generalThreads)
-        threads = scope == nil ? [] : keepingOpen(own, from: threads)
+        if let fresh { generalThreads = keepingOpen(fresh, from: generalThreads) }
+        if let mine, let scope {
+            // The person may have moved on while the engine was listing; the answer is still worth keeping.
+            if scope == project { threads = keepingOpen(mine, from: threads) } else { known[scope] = mine }
+        }
+        remember()
+    }
+
+    private func remember() {
+        known[Paths.general.path] = generalThreads
+        if let project { known[project] = threads }
+        UserDefaults.standard.set(try? JSONEncoder().encode(known), forKey: "chatLists")
     }
 
     private func keepingOpen(_ fresh: [ChatThread], from old: [ChatThread]) -> [ChatThread] {
@@ -88,9 +104,10 @@ final class ChatModel: ObservableObject {
         return [open] + fresh
     }
 
-    private func list(_ cwd: String) async -> [ChatThread] {
-        let listed = try? await engine?.request("thread/list", ["cwd": cwd, "limit": 40])
-        return (listed?["data"] as? [JSON] ?? []).compactMap { t in
+    /// The chats stored for a folder, or nil when there is no folder or the engine did not answer.
+    private func list(_ cwd: String?) async -> [ChatThread]? {
+        guard let cwd, let listed = try? await engine?.request("thread/list", ["cwd": cwd, "limit": 40]) else { return nil }
+        return (listed["data"] as? [JSON] ?? []).compactMap { t in
             guard let id = t["id"] as? String else { return nil }
             let title = (t["name"] as? String) ?? (t["preview"] as? String) ?? ""
             return ChatThread(id: id, title: title.isEmpty ? "New chat" : String(title.prefix(80)))
@@ -138,6 +155,7 @@ final class ChatModel: ObservableObject {
         _ = try? await engine.request("thread/name/set", ["threadId": thread.id, "name": name])
         if let i = threads.firstIndex(of: thread) { threads[i].title = name }
         if let i = generalThreads.firstIndex(of: thread) { generalThreads[i].title = name }
+        remember()
     }
 
     func archive(_ thread: ChatThread) async {
@@ -145,6 +163,7 @@ final class ChatModel: ObservableObject {
         _ = try? await engine.request("thread/archive", ["threadId": thread.id])
         threads.removeAll { $0.id == thread.id }
         generalThreads.removeAll { $0.id == thread.id }
+        remember()
         if active == thread.id { newChat() }
     }
 
@@ -200,6 +219,7 @@ final class ChatModel: ObservableObject {
                 resumed.insert(id)
                 let new = ChatThread(id: id, title: title ?? String((text.isEmpty ? sending.first?.name ?? "Chat" : text).prefix(80)))
                 if project == nil { generalThreads.insert(new, at: 0) } else { threads.insert(new, at: 0) }
+                remember()
                 if let title { _ = try? await engine.request("thread/name/set", ["threadId": id, "name": title]) }
             }
             running = true

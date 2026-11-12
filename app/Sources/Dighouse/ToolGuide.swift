@@ -55,7 +55,8 @@ enum ToolGuide {
                      Tool(name: "add_control", does: "Registers a published site the run should find again.")]),
         Pack(title: "Prior art", icon: "book",
              summary: "Searches the published literature and keeps an honest log of what was read.",
-             tools: [Tool(name: "search_literature", does: "Searches an open index of scholarly works."),
+             tools: [Tool(name: "search_literature", does: "Searches an open index of scholarly works and returns abstracts."),
+                     Tool(name: "read_source", does: "Opens a source, a web page or a PDF, and returns its text."),
                      Tool(name: "log_source", does: "Logs a source as read, could not open, or not relevant, with what it shows.")]),
         Pack(title: "Records", icon: "doc.text",
              summary: "Projects are folders of Markdown. Each candidate carries its evidence, checks and decisions.",
@@ -106,7 +107,7 @@ enum ToolGuide {
                  steps: [Handoff(who: "Dighouse", does: "Sends the tile to the second model"), Handoff(who: "Second model", does: "Agrees or disagrees, with a reason")]),
         Workflow(id: "prior", title: "Prior-art sweep", icon: "book",
                  summary: "Searches the literature for each open candidate and logs every source as read or not opened.",
-                 prompt: "Search the literature for each candidate that has no sources yet, starting with studies of this dataset. Read what you find and log every source on the record.",
+                 prompt: "Search the literature for each candidate that has no sources yet, starting with studies of this dataset. Open what you find with read_source, and log each source on its record as soon as you have read it or failed to open it.",
                  scope: .project, steps: [Handoff(who: "Agent", does: "Searches, reads and logs sources")]),
         Workflow(id: "decide", title: "What needs my decision?", icon: "person.crop.circle.badge.questionmark",
                  summary: "A summary of each candidate, what is still missing, and what is ready for you.",
@@ -161,6 +162,7 @@ enum ToolGuide {
         case "second_look": return ("person.2", "Second look at \(s("candidate")) by \(s("model"))")
         case "check_modern": return ("building.2", "Checked for modern features near \(s("candidate"))")
         case "search_literature": return ("book", "Searched the literature: \(s("query"))")
+        case "read_source": return ("doc.text.magnifyingglass", "Opened a source: \(URL(string: s("url"))?.host ?? s("url"))")
         case "log_source": return ("text.book.closed", "Logged a source (\(s("status").replacingOccurrences(of: "_", with: " "))): \(s("title"))")
         case "add_evidence": return ("plus", "Added evidence to \(s("candidate"))")
         case "set_status": return ("checkmark.seal", "Marked \(s("candidate")) as \(Candidate.labels[s("status")]?.lowercased() ?? s("status"))")

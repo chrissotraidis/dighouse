@@ -72,10 +72,12 @@ final class Engine: ObservableObject {
     private var nextID = 0
     private var waiting: [Int: CheckedContinuation<JSON, Error>] = [:]
     private var serviceThread: String?
+    private var connectionsLoaded = false
 
     func start(codex: String, toolsBinary: String, path: String, extraServers: [ToolServer]) async {
         stop()
         problem = nil
+        connectionsLoaded = false
         let p = Process()
         p.executableURL = URL(fileURLWithPath: codex)
         var arguments = [
@@ -173,7 +175,10 @@ final class Engine: ObservableObject {
     }
 
     /// What the person's Codex setup adds: other tool servers and enabled plugins.
+    /// Asked once per engine start, since listing every server's tools takes the engine a few seconds.
     func loadConnections() async {
+        guard ready, !connectionsLoaded else { return }
+        connectionsLoaded = true
         if let listed = try? await request("mcpServerStatus/list") {
             let servers = listed["data"] as? [JSON] ?? []
             toolCount = (servers.first { $0["name"] as? String == "dighouse" }?["tools"] as? JSON)?.count ?? 0

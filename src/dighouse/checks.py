@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import html
+import io
 import logging
+import re
 import time
 
 import httpx
@@ -10,7 +13,10 @@ import httpx
 OVERPASS = "https://overpass-api.de/api/interpreter"
 OPENALEX = "https://api.openalex.org/works"
 logging.getLogger("httpx").setLevel(logging.WARNING)
-_client = httpx.Client(timeout=40, follow_redirects=True, headers={"User-Agent": "dighouse/0.1"})
+_client = httpx.Client(timeout=40, follow_redirects=True,
+                       headers={"User-Agent": "dighouse/0.1 (https://github.com/chrissotraidis/dighouse)"})
+_READER = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+           "Accept": "text/html,application/pdf;q=0.9,*/*;q=0.8"}
 
 
 def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
@@ -51,6 +57,38 @@ out tags 200;"""
     return out
 
 
+def _abstract(index: dict | None) -> str:
+    """OpenAlex stores an abstract as each word with its positions. Put the words back in order."""
+    if not index:
+        return ""
+    words = sorted((place, word) for word, places in index.items() for place in places)
+    return " ".join(word for _, word in words)[:1500]
+
+
+def read_source(url: str, start: int = 0, max_chars: int = 12000) -> dict:
+    """Open a web page or a PDF and return its text, a part at a time."""
+    r = _client.get(url)
+    if r.status_code in (401, 402, 403, 406, 429):
+        r = _client.get(url, headers=_READER)  # some publishers only answer a browser
+    if r.status_code in (401, 402, 403):
+        raise RuntimeError(f"The publisher refused to show this page (status {r.status_code}). Log it as could_not_open.")
+    r.raise_for_status()
+    if r.content[:5] == b"%PDF-" or "pdf" in r.headers.get("content-type", ""):
+        from pypdf import PdfReader
+
+        text = "\n".join(page.extract_text() or "" for page in PdfReader(io.BytesIO(r.content)).pages)
+    else:
+        body = re.sub(r"(?is)<(script|style|nav|header|footer)\b.*?</\1>", " ", r.text)
+        text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", body))
+    text = re.sub(r"[^\S\n]+", " ", text)
+    text = re.sub(r"\s*\n\s*", "\n", text).strip()
+    if len(text) < 200:
+        raise RuntimeError("The page opened but held no readable text. It may need a sign-in or be a scanned image. "
+                           "Log it as could_not_open.")
+    return {"url": str(r.url), "characters": len(text), "start": start, "text": text[start:start + max_chars],
+            "more_from": start + max_chars if len(text) > start + max_chars else None}
+
+
 def search_literature(query: str, limit: int = 15) -> list[dict]:
     """Search OpenAlex, a free index of scholarly works."""
     r = _client.get(OPENALEX, params={"search": query, "per-page": limit})
@@ -64,5 +102,6 @@ def search_literature(query: str, limit: int = 15) -> list[dict]:
             "doi": w.get("doi"),
             "open_copy": (w.get("open_access") or {}).get("oa_url"),
             "cited_by": w.get("cited_by_count"),
+            "abstract": _abstract(w.get("abstract_inverted_index")),
         })
     return out

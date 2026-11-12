@@ -443,6 +443,8 @@ struct RecordsView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 230)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                    // Drag a record's picture onto the message box to attach it.
+                    .onDrag { NSItemProvider(contentsOf: URL(fileURLWithPath: path)) ?? NSItemProvider() }
                 Text(caption).font(.system(size: 11.5)).foregroundStyle(Theme.faint)
             }
         }

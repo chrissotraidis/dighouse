@@ -360,6 +360,15 @@ struct StepSlider: View {
             .animation(.easeOut(duration: 0.12), value: value)
         }
         .frame(height: knob)
+        // The slider is drawn by hand, so say what it is and let the keyboard and VoiceOver move it.
+        .accessibilityElement()
+        .accessibilityLabel("Thinking effort")
+        .accessibilityValue(Effort.label(value))
+        .accessibilityAdjustableAction { direction in
+            guard let i = steps.firstIndex(of: value) else { return }
+            let next = direction == .increment ? i + 1 : i - 1
+            if steps.indices.contains(next) { value = steps[next] }
+        }
     }
 }
 

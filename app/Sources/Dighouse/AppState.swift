@@ -141,6 +141,8 @@ final class AppState: ObservableObject {
     func boot() async {
         starting = true
         await setup.detect()
+        // After an update the tools may need new parts. Fetch them without asking, since nothing else works until then.
+        if onboarded, !setup.toolsReady, setup.uv != nil, setup.toolsSource != nil { await setup.prepareTools() }
         if let codex = setup.codex, setup.toolsReady {
             await engine.start(codex: codex, toolsBinary: setup.toolsBinary, path: setup.path, extraServers: toolServers)
             if engine.ready {

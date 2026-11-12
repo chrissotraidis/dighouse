@@ -5,6 +5,7 @@ struct MainView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var store: ProjectStore
+    @EnvironmentObject var setup: Setup
 
     var body: some View {
         GeometryReader { geo in
@@ -38,7 +39,13 @@ struct MainView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(app.starting ? "Starting Dighouse" : "Dighouse needs a few things").font(.system(size: 22, weight: .semibold))
-                    if app.starting { ProgressView().controlSize(.small) } else { SetupChecklist() }
+                    if app.starting {
+                        ProgressView().controlSize(.small)
+                        if setup.toolsBusy {
+                            Text("Preparing the archaeology tools. This takes about a minute the first time and after an update.")
+                                .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        }
+                    } else { SetupChecklist() }
                 }
                 .padding(28).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
             }

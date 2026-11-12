@@ -38,3 +38,13 @@ def test_discovery_tools_answer():
     area = server.survey_area(-90.2, 38.5, -89.9, 38.8)
     assert any(d["id"].startswith("usgs:") for d in area["open_lidar"])
     assert any("Cahokia" in site["name"] for site in area["known_sites"]["nearest"])
+
+def test_sources_can_be_found_and_read(tmp_path):
+    root = str(tmp_path / "reading")
+    server.init_project(root, "Reading check", "Can a source be opened?", *MONKS_MOUND)
+    found = server.search_literature(root, "Cahokia Monks Mound lidar")
+    assert found and any(work["abstract"] for work in found)
+    page = server.read_source(root, "https://en.wikipedia.org/wiki/Monks_Mound")
+    assert "Cahokia" in page["text"] and page["more_from"]
+    paper = server.read_source(root, "https://arxiv.org/pdf/1706.03762")
+    assert paper["characters"] > 10_000 and "attention" in paper["text"].lower()

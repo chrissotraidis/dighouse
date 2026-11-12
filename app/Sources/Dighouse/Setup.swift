@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Finds what Dighouse needs on this Mac: the Codex engine, a model router, and the tools' runtime.
@@ -17,6 +18,13 @@ final class Setup: ObservableObject {
     private var venv: String { Paths.support.appendingPathComponent("tools-env").path }
     var toolsBinary: String { venv + "/bin/dighouse-tools" }
     private var marker: URL { Paths.support.appendingPathComponent("tools-source.txt") }
+
+    /// What the prepared tools were built from: where they live and the exact list of parts they need.
+    private var stamp: String? {
+        guard let toolsSource else { return nil }
+        let lock = FileManager.default.contents(atPath: toolsSource + "/uv.lock") ?? Data()
+        return toolsSource + "\n" + SHA256.hash(data: lock).map { String(format: "%02x", $0) }.joined()
+    }
 
     var skill: String {
         guard let toolsSource else { return "" }
@@ -44,7 +52,7 @@ final class Setup: ObservableObject {
             ProcessInfo.processInfo.environment["DIGHOUSE_TOOLS_DIR"],
             Bundle.main.resourceURL?.appendingPathComponent("tools").path,
         ].map { $0.map { $0 + "/pyproject.toml" } })?.replacingOccurrences(of: "/pyproject.toml", with: "")
-        let prepared = (try? String(contentsOf: marker, encoding: .utf8)) == toolsSource
+        let prepared = stamp != nil && (try? String(contentsOf: marker, encoding: .utf8)) == stamp
         toolsReady = prepared && FileManager.default.isExecutableFile(atPath: toolsBinary)
         checked = true
     }
@@ -60,7 +68,7 @@ final class Setup: ObservableObject {
         let run = await Shell.run(uv, ["sync", "--frozen", "--no-dev", "--directory", toolsSource], env: env)
         toolsBusy = false
         if run.code == 0, FileManager.default.isExecutableFile(atPath: toolsBinary) {
-            try? toolsSource.write(to: marker, atomically: true, encoding: .utf8)
+            try? stamp?.write(to: marker, atomically: true, encoding: .utf8)
             toolsReady = true
         } else {
             toolsProblem = String(run.out.suffix(400))

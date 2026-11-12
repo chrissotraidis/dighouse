@@ -248,13 +248,26 @@ def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
 def search_literature(project: str, query: str, limit: int = 15) -> list[dict]:
     """Search scholarly works. Start with the dataset's name and the studies its description cites.
 
-    Finding a title is not reading it. Log each source with log_source once you have
-    read it, or could not open it.
+    Each result has its abstract when the index holds one, and a link to an open copy when there is one.
+    Finding a title is not reading it: open the source with read_source, then log it with log_source.
     """
     p = Project(project).check()
     found = checks.search_literature(query, limit)
     p.note(f"Searched the literature for '{query}': {len(found)} results")
     return found
+
+
+@tool
+def read_source(project: str, url: str, start: int = 0) -> dict:
+    """Open a source, a web page or a PDF, and return its text, 12,000 characters at a time.
+
+    Pass the open_copy or doi link from search_literature. When more_from is set, call again with
+    start set to it to read on. If the source cannot be opened, log it as could_not_open.
+    """
+    p = Project(project).check()
+    out = checks.read_source(url, start)
+    p.note(f"Opened {out['url']} ({out['characters']} characters)")
+    return out
 
 
 @tool

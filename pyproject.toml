@@ -15,6 +15,7 @@ dependencies = [
     "pillow",
     "httpx",
     "pyshp",
+    "pypdf>=7.0.1",
 ]
 
 [project.scripts]

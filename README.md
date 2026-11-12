@@ -34,7 +34,7 @@ The build is signed for local use only. It is not notarized, so it is not yet a 
 | Look at the bare ground | `view_terrain`, `make_tiles`, `next_tiles`, `view_tile` |
 | Screen | `record_verdict`, `flag_candidate` |
 | Check each flag | `cut_section`, `second_look`, `check_modern` |
-| Prior art | `search_literature`, `log_source` |
+| Prior art | `search_literature`, `read_source`, `log_source` |
 | Records and run | `add_evidence`, `set_status`, `list_candidates`, `add_control`, `run_status` |
 
 Lidar comes from two public sources that need no account: [OpenTopography](https://portal.opentopography.org/datasets)'s bulk datasets and the [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/) point clouds. Place names and modern features come from OpenStreetMap, recorded sites from Wikidata, and the literature search from OpenAlex.
