@@ -34,4 +34,8 @@ Still waiting on a decision from Chris, so not goals yet: a notarized download, 
 
 ## Log
 
-Nothing yet.
+### 2026-11-12, N1
+
+The mound mark beside "Dighouse" now animates while the agent works: a pass of light sweeps across it, the ground dots brighten and the canopy fades above it, like a lidar flight passing over. It runs while any chat has a turn in progress, during a second look, and while the engine starts, and it is drawn still when Reduce Motion is on.
+
+Checked: during a short run, four frames 250 ms apart were all different and showed the pass moving left to right. After the run ended, three frames were identical. Not checked: a run in a chat that is off screen, and Reduce Motion on.
