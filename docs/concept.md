@@ -38,7 +38,7 @@ flowchart LR
 | Archaeology tools | A tool server for the data work, plus the panes that show it | Built |
 | Projects and records | A folder per project, Markdown records, a mirror in Notion | Built |
 
-The window shows one place at a time, chosen from the sidebar: Home, a chat, New project, Toolbox or Settings. Chats work with or without a project. Opening a project puts its workspace beside the chat, with a divider that drags, and the workspace has three tabs: Map, Records and Notes. The Toolbox is its own page for the workflows, the tools, the data sources and other tool servers. Settings is a page in the window that explains the engine, the account it uses and where data goes.
+The window shows one place at a time, chosen from the sidebar: Home, a chat, New project, Toolbox or Settings. Chats work with or without a project. Opening a project puts its workspace beside the chat, with a divider that drags, and the workspace has three tabs: Map, Records and Notes. The Toolbox is its own page: how a search works in six stages with the tools behind each, the workflows, the open data services, and other tools. Settings is a page in the window that explains the three parts Dighouse is made of (the AI model, the agent engine and the archaeology tools), the account the engine uses and where data goes. Home opens with a picture that drags between treetops and bare ground, and says plainly what a chat app cannot do.
 
 The message box follows ChatGPT: one pill for the model and its thinking effort, which opens an effort slider with the searchable model list behind the model's name. It takes images, video, audio and other files. The chat shows the agent's plan as a checklist, each step it takes, helper agents, and folds long runs into one line.
 

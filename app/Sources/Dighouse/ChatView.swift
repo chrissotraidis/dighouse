@@ -367,13 +367,21 @@ private struct EmptyChat: View {
 
     private var heading: (String, String) {
         if store.current == nil {
-            return ("What are you looking for?", "Ask anything, or begin with one of these. The archaeology tools work in every chat.")
+            return ("What are you looking for?", "Ask a question, or begin with one of these. The agent has the archaeology tools in every chat, so it can look things up in the open data as it answers.")
         }
         if store.status.tiles == 0 {
             return ("Where should we start?", "This project has no terrain yet. The agent can find open lidar for its area and build the bare ground.")
         }
         return ("What next?", "Tell the agent what to do, or run the next part of the search.")
     }
+
+    /// Questions that show what the tools can answer before there is a project.
+    private let questions = [
+        "Is there open lidar over the Newark Earthworks in Ohio?",
+        "Which open surveys cover the Maya lowlands, and what is recorded near each?",
+        "How does lidar see the ground through a forest?",
+        "What has been published about Angel Mounds in Indiana?",
+    ]
 
     var body: some View {
         GeometryReader { geo in
@@ -388,6 +396,17 @@ private struct EmptyChat: View {
                         ForEach(flows) { flow in WorkflowRow(flow: flow) { app.run(flow) } }
                     }
                     .frame(maxWidth: 540)
+                    if store.current == nil {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Or try a question").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.faint)
+                            Flow(spacing: 8) {
+                                ForEach(questions, id: \.self) { question in
+                                    Button(question) { app.ask(question) }.buttonStyle(SecondaryButton())
+                                }
+                            }
+                        }
+                        .frame(maxWidth: 540, alignment: .leading)
+                    }
                 }
                 .padding(.horizontal, 24).padding(.vertical, 24)
                 .frame(maxWidth: .infinity, minHeight: geo.size.height)
@@ -402,6 +421,10 @@ private struct EmptyChat: View {
 enum Effort {
     static func label(_ id: String) -> String {
         id == "xhigh" ? "Extra high" : id.prefix(1).uppercased() + id.dropFirst()
+    }
+
+    static func short(_ id: String) -> String {
+        id == "xhigh" ? "X-high" : id == "medium" ? "Med" : label(id)
     }
 
     static func note(_ id: String) -> String {
@@ -458,7 +481,7 @@ struct ModelControl: View {
                             }
                             .buttonStyle(.plain).help("Choose another model")
                         }
-                        StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }))
+                        StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
                         Text(Effort.note(effort)).font(.system(size: 12)).foregroundStyle(Theme.faint)
                     }
                     .padding(.horizontal, 20).padding(.vertical, 18).frame(width: 340)

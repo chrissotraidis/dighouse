@@ -333,33 +333,47 @@ extension View {
 struct StepSlider: View {
     let steps: [String]
     @Binding var value: String
+    var showLabels = false
     private let knob: CGFloat = 32
     private let track = Color(red: 0.17, green: 0.43, blue: 0.86)
 
     var body: some View {
-        GeometryReader { geo in
-            let usable = max(geo.size.width - knob, 1)
-            let last = CGFloat(max(steps.count - 1, 1))
-            let x = usable * CGFloat(steps.firstIndex(of: value) ?? 0) / last
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.white.opacity(0.1))
-                Capsule().fill(track).frame(width: x + knob)
-                ForEach(steps.indices, id: \.self) { i in
-                    Circle().fill(Color.white.opacity(0.4)).frame(width: 4, height: 4)
-                        .position(x: knob / 2 + usable * CGFloat(i) / last, y: knob / 2)
+        VStack(spacing: 6) {
+            GeometryReader { geo in
+                let usable = max(geo.size.width - knob, 1)
+                let last = CGFloat(max(steps.count - 1, 1))
+                let x = usable * CGFloat(steps.firstIndex(of: value) ?? 0) / last
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.1))
+                    Capsule().fill(track).frame(width: x + knob)
+                    ForEach(steps.indices, id: \.self) { i in
+                        Circle().fill(Color.white.opacity(0.4)).frame(width: 4, height: 4)
+                            .position(x: knob / 2 + usable * CGFloat(i) / last, y: knob / 2)
+                    }
+                    Circle().fill(.white).frame(width: knob, height: knob)
+                        .shadow(color: .black.opacity(0.35), radius: 3, y: 1).offset(x: x)
                 }
-                Circle().fill(.white).frame(width: knob, height: knob)
-                    .shadow(color: .black.opacity(0.35), radius: 3, y: 1).offset(x: x)
+                .animation(.easeOut(duration: 0.12), value: value)
+                .overlay(DragCatcher { at, _, _ in
+                    let fraction = min(max((at - knob / 2) / usable, 0), 1)
+                    let pick = steps[Int((fraction * last).rounded())]
+                    if pick != value { value = pick }
+                })
             }
-            .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
-                let fraction = min(max((drag.location.x - knob / 2) / usable, 0), 1)
-                let pick = steps[Int((fraction * last).rounded())]
-                if pick != value { value = pick }
-            })
-            .animation(.easeOut(duration: 0.12), value: value)
+            .frame(height: knob)
+            if showLabels {
+                GeometryReader { geo in
+                    let usable = max(geo.size.width - knob, 1)
+                    let last = CGFloat(max(steps.count - 1, 1))
+                    ForEach(steps.indices, id: \.self) { i in
+                        Text(Effort.short(steps[i])).font(.system(size: 10.5, weight: steps[i] == value ? .semibold : .regular))
+                            .foregroundStyle(steps[i] == value ? Theme.text : Theme.faint).fixedSize()
+                            .position(x: knob / 2 + usable * CGFloat(i) / last, y: 7)
+                    }
+                }
+                .frame(height: 14)
+            }
         }
-        .frame(height: knob)
         // The slider is drawn by hand, so say what it is and let the keyboard and VoiceOver move it.
         .accessibilityElement()
         .accessibilityLabel("Thinking effort")
@@ -456,26 +470,133 @@ struct ModelPicker: View {
     }
 }
 
-/// The draggable line between the chat and the workspace.
+/// Catches a mouse drag with AppKit, so it works wherever the view sits and never moves the window.
+struct DragCatcher: NSViewRepresentable {
+    var cursor: NSCursor?
+    /// Where the pointer is across the view, how far it has moved since the press, and whether this is the press.
+    let onDrag: (_ at: CGFloat, _ moved: CGFloat, _ began: Bool) -> Void
+    var onEnd: () -> Void = {}
+
+    final class Catcher: NSView {
+        var cursor: NSCursor?
+        var onDrag: ((CGFloat, CGFloat, Bool) -> Void)?
+        var onEnd: (() -> Void)?
+        private var start: CGFloat = 0
+
+        override var mouseDownCanMoveWindow: Bool { false }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+        override func resetCursorRects() { if let cursor { addCursorRect(bounds, cursor: cursor) } }
+
+        override func mouseDown(with event: NSEvent) {
+            start = event.locationInWindow.x
+            onDrag?(convert(event.locationInWindow, from: nil).x, 0, true)
+        }
+        override func mouseDragged(with event: NSEvent) {
+            onDrag?(convert(event.locationInWindow, from: nil).x, event.locationInWindow.x - start, false)
+        }
+        override func mouseUp(with event: NSEvent) { onEnd?() }
+    }
+
+    func makeNSView(context: Context) -> Catcher { Catcher() }
+    func updateNSView(_ view: Catcher, context: Context) {
+        view.cursor = cursor
+        view.onDrag = onDrag
+        view.onEnd = onEnd
+    }
+}
+
+/// A draggable line between two panes. Drag it to resize the pane on its left.
 struct SplitHandle: View {
     @Binding var width: Double
     let range: ClosedRange<Double>
-    @State private var start: Double?
+    var help = "Drag to resize"
+    @State private var start = 0.0
+    @State private var dragging = false
     @State private var hover = false
 
     var body: some View {
-        Rectangle().fill(hover || start != nil ? Theme.accent.opacity(0.7) : Theme.line)
-            .frame(width: hover || start != nil ? 2 : 1)
-            .frame(width: 9).contentShape(Rectangle())
-            .onHover { inside in
-                hover = inside
-                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+        let lit = hover || dragging
+        ZStack {
+            Rectangle().fill(lit ? Theme.accent : Theme.line).frame(width: lit ? 3 : 1)
+            if lit {
+                Capsule().fill(Theme.accent).frame(width: 5, height: 44)
             }
-            .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global).onChanged { drag in
-                if start == nil { start = width }
-                width = min(max((start ?? width) + drag.translation.width, range.lowerBound), range.upperBound)
-            }.onEnded { _ in start = nil })
-            .help("Drag to resize the chat")
+        }
+        .frame(width: 13).frame(maxHeight: .infinity)
+        .overlay(DragCatcher(cursor: .resizeLeftRight, onDrag: { _, moved, began in
+            if began { start = width; dragging = true }
+            width = min(max(start + Double(moved), range.lowerBound), max(range.upperBound, range.lowerBound))
+        }, onEnd: { dragging = false }))
+        .onHover { hover = $0 }
+        .padding(.horizontal, -6)   // the grab area is wider than the line, without pushing the panes apart
+        .zIndex(2)
+        .help(help)
+    }
+}
+
+/// Pictures that explain the app: made with its own tools from open data.
+enum Tour {
+    static func image(_ name: String) -> NSImage? {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("tour/\(name).jpg") else { return nil }
+        return Images.load(url.path)
+    }
+}
+
+/// Two pictures of the same place with a handle between them. Drag it to see one give way to the other.
+struct RevealSlider: View {
+    let left: NSImage, right: NSImage
+    let leftLabel: String, rightLabel: String
+    var animateIn = true
+    @State private var split = 0.5
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack(alignment: .topLeading) {
+                Image(nsImage: right).resizable().aspectRatio(contentMode: .fill).frame(width: w, height: h).clipped()
+                Image(nsImage: left).resizable().aspectRatio(contentMode: .fill).frame(width: w, height: h).clipped()
+                    .mask(alignment: .leading) { Rectangle().frame(width: w * split) }
+                tag(leftLabel).padding(10).opacity(split > 0.16 ? 1 : 0)
+                tag(rightLabel).padding(10).frame(width: w, alignment: .trailing).opacity(split < 0.84 ? 1 : 0)
+                Rectangle().fill(.white).frame(width: 2, height: h).offset(x: w * split - 1)
+                Circle().fill(.white).frame(width: 34, height: 34)
+                    .overlay(Image(systemName: "arrow.left.and.right").font(.system(size: 13, weight: .bold)).foregroundStyle(.black))
+                    .shadow(color: .black.opacity(0.5), radius: 5, y: 1)
+                    .offset(x: w * split - 17, y: h / 2 - 17)
+            }
+            .overlay(DragCatcher(cursor: .resizeLeftRight) { at, _, _ in split = min(max(at / w, 0.02), 0.98) })
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
+        .onAppear {
+            guard animateIn else { return }
+            split = 0.92
+            withAnimation(.easeInOut(duration: 1.8).delay(0.5)) { split = 0.42 }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("\(leftLabel) and \(rightLabel) of the same place")
+        .accessibilityValue("\(Int(split * 100)) percent \(leftLabel.lowercased())")
+        .accessibilityAdjustableAction { direction in
+            split = min(max(split + (direction == .increment ? 0.2 : -0.2), 0.02), 0.98)
+        }
+    }
+
+    private func tag(_ text: String) -> some View {
+        Text(text).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(.white)
+            .padding(.horizontal, 9).frame(height: 24)
+            .background(Capsule().fill(.black.opacity(0.68)))
+    }
+}
+
+/// The forest and the bare ground at Serpent Mound, from the same open lidar points.
+struct ForestReveal: View {
+    var animateIn = true
+
+    var body: some View {
+        if let top = Tour.image("serpent-canopy"), let ground = Tour.image("serpent-ground") {
+            RevealSlider(left: top, right: ground, leftLabel: "Treetops", rightLabel: "Bare ground", animateIn: animateIn)
+                .aspectRatio(938.0 / 586.0, contentMode: .fit)
+        }
     }
 }
 

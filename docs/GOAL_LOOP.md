@@ -90,3 +90,25 @@ Found and fixed along the way:
 Left over from the checks, on this Mac: the projects "Angel Mounds east plaza" and "Middle Usumacinta settlement" in `~/Documents/Dighouse`, and two short test chats.
 
 Not built: a button that pushes records to Notion, bulk screening through the model router, a notarized download, and canopy in sections for datasets published as ground points only.
+### 2026-11-12, second pass
+
+Follow-up on the first pass, then Chris's second review.
+
+Closed from the first pass:
+
+- **Narrow layout (G10).** Checked at 700 points wide, where the sidebar becomes an overlay: every page, the overlay, the layout buttons and the records were opened with no dead ends.
+- **Attach files panel (G3).** A file was chosen through the panel and appeared as a chip, and the chip's remove button cleared it. Dropping a file onto the message box is still not checked, because the test tooling cannot drag a file from Finder.
+- **Prior art.** A prior-art run on Angel Mounds ended with nothing logged, because the agent could find titles but had no way to open them. Added `read_source` (web pages and PDFs) and abstracts in `search_literature`, with a live test. The workflow now tells the agent to log each source as soon as it knows the outcome.
+- **Chat lists.** The engine takes about four seconds to list one folder's chats on this Mac, which has 2,300 Codex sessions. Lists are now kept between launches and refreshed behind, so a project's chats show in under a second.
+
+Chris's second review, and what was done:
+
+| Goal | What he said | What changed | Check |
+|---|---|---|---|
+| G11 | The chat cannot be widened by dragging its sides. | Both edges drag: the line between sidebar and page, and the line between chat and workspace. The handle is 13 points wide, lights up, shows a resize cursor, and is caught by AppKit so the drag never moves the window. Widths are kept. | Passed with the test tooling: the sidebar was dragged wider and back, and the chat divider narrower and wider. The old handle also passed this test while failing under a real mouse, so this needs Chris's hand to confirm. |
+| G12 | "Archaeology tools: what tools? What is the agent engine?" | Settings ▸ How it runs explains the three parts in plain words: the AI model, the agent engine (Codex, what it is and who makes it), and the archaeology tools (count, what they do, the six stages), each with its status. | Passed: the page renders with live status, and "See what each tool does" opens the Toolbox. |
+| G13 | Not every model has Ultra. | The slider shows the steps the selected model offers, with a label under each dot, and says how many it has. A model with no effort setting says so. | Passed: Opus 5.5 showed six steps, Kimi K3 four (Low, High, Max, Ultra), xAI Build "no effort setting". Dragging and clicking the slider changed the value. |
+| G14 | The Toolbox is not well designed; "Answering" and "Connections" mean nothing. | Rebuilt around "How a search works": six numbered stages, each with what happens, why it matters, a picture made by the tools, its tools by plain name, and a Run button. "Open data" says what each service is, what Dighouse takes from it and what for, with Online or Cannot be reached. "More tools" lists what the person's Codex already has in plain words, and explains what a tool server is. | Passed: all four tabs render with real data. |
+| G15 | The intro must make people want to use it and show why it beats ChatGPT. | Home opens with "See what the forest is hiding" and a picture of Serpent Mound that drags between treetops and bare ground, both built from the same open USGS points. Below: a table of what a chat app cannot do, and a real run at Cahokia with its section, second look and decision. A new chat offers example questions. | Passed: the reveal animates on arrival and drags; the comparison and the run render. |
+
+The Serpent Mound pictures were made from `usgs:OH_StatewideP3_2_B21`: 2.2 million ground returns and 3.8 million others over the starting box. The treetop side is the highest return in each metre, the bare-ground side only the returns classed as ground.

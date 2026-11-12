@@ -8,11 +8,11 @@ The tools speak the Model Context Protocol, so they also work on their own in Co
 
 `app/` holds Dighouse for macOS: a native app that runs the Codex engine with these tools attached.
 
-- **Home** has a message box and two ways in. "Help me choose a place" starts a chat in which the agent compares open surveys with what is already recorded. "I know where to look" opens a map where you place the search area and see which open lidar covers it. Below are open surveys read from OpenTopography's live catalog and published sites to learn on.
+- **Home** opens with a picture you can drag between the treetops and the bare ground at Serpent Mound, a table of what a chat app cannot do, and a real run at Cahokia. It has a message box and two ways in. "Help me choose a place" starts a chat in which the agent compares open surveys with what is already recorded. "I know where to look" opens a map where you place the search area and see which open lidar covers it. Below are open surveys read from OpenTopography's live catalog and published sites to learn on.
 - **Chat** works with or without a project. It shows the agent's plan, each step it takes, helper agents, and long runs folded into one line. The message box has one control for the model and its thinking effort, and takes images, video, audio and other files.
-- **A project** adds a workspace beside the chat: the map of bare-ground tiles, the candidate records with their checks, and the project's notes. The divider between them drags.
-- **Toolbox** lists the workflows with who does each part, the tools, the open data sources and whether they answer, and the tool servers and plugins that come from your Codex setup. You can add another tool server there.
-- **Settings** is a page in the window. It covers models, the agent engine and the account it uses, and what data goes where.
+- **A project** adds a workspace beside the chat: the map of bare-ground tiles, the candidate records with their checks, and the project's notes. The dividers drag: between the sidebar and the page, and between the chat and the workspace.
+- **Toolbox** explains how a search works in six stages, each with its tools and a Run button. It also lists the workflows with who does each part, the open data services and what Dighouse takes from each, and the other tools your Codex setup already has. You can add another tool server there.
+- **Settings** is a page in the window. "How it runs" explains the three parts: the AI model, the agent engine, and the archaeology tools. Other pages cover models and thinking effort, and what data goes where.
 
 ~~~sh
 cd app

@@ -60,7 +60,7 @@ struct SettingsPage: View {
         switch section {
         case .general: return "gearshape"
         case .models: return "cpu"
-        case .engine: return "bolt"
+        case .engine: return "gearshape.2"
         case .privacy: return "lock"
         case .about: return "info.circle"
         }
@@ -140,12 +140,8 @@ private struct ModelSettings: View {
             SettingRow(title: "Agent model", note: "Runs the search. Screening tiles needs a model that reads images.") {
                 ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
             }
-            if let model = app.model, let effort = app.activeEffort {
-                Hairline()
-                SettingRow(title: "Thinking effort", note: "\(Effort.label(effort)). \(Effort.note(effort))") {
-                    StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 })).frame(width: 220)
-                }
-            }
+            Hairline()
+            effortRow
             Hairline()
             SettingRow(title: "Second-look model",
                        note: "Gives the independent second opinion on a candidate. Choose one from a different maker than the agent's model.") {
@@ -161,6 +157,54 @@ private struct ModelSettings: View {
         Text("The same choices are in the message box of every chat.")
             .font(.system(size: 12.5)).foregroundStyle(Theme.faint)
     }
+
+    /// How long the model thinks. The steps on offer belong to the model, so they change when the model does.
+    @ViewBuilder private var effortRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Thinking effort").font(.system(size: 13.5, weight: .medium))
+            if let model = app.model, let effort = app.activeEffort {
+                Text("\(Effort.label(effort)). \(Effort.note(effort))")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
+                    .frame(maxWidth: 420)
+                Text("Each model offers its own steps. \(model.name) has \(model.efforts.count): \(model.efforts.map(Effort.label).joined(separator: ", ")).")
+                    .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("\(app.modelName) has no effort setting. It always thinks the same amount.")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// One of the parts Dighouse is made of, in plain words, with whether it is working.
+private struct PartCard<Action: View>: View {
+    let icon: String, title: String, role: String, text: String
+    let ok: Bool?
+    let status: String
+    @ViewBuilder let action: () -> Action
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            IconTile(name: icon, size: 40)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.system(size: 15, weight: .semibold))
+                Text(role).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.tan)
+                Text(text).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 7) {
+                    Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
+                    Text(status).font(.system(size: 12.5)).foregroundStyle(ok == false ? Theme.amber : Theme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 2)
+                action()
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 private struct EngineSettings: View {
@@ -169,25 +213,66 @@ private struct EngineSettings: View {
     @EnvironmentObject var setup: Setup
 
     var body: some View {
-        Text("Dighouse has no account and no server of its own. It starts the Codex engine installed on this Mac and works through it. The engine is what runs an agent: it sends your messages to the model, calls the tools, keeps the plan, starts helper agents and remembers each chat.")
+        Text("Dighouse is three parts working together: a model that thinks, an engine that lets it act, and tools that do the archaeology. All three run from this Mac. Dighouse has no account and no server of its own.")
             .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-        SetupChecklist()
+
         VStack(spacing: 0) {
-            SettingRow(title: "Account",
-                       note: engine.account.map {
-                           "Codex on this Mac is signed in as \($0)\(engine.plan.map { " (\($0) plan)" } ?? ""). Dighouse reads this from the engine so you can see whose account the Codex models run on. It is shown only here."
-                       } ?? "Codex is not signed in. Run codex login in Terminal, then restart the engine.") { EmptyView() }
-            Hairline()
-            SettingRow(title: "Model router",
-                       note: setup.ocxRunning
-                       ? "OpenCodex is running on this Mac. It lets the engine use models from other providers, each with its own key or sign-in."
-                       : "OpenCodex is not running, so only the models from the Codex sign-in are listed. It is optional.") {
-                Badge(text: setup.ocxRunning ? "Running" : "Not running", color: setup.ocxRunning ? Theme.green : Theme.dim)
+            PartCard(icon: "cpu", title: "1. The AI model", role: "Does the thinking and the looking.",
+                     text: "A large AI model, like the ones behind ChatGPT and Claude. It reads your request, decides what to do next, and looks at the terrain pictures. You choose which one.",
+                     ok: engine.ready ? true : nil,
+                     status: engine.ready ? "\(app.modelName) is selected, out of \(engine.models.count) on this Mac."
+                        : app.starting ? "Starting" : "Models appear once the engine is running.") {
+                if engine.ready {
+                    ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
+                }
             }
             Hairline()
-            SettingRow(title: "Restart the engine", note: "Use this after signing in, starting the router, or changing your Codex configuration. Running work stops.") {
-                Button("Restart") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
+            PartCard(icon: "bolt", title: "2. The agent engine", role: "Lets the model act instead of only talk.",
+                     text: "On its own a model can only write text. The engine is the program in between: when the model asks for a tool, the engine runs it and hands back the result, again and again, until the job is done. It also keeps the plan, starts helper agents, and saves each chat. Dighouse uses Codex, a free open-source engine made by OpenAI. It is the same one inside the Codex app, so it uses the Codex sign-in already on this Mac.",
+                     ok: setup.codex == nil ? false : engine.ready,
+                     status: setup.codex == nil ? "Codex was not found on this Mac."
+                        : engine.ready
+                          ? setup.codexVersion + (engine.account.map { ", signed in as \($0)" + (engine.plan.map { " (\($0) plan)" } ?? "") } ?? ", not signed in")
+                          : app.starting ? "Starting" : (engine.problem ?? "Not running")) {
+                HStack(spacing: 8) {
+                    if setup.codex == nil, let url = URL(string: "https://github.com/openai/codex") {
+                        Link("Get Codex", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
+                    }
+                    Button("Restart the engine") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
+                        .help("Use this after signing in to Codex or changing its settings. Running work stops.")
+                    if app.starting { ProgressView().controlSize(.small) }
+                }
             }
+            Hairline()
+            PartCard(icon: "wrench.and.screwdriver", title: "3. The archaeology tools", role: "What makes this more than a chat app.",
+                     text: "\(ToolGuide.toolCount) small programs that come with Dighouse and run on this Mac. They do what a model cannot do alone: download lidar, build the bare ground, cut slices through the raw laser points, check open maps, find and open the literature, and keep the records.",
+                     ok: setup.toolsReady ? true : setup.toolsBusy ? nil : false,
+                     status: setup.toolsReady ? "Installed and ready. They read public data and need no account."
+                        : setup.toolsBusy ? "Preparing. This takes about a minute."
+                        : setup.uv == nil ? "Needs uv, a small program that runs the tools." : (setup.toolsProblem ?? "Not prepared yet.")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Flow(spacing: 6) {
+                        ForEach(ToolGuide.packs) { pack in Badge(text: "\(pack.title) · \(pack.tools.count)") }
+                    }
+                    HStack(spacing: 8) {
+                        Button("See what each tool does") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
+                        if !setup.toolsReady, !setup.toolsBusy, setup.uv != nil {
+                            Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }.buttonStyle(PrimaryButton())
+                        }
+                        if setup.uv == nil, let url = URL(string: "https://docs.astral.sh/uv/getting-started/installation/") {
+                            Link("Get uv", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
+                        }
+                    }
+                }
+            }
+        }
+        .panel()
+
+        VStack(spacing: 0) {
+            PartCard(icon: "arrow.triangle.branch", title: "Model router", role: "Optional. Adds models from other companies.",
+                     text: "Codex alone offers the models from its own sign-in. OpenCodex is a separate free program that sits beside it and adds models from other providers, each with its own key or sign-in. That is how a different maker's model can give the second opinion.",
+                     ok: setup.ocxRunning ? true : nil,
+                     status: setup.ocxRunning ? "OpenCodex is running on this Mac." : "OpenCodex is not running. Dighouse works without it.") { EmptyView() }
         }
         .panel()
     }

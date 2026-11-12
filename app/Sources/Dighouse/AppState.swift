@@ -14,7 +14,7 @@ enum WorkTab: String, CaseIterable {
 }
 
 enum SettingsSection: String, CaseIterable {
-    case general = "General", models = "Models", engine = "Agent engine", privacy = "Data and privacy", about = "About"
+    case general = "General", models = "Models", engine = "How it runs", privacy = "Data and privacy", about = "About"
 }
 
 @MainActor
@@ -43,6 +43,9 @@ final class AppState: ObservableObject {
     }
     @Published var chatWidth = UserDefaults.standard.object(forKey: "chatWidth") as? Double ?? 440 {
         didSet { UserDefaults.standard.set(chatWidth, forKey: "chatWidth") }
+    }
+    @Published var sidebarWidth = UserDefaults.standard.object(forKey: "sidebarWidth") as? Double ?? 256 {
+        didSet { UserDefaults.standard.set(sidebarWidth, forKey: "sidebarWidth") }
     }
     @Published var modelID: String? = UserDefaults.standard.string(forKey: "model") {
         didSet { UserDefaults.standard.set(modelID, forKey: "model") }

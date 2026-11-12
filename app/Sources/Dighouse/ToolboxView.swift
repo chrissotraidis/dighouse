@@ -1,14 +1,15 @@
 import SwiftUI
 
-/// The Toolbox: what Dighouse adds to the agent. Workflows, the archaeology tools, the open data they read, and other connections.
+/// The Toolbox: what Dighouse gives the agent that a chat app does not. How a search works, the workflows that run it,
+/// where the data comes from, and other tools the agent can use.
 struct ToolboxView: View {
     enum Tab: String, CaseIterable {
-        case workflows = "Workflows", tools = "Tools", data = "Data sources", connections = "Connections"
+        case how = "How a search works", workflows = "Workflows", data = "Open data", more = "More tools"
     }
 
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
-    @AppStorage("toolboxTab") private var tab = Tab.workflows
+    @AppStorage("toolboxTab") private var tab = Tab.how
 
     var body: some View {
         ScrollView {
@@ -16,8 +17,8 @@ struct ToolboxView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Toolbox").font(.system(size: 26, weight: .bold))
-                        Text("What Dighouse adds to the agent: archaeology tools, the open data they read, and workflows that pass work between models and you.")
-                            .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Text("A chat app can only talk about archaeology. Dighouse gives the AI \(ToolGuide.toolCount) tools to do it: fetch the data, look at the ground, check its own finds, and keep the record. This page shows what they do and how to run them.")
+                            .font(.system(size: 14)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 4) {
@@ -36,17 +37,138 @@ struct ToolboxView: View {
                     Hairline()
                 }
                 switch tab {
+                case .how: HowTab()
                 case .workflows: WorkflowsTab()
-                case .tools: ToolsTab()
                 case .data: DataTab()
-                case .connections: ConnectionsTab()
+                case .more: MoreTab()
                 }
             }
             .padding(.horizontal, 32).padding(.top, 26).padding(.bottom, 32)
-            .frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
+            .frame(maxWidth: 900, alignment: .leading).frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
         .task(id: engine.ready) { await engine.loadConnections() }
+    }
+}
+
+// MARK: - How a search works
+
+private struct HowTab: View {
+    @EnvironmentObject var setup: Setup
+
+    var body: some View {
+        if !setup.toolsReady { SetupChecklist() }
+        Text("A search runs through six stages. Each one has its own tools, shown under it by the name the agent calls them. You never need to type a tool's name: ask in plain words, or press Run.")
+            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+        ForEach(Array(ToolGuide.packs.enumerated()), id: \.element.id) { index, pack in
+            StageCard(number: index + 1, pack: pack)
+        }
+        PageSection(title: "Rules the tools enforce", caption: "These are built into the tools, so they hold whichever model is running.") {
+            VStack(alignment: .leading, spacing: 9) {
+                ForEach(ToolGuide.rules, id: \.self) { rule in
+                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                        Image(systemName: "lock").font(.system(size: 11)).foregroundStyle(Theme.faint)
+                        Text(rule).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14)
+        }
+    }
+}
+
+private struct StageCard: View {
+    let number: Int
+    let pack: ToolGuide.Pack
+    @EnvironmentObject var app: AppState
+    @State private var showTools = false
+
+    var body: some View {
+        let flow = ToolGuide.workflows.first { $0.id == pack.flow }
+        let state = flow.map { app.state(of: $0) }
+        VStack(alignment: .leading, spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 18) {
+                    words.frame(minWidth: 380, idealWidth: 380, maxWidth: .infinity, alignment: .leading)
+                    picture.frame(width: 250)
+                }
+                VStack(alignment: .leading, spacing: 14) {
+                    words
+                    picture.frame(maxWidth: 420)
+                }
+            }
+            .padding(16)
+
+            Hairline()
+            HStack(spacing: 10) {
+                Button { showTools.toggle() } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold)).rotationEffect(.degrees(showTools ? 90 : 0))
+                        Text("\(pack.tools.count) tools").font(.system(size: 12.5, weight: .medium))
+                        if !showTools {
+                            Text(pack.tools.map(\.title).joined(separator: " · ")).font(.system(size: 12.5)).foregroundStyle(Theme.faint).lineLimit(1)
+                        }
+                    }
+                    .foregroundStyle(Theme.dim).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 8)
+                if let note = state?.note, !note.isEmpty { Badge(text: note, color: note == "Done" ? Theme.green : Theme.dim) }
+                if let flow {
+                    Button("Run this stage") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(state?.ready != true)
+                        .help(flow.summary)
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+
+            if showTools {
+                ForEach(pack.tools) { tool in
+                    Hairline()
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(tool.title).font(.system(size: 13, weight: .medium)).frame(width: 170, alignment: .leading)
+                        Text(tool.does).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
+                        Text(tool.name).font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.faint)
+                            .help("The name the agent calls this tool by")
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                }
+            }
+        }
+        .panel()
+    }
+
+    private var words: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text("\(number)").font(.system(size: 13, weight: .bold)).foregroundStyle(.black)
+                    .frame(width: 24, height: 24).background(Circle().fill(Theme.tan))
+                Text(pack.title).font(.system(size: 17, weight: .semibold))
+            }
+            Text(pack.summary).font(.system(size: 13.5)).foregroundStyle(Theme.text.opacity(0.86)).lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Image(systemName: "lightbulb").font(.system(size: 11)).foregroundStyle(Theme.tan)
+                Text(pack.why).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder private var picture: some View {
+        if pack.image == "reveal" {
+            VStack(alignment: .leading, spacing: 5) {
+                ForestReveal(animateIn: false)
+                Text("Drag the handle. Serpent Mound, Ohio.").font(.system(size: 11)).foregroundStyle(Theme.faint)
+            }
+        } else if let name = pack.image, let image = Tour.image(name) {
+            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
+        } else {
+            RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.04)).frame(height: 120)
+                .overlay(Image(systemName: pack.icon).font(.system(size: 38, weight: .light)).foregroundStyle(Theme.tan.opacity(0.8)))
+        }
     }
 }
 
@@ -65,7 +187,7 @@ private struct WorkflowsTab: View {
 
     var body: some View {
         PageSection(title: "Who does what",
-                    caption: "A workflow is a request the agent already knows how to carry out. Each one shows where the work passes from one model to another, and where it stops for you.") {
+                    caption: "A workflow is a ready-made request: press Run and the agent carries it out with the tools. Each one shows where the work passes from one model to another, and where it stops for you.") {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
                 ForEach(roles, id: \.1) { role in
                     VStack(alignment: .leading, spacing: 6) {
@@ -82,8 +204,8 @@ private struct WorkflowsTab: View {
             ForEach(ToolGuide.workflows.filter { $0.scope == .general }) { WorkflowCard(flow: $0) }
         }
         PageSection(title: "In a project",
-                    caption: store.current.map { "These run on \($0.name), the open project." }
-                        ?? "Open a project to run these. Each one picks up from where the project stands.") {
+                    caption: store.current.map { "These run on \($0.name), the open project. Each one picks up from where the project stands." }
+                        ?? "Open a project from the sidebar to run these. Each one picks up from where the project stands.") {
             ForEach(ToolGuide.workflows.filter { $0.scope == .project }) { WorkflowCard(flow: $0) }
         }
     }
@@ -128,118 +250,57 @@ private struct WorkflowCard: View {
     }
 }
 
-// MARK: - Tools
-
-private struct ToolsTab: View {
-    @EnvironmentObject var app: AppState
-    @EnvironmentObject var setup: Setup
-    @EnvironmentObject var engine: Engine
-
-    var body: some View {
-        if setup.toolsReady {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.green)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("The archaeology tools are installed").font(.system(size: 14, weight: .semibold))
-                    Text("\(engine.toolCount > 0 ? "\(engine.toolCount) tools" : "The tools") run on this Mac, inside the app, and are available to the agent in every chat. They read public data and need no account.")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-            .panel(padding: 14)
-        } else {
-            SetupChecklist()
-        }
-
-        ForEach(ToolGuide.packs) { pack in
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 12) {
-                    IconTile(name: pack.icon)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(pack.title).font(.system(size: 14, weight: .semibold))
-                        Text(pack.summary).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 8)
-                    Button("Ask how to use these") {
-                        app.ask("Explain the \(pack.title) tools (\(pack.tools.map(\.name).joined(separator: ", "))) in plain words: what each one tells me, when to use it, and one example request I could make.")
-                    }
-                    .buttonStyle(SecondaryButton())
-                }
-                .padding(14)
-                ForEach(pack.tools) { tool in
-                    Hairline()
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        name(tool).frame(width: 140, alignment: .leading)
-                        does(tool)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 14).padding(.vertical, 9)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .panel()
-        }
-
-        PageSection(title: "Rules the tools enforce", caption: "These are checked by the tools themselves, whichever model is running.") {
-            VStack(alignment: .leading, spacing: 9) {
-                ForEach(ToolGuide.rules, id: \.self) { rule in
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Image(systemName: "lock").font(.system(size: 11)).foregroundStyle(Theme.faint)
-                        Text(rule).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14)
-        }
-    }
-
-    private func name(_ tool: ToolGuide.Tool) -> some View {
-        Text(tool.name).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.green)
-    }
-
-    private func does(_ tool: ToolGuide.Tool) -> some View {
-        Text(tool.does).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-// MARK: - Data sources
+// MARK: - Open data
 
 private struct DataTab: View {
-    @State private var answers: [String: Bool] = [:]
+    @State private var online: [String: Bool] = [:]
+    @State private var checked: Date?
 
     var body: some View {
-        PageSection(title: "Open data the tools read",
-                    caption: "Public services, checked just now from this Mac. Dighouse uses the parts of each that need no account.") {
-            VStack(spacing: 0) {
-                ForEach(Array(ToolGuide.sources.enumerated()), id: \.element.id) { index, source in
-                    if index > 0 { Hairline() }
-                    HStack(alignment: .top, spacing: 12) {
-                        Circle().fill(answers[source.name] == true ? Theme.green : answers[source.name] == false ? Theme.amber : Theme.faint)
-                            .frame(width: 8, height: 8).padding(.top, 5)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(source.name).font(.system(size: 14, weight: .semibold))
-                            Text(source.use).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
-                                .fixedSize(horizontal: false, vertical: true)
-                            if let url = URL(string: source.url) {
-                                Link(url.host ?? source.url, destination: url).font(.system(size: 12)).foregroundStyle(Theme.accent)
-                            }
-                        }
-                        Spacer(minLength: 8)
-                        Text(answers[source.name] == true ? "Answering" : answers[source.name] == false ? "Not answering" : "Checking")
-                            .font(.system(size: 12)).foregroundStyle(answers[source.name] == false ? Theme.amber : Theme.faint)
+        Text("Everything Dighouse searches is public. It reads from five open services, and none of them needs an account or a key. The dot beside each name shows whether this Mac can reach it right now.")
+            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+        ForEach(ToolGuide.sources) { source in
+            let state = online[source.name]
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Text(source.name).font(.system(size: 15, weight: .semibold))
+                    Spacer()
+                    HStack(spacing: 6) {
+                        Circle().fill(state == true ? Theme.green : state == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
+                        Text(state == true ? "Online" : state == false ? "Cannot be reached" : "Checking")
+                            .font(.system(size: 12)).foregroundStyle(state == false ? Theme.amber : Theme.dim)
                     }
-                    .padding(14)
+                    .help(state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
+                          : "This service replied to a test request from this Mac.")
+                }
+                line("What it is", source.what)
+                line("What Dighouse takes", source.gives)
+                line("Used for", source.usedFor)
+                if let url = URL(string: source.url) {
+                    Link(url.host ?? source.url, destination: url).font(.system(size: 12.5)).foregroundStyle(Theme.accent)
                 }
             }
-            .panel()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .panel(padding: 16)
+        }
+        HStack(spacing: 10) {
             Button("Check again") { Task { await probe() } }.buttonStyle(SecondaryButton())
+            if let checked {
+                Text("Checked at \(checked.formatted(date: .omitted, time: .shortened)).").font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+            }
         }
         .task { await probe() }
     }
 
+    private func line(_ label: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.faint).frame(width: 138, alignment: .leading)
+            Text(text).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private func probe() async {
-        answers = [:]
+        online = [:]
         await withTaskGroup(of: (String, Bool).self) { group in
             for source in ToolGuide.sources {
                 group.addTask {
@@ -251,48 +312,84 @@ private struct DataTab: View {
                     return (source.name, (200..<400).contains(code))
                 }
             }
-            for await (name, ok) in group { answers[name] = ok }
+            for await (name, ok) in group { online[name] = ok }
         }
+        checked = Date()
     }
 }
 
-// MARK: - Connections
+// MARK: - More tools
 
-private struct ConnectionsTab: View {
+private struct MoreTab: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
     @State private var name = ""
     @State private var command = ""
+    @State private var showServers = false
+
+    private var known: [(String, ToolGuide.Addon)] {
+        engine.plugins.compactMap { id in ToolGuide.addons[id].map { (id, $0) } }
+    }
+    private var others: [String] { engine.plugins.filter { ToolGuide.addons[$0] == nil } }
 
     var body: some View {
-        PageSection(title: "From your Codex setup",
-                    caption: "Dighouse runs the Codex engine with your own Codex configuration. Tool servers and plugins you set up there are available to the agent in every chat.") {
-            if engine.connections.isEmpty && engine.plugins.isEmpty {
-                Text("No other tool servers or plugins were found.").font(.system(size: 13)).foregroundStyle(Theme.faint)
+        Text("The archaeology tools are built in. The agent can also use other tools, in two ways: the ones your Codex app already has, and ones you add here.")
+            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+
+        PageSection(title: "Already on this Mac",
+                    caption: "Dighouse runs on the same engine as the Codex app, so whatever you connected there works here too. Ask for it in plain words, for example \"copy these records into Notion\". These come from your Codex setup, and Dighouse has not tested each one.") {
+            if engine.plugins.isEmpty && engine.connections.isEmpty {
+                Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13)).foregroundStyle(Theme.faint)
             }
-            if !engine.connections.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(Array(engine.connections.enumerated()), id: \.element.id) { index, server in
-                        if index > 0 { Hairline() }
-                        HStack(spacing: 12) {
-                            Image(systemName: "puzzlepiece.extension").foregroundStyle(Theme.tan).frame(width: 20)
-                            Text(server.name).font(.system(size: 13, design: .monospaced))
-                            Spacer()
-                            Text(server.tools == 0 ? "No tools listed" : "\(server.tools) tools").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+            if !known.isEmpty {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
+                    ForEach(known, id: \.0) { _, addon in
+                        HStack(alignment: .top, spacing: 12) {
+                            IconTile(name: addon.icon, size: 32)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(addon.title).font(.system(size: 13.5, weight: .semibold))
+                                Text(addon.use).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+                        .panel(padding: 12, radius: 12)
                     }
                 }
-                .panel()
             }
-            if !engine.plugins.isEmpty {
-                Text("Plugins").font(.system(size: 12.5, weight: .semibold)).padding(.top, 4)
-                Flow(spacing: 6) { ForEach(engine.plugins, id: \.self) { Badge(text: $0) } }
+            if !others.isEmpty {
+                Text("Also connected").font(.system(size: 12.5, weight: .semibold)).padding(.top, 4)
+                Flow(spacing: 6) { ForEach(others, id: \.self) { Badge(text: $0) } }
+            }
+            if !engine.connections.isEmpty {
+                Button { showServers.toggle() } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold)).rotationEffect(.degrees(showServers ? 90 : 0))
+                        Text("Technical details: \(engine.connections.count) tool servers").font(.system(size: 12.5))
+                    }
+                    .foregroundStyle(Theme.dim).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).padding(.top, 4)
+                if showServers {
+                    VStack(spacing: 0) {
+                        ForEach(Array(engine.connections.enumerated()), id: \.element.id) { index, server in
+                            if index > 0 { Hairline() }
+                            HStack(spacing: 12) {
+                                Text(server.name).font(.system(size: 12.5, design: .monospaced))
+                                Spacer()
+                                Text(server.tools == 0 ? "Starts when used" : "\(server.tools) tools").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 9)
+                        }
+                    }
+                    .panel(radius: 10)
+                }
             }
         }
 
-        PageSection(title: "Add a tool server",
-                    caption: "Any MCP tool server can be added to Dighouse alone: a GIS package, a database of sites, a document reader. Enter a name and the command that starts it. The engine restarts to load it.") {
+        PageSection(title: "Add your own",
+                    caption: "A tool server is a small program that gives the agent a new ability, such as a mapping package, a museum's site database, or a reader for a file type. It speaks an open standard called MCP, and many are free to download. Give it a name and the command that starts it. The engine restarts to load it, which stops any running work.") {
             ForEach(app.toolServers) { server in
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -300,6 +397,9 @@ private struct ConnectionsTab: View {
                         Text(server.command).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.dim).lineLimit(1)
                     }
                     Spacer()
+                    if let found = engine.connections.first(where: { $0.name == server.key }) {
+                        Badge(text: found.tools == 0 ? "No tools found" : "\(found.tools) tools", color: found.tools == 0 ? Theme.amber : Theme.green)
+                    }
                     Button("Remove") {
                         app.toolServers.removeAll { $0 == server }
                         Task { await app.boot() }
@@ -330,4 +430,3 @@ private struct ConnectionsTab: View {
                   || app.toolServers.contains { $0.name == name.trimmingCharacters(in: .whitespaces) })
     }
 }
-

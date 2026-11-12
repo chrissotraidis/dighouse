@@ -70,11 +70,17 @@ struct WelcomeView: View {
 
     private var intro: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 92, height: 92)
-            Text("Dighouse").font(.system(size: 40, weight: .bold))
-            Text("Find places people built and the forest covered. AI agents do the looking, and you make the calls.")
+            HStack(spacing: 16) {
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 64, height: 64)
+                Text("Dighouse").font(.system(size: 40, weight: .bold))
+            }
+            Text("See what the forest is hiding. AI agents do the looking, and you make the calls.")
                 .font(.system(size: 17)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            Text("Dighouse works with lidar: laser scans made from aircraft that measure the ground through gaps in the trees. Much of it is public, and most of it has never been searched closely.")
+            VStack(alignment: .leading, spacing: 7) {
+                ForestReveal()
+                Text("Serpent Mound, Ohio. Drag the handle to take the trees away.").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+            }
+            Text("Dighouse works with lidar: laser scans made from aircraft that measure the ground through gaps in the trees. A great deal of it is public. Dighouse gives an AI model the tools to fetch it, search it, and check what it finds, which a chat app cannot do.")
                 .foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 0) {
                 point("square.grid.3x3", "Agents do the patient part",
@@ -205,11 +211,11 @@ struct SetupChecklist: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(spacing: 0) {
-                row(setup.codex != nil, "Codex engine", "Runs the agents.",
+                row(setup.codex != nil, "Agent engine (Codex)", "The free program from OpenAI that lets an AI model use tools.",
                     setup.codex != nil ? setup.codexVersion : "Not found. Install Codex, then check again.",
                     link: setup.codex == nil ? ("Get Codex", "https://github.com/openai/codex") : nil)
                 Rectangle().fill(Theme.line).frame(height: 1)
-                row(setup.toolsReady, "Archaeology tools", "Fetch lidar, build the bare ground, cut sections, keep records.",
+                row(setup.toolsReady, "Archaeology tools", "\(ToolGuide.toolCount) tools that fetch lidar, build the bare ground, cut sections, check maps, read the literature and keep records.",
                     setup.toolsReady ? "Ready"
                     : setup.toolsSource == nil ? "The tools are missing from this copy of Dighouse."
                     : setup.uv == nil ? "Needs uv, a small program that runs the tools. Install it, then check again."
@@ -224,7 +230,7 @@ struct SetupChecklist: View {
                     }
                 }
                 Rectangle().fill(Theme.line).frame(height: 1)
-                row(engine.ready, "Models", "The AI models the agents think with.",
+                row(engine.ready, "AI models", "The models that do the thinking and the looking.",
                     engine.ready
                     ? "\(engine.models.count) available" + (setup.ocxRunning ? ", through Codex and the OpenCodex router." : ", from the Codex sign-in on this Mac.")
                     : app.starting ? "Checking…" : (engine.problem ?? "Available once the engine and the tools are ready.")) {

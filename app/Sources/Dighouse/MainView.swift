@@ -11,11 +11,13 @@ struct MainView: View {
         GeometryReader { geo in
             let narrow = geo.size.width < 860
             let sidebar = app.sidebarVisible && !narrow
-            let width = geo.size.width - (sidebar ? 257 : 0)
+            let side = min(max(app.sidebarWidth, 200), 420)
+            let width = geo.size.width - (sidebar ? side + 1 : 0)
             HStack(spacing: 0) {
                 if sidebar {
-                    Sidebar().frame(width: 256)
-                    Hairline(vertical: true)
+                    Sidebar().frame(width: side)
+                    SplitHandle(width: $app.sidebarWidth, range: 200...min(420, max(Double(geo.size.width) - 520, 200)),
+                                help: "Drag to resize the sidebar")
                 }
                 VStack(spacing: 0) {
                     TopBar(inset: !sidebar, narrow: narrow, width: width)
@@ -63,14 +65,14 @@ struct MainView: View {
 
     private func split(width: CGFloat) -> some View {
         let mode: PaneLayout = app.layout == .split && width < 720 ? .chat : app.layout
-        let most = max(Double(width) - 380, 320)
+        let most = max(Double(width) - 300, 320)
         return HStack(spacing: 0) {
             if mode != .workspace {
                 ChatView()
                     .frame(width: mode == .split ? min(max(app.chatWidth, 320), most) : nil)
                     .frame(maxWidth: mode == .chat ? .infinity : nil)
             }
-            if mode == .split { SplitHandle(width: $app.chatWidth, range: 320...most) }
+            if mode == .split { SplitHandle(width: $app.chatWidth, range: 320...most, help: "Drag to resize the chat") }
             if mode != .chat { WorkspaceView() }
         }
     }

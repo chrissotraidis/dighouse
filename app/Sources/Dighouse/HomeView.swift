@@ -89,6 +89,8 @@ struct HomeView: View {
                     }
                 }
                 if !store.projects.isEmpty { projects }
+                compare
+                example
                 surveys
                 PageSection(title: "Places with terrain ready to fetch",
                             caption: "Seven published sites to learn on, and one strip of Yucatán forest where a 2026 catalog lists what was detected. Each was fetched from the live data service before it was listed here.") {
@@ -101,23 +103,29 @@ struct HomeView: View {
                     Button("Open a project folder…") { app.chooseProjectFolder() }.buttonStyle(SecondaryButton())
                 }
             }
-            .padding(.horizontal, 32).padding(.top, 44).padding(.bottom, 40)
-            .frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
+            .padding(.horizontal, 32).padding(.top, 36).padding(.bottom, 40)
+            .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
         .task(id: engine.ready) { await app.loadSurveys() }
     }
 
     private var hero: some View {
-        VStack(spacing: 14) {
-            Text("Where do you want to look?").font(.system(size: 30, weight: .bold)).multilineTextAlignment(.center)
-            Text("Dighouse runs AI agents with archaeology tools built in. They find and fetch open lidar (laser scans that map the ground beneath the trees), look for what people built, and check every find before you decide on it.")
-                .font(.system(size: 14.5)).foregroundStyle(Theme.dim).multilineTextAlignment(.center).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 640)
-            Composer().frame(maxWidth: 720).padding(.top, 8)
+        VStack(spacing: 22) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 28) {
+                    pitch.frame(minWidth: 330, idealWidth: 330, maxWidth: .infinity, alignment: .leading)
+                    reveal.frame(width: 460)
+                }
+                VStack(alignment: .leading, spacing: 18) {
+                    pitch
+                    reveal
+                }
+            }
+            Composer()
             Button { app.show(.toolbox) } label: {
                 HStack(spacing: 6) {
-                    Text("\(ToolGuide.packs.map(\.tools.count).reduce(0, +)) archaeology tools")
+                    Text("\(ToolGuide.toolCount) archaeology tools")
                     Text("·")
                     Text("\(ToolGuide.sources.count) open data sources")
                     Text("·")
@@ -126,9 +134,139 @@ struct HomeView: View {
                 }
                 .font(.system(size: 12.5)).foregroundStyle(Theme.faint).contentShape(Rectangle())
             }
-            .buttonStyle(.plain).help("Open the Toolbox")
+            .buttonStyle(.plain).help("Open the Toolbox").padding(.top, -10)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var pitch: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("See what the forest is hiding.").font(.system(size: 34, weight: .bold)).lineSpacing(-2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Dighouse puts AI agents to work on open lidar, the laser scans that map the ground beneath the trees. They fetch the data, strip the forest away, look for what people built, and check every find before you decide on it.")
+                .font(.system(size: 14.5)).foregroundStyle(Theme.dim).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Button("See how a search works") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private var reveal: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ForestReveal()
+            Text("Serpent Mound, Ohio. Drag the handle. Both sides are the same open USGS laser points: the highest returns, then only the ones that reached the ground.")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private static let differences: [(String, String, String)] = [
+        ("The data", "Can describe lidar, but cannot download a survey.",
+         "Downloads the raw laser points from open archives and builds the bare ground itself."),
+        ("Looking", "Sees only the pictures you paste in.",
+         "Looks at every tile of an area in several renderings, and keeps count of what is left."),
+        ("Checking", "One model, one opinion.",
+         "Measures a slice through the raw points, asks a second model, checks open maps, and opens the literature."),
+        ("The record", "A conversation that scrolls away.",
+         "A project folder with a page per find: its pictures, measurements, checks and sources."),
+        ("Claims", "May call something a discovery with nothing behind it.",
+         "Cannot mark a find as unmatched until the checks are on its record, and then only you can."),
+        ("Models", "The models that one company sells.",
+         "Any model you have, and a different maker's model for the second opinion."),
+    ]
+
+    private var compare: some View {
+        PageSection(title: "What a chat app cannot do",
+                    caption: "ChatGPT and Claude are good at talking about archaeology. Dighouse runs the same kind of model, and gives it the tools to do the work.") {
+            VStack(spacing: 0) {
+                HStack(spacing: 14) {
+                    Text("").frame(width: 92, alignment: .leading)
+                    Text("A chat app").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Dighouse").foregroundStyle(Theme.tan).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .font(.system(size: 12.5, weight: .semibold)).padding(.horizontal, 16).padding(.vertical, 10)
+                ForEach(Self.differences, id: \.0) { row in
+                    Hairline()
+                    HStack(alignment: .top, spacing: 14) {
+                        Text(row.0).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.faint).frame(width: 92, alignment: .leading)
+                        cell("xmark", Theme.faint, row.1, Theme.dim)
+                        cell("checkmark", Theme.green, row.2, Theme.text)
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 11)
+                }
+            }
+            .panel()
+        }
+    }
+
+    private func cell(_ icon: String, _ tint: Color, _ text: String, _ color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: icon).font(.system(size: 10, weight: .bold)).foregroundStyle(tint).frame(width: 12)
+            Text(text).font(.system(size: 13)).foregroundStyle(color).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static let run: [(String, String)] = [
+        ("Flagged", "Claude Opus 5.5 screened six tiles and flagged a terraced platform mound spanning four of them."),
+        ("Section", "A slice through the raw points measured it at 27.6 m high, with ground returns at its peak."),
+        ("Second look", "Gemini 3.8 Flash was shown the tile without the first opinion, and agreed it looks built."),
+        ("Open maps", "The map check listed Monks Mound among the historic places already mapped nearby."),
+        ("Decision", "A person marked it already published. It is Monks Mound."),
+    ]
+
+    private var example: some View {
+        PageSection(title: "A real run: Cahokia, Illinois",
+                    caption: "A test on a site everyone knows, to see whether the agents find it and what they write down. Finding it again is the right answer here.") {
+            VStack(alignment: .leading, spacing: 0) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 18) {
+                        runPictures.frame(width: 300)
+                        runSteps.frame(minWidth: 360, idealWidth: 360, maxWidth: .infinity, alignment: .leading)
+                    }
+                    VStack(alignment: .leading, spacing: 16) {
+                        runPictures.frame(maxWidth: 360)
+                        runSteps
+                    }
+                }
+                .padding(16)
+                Hairline()
+                HStack(spacing: 10) {
+                    Text("Every find gets the same checks, whatever it turns out to be.").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                    Spacer(minLength: 8)
+                    Button("Run this yourself") { app.startProject(from: StartingPoints.all[0]) }.buttonStyle(SecondaryButton())
+                }
+                .padding(.horizontal, 16).padding(.vertical, 10)
+            }
+            .panel()
+        }
+    }
+
+    private var runPictures: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let relief = StartingPoints.image(StartingPoints.all[0]) {
+                Image(nsImage: relief).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            if let section = Tour.image("section") {
+                Image(nsImage: section).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            Text("Monks Mound in the bare ground, and the slice cut through it.").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+        }
+    }
+
+    private var runSteps: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            ForEach(Self.run, id: \.0) { step in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 15)).foregroundStyle(Theme.green).padding(.top, 1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(step.0).font(.system(size: 13.5, weight: .semibold))
+                        Text(step.1).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
     }
 
     private var projects: some View {
