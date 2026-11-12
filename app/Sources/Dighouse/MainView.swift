@@ -195,7 +195,8 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 2) {
             Color.clear.frame(height: 40).background(WindowDragArea())
             HStack(spacing: 9) {
-                MoundMark().frame(width: 34, height: 15)
+                MoundMark(animating: !chat.live.isEmpty || app.secondLookBusy != nil || app.starting).frame(width: 34, height: 15)
+                    .help(chat.live.isEmpty && app.secondLookBusy == nil ? "Dighouse" : "The agent is working")
                 Text("Dighouse").font(.system(size: 15, weight: .bold))
                 Spacer()
             }

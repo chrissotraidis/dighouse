@@ -601,25 +601,43 @@ struct ForestReveal: View {
 }
 
 /// The Dighouse mark, as in the app icon: a line of ground with a mound in it, and the canopy above.
+/// While the agent works, a pass of light sweeps across it, the way a lidar flight passes over the ground.
 struct MoundMark: View {
+    var animating = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        Canvas { context, size in
-            let n = 15
-            let dot = size.width / CGFloat(n) * 0.62
-            func lift(_ t: CGFloat) -> CGFloat { exp(-pow((t - 0.5) / 0.17, 2)) }
-            for i in 0..<n {
-                let t = CGFloat(i) / CGFloat(n - 1)
-                let x = t * (size.width - dot)
-                let ground = size.height - dot - lift(t) * size.height * 0.34
-                context.fill(Path(ellipseIn: CGRect(x: x, y: ground, width: dot, height: dot)), with: .color(Theme.tan))
-                // The canopy follows the ground, in two staggered rows.
-                for row in 1...2 where (i + row) % 2 == 0 && i > 0 && i < n - 1 {
-                    let y = ground - CGFloat(row) * size.height * 0.27
-                    if y >= 0 { context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: dot, height: dot)), with: .color(Theme.green)) }
+        let moving = animating && !reduceMotion
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: !moving)) { timeline in
+            let phase = moving ? timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.6) / 1.6 : -1
+            Canvas { context, size in draw(context, size, sweep: phase) }
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// sweep runs from 0 to 1 across the mark; below 0 the mark is still.
+    private func draw(_ context: GraphicsContext, _ size: CGSize, sweep: Double) {
+        let n = 15
+        let dot = size.width / CGFloat(n) * 0.62
+        func lift(_ t: CGFloat) -> CGFloat { exp(-pow((t - 0.5) / 0.17, 2)) }
+        for i in 0..<n {
+            let t = CGFloat(i) / CGFloat(n - 1)
+            // How close the pass is to this column: 1 under it, falling to 0 a few columns away.
+            let near = sweep < 0 ? 0 : max(0, 1 - abs(t - CGFloat(sweep * 1.3 - 0.15)) / 0.16)
+            let x = t * (size.width - dot)
+            let ground = size.height - dot - lift(t) * size.height * 0.34
+            let grow = dot * (1 + 0.45 * near)
+            let groundRect = CGRect(x: x - (grow - dot) / 2, y: ground - (grow - dot) / 2, width: grow, height: grow)
+            context.fill(Path(ellipseIn: groundRect), with: .color(Theme.tan.opacity(sweep < 0 ? 1 : 0.55 + 0.45 * near)))
+            // The canopy follows the ground, in two staggered rows. Under the pass it fades, as if seen through.
+            for row in 1...2 where (i + row) % 2 == 0 && i > 0 && i < n - 1 {
+                let y = ground - CGFloat(row) * size.height * 0.27
+                if y >= 0 {
+                    context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: dot, height: dot)),
+                                 with: .color(Theme.green.opacity(1 - 0.75 * near)))
                 }
             }
         }
-        .accessibilityHidden(true)
     }
 }
 
