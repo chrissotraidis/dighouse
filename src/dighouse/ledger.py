@@ -1,0 +1,170 @@
+"""Candidate records.
+
+Each candidate is one Markdown file. Its structured fields sit in a header block
+(one "key: json" line each) and the readable body is rebuilt from them on every
+change. Anything written under "## Notes" by a person or an agent is kept.
+
+Locations are never written here. They live in private/state/locations.json.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+
+from .project import Project, today
+
+STATUSES = ("flagged", "ground_confirmed", "modern", "natural", "already_published",
+            "no_match_in_sources_read", "reported")
+SOURCE_STATUSES = ("read", "could_not_open", "not_relevant")
+LABELS = {
+    "flagged": "Flagged, not yet checked",
+    "ground_confirmed": "Ground feature confirmed, origin not yet checked",
+    "modern": "Modern feature",
+    "natural": "Natural feature",
+    "already_published": "Already published",
+    "no_match_in_sources_read": "No match in the sources read",
+    "reported": "Reported to the heritage authority",
+}
+NOTES = "## Notes"
+
+
+def _file(p: Project, cid: str):
+    return p.path("candidates", f"{cid}.md")
+
+
+def get(p: Project, cid: str) -> tuple[dict, str]:
+    f = _file(p, cid)
+    if not f.exists():
+        raise ValueError(f"No candidate {cid}. Known: {[c['id'] for c in everything(p)]}")
+    _, head, body = f.read_text().split("---\n", 2)
+    meta = {k: json.loads(v) for k, v in (line.split(": ", 1) for line in head.strip().splitlines())}
+    notes = body.split(NOTES, 1)[1].strip() if NOTES in body else ""
+    return meta, notes
+
+
+def everything(p: Project) -> list[dict]:
+    return [get(p, f.stem)[0] for f in sorted(p.path("candidates").glob("C-*.md"))]
+
+
+def write(p: Project, meta: dict, notes: str = "") -> None:
+    head = "\n".join(f"{k}: {json.dumps(v, ensure_ascii=False)}" for k, v in meta.items())
+    _file(p, meta["id"]).write_text(f"---\n{head}\n---\n{_body(meta)}\n{NOTES}\n\n{notes}\n")
+
+
+def create(p: Project, name: str, tile: str, lonlat: tuple[float, float], note: str, flagged_by: str) -> dict:
+    n = max([int(c["id"][2:]) for c in everything(p)] or [0]) + 1
+    meta = {"id": f"C-{n:03d}", "name": name, "status": "flagged", "flagged": today(), "flagged_by": flagged_by,
+            "tile": tile, "evidence": [note] if note else [], "checks": {}, "sources": [], "decisions": []}
+    locations = p.load("locations", {})
+    locations[meta["id"]] = {"lon": lonlat[0], "lat": lonlat[1]}
+    p.save("locations", locations)
+    write(p, meta)
+    return meta
+
+
+def location(p: Project, cid: str) -> tuple[float, float]:
+    loc = p.load("locations", {})[cid]
+    return loc["lon"], loc["lat"]
+
+
+def blockers(meta: dict, status: str) -> list[str]:
+    """What still stands between this record and a status. An empty list means it may move."""
+    checks, missing = meta["checks"], []
+    section = checks.get("section", {})
+    if status in ("ground_confirmed", "no_match_in_sources_read", "reported"):
+        if not section:
+            missing.append("no section has been cut")
+        elif not section.get("in_ground"):
+            missing.append("the section did not show the feature in the ground returns")
+    if status in ("no_match_in_sources_read", "reported"):
+        if not checks.get("second_look", {}).get("agrees"):
+            missing.append("no second model has agreed that it looks built")
+        if "modern" not in checks:
+            missing.append("modern features have not been checked")
+        if not any(s["status"] == "read" for s in meta["sources"]):
+            missing.append("no source has been read")
+        unread = [s["title"] for s in meta["sources"] if s["status"] == "could_not_open"]
+        if unread:
+            missing.append(f"{len(unread)} source(s) could not be opened: {'; '.join(unread)}")
+    return missing
+
+
+def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: str = "") -> dict:
+    if status not in STATUSES:
+        raise ValueError(f"status must be one of {STATUSES}")
+    meta, notes = get(p, cid)
+    missing = blockers(meta, status)
+    needs_person = status in ("no_match_in_sources_read", "reported")
+    if needs_person and not decided_by:
+        raise ValueError(f"A person must decide before a candidate is marked {status!r}. Ask them, then pass decided_by.")
+    if missing and not decided_by:
+        raise ValueError(f"{cid} cannot be marked {status!r} yet: " + "; ".join(missing))
+    if decided_by:
+        meta["decisions"].append({"date": today(), "by": decided_by, "status": status, "reason": reason,
+                                  "open_items": missing})
+    meta["status"] = status
+    write(p, meta, notes)
+    p.note(f"{cid} marked {status}" + (f" by {decided_by}" if decided_by else ""))
+    return meta
+
+
+def set_check(p: Project, cid: str, key: str, value: dict) -> dict:
+    meta, notes = get(p, cid)
+    meta["checks"][key] = value
+    write(p, meta, notes)
+    return meta
+
+
+def add_source(p: Project, cid: str, title: str, status: str, finding: str, link: str = "") -> dict:
+    if status not in SOURCE_STATUSES:
+        raise ValueError(f"status must be one of {SOURCE_STATUSES}")
+    meta, notes = get(p, cid)
+    meta["sources"] = [s for s in meta["sources"] if s["title"] != title]
+    meta["sources"].append({"title": title, "status": status, "finding": finding, "link": link})
+    write(p, meta, notes)
+    log = p.path("sources", "read-log.md")
+    if not log.exists():
+        log.write_text("# Sources read\n\n")
+    with log.open("a") as fh:
+        fh.write(f"- {today()} · {cid} · {status} · {title}" + (f" · {link}" if link else "") + f" · {finding}\n")
+    return meta
+
+
+def distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
+    (lon1, lat1), (lon2, lat2) = a, b
+    k = math.cos(math.radians((lat1 + lat2) / 2))
+    return 111_320 * math.hypot((lon1 - lon2) * k, lat1 - lat2)
+
+
+def _body(meta: dict) -> str:
+    cid, checks, sources = meta["id"], meta["checks"], meta["sources"]
+    out = [f"# {cid} {meta['name']}", "",
+           f"Status: {LABELS[meta['status']]} · Flagged {meta['flagged']} by {meta['flagged_by']}", ""]
+    for kind, caption in (("relief", "Bare-ground relief"), ("section", "Section through the feature")):
+        if (checks.get(kind) or {}).get("image") or kind == "relief":
+            out += [f"![{caption}](img/{cid}-{kind}.png)", ""]
+    out += ["## Evidence", ""] + [f"- {e}" for e in meta["evidence"]] + [""]
+    out += ["## Checks", ""]
+    s = checks.get("section")
+    out.append(_tick(s and s.get("in_ground"), "Feature is in the ground returns",
+                     f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} ground returns at the peak" if s else ""))
+    l = checks.get("second_look")
+    out.append(_tick(l and l.get("agrees"), "A second model agrees it looks built", f"{l['model']}: {l['note']}" if l else ""))
+    m = checks.get("modern")
+    out.append(_tick(m is not None and not m.get("likely_modern"), "Not a modern feature", m["summary"] if m else ""))
+    read = sum(x["status"] == "read" for x in sources)
+    unread = sum(x["status"] == "could_not_open" for x in sources)
+    out.append(_tick(read and not unread, "Sources searched", f"{read} read, {unread} could not be opened"))
+    out += ["", "## Sources searched", ""]
+    out += [f"- {x['title']} — {x['status'].replace('_', ' ')} — {x['finding']}" for x in sources] or ["None yet."]
+    if meta["decisions"]:
+        out += ["", "## Decisions", ""]
+        for d in meta["decisions"]:
+            open_items = f" Open at the time: {'; '.join(d['open_items'])}." if d["open_items"] else ""
+            out.append(f"- {d['date']} · {d['by']} marked this {LABELS[d['status']].lower()}. {d['reason']}{open_items}")
+    return "\n".join(out) + "\n"
+
+
+def _tick(done, label: str, detail: str) -> str:
+    return f"- [{'x' if done else ' '}] {label}" + (f": {detail}" if detail else "")

@@ -1,0 +1,32 @@
+[project]
+name = "dighouse"
+version = "0.1.0"
+description = "Archaeology tools for agent harnesses: open lidar, bare-ground relief, sections, tile screening, prior art and candidate records."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "mcp>=2",
+    "numpy",
+    "scipy",
+    "rasterio",
+    "laspy[lazrs]",
+    "pyproj",
+    "pillow",
+    "httpx",
+    "pyshp",
+]
+
+[project.scripts]
+dighouse-tools = "dighouse.server:main"
+
+[dependency-groups]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+markers = ["live: needs network access to open data services"]
+addopts = "-m 'not live'"
