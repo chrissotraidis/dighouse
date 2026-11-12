@@ -70,3 +70,16 @@ Check, in the Serpent Mound project: the Ohio History Connection's Serpent Mound
 Found and fixed during the check: when the agent read a saved page, the browser tried to follow it and showed the file name as the address. The browser now only follows the agent to web addresses; checked by asking the agent to re-read the saved page, and the tab stayed on its list.
 
 Not checked: the agent driving a browser on its own. Codex's browser plugin is available to the engine, but the agent was not asked to use it here.
+
+### 2026-11-12, N5
+
+The prompt behind "What should I research?" and the skill now say to propose only lidar known to build (a survey with a `checked_start`, or USGS 3DEP inside the United States), to leave out any survey with a `known_problem`, and, once the person picks, to create the project and fetch its terrain straight away.
+
+Check, from Home, about 2.5 minutes: the agent proposed Perry Mesa, Arizona (AZ08_Kruse), the Middle Usumacinta (MX19_Inomata) and southern Ohio (USGS 3DEP), each with what is on open record and from which sources. It said it left out both Chaco Canyon surveys for their known problems and a Moroccan survey that needs an account. Picking Perry Mesa created the project, and the tested box built terrain at 3.1 ground returns per square metre. Passed.
+
+Found and fixed during the check:
+
+- The agent first tried the full 4 sq km area, and the call stopped at the engine's default five-minute limit for a tool. Dighouse now gives its own tools 20 minutes per call. Asked again in one call, the whole area came back in 58 seconds (its files were already downloaded by then): 12.1 million ground returns, 4.0 per square metre, with a quarter of the box outside the survey.
+- With terrain built but not cut, the map, the status strip and the chat all said "No terrain yet". They now say the terrain is ready, and the map has a **Cut into tiles** button. Pressed, the agent cut 66 tiles, all readable, and the map showed them.
+
+Also seen: OpenStreetMap did not answer for two of the three regions, so their site counts were low. That is N8.

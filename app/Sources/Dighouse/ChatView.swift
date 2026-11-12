@@ -379,6 +379,9 @@ private struct EmptyChat: View {
         if store.current == nil {
             return ("What are you looking for?", "Every chat has the archaeology tools, so the agent can look things up in the open data as it answers.")
         }
+        if store.status.tiles == 0, !store.terrains.isEmpty {
+            return ("Where should we start?", "The bare ground is built but not cut into tiles yet. Cut it from the map, or run the whole search.")
+        }
         if store.status.tiles == 0 {
             return ("Where should we start?", "This project has no terrain yet. The agent can find open lidar for its area and build the bare ground.")
         }

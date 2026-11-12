@@ -143,7 +143,7 @@ struct TopBar: View {
     @ViewBuilder private func stats(_ s: RunStatus) -> some View {
         HStack(spacing: 8) {
             if s.tiles == 0 {
-                piece("No terrain yet")
+                piece(store.terrains.isEmpty ? "No terrain yet" : "Terrain ready, not cut into tiles")
             } else {
                 piece("Screened \(s.screened) of \(s.readable) tiles")
                 if s.unreadable > 0, width > 900 { piece("\(s.unreadable) unreadable") }

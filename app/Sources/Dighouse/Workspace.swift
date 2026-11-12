@@ -76,7 +76,15 @@ struct MapView: View {
     }
 
     var body: some View {
-        if store.tiles.isEmpty {
+        if store.tiles.isEmpty, let ready = store.terrains.max(by: { $0.areaKm2 < $1.areaKm2 }) {
+            EmptyPane(icon: "mountain.2", title: "Terrain ready",
+                      text: "The bare ground is built: \(String(format: "%.1f", ready.areaKm2)) sq km at \(String(format: "%.1f", ready.groundPerM2)) ground returns per square metre. Cut it into tiles to look at it here.") {
+                Button("Cut into tiles") {
+                    app.ask("Cut the terrain \(ready.id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
+                }
+                .buttonStyle(PrimaryButton())
+            }
+        } else if store.tiles.isEmpty {
             EmptyPane(icon: "mountain.2", title: "No terrain yet",
                       text: "Ask the agent to find open lidar for the project's area. The bare ground appears here as it is fetched.") {
                 Button("Find and fetch lidar") {

@@ -28,6 +28,10 @@ Do not answer from memory alone. Work it out from the open data, then add what y
 
 Offer three concrete searches. For each give the place, the lidar that covers it, what is on open record there and from which sources, what kind of feature to expect, and what a search could add. Say what the open record cannot show: official site files are not public, so a gap in the list is a place to check, never proof that nothing is known.
 
+Only propose lidar that is known to build. That means an `open_surveys` entry with a `checked_start`, or USGS 3DEP inside the United States as listed by `find_data` for the area. Never propose a survey with a `known_problem`, and do not offer one that is fetchable but untested as if it were ready: name it as untested if you mention it at all.
+
+When the person picks one, call `init_project` (for a tested survey, use its `checked_start` box or a box around it under 6 square km), then call `fetch_terrain` straight away and report how many ground returns per square metre came back. If it fails or comes back nearly empty, say so plainly and offer the next proposal.
+
 ## Working with other agents
 
 - When more than 12 tiles need screening, hand batches of about 8 tile ids to sub-agents. Tell each to view every tile in two styles and record a verdict, and to flag nothing: flags stay with you so one feature gets one record.

@@ -85,6 +85,8 @@ final class Engine: ObservableObject {
             "-c", "mcp_servers.dighouse.command=\(toml(toolsBinary))",
             "-c", "mcp_servers.dighouse.args=[]",
             "-c", "mcp_servers.dighouse.startup_timeout_sec=60",
+            // Downloading a survey's tiles for a few square km can take well over the default five minutes.
+            "-c", "mcp_servers.dighouse.tool_timeout_sec=1200",
         ]
         for server in extraServers {
             let parts = Self.words(server.command)
