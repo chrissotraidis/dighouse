@@ -603,12 +603,25 @@ struct NotesView: View {
 // MARK: - Sources
 
 /// A web page inside the app.
+/// Lets the Sources tab read the page the browser is showing.
+final class WebHandle: ObservableObject {
+    weak var view: WKWebView?
+
+    /// The visible text of the page, after any sign-in or check the person passed.
+    func text() async -> String? {
+        guard let view else { return nil }
+        return try? await view.evaluateJavaScript("document.body ? document.body.innerText : ''") as? String
+    }
+}
+
 struct WebPage: NSViewRepresentable {
     let url: URL?
+    var handle: WebHandle?
 
     func makeNSView(context: Context) -> WKWebView {
         let view = WKWebView()
         view.allowsBackForwardNavigationGestures = true
+        handle?.view = view
         return view
     }
 
@@ -628,6 +641,36 @@ struct SourcesView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
     @State private var address = ""
+    @State private var handing = false
+    @State private var handProblem: String?
+    @StateObject private var web = WebHandle()
+
+    /// Save what the person can see, then ask the agent to read it and log it.
+    private func handOver(_ url: URL) {
+        guard let root = store.current?.path else { return }
+        handing = true
+        handProblem = nil
+        Task { @MainActor in
+            defer { handing = false }
+            guard let text = await web.text(), text.trimmingCharacters(in: .whitespacesAndNewlines).count > 200 else {
+                handProblem = "This page shows almost no text yet. If it is asking you to sign in or prove you are human, do that first."
+                return
+            }
+            let folder = URL(fileURLWithPath: root).appendingPathComponent("sources/pages")
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let slug = (url.host ?? "page").replacingOccurrences(of: ".", with: "-")
+            let name = "page-\(slug)-\(Int(Date().timeIntervalSince1970)).txt"
+            do {
+                try ("Address: \(url.absoluteString)\n" + text).write(to: folder.appendingPathComponent(name), atomically: true, encoding: .utf8)
+            } catch {
+                handProblem = error.localizedDescription
+                return
+            }
+            app.ask("I opened \(url.absoluteString) myself and saved the text I could see. Read it with read_source using the name \(name), "
+                    + "say what it shows about this project's candidates, and log it with log_source on the records it bears on, "
+                    + "with its real title and status read. If it was logged before as could not open, logging it again under the same title replaces that entry.")
+        }
+    }
 
     private var sources: [Source] {
         var seen = Set<String>()
@@ -656,16 +699,18 @@ struct SourcesView: View {
                 if let url = app.browserURL {
                     Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.forward.square") }
                         .buttonStyle(IconButton(size: 26)).help("Open in your browser")
-                    Button { app.ask("Read this page with read_source and tell me what it says about this project's candidates: \(url.absoluteString)") } label: {
-                        Text("Ask the agent to read it").font(.system(size: 12))
+                    if handing { ProgressView().controlSize(.small) }
+                    Button { handOver(url) } label: {
+                        Text("Give this page to the agent").font(.system(size: 12))
                     }
-                    .buttonStyle(SecondaryButton())
+                    .buttonStyle(SecondaryButton()).disabled(handing)
+                    .help("Saves the text you can see into the project, so the agent can read a page that refused it, and log it on the records.")
                 }
             }
             .padding(.horizontal, 12).frame(height: 42)
             Hairline()
             if app.browserURL != nil {
-                WebPage(url: app.browserURL)
+                WebPage(url: app.browserURL, handle: web)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
@@ -681,8 +726,16 @@ struct SourcesView: View {
         .onChange(of: app.browserURL) { address = app.browserURL?.absoluteString ?? "" }
         .overlay(alignment: .bottomLeading) {
             if app.browserURL != nil {
-                Button("Back to the list") { app.browserURL = nil }.buttonStyle(SecondaryButton())
-                    .background(Capsule().fill(Theme.bg)).padding(12)
+                HStack(spacing: 10) {
+                    Button("Back to the list") { app.browserURL = nil }.buttonStyle(SecondaryButton())
+                        .background(Capsule().fill(Theme.bg))
+                    if let handProblem {
+                        Text(handProblem).font(.system(size: 12)).foregroundStyle(Theme.amber)
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(Theme.bg))
+                    }
+                }
+                .padding(12)
             }
         }
     }

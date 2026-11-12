@@ -294,10 +294,20 @@ def read_source(project: str, url: str, start: int = 0) -> dict:
 
     Pass the open_copy or doi link from search_literature. When more_from is set, call again with
     start set to it to read on. If the source cannot be opened, log it as could_not_open.
+    A file name starting with "page-" reads a page the person opened and saved from the Sources tab.
     """
     p = Project(project).check()
-    out = checks.read_source(url, start)
-    p.note(f"Opened {out['url']} ({out['characters']} characters)")
+    saved = p.path("sources", "pages", url) if url.startswith("page-") and "/" not in url else None
+    if saved and saved.exists():
+        # A page the person opened in the Sources tab and handed over. Its first line is the address it came from.
+        text = saved.read_text()
+        address, _, body = text.partition("\n")
+        out = {"url": address.removeprefix("Address: ").strip(), "saved_by_person": True, "characters": len(body),
+               "start": start, "text": body[start:start + 12000],
+               "more_from": start + 12000 if len(body) > start + 12000 else None}
+    else:
+        out = checks.read_source(url, start)
+    p.note(f"Opened {out['url']} ({out['characters']} characters)" + (" from the copy the person saved" if saved else ""))
     return out
 
 

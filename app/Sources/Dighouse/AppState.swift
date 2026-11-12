@@ -118,7 +118,9 @@ final class AppState: ObservableObject {
                 self.store.selectedTile = tile
             }
             if let candidate = args["candidate"] as? String, !candidate.contains(","), candidate != "all" { self.store.selectedCandidate = candidate }
-            if tool == "read_source", let url = (args["url"] as? String).flatMap(URL.init) { self.browserURL = url }
+            // Follow the agent to web pages it reads. A page the person saved is a file name, so it stays put.
+            if tool == "read_source", let url = (args["url"] as? String).flatMap(URL.init),
+               ["http", "https"].contains(url.scheme?.lowercased() ?? "") { self.browserURL = url }
         }
         engine.onNotification = { [weak self] method, params in
             guard let self else { return }

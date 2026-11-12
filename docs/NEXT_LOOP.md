@@ -60,3 +60,13 @@ The last whole run (Angel Mounds) ran out of web searches before the literature 
 Check, on a fresh project made from the Serpent Mound starting point, with no input after pressing Run: about 9 minutes. The agent fetched USGS terrain (7 ground returns per square metre), cut 9 tiles, screened all 9 in two styles, flagged 4 candidates, cut a section and ran the map check on each, searched the literature and Open Context, opened 14 sources and logged all 14 (4 read, 10 refused or abstract only), added the measurements as evidence, and wrote `notes/2026-11-12-run-2012.md`. It set no statuses and recorded no second look, and listed both as waiting for the person. Passed.
 
 Not checked: stopping a run halfway to see that what was done stays logged. The summary had its title twice; fixed so only one is kept.
+
+### 2026-11-12, N4
+
+The Sources tab now hands a page to the agent. When a source refused the agent (a 403, a sign-in, a human check), the person opens it in the tab's browser and presses **Give this page to the agent**. The app saves the visible text to `sources/pages/page-<host>-<time>.txt`, with the address as the first line, and asks the agent to read it with `read_source` and log it. `read_source` reads a saved page by its file name and marks the result as saved by the person. Logging a source again under the same title replaces the old entry on the record, so a refused entry turns into a read one. If the page shows under 200 characters (still asking for a sign-in), the button says so and saves nothing.
+
+Check, in the Serpent Mound project: the Ohio History Connection's Serpent Mound page had been logged as refused (403) on all four candidates. Opened in the Sources tab, it loaded in full. After the button, the agent read about 5,200 characters, reported what the page says for each candidate, and logged it as read; each candidate now has one entry for that page, marked read. The read log keeps the old refused lines above the new ones, as a history. Passed.
+
+Found and fixed during the check: when the agent read a saved page, the browser tried to follow it and showed the file name as the address. The browser now only follows the agent to web addresses; checked by asking the agent to re-read the saved page, and the tab stayed on its list.
+
+Not checked: the agent driving a browser on its own. Codex's browser plugin is available to the engine, but the agent was not asked to use it here.

@@ -1,5 +1,7 @@
 """The whole chain on synthetic data: fetch, tile, screen, flag, section, checks, statuses."""
 
+from pathlib import Path
+
 import pytest
 
 from dighouse import checks, server
@@ -68,6 +70,11 @@ def test_full_chain(tmp_path, survey, monkeypatch):
     server.check_modern(root, "C-001")
     server.log_source(root, "C-001", "Regional survey 2019", "read", "does not cover this hilltop")
     server.log_source(root, "C-001", "Paper using the same data", "could_not_open", "paywalled")
+    pages = Path(root) / "sources" / "pages"
+    pages.mkdir(parents=True, exist_ok=True)
+    (pages / "page-test.txt").write_text("Address: https://example.org/paper\nThe survey covered the hilltop.")
+    got = server.read_source(root, "page-test.txt")
+    assert got["saved_by_person"] and got["url"] == "https://example.org/paper" and "hilltop" in got["text"]
     assert server.write_summary(root, "Screened one tile. C-001 has a section and a second look.")["written"].startswith("notes/")
     with pytest.raises(ValueError, match="coordinates"):
         server.write_summary(root, "C-001 sits at 38.66012, -90.06211")
