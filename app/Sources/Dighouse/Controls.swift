@@ -390,6 +390,7 @@ struct StepSlider: View {
 struct ModelList: View {
     let models: [ModelInfo]
     let current: String?
+    var checks: [String: ModelCheck] = [:]
     let pick: (ModelInfo) -> Void
     @State private var query = ""
     @FocusState private var searching: Bool
@@ -418,6 +419,11 @@ struct ModelList: View {
                                 Text(model.name).font(.system(size: 14)).lineLimit(1)
                                 if !model.readsImages { Text("text only").font(.system(size: 11)).foregroundStyle(Theme.faint) }
                                 Spacer(minLength: 0)
+                                if let check = checks[model.id] {
+                                    Text(check.ok ? "tested" : "failed test").font(.system(size: 11))
+                                        .foregroundStyle(check.ok ? Theme.faint : Theme.amber)
+                                        .help(check.ok ? "Answered a test message\(check.effort.map { " at \(Effort.label($0))" } ?? "")." : check.message)
+                                }
                                 if model.id == current { Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)) }
                             }
                             .padding(.vertical, 3)
@@ -446,6 +452,7 @@ struct ModelPicker: View {
     let title: String
     let models: [ModelInfo]
     let current: String?
+    var checks: [String: ModelCheck] = [:]
     let pick: (ModelInfo) -> Void
     @State private var open = false
 
@@ -461,7 +468,7 @@ struct ModelPicker: View {
         }
         .buttonStyle(.plain)
         .popover(isPresented: $open, arrowEdge: .bottom) {
-            ModelList(models: models, current: current) { model in
+            ModelList(models: models, current: current, checks: checks) { model in
                 pick(model)
                 open = false
             }

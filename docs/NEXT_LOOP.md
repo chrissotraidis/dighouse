@@ -109,3 +109,11 @@ Found during the check: the Environment Agency service is slow and rate-limits. 
 
 Out of reach, named in `open_resources`: historic aerial photographs and declassified CORONA imagery (both need a USGS EarthExplorer account), Denmark's lidar (account), the Archaeology Data Service and EAMENA (no open bulk access checked), and other national lidar not yet checked (Slovenia, Spain, Scotland).
 Tests: `pytest -m live` passed 7 of 8 on the first run. Monks Mound failed when a USGS server dropped a connection partway through the download, so tile reads now retry; rerun, it passed. Offline tests pass 4 of 4.
+
+### 2026-11-12, N7
+
+Settings now has a **Test** button beside the agent model and the second-look model. It sends the model one short message at the chosen effort step and shows the result beside the picker ("Answered at Medium", or "Failed" with the provider's message underneath). Results are kept between launches. Both model pickers, in Settings and in the message box, label each tested model "tested" or "failed test", with the step and message in the tooltip. The effort note in Settings and in the message box's effort popover says whether the chosen step was tested with this model, and on which day, and says "not tested" otherwise. Nothing in the app claims a step works without a test. When the engine retries a failing provider, the last error it reports is kept, so a timeout can name the reason.
+
+Check, in the running app: Opus 5.5 at Medium answered in about 4 seconds, and the note read "Medium was tested on Nov 12, 2026 and the model answered." G1 · Kimi K3.1 Pro at High gave no answer within two minutes and was marked "failed test" in the picker. Called directly through the OpenCodex router, both opencode-go Kimi models hung for 100 seconds with no reply, so the failure is the provider's. Passed.
+
+Not checked: a provider that refuses a step outright with a message (none was found in this session).

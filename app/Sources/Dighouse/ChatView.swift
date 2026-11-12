@@ -518,6 +518,21 @@ enum Effort {
     }
 }
 
+/// Whether the chosen step was tested with this model, so a step on the list is not taken as working.
+private struct EffortTestLine: View {
+    @EnvironmentObject var app: AppState
+    let model: ModelInfo, effort: String
+
+    var body: some View {
+        if let check = app.modelChecks[model.id], check.effort == effort {
+            Text(check.ok ? "Tested at this step: it answered." : "Failed its test at this step. See Settings.")
+                .font(.system(size: 11.5)).foregroundStyle(check.ok ? Theme.faint : Theme.amber)
+        } else {
+            Text("Not tested at this step. Settings can test it.").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+        }
+    }
+}
+
 /// One pill for the model and how hard it thinks. It opens a slider for effort, with the model list behind the name.
 struct ModelControl: View {
     @EnvironmentObject var app: AppState
@@ -545,7 +560,7 @@ struct ModelControl: View {
         .popover(isPresented: $open, arrowEdge: .top) {
             Group {
                 if listing {
-                    ModelList(models: engine.models, current: app.model?.id) { model in
+                    ModelList(models: engine.models, current: app.model?.id, checks: app.modelChecks) { model in
                         app.modelID = model.id
                         if model.efforts.isEmpty { open = false } else { listing = false }
                     }
@@ -564,6 +579,7 @@ struct ModelControl: View {
                         }
                         StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
                         Text(Effort.note(effort)).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        EffortTestLine(model: model, effort: effort)
                         Text("The steps are the ones your model list gives for this model.").font(.system(size: 11)).foregroundStyle(Theme.faint.opacity(0.8))
                     }
                     .padding(.horizontal, 20).padding(.vertical, 18).frame(width: 340)

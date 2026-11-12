@@ -187,16 +187,24 @@ private struct ModelSettings: View {
     var body: some View {
         VStack(spacing: 0) {
             SettingRow(title: "Agent model", note: "Runs the search. Screening tiles needs a model that reads images.") {
-                ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
+                HStack(spacing: 10) {
+                    ModelTest(id: app.model?.id, effort: app.activeEffort)
+                    ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id, checks: app.modelChecks) { app.modelID = $0.id }
+                }
             }
+            ModelTestProblem(id: app.model?.id)
             Hairline()
             effortRow
             Hairline()
             SettingRow(title: "Second-look model",
                        note: "Gives the independent second opinion on a candidate. Choose one from a different maker than the agent's model.") {
-                ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
-                            current: app.secondModelID) { app.secondModelID = $0.id }
+                HStack(spacing: 10) {
+                    ModelTest(id: app.secondModelID, effort: nil)
+                    ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
+                                current: app.secondModelID, checks: app.modelChecks) { app.secondModelID = $0.id }
+                }
             }
+            ModelTestProblem(id: app.secondModelID)
         }
         .panel()
         Text(setup.ocxRunning
@@ -205,6 +213,16 @@ private struct ModelSettings: View {
             .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
         Text("The same choices are in the message box of every chat.")
             .font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+    }
+
+    /// Says only what was tested: the list offers a step, a test shows whether the provider accepts it.
+    private func testNote(_ model: ModelInfo, _ effort: String) -> String {
+        guard let check = app.modelChecks[model.id], check.effort == effort else {
+            return "\(Effort.label(effort)) has not been tested with this model. Test sends one short message at this step."
+        }
+        let day = check.date.formatted(date: .abbreviated, time: .omitted)
+        return check.ok ? "\(Effort.label(effort)) was tested on \(day) and the model answered."
+                        : "\(Effort.label(effort)) was tested on \(day) and failed: \(check.message)"
     }
 
     /// How long the model thinks. The steps on offer belong to the model, so they change when the model does.
@@ -216,7 +234,7 @@ private struct ModelSettings: View {
                     .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
                     .frame(maxWidth: 420)
-                Text("Your model list gives \(model.name) \(model.efforts.count) steps: \(model.efforts.map(Effort.label).joined(separator: ", ")). Dighouse shows what the list says and has not tested every step on every model. If a provider refuses a step, or the model itself, the chat shows the provider's message.")
+                Text("Your model list gives \(model.name) \(model.efforts.count) steps: \(model.efforts.map(Effort.label).joined(separator: ", ")). \(testNote(model, effort)) If a provider refuses a step, the chat shows the provider's message.")
                     .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("\(app.modelName) has no effort setting. It always thinks the same amount.")
@@ -224,6 +242,46 @@ private struct ModelSettings: View {
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A Test button and the last result for one model, shown beside its picker.
+private struct ModelTest: View {
+    @EnvironmentObject var app: AppState
+    let id: String?
+    let effort: String?
+
+    var body: some View {
+        if let id {
+            HStack(spacing: 8) {
+                if app.testingModel == id {
+                    ProgressView().controlSize(.small)
+                    Text("Testing").foregroundStyle(Theme.dim)
+                } else if let check = app.modelChecks[id] {
+                    Circle().fill(check.ok ? Theme.green : Theme.amber).frame(width: 7, height: 7)
+                    Text(check.ok ? "Answered" + (check.effort.map { " at \(Effort.label($0))" } ?? "") : "Failed")
+                        .foregroundStyle(check.ok ? Theme.dim : Theme.amber)
+                }
+                Button("Test") { app.testModel(id, effort: effort) }
+                    .buttonStyle(SecondaryButton()).disabled(app.testingModel != nil)
+                    .help("Sends the model one short message\(effort.map { " at \(Effort.label($0))" } ?? "") and shows whether it answered.")
+            }
+            .font(.system(size: 12.5))
+        }
+    }
+}
+
+/// The provider's message when a model failed its test, in full.
+private struct ModelTestProblem: View {
+    @EnvironmentObject var app: AppState
+    let id: String?
+
+    var body: some View {
+        if let id, let check = app.modelChecks[id], !check.ok, app.testingModel != id {
+            Text(check.message).font(.system(size: 12)).foregroundStyle(Theme.amber)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 14).padding(.bottom, 12).frame(maxWidth: .infinity, alignment: .trailing)
+        }
     }
 }
 
