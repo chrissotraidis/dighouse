@@ -403,7 +403,7 @@ private struct EngineSettings: View {
         .panel()
         VStack(spacing: 0) {
             SettingRow(title: "Account",
-                       note: engine.account.map { "Codex on this Mac is signed in as \($0)\(engine.plan.map { " (\($0) plan)" } ?? ""). The Codex models run on that account. Models added by the router use their own keys." }
+                       note: engine.account.map { _ in "Codex on this Mac is signed in\(engine.plan.map { " on a \($0) plan" } ?? ""), and the Codex models run on that account. Models added by the router use their own keys. Dighouse never sees the password or keys." }
                         ?? "Codex is not signed in. Run codex login in Terminal, then restart the engine.") { EmptyView() }
             Hairline()
             SettingRow(title: "The web",
@@ -417,7 +417,7 @@ private struct PrivacySettings: View {
     private let rows: [(String, String)] = [
         ("Messages and images", "What you type, and the terrain tiles the agent looks at, go to the provider of the model you chose, through the Codex engine. Dighouse adds no service in between."),
         ("Locations", "A project's search area and the position of each candidate are kept in its private folder on this Mac. Records, notes and reports carry no coordinates, so they can be shared."),
-        ("Open data services", "The tools ask OpenTopography, USGS, Wikidata, OpenStreetMap and OpenAlex for data. Each sees the area or the search words in the request."),
+        ("Open data services", "The tools ask OpenTopography, USGS, the Environment Agency (England), PDOK (Netherlands), IGN (France), Wikidata, OpenStreetMap and QLever, the National Register, Pleiades, Open Context and OpenAlex for data. Each sees the area or the search words in the request, and nothing else."),
         ("The map", "The New project page uses Apple Maps, which sees the part of the map you look at."),
         ("Reports", "Dighouse sends nothing to anyone. A report to a heritage authority is a draft in the project until you send it yourself."),
     ]

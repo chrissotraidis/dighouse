@@ -117,3 +117,12 @@ Settings now has a **Test** button beside the agent model and the second-look mo
 Check, in the running app: Opus 5.5 at Medium answered in about 4 seconds, and the note read "Medium was tested on Nov 12, 2026 and the model answered." G1 · Kimi K3.1 Pro at High gave no answer within two minutes and was marked "failed test" in the picker. Called directly through the OpenCodex router, both opencode-go Kimi models hung for 100 seconds with no reply, so the failure is the provider's. Passed.
 
 Not checked: a provider that refuses a step outright with a message (none was found in this session).
+
+### 2026-11-12, N9 (built, waiting for Chris's review)
+
+- **Short chat titles.** A chat started from free text gets a name of two to five words, written by the agent model at its lowest effort step in a separate short request, then set with `thread/name/set`. Old chats without a name are named one at a time when the list loads. Seen in the app: "Maiden Castle Lidar Ramparts", "Southern Ohio Site Gaps", "Choosing a Lidar Search Area", "Terrain Tiles and Rampart Analysis". Those first titles came out in Title Case with "Lidar" capitalised, so the request now asks for sentence case with lidar in lowercase. The four already named keep their names.
+- **Welcome guide.** The step names at the top only went back, so a returning reader could not jump ahead. They now open any step once the guide has been seen, except First project before the engine runs. Checked: steps 2, 3 and 4 open, and Welcome again. The opening line now says what Dighouse is for: "Open archaeology on your Mac. AI agents search public lidar for places people built and check what they find. You make the calls."
+- **Settings.** The account line in How it runs no longer shows the email address. Data and privacy now names every service the tools contact (the national lidar services, QLever and Pleiades were missing).
+- **Toolbox.** The new sources, the sky view and the export are in it (see N6).
+
+Screenshots for review: `outputs/dighouse-26-welcome.jpg`, `dighouse-27-how-it-runs.jpg`, `dighouse-28-models.jpg`, `dighouse-29-toolbox.jpg`, `dighouse-30-privacy.jpg`. N9 is done when Chris has no "looks generated" notes on them.

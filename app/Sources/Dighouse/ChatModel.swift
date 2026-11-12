@@ -5,6 +5,8 @@ import Foundation
 struct ChatThread: Identifiable, Hashable, Codable {
     let id: String
     var title: String
+    /// Whether the chat has a name of its own, rather than the start of its first message.
+    var named: Bool? = nil
 }
 
 struct Approval {
@@ -56,6 +58,8 @@ final class ChatModel: ObservableObject {
     var model: () -> ModelInfo? = { nil }
     var modelID: () -> String? = { nil }
     var effort: () -> String? = { nil }
+    /// Called for a chat that has no name yet, with the text it began with.
+    var onUntitled: ((String, String) -> Void)?
     var onToolFinished: ((String, JSON) -> Void)?
 
     private(set) var project: String?
@@ -109,9 +113,21 @@ final class ChatModel: ObservableObject {
         guard let cwd, let listed = try? await engine?.request("thread/list", ["cwd": cwd, "limit": 40]) else { return nil }
         return (listed["data"] as? [JSON] ?? []).compactMap { t in
             guard let id = t["id"] as? String else { return nil }
-            let title = (t["name"] as? String) ?? (t["preview"] as? String) ?? ""
-            return ChatThread(id: id, title: title.isEmpty ? "New chat" : String(title.prefix(80)))
+            let name = (t["name"] as? String) ?? ""
+            let title = name.isEmpty ? (t["preview"] as? String) ?? "" : name
+            let thread = ChatThread(id: id, title: title.isEmpty ? "New chat" : String(title.prefix(80)), named: !name.isEmpty)
+            if name.isEmpty, !title.isEmpty { onUntitled?(id, title) }
+            return thread
         }
+    }
+
+    /// Give a chat a name by its id, wherever it is listed.
+    func setTitle(_ id: String, _ name: String) async {
+        guard let engine, !name.isEmpty else { return }
+        _ = try? await engine.request("thread/name/set", ["threadId": id, "name": name])
+        if let i = threads.firstIndex(where: { $0.id == id }) { threads[i].title = name; threads[i].named = true }
+        if let i = generalThreads.firstIndex(where: { $0.id == id }) { generalThreads[i].title = name; generalThreads[i].named = true }
+        remember()
     }
 
     func newChat() {
@@ -217,10 +233,11 @@ final class ChatModel: ObservableObject {
                 guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
                 active = id
                 resumed.insert(id)
-                let new = ChatThread(id: id, title: title ?? String((text.isEmpty ? sending.first?.name ?? "Chat" : text).prefix(80)))
+                let new = ChatThread(id: id, title: title ?? String((text.isEmpty ? sending.first?.name ?? "Chat" : text).prefix(80)), named: title != nil)
                 if project == nil { generalThreads.insert(new, at: 0) } else { threads.insert(new, at: 0) }
                 remember()
                 if let title { _ = try? await engine.request("thread/name/set", ["threadId": id, "name": title]) }
+                else if !text.isEmpty { onUntitled?(id, text) }
             }
             running = true
             var params: JSON = ["threadId": active ?? "", "input": input]

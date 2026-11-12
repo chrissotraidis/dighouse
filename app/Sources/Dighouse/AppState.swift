@@ -81,6 +81,11 @@ final class AppState: ObservableObject {
     private var modelTests: [String: (model: String, effort: String?)] = [:]
     private var modelTestErrors: [String: String] = [:]
 
+    private var titleQueue: [(chat: String, text: String)] = []
+    private var titleJobs: [String: String] = [:]
+    private var titleReplies: [String: String] = [:]
+    private var titled: Set<String> = []
+
     private var secondLooks: [String: String] = [:]
     private var secondLookQueue: [String] = []
 
@@ -101,6 +106,7 @@ final class AppState: ObservableObject {
         chat.engine = engine
         chat.model = { [weak self] in self?.model }
         chat.modelID = { [weak self] in self?.modelID }
+        chat.onUntitled = { [weak self] chat, text in self?.nameLater(chat, text) }
         chat.effort = { [weak self] in
             guard let self, let effort = self.effort, self.model?.efforts.contains(effort) == true else { return nil }
             return effort
@@ -133,6 +139,19 @@ final class AppState: ObservableObject {
         }
         engine.onNotification = { [weak self] method, params in
             guard let self else { return }
+            if let thread = params["threadId"] as? String, let chat = self.titleJobs[thread] {
+                if method == "item/completed", let item = params["item"] as? JSON, item["type"] as? String == "agentMessage" {
+                    self.titleReplies[thread] = item["text"] as? String
+                } else if method == "turn/completed" {
+                    self.titleJobs[thread] = nil
+                    let name = Self.cleanTitle(self.titleReplies.removeValue(forKey: thread) ?? "")
+                    Task { @MainActor in
+                        if !name.isEmpty { await self.chat.setTitle(chat, name) }
+                        self.nextTitle()
+                    }
+                }
+                return
+            }
             if method == "error", let thread = params["threadId"] as? String, self.modelTests[thread] != nil,
                let message = (params["error"] as? JSON)?["message"] as? String {
                 self.modelTestErrors[thread] = EngineError.plain(message)  // the engine retries, so keep the provider's reason
@@ -395,6 +414,46 @@ final class AppState: ObservableObject {
         guard secondLookBusy == nil, !secondLookQueue.isEmpty else { return }
         let id = secondLookQueue.removeFirst()
         if let candidate = store.candidates.first(where: { $0.id == id }) { secondLook(candidate) }
+    }
+
+    /// Queue a chat for a short name, written by the agent model from the message it began with.
+    func nameLater(_ chat: String, _ text: String) {
+        guard !titled.contains(chat) else { return }
+        titled.insert(chat)
+        titleQueue.append((chat, text))
+        if titleJobs.isEmpty { nextTitle() }
+    }
+
+    /// Name one chat at a time, so a list of old chats does not send a burst of requests.
+    private func nextTitle() {
+        guard titleJobs.isEmpty, !titleQueue.isEmpty else { return }
+        let job = titleQueue.removeFirst()
+        Task { @MainActor in
+            for _ in 0..<60 where !engine.ready { try? await Task.sleep(for: .seconds(1)) }
+            guard let model = self.model else { return }
+            do {
+                let started = try await engine.request("thread/start", [
+                    "cwd": Paths.support.path, "ephemeral": true, "approvalPolicy": "never", "sandbox": "read-only", "model": model.id,
+                ])
+                guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
+                titleJobs[id] = job.chat
+                let prompt = "Write a title of two to five words for a chat that begins with the message below. Use plain words "
+                    + "in sentence case (a capital only for the first word and for names), with lidar in lowercase, no quotes, no full stop and no coordinates. Reply with the title only and use no tools.\n\nMessage:\n"
+                    + String(job.text.prefix(600))
+                var params: JSON = ["threadId": id, "model": model.id, "input": [["type": "text", "text": prompt]]]
+                if let low = ["minimal", "low"].first(where: model.efforts.contains) { params["effort"] = low }
+                _ = try await engine.request("turn/start", params)
+            } catch {
+                nextTitle()
+            }
+        }
+    }
+
+    /// The first line of a model's reply, without quotes or a full stop, at most six words.
+    static func cleanTitle(_ reply: String) -> String {
+        let line = reply.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+        let bare = line.trimmingCharacters(in: CharacterSet(charactersIn: " \"'*#.`“”‘’"))
+        return bare.split(separator: " ").prefix(6).joined(separator: " ")
     }
 
     /// Send a model one short message at one effort step, and keep whether it answered.

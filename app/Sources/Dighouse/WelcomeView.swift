@@ -44,10 +44,15 @@ struct WelcomeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// Earlier steps are always open. Someone who has been through the guide can jump ahead, but not past setup until the engine runs.
+    private func reachable(_ i: Int) -> Bool {
+        i < page || (app.onboarded && (i < 3 || engine.ready))
+    }
+
     private var steps: some View {
         HStack(spacing: 10) {
             ForEach(titles.indices, id: \.self) { i in
-                Button { if i < page { page = i } } label: {
+                Button { if reachable(i) { page = i } } label: {
                     HStack(spacing: 7) {
                         ZStack {
                             Circle().fill(i == page ? Theme.primary : i < page ? Theme.green.opacity(0.9) : Theme.raised)
@@ -62,7 +67,7 @@ struct WelcomeView: View {
                             .foregroundStyle(i == page ? .white : Theme.dim)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.plain).disabled(!reachable(i) && i != page)
                 if i < titles.count - 1 { Rectangle().fill(Theme.line).frame(width: 28, height: 1) }
             }
         }
@@ -74,7 +79,7 @@ struct WelcomeView: View {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 64, height: 64)
                 Text("Dighouse").font(.system(size: 40, weight: .bold))
             }
-            Text("See what the forest is hiding. AI agents do the looking, and you make the calls.")
+            Text("Open archaeology on your Mac. AI agents search public lidar for places people built and check what they find. You make the calls.")
                 .font(.system(size: 17)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 7) {
                 ForestReveal()
