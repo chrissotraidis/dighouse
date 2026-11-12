@@ -93,7 +93,8 @@ def find_data(bbox: list[float]) -> list[dict]:
     """List open lidar datasets that overlap a lon/lat box."""
     found = []
     errors = []
-    for finder in (_find_opentopography, _find_usgs):
+    from . import national
+    for finder in (_find_opentopography, _find_usgs, national.find):
         try:
             found += finder(bbox)
         except Exception as exc:  # one source being down should not hide the other
@@ -241,6 +242,20 @@ def _join(parts: list, epsg: int) -> Points:
     return Points(*(np.concatenate([p[i] for p in flat]) for i in range(4)), epsg)
 
 
+def _get(url: str) -> httpx.Response:
+    """A GET that tries again when a server drops the connection or fails, as the public buckets now and then do."""
+    for attempt in range(3):
+        try:
+            r = _client.get(url)
+            if r.status_code < 500:
+                return r.raise_for_status()
+        except httpx.TransportError:
+            if attempt == 2:
+                raise
+        time.sleep(2 * (attempt + 1))
+    return r.raise_for_status()
+
+
 def _fetch_ept(url: str, bbox: list[float], spacing: float) -> tuple[Points, dict]:
     """Read an Entwine Point Tile set: walk its octree and download only the nodes over the box."""
     base = url.rsplit("/", 1)[0]
@@ -253,7 +268,7 @@ def _fetch_ept(url: str, bbox: list[float], spacing: float) -> tuple[Points, dic
     hierarchy: dict[str, int] = {}
 
     def load(key: str) -> None:
-        hierarchy.update(_client.get(f"{base}/ept-hierarchy/{key}.json").json())
+        hierarchy.update(_get(f"{base}/ept-hierarchy/{key}.json").json())
 
     load("0-0-0-0")
     nodes, stack = [], ["0-0-0-0"]
@@ -272,7 +287,7 @@ def _fetch_ept(url: str, bbox: list[float], spacing: float) -> tuple[Points, dic
             stack += [f"{d + 1}-{2 * i + a}-{2 * j + b}-{2 * k + c}" for a in (0, 1) for b in (0, 1) for c in (0, 1)]
 
     def read(key: str):
-        las = laspy.read(io.BytesIO(_client.get(f"{base}/ept-data/{key}.laz").content))
+        las = laspy.read(io.BytesIO(_get(f"{base}/ept-data/{key}.laz").content))
         x, y = np.asarray(las.x), np.asarray(las.y)
         m = (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
         return [(x[m], y[m], np.asarray(las.z)[m].astype(np.float32), np.asarray(las.classification)[m].astype(np.uint8))]

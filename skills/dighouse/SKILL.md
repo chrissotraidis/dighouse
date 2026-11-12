@@ -45,7 +45,7 @@ Finish what you start. Budget the run so the prior-art step and the summary alwa
 1. **Plan.** Call `run_status`. If there are unscreened tiles, continue screening. If not, pick the next part of the search area.
 2. **Acquire.** `find_data` for the area, then `fetch_terrain` in boxes under 6 square km. Read the dataset description: it names earlier studies of the same data. Write those down as the first sources to read.
 3. **Prepare.** `make_tiles`. Unreadable tiles stay unreadable. Report how many there are.
-4. **Screen.** For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief` or `hillshade`) before deciding on anything doubtful.
+4. **Screen.** For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief`, `sky_view` or `hillshade`) before deciding on anything doubtful. `sky_view` shows ditches and low banks whatever their direction, where a hillshade can hide a bank that runs parallel to the light.
 5. **Flag.** `flag_candidate` for anything that looks built. One record per feature group.
 6. **Check every flag.**
    - `cut_section` across the feature, starting and ending on the surrounding ground, with the candidate id.

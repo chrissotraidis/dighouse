@@ -89,3 +89,23 @@ Also seen: OpenStreetMap did not answer for two of the three regions, so their s
 OpenStreetMap's archaeological sites are now read from QLever (`qlever.dev`), a public query service that holds the whole map, with the Overpass servers as the fallback and each answer cached for a week. QLever holds 229,473 objects tagged as archaeological sites and answers for a region in under a second. The Overpass servers answered once in seven tries across five mirrors on the same box, and returned different counts for the same query on different tries. When both answered, every site Overpass returned was also in QLever's answer. `find_gaps` now gives totals by source, and both `find_gaps` and `survey_area` list the sources that answered, so a short list cannot be mistaken for a source that was down. The map check for modern features now alternates between two Overpass servers.
 
 Check: with the cache cleared before each run, `survey_area` (Serpent Mound) and `find_gaps` (Middle Usumacinta) returned OpenStreetMap sites and no silent source in 3 runs out of 3, in 2 to 7 seconds. QLever alone answered 9 of 9 calls over three regions. A new live test covers it; `pytest -m live` passes 6 of 6. In the app, the agent reported 54 sites for the Usumacinta (50 from OpenStreetMap, 4 from Wikidata) where the N5 research answer, made while Overpass was failing, had 3; and for Ross County, Ohio, 37 sites with all three sources named as answering. Passed.
+
+### 2026-11-12, N6
+
+Chosen from first principles. A search can only find what open lidar covers, so the largest gain is open national lidar outside the United States. Next is the view archaeologists use most for low banks and ditches (sky-view factor), then a gazetteer of ancient places for the Old World, and a way to take finds into mapping software.
+
+| Added | What it is | Check |
+|---|---|---|
+| England: Environment Agency lidar composite DTM, 1 m (`uk:ea-dtm-1m`) | A ready-made ground model, OGL. | Danebury hillfort fetched, tiled, rendered and sectioned. In the app, the Toolbox's Maiden Castle question created a project, fetched 1.9 sq km and the agent described both entrances and the four lines of rampart from the views. |
+| Netherlands: AHN DTM 0.5 m (`nl:ahn-dtm-05m`) | A ready-made ground model, CC0. | Ginkelse Heide fetched in four requests, a banked enclosure visible in sky view. Live test. |
+| France: IGN LiDAR HD ground model 0.5 m (`fr:lidarhd-mnt`) | A ready-made ground model, Etalab. | Slopes below Gergovie fetched in six requests, field terraces visible. Live test. |
+| Sky view (`sky_view` style) | Share of the sky visible from each cell: ditches dark, banks bright, no light direction favoured. | Serpent Mound tile renders in 0.3 s. Offline test on a synthetic ditch. |
+| Pleiades | 42,534 ancient places, 34,931 located, read in bulk and kept for a month. Now a source in `survey_area` and `find_gaps`. | Central Rome: 359 Pleiades places beside Wikidata's 438 and OpenStreetMap's 201. Live test. |
+| `export_finds` | Candidates as GeoJSON for QGIS, ArcGIS or Google Earth, under `private/exports/` because it holds coordinates. | Serpent Mound's 4 candidates exported. Offline test. |
+
+Each has a line in `open_resources` with a size read from the service (grid sizes from the WCS coverage descriptions, the French layer's extent from its capabilities, the Pleiades count from the download) and a card in the Toolbox's Open data tab with a picture made from it, except Pleiades, which has none yet. `find_data` matches the national models against rough country outlines, so Wales gets none and the Channel coast gets the right country. A section through a ready-made ground model shows the profile only and says it cannot tell ground from vegetation.
+
+Found during the check: the Environment Agency service is slow and rate-limits. Four parallel requests drew a 504 and then "429 Too Many Requests". England now goes one 500 m request at a time, and a 429 waits as long as the server asks; under the limit 1.9 sq km took about 15 minutes. The Toolbox's reachability dot can read "Cannot be reached" while a download is holding the service.
+
+Out of reach, named in `open_resources`: historic aerial photographs and declassified CORONA imagery (both need a USGS EarthExplorer account), Denmark's lidar (account), the Archaeology Data Service and EAMENA (no open bulk access checked), and other national lidar not yet checked (Slovenia, Spain, Scotland).
+Tests: `pytest -m live` passed 7 of 8 on the first run. Monks Mound failed when a USGS server dropped a connection partway through the download, so tile reads now retry; rerun, it passed. Offline tests pass 4 of 4.

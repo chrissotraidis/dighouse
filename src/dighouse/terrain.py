@@ -104,12 +104,37 @@ def local_relief(dtm: np.ndarray, res: float, radius_m: float = 8.0) -> np.ndarr
     return dtm - ndimage.gaussian_filter(dtm.astype(np.float64), radius_m / res)
 
 
+def sky_view(dtm: np.ndarray, res: float, radius_m: float = 10.0, directions: int = 16) -> np.ndarray:
+    """Share of the sky visible from each cell, looking out to radius_m in every direction.
+
+    Ditches and hollows see less sky and turn dark, ridges and banks see more, and unlike
+    a hillshade no direction of light is favoured. A standard view for archaeological lidar.
+    """
+    h = dtm.astype(np.float32)
+    rows, cols = h.shape
+    reach = max(int(radius_m / res), 2)
+    steps = sorted({max(1, int(round(reach * f))) for f in np.geomspace(1 / reach, 1, 12)})
+    pad = reach + 1
+    big = np.pad(h, pad, mode="edge")
+    total = np.zeros_like(h)
+    for a in np.linspace(0, 2 * np.pi, directions, endpoint=False):
+        horizon = np.zeros_like(h)
+        for k in steps:
+            dr, dc = int(round(-np.sin(a) * k)), int(round(np.cos(a) * k))
+            ahead = big[pad + dr:pad + dr + rows, pad + dc:pad + dc + cols]
+            dist = np.hypot(dr, dc) * res
+            if dist > 0:
+                horizon = np.maximum(horizon, np.arctan((ahead - h) / dist))
+        total += np.sin(horizon)
+    return 1 - total / directions
+
+
 def _stretch(a: np.ndarray, lo: float = 2, hi: float = 98) -> np.ndarray:
     p0, p1 = np.percentile(a, [lo, hi])
     return np.clip((a - p0) / max(p1 - p0, 1e-9), 0, 1)
 
 
-STYLES = ("composite", "hillshade", "slope", "local_relief")
+STYLES = ("composite", "hillshade", "slope", "local_relief", "sky_view")
 
 
 def render(dtm: np.ndarray, gap: np.ndarray, outside: np.ndarray, res: float, style: str = "composite") -> Image.Image:
@@ -126,6 +151,8 @@ def render(dtm: np.ndarray, gap: np.ndarray, outside: np.ndarray, res: float, st
         img = 1 - np.clip(slope_degrees(dtm, res) / 40, 0, 1)
     elif style == "local_relief":
         img = np.clip(local_relief(dtm, res) / 2.0 + 0.5, 0, 1)
+    elif style == "sky_view":
+        img = _stretch(sky_view(dtm, res), 1, 99) ** 1.6
     else:
         lrm = np.clip(local_relief(dtm, res) / 2.0 + 0.5, 0, 1)
         img = (0.6 * _stretch(many) + 0.4 * lrm) * (1 - 0.35 * np.clip(slope_degrees(dtm, res) / 35, 0, 1))

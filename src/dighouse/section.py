@@ -21,6 +21,8 @@ def cut(p: Project, terrain_id: str, a: tuple[float, float], b: tuple[float, flo
     if length < 5:
         raise ValueError("The section line is shorter than 5 m.")
     ux, uy = (bx - ax) / length, (by - ay) / length
+    if not meta.get("points"):
+        return _model_only(p, meta, ax, ay, ux, uy, length)
     pts = Points.load(p.path(meta["points"]))
     dx, dy = pts.x - ax, pts.y - ay
     along, across = dx * ux + dy * uy, -dx * uy + dy * ux
@@ -54,6 +56,20 @@ def cut(p: Project, terrain_id: str, a: tuple[float, float], b: tuple[float, flo
         "has_vegetation_returns": bool((~ground).sum() > 20),
     }
     return _draw(s, z, ground, length), stats
+
+
+def _model_only(p: Project, meta: dict, ax: float, ay: float, ux: float, uy: float, length: float) -> tuple[Image.Image, dict]:
+    """A section through a ready-made ground model: the profile, with no points to show the canopy."""
+    steps = np.arange(0.25, length, 0.5)
+    profile = _sample_model(p, meta, ax + ux * steps, ay + uy * steps)
+    ends = np.linspace(np.median(profile[:10]), np.median(profile[-10:]), len(steps))
+    rise = profile - ends
+    peak = int(np.argmax(rise))
+    stats = {"length_m": round(length, 1), "ground_returns": None, "other_returns": None, "ground_returns_per_m": None,
+             "ground_returns_within_5m_of_peak": None, "feature_height_m": round(float(rise[peak]), 2),
+             "peak_at_m": round(float(steps[peak]), 1), "canopy_height_m": None, "has_vegetation_returns": False,
+             "from_ground_model_only": True}
+    return _draw(steps, profile, np.ones(len(steps), bool), length), stats
 
 
 def _sample_model(p: Project, meta: dict, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:

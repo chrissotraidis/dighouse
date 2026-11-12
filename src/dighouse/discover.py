@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import csv
+import gzip
+import io
 import json
 import logging
 import math
@@ -247,7 +250,39 @@ def _nrhp_sites(bbox: list[float]) -> list[dict]:
             for f in r.json().get("features", []) if f.get("geometry")]
 
 
-SITE_READERS = {"Wikidata": _wikidata_sites, "OpenStreetMap": _osm_sites, "National Register of Historic Places": _nrhp_sites}
+PLEIADES = "https://atlantides.org/downloads/pleiades/dumps/pleiades-places-latest.csv.gz"
+PLEIADES_REACH = (-20.0, 10.0, 80.0, 60.0)  # the Greek and Roman world and its neighbours, roughly
+
+
+def _pleiades_rows() -> list[dict]:
+    """Every located place in the Pleiades gazetteer of the ancient world, downloaded once and kept for a month."""
+    cache = sources.cache_dir() / "pleiades-places.csv.gz"
+    if not cache.exists() or time.time() - cache.stat().st_mtime > 30 * 86400:
+        r = _client.get(PLEIADES, timeout=240)
+        r.raise_for_status()
+        cache.write_bytes(r.content)
+    rows = csv.DictReader(io.StringIO(gzip.decompress(cache.read_bytes()).decode("utf-8")))
+    return [row for row in rows if row.get("reprLat") and row.get("reprLong")]
+
+
+def _pleiades_sites(bbox: list[float]) -> list[dict]:
+    w, s, e, n = bbox
+    rw, rs, re_, rn = PLEIADES_REACH
+    if e < rw or w > re_ or n < rs or s > rn:
+        return []
+    out = []
+    for row in _pleiades_rows():
+        lon, lat = float(row["reprLong"]), float(row["reprLat"])
+        if w <= lon <= e and s <= lat <= n:
+            kind = (row.get("featureTypes") or "ancient place").split(",")[0].replace("-", " ")
+            out.append({"name": row["title"], "kind": kind, "lon": lon, "lat": lat, "source": "Pleiades",
+                        "record": f"https://pleiades.stoa.org{row['path']}" if row.get("path", "").startswith("/") else row.get("path", ""),
+                        "periods": row.get("timePeriodsKeys", "")})
+    return out
+
+
+SITE_READERS = {"Wikidata": _wikidata_sites, "OpenStreetMap": _osm_sites, "National Register of Historic Places": _nrhp_sites,
+                "Pleiades": _pleiades_sites}
 
 
 def _answered(silent: list[str]) -> list[str]:
@@ -429,9 +464,23 @@ def open_resources(topic: str = "") -> list[dict]:
         {"name": "OpenAlex", "kind": "literature", "region": "World", "holds": "An open index of scholarly books and papers.",
          "size": "not counted", "read_by": "search_literature, read_source",
          "note": "Finds titles and abstracts. Many publishers refuse to show the full text to a program."},
+        {"name": "Environment Agency lidar composite DTM", "kind": "lidar", "region": "England",
+         "holds": "A 1 m bare-ground model of England built from the agency's lidar, under the Open Government Licence.",
+         "size": "a grid of 576,000 by 661,000 one-metre cells (read from the service's coverage description, 12 November 2026)",
+         "read_by": "find_data, fetch_terrain (id uk:ea-dtm-1m)",
+         "note": "A ready-made ground model, not raw points, so a section shows the profile only. The service is slow: allow a few minutes per square km."},
+        {"name": "AHN, Actueel Hoogtebestand Nederland", "kind": "lidar", "region": "Netherlands",
+         "holds": "The national 0.5 m bare-ground model of the Netherlands, CC0.",
+         "size": "a grid of 540,000 by 625,000 half-metre cells (read from the service's coverage description, 12 November 2026)",
+         "read_by": "find_data, fetch_terrain (id nl:ahn-dtm-05m)", "note": "A ready-made ground model, not raw points."},
+        {"name": "IGN LiDAR HD", "kind": "lidar", "region": "France",
+         "holds": "The ground model (MNT) from France's national lidar programme, at 0.5 m, under the Etalab open licence.",
+         "size": "a layer spanning metropolitan France and Corsica (extent read from the service, 12 November 2026); parts may not be published yet",
+         "read_by": "find_data, fetch_terrain (id fr:lidarhd-mnt)", "note": "A ready-made ground model, not raw points. A box with no data comes back as outside the survey."},
         {"name": "Pleiades", "kind": "recorded sites", "region": "Ancient Mediterranean and Near East",
-         "holds": "A gazetteer of ancient places.", "size": "about 36,500 places, with a daily open download",
-         "read_by": "read_source, one place page at a time", "note": "Not yet read in bulk by these tools."},
+         "holds": "A gazetteer of ancient places: settlements, forts, sanctuaries, roads, with their periods.",
+         "size": "42,534 places, 34,931 of them with a location (read from the open download, 12 November 2026)",
+         "read_by": "survey_area, find_gaps", "note": "Downloaded once (about 7 MB) and kept for a month. Strong for the Greek and Roman world, thin outside it."},
         {"name": "tDAR, the Digital Archaeological Record", "kind": "published records", "region": "Mostly the Americas",
          "holds": "Reports, datasets and images deposited by archaeologists.", "size": "several hundred thousand resources by its own account",
          "read_by": "read_source, one page at a time", "note": "Its search interface for programs needs approval from its staff."},
@@ -441,7 +490,8 @@ def open_resources(topic: str = "") -> list[dict]:
          "note": "This is why nothing found here is called new. A find that matches no open source is reported to the authority, which checks its own files."},
         {"name": "Not yet checked by Dighouse", "kind": "other", "region": "Various",
          "holds": "The Archaeology Data Service (UK), EAMENA (Middle East and North Africa), declassified CORONA satellite "
-                  "imagery, and national lidar outside the United States (for example England, the Netherlands, Denmark, Slovenia).",
+                  "imagery and historic aerial photographs (these need an account at USGS EarthExplorer), and other national lidar "
+                  "(Denmark needs an account; Slovenia, Spain, Scotland and others were not checked).",
          "size": "not checked", "read_by": "none", "note": "Named so you know they exist. These tools do not read them and their sizes were not verified."},
     ]
     if topic:

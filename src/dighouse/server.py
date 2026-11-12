@@ -7,10 +7,12 @@ import hashlib
 import json
 import re
 
+import numpy as np
+
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from . import checks, discover, ledger, section, sources, tiles
+from . import checks, discover, ledger, national, section, sources, tiles
 from . import terrain as T
 from .project import Project
 
@@ -110,6 +112,32 @@ def search_records(query: str, west: float = 0, south: float = 0, east: float = 
 
 
 @tool
+def export_finds(project: str) -> dict:
+    """Save the project's candidates as a GeoJSON file for mapping software (QGIS, ArcGIS, Google Earth).
+
+    Each point carries the candidate's id, name, status and the checks on its record. The file is
+    written under private/exports/, next to the other locations, because it holds coordinates:
+    it is for the person's own mapping software and is never copied into the Markdown records.
+    """
+    p = Project(project).check()
+    locations = p.load("locations", {})
+    features = []
+    for c in ledger.everything(p):
+        at = locations.get(c["id"])
+        if not at:
+            continue
+        features.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [round(at["lon"], 7), round(at["lat"], 7)]},
+                         "properties": {"id": c["id"], "name": c["name"], "status": c["status"], "flagged": c.get("flagged"),
+                                        "checks": ", ".join(sorted(c.get("checks", {}))), "sources_logged": len(c.get("sources", []))}})
+    folder = p.path("private", "exports")
+    folder.mkdir(parents=True, exist_ok=True)
+    f = folder / "candidates.geojson"
+    f.write_text(json.dumps({"type": "FeatureCollection", "features": features}, indent=1))
+    return {"file": str(f), "candidates": len(features),
+            "note": "The file holds coordinates. It stays under private/ and is not part of what a project shares."}
+
+
+@tool
 def init_project(project: str, name: str, question: str, west: float, south: float, east: float, north: float) -> dict:
     """Create a project folder (or adopt an existing one). The box is the search area in degrees."""
     p = Project.create(project, name, question, [west, south, east, north])
@@ -139,29 +167,42 @@ def fetch_terrain(project: str, dataset: str, west: float, south: float, east: f
     km2 = ledger.distance_m((west, south), (east, south)) * ledger.distance_m((west, south), (west, north)) / 1e6
     if km2 > MAX_KM2:
         raise ValueError(f"The box covers {km2:.1f} square km. Fetch at most {MAX_KM2} at a time.")
-    pts, how = sources.fetch_points(dataset, bbox)
-    if not len(pts):
-        raise ValueError("The dataset has no points inside this box. Check the box against the dataset's footprint.")
-    x0, y0, x1, y1 = (round(v / resolution_m) * resolution_m for v in sources.project_bbox(bbox, pts.epsg))
-    dtm, gap, outside, stats = T.grid_ground(pts, (x0, y0, x1, y1), resolution_m)
     tid = re.sub(r"[^a-z0-9]+", "-", dataset.split(":")[-1].lower()).strip("-")[:28] + "-" + \
         hashlib.sha1(json.dumps(bbox).encode()).hexdigest()[:4]
-    T.save_terrain(p.path("data", "terrain", f"{tid}.tif"), dtm, gap, outside, x0, y1, resolution_m, pts.epsg)
-    pts.save(p.path("data", "points", f"{tid}.npz"))
-    meta = {"dataset": dataset, "file": f"data/terrain/{tid}.tif", "points": f"data/points/{tid}.npz",
-            "epsg": pts.epsg, "res": resolution_m, "box": [x0, y0, x1, y1], "area_km2": round(km2, 2), **stats, **how}
+    if dataset in national.NATIONAL:  # a ready-made ground model, not points
+        dtm, outside, x0, y1, resolution_m, epsg, how = national.fetch_dtm(dataset, bbox, resolution_m)
+        gap = np.zeros_like(dtm)
+        x1, y0 = x0 + dtm.shape[1] * resolution_m, y1 - dtm.shape[0] * resolution_m
+        stats = {"ground_classified": True, "ground_points": None, "ground_points_per_m2": None,
+                 "share_outside_survey": round(float(outside.mean()), 3), "share_without_ground_data": 0.0}
+        points = None
+        summary = f"a ready-made ground model at {resolution_m:g} m, {stats['share_outside_survey']:.0%} of the box outside its coverage"
+    else:
+        pts, how = sources.fetch_points(dataset, bbox)
+        if not len(pts):
+            raise ValueError("The dataset has no points inside this box. Check the box against the dataset's footprint.")
+        epsg = pts.epsg
+        x0, y0, x1, y1 = (round(v / resolution_m) * resolution_m for v in sources.project_bbox(bbox, epsg))
+        dtm, gap, outside, stats = T.grid_ground(pts, (x0, y0, x1, y1), resolution_m)
+        points = f"data/points/{tid}.npz"
+        pts.save(p.path(points))
+        summary = f"{stats['ground_points']:,} ground returns, {stats['share_without_ground_data']:.0%} of the area without ground data"
+    T.save_terrain(p.path("data", "terrain", f"{tid}.tif"), dtm, gap, outside, x0, y1, resolution_m, epsg)
+    meta = {"dataset": dataset, "file": f"data/terrain/{tid}.tif", "points": points,
+            "epsg": epsg, "res": resolution_m, "box": [x0, y0, x1, y1], "area_km2": round(km2, 2), **stats, **how}
     terrains = p.load("terrains", {})
     terrains[tid] = meta
     p.save("terrains", terrains)
-    p.note(f"Fetched {dataset} as terrain {tid}: {stats['ground_points']:,} ground returns, "
-           f"{stats['share_without_ground_data']:.0%} of the area without ground data")
+    p.note(f"Fetched {dataset} as terrain {tid}: {summary}")
     warn = [] if stats["ground_classified"] else ["This dataset has no ground classification; the model uses the lowest return per cell and will include low vegetation."]
+    if points is None:
+        warn.append("This is a national agency's ready-made ground model. There are no raw points, so a section shows the ground profile only and cannot tell a feature in the ground from one in the trees.")
     return {"terrain": tid, **{k: v for k, v in meta.items() if k not in ("box", "file", "points", "epsg")}, "warnings": warn}
 
 
 @tool
 def view_terrain(project: str, terrain: str, style: str = "composite") -> list:
-    """Look at a whole terrain at reduced size. Styles: composite, hillshade, slope, local_relief."""
+    """Look at a whole terrain at reduced size. Styles: composite, hillshade, slope, local_relief, sky_view (dark ditches and hollows, bright banks; no light direction)."""
     p = Project(project).check()
     meta = p.load("terrains", {})[terrain]
     img = T.render(*T.load_terrain(p.path(meta["file"])), meta["res"], style)
@@ -188,7 +229,7 @@ def next_tiles(project: str, count: int = 8) -> list[str]:
 
 @tool
 def view_tile(project: str, tile: str, style: str = "composite") -> list:
-    """Look at one tile. North is up. Styles: composite, hillshade, slope, local_relief.
+    """Look at one tile. North is up. Styles: composite, hillshade, slope, local_relief, sky_view (dark ditches and hollows, bright banks; no light direction).
 
     Look for straight edges, right angles, flat rectangles, regular mounds and
     platforms. Flat dark grey means no ground data there.
@@ -237,8 +278,13 @@ def cut_section(project: str, tile: str, x1: float, y1: float, x2: float, y2: fl
     bx, by, _ = tiles.tile_xy(p, tile, x2, y2)
     terrain = p.load("tiles", {})[tile]["terrain"]
     img, stats = section.cut(p, terrain, (ax, ay), (bx, by), width_m)
-    stats["in_ground"] = stats["ground_returns_within_5m_of_peak"] >= 20 and stats["ground_returns_per_m"] >= 2
-    if not stats["has_vegetation_returns"]:
+    if stats.get("from_ground_model_only"):
+        stats["in_ground"] = None
+        stats["note"] = ("This terrain is a national agency's ground model with no raw points. The height is measured on the model; "
+                         "whether the feature is in the ground or is vegetation the agency left in cannot be told from it.")
+    else:
+        stats["in_ground"] = stats["ground_returns_within_5m_of_peak"] >= 20 and stats["ground_returns_per_m"] >= 2
+    if not stats["has_vegetation_returns"] and not stats.get("from_ground_model_only"):
         stats["note"] = "This dataset holds ground returns only, so the slice cannot show the canopy."
     if candidate:
         f = p.path("candidates", "img", f"{candidate}-section.png")

@@ -1,5 +1,6 @@
 """The whole chain on synthetic data: fetch, tile, screen, flag, section, checks, statuses."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -112,3 +113,23 @@ def test_records_keep_notes(tmp_path, survey):
     f.write_text(f.read_text() + "A person wrote this by hand.\n")
     server.add_evidence(root, "C-001", "Second line")
     assert "A person wrote this by hand." in f.read_text() and "- Second line" in f.read_text()
+
+def test_sky_view_darkens_a_ditch():
+    import numpy as np
+    from dighouse import terrain as T
+    ground = np.zeros((80, 80), np.float32)
+    ground[:, 38:42] = -1.5   # a ditch 2 m wide and 1.5 m deep
+    svf = T.sky_view(ground, 0.5)
+    assert svf[40, 40] < svf[40, 10] - 0.05 and abs(svf[40, 10] - 1) < 0.01
+
+
+def test_export_finds_writes_geojson_under_private(tmp_path):
+    from dighouse import ledger
+    from dighouse.project import Project
+    root = str(tmp_path / "export")
+    server.init_project(root, "Export", "Can finds be exported?", 0, 0, 0.01, 0.01)
+    ledger.create(Project(root), "A low bank", "t-1", (0.004, 0.006), "seen in two styles", "test")
+    got = server.export_finds(root)
+    data = json.loads(Path(got["file"]).read_text())
+    assert got["candidates"] == 1 and "/private/exports/" in got["file"]
+    assert data["features"][0]["geometry"]["coordinates"] == [0.004, 0.006]

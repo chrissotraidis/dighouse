@@ -67,3 +67,20 @@ def test_map_sites_come_from_qlever_without_overpass():
         sites = discover._osm_qlever([-83.6, 39.0, -82.6, 39.6])   # Ross County, Ohio
         assert len(sites) > 10 and any("Mound" in s["name"] for s in sites)
         assert all(s["record"].startswith("https://www.openstreetmap.org/") for s in sites)
+
+def test_national_ground_models_build(tmp_path):
+    for name, dataset, box in [("ginkel", "nl:ahn-dtm-05m", [5.728, 52.027, 5.732, 52.030]),
+                               ("gergovie", "fr:lidarhd-mnt", [3.118, 45.707, 3.122, 45.710])]:
+        root = str(tmp_path / name)
+        server.init_project(root, name, "Does the national ground model build?", *box)
+        assert dataset in [d.get("id") for d in server.find_data(*box)]
+        got = server.fetch_terrain(root, dataset, *box)
+        assert got["share_outside_survey"] < 0.05 and got["ready_made_ground_model"]
+        server.make_tiles(root, got["terrain"], tile_m=200)
+        stats = json.loads(server.cut_section(root, server.next_tiles(root, 1)[0], 0.1, 0.5, 0.9, 0.5)[0])
+        assert stats["from_ground_model_only"] and stats["in_ground"] is None
+
+
+def test_pleiades_adds_ancient_places():
+    sites = server.survey_area(12.45, 41.85, 12.55, 41.92)["known_sites"]   # central Rome
+    assert sites["by_source"].get("Pleiades", 0) > 50
