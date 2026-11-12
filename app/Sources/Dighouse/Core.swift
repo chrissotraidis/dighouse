@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 typealias JSON = [String: Any]
 
@@ -50,6 +51,13 @@ enum Paths {
         return dir
     }
 
+    /// Where chats that belong to no project run.
+    static var general: URL {
+        let dir = support.appendingPathComponent("General")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
     static var projectsHome: URL {
         if let custom = UserDefaults.standard.string(forKey: "projectsHome") { return URL(fileURLWithPath: custom) }
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Dighouse")
@@ -62,6 +70,7 @@ struct ModelInfo: Identifiable, Hashable {
     let id: String
     let name: String
     let readsImages: Bool
+    let hearsAudio: Bool
     let isDefault: Bool
     let efforts: [String]
     let defaultEffort: String?
@@ -153,8 +162,13 @@ struct RunStatus {
     var progress: Double { readable > 0 ? Double(screened) / Double(readable) : 0 }
 }
 
+struct PlanStep: Hashable {
+    let text: String
+    let status: String
+}
+
 struct ChatItem: Identifiable {
-    enum Kind { case user, agent, step }
+    enum Kind { case user, agent, step, plan }
     enum State { case running, done, failed }
     let id: String
     var kind: Kind
@@ -164,7 +178,56 @@ struct ChatItem: Identifiable {
     var tool: String?
     var details: [String] = []
     var result: String?
-    var images: [NSImage] = []
+    var images: [String] = []
+    var showsImage = false
+    var plan: [PlanStep] = []
+    var projectPath: String?
+    var files: [String] = []
+}
+
+/// Something attached to a message: an image, a sound, a video, or any other file.
+struct Attachment: Identifiable, Hashable {
+    enum Kind { case image, audio, video, file }
+    let path: String
+    var id: String { path }
+    var name: String { URL(fileURLWithPath: path).lastPathComponent }
+
+    var kind: Kind {
+        guard let type = UTType(filenameExtension: URL(fileURLWithPath: path).pathExtension) else { return .file }
+        if type.conforms(to: .image) { return .image }
+        if type.conforms(to: .movie) || type.conforms(to: .video) { return .video }
+        if type.conforms(to: .audio) { return .audio }
+        return .file
+    }
+
+    var icon: String {
+        switch kind {
+        case .image: return "photo"
+        case .audio: return "waveform"
+        case .video: return "film"
+        case .file: return "doc"
+        }
+    }
+}
+
+/// An open lidar survey from a public catalog.
+struct Survey: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let collected: String
+    let why: String
+    let url: String
+    let box: [Double]
+    /// A small area inside the survey that is known to hold ground data.
+    let start: [Double]
+}
+
+/// A tool server the person added to Dighouse.
+struct ToolServer: Identifiable, Codable, Hashable {
+    var name: String
+    var command: String
+    var id: String { name }
+    var key: String { name.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "_" }.joined() }
 }
 
 /// A place to begin: a known site to learn on, or an area where searching is still useful.
@@ -179,6 +242,12 @@ struct StartingPoint: Identifiable, Hashable {
     let name: String
     let question: String
     let box: [String]
+    var dataset: String? = nil
+
+    var centre: (lat: Double, lon: Double)? {
+        let n = box.compactMap(Double.init)
+        return n.count == 4 ? ((n[1] + n[3]) / 2, (n[0] + n[2]) / 2) : nil
+    }
 }
 
 enum Images {

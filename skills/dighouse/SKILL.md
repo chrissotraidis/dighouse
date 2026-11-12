@@ -7,6 +7,22 @@ description: Run an archaeological search over open lidar with the Dighouse tool
 
 Work inside one project folder and pass its absolute path to every tool. Read `PROJECT.md` and the latest file in `notes/` before doing anything, so a run continues where the last one stopped.
 
+## Choosing where to look
+
+When there is no project yet, help the person choose one. Ask what region, period or kind of site interests them, unless they already said.
+
+- `open_surveys` lists open lidar flown with archaeology in mind. Prefer ones that can be fetched without an account.
+- `find_place` turns a place name into an area.
+- `survey_area` shows which open lidar covers an area and which sites are already recorded there.
+
+Offer two or three areas, each with what lidar covers it, what is already recorded, and what a search could add. Areas with open lidar and few recorded sites add most. A published site is a good first project for someone learning. When the person picks one, call `init_project` with a box under 6 square km and a folder inside the projects folder you were given.
+
+## Working with other agents
+
+- When more than 12 tiles need screening, hand batches of about 8 tile ids to sub-agents. Tell each to view every tile in two styles and record a verdict, and to flag nothing: flags stay with you so one feature gets one record.
+- The second look is never yours. The person asks a different model for it from the candidate's record.
+- Keep a plan and update it as stages finish, so the person can see where the run stands.
+
 ## The loop
 
 1. **Plan.** Call `run_status`. If there are unscreened tiles, continue screening. If not, pick the next part of the search area.

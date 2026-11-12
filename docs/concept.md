@@ -9,7 +9,7 @@ The idea comes from Pietro Miotti's November 2026 experiment, in which agents sc
 ## What using it looks like
 
 1. Download Dighouse and open it. It finds the Codex engine and, if OpenCodex (OCX) is running, shows every model in the OCX roster.
-2. Create a project: a region, a question, and the open data to search.
+2. Start from Home. If you know the place, pick the area on a map and see which open lidar covers it. If you do not, ask the agent to help you choose: it compares open surveys with what is already recorded and suggests areas. Either way you end with a project: a region and a question.
 3. Start a run. Agents download the data, strip the forest away, screen the terrain, verify what they flag, and search the literature.
 4. Watch or leave. The map, the cross-sections and the records update as the agents work. You can steer the run at any time by typing.
 5. Review. Each candidate arrives as a record with its evidence, the sources checked, and a status. Nothing is called new without your decision.
@@ -38,9 +38,11 @@ flowchart LR
 | Archaeology tools | A tool server for the data work, plus the panes that show it | Built |
 | Projects and records | A folder per project, Markdown records, a mirror in Notion | Built |
 
-The window follows the Codex layout: projects on the far left, a narrow chat beside them, tools on the right. The chat collapses to a thin rail so the tools can take the full width, and a small composer stays available over the map while it is collapsed. The workspace has three tabs: Map, Records and Tools. Model choices for the agent and the second look are in Settings.
+The window shows one place at a time, chosen from the sidebar: Home, a chat, New project, Toolbox or Settings. Chats work with or without a project. Opening a project puts its workspace beside the chat, with a divider that drags, and the workspace has three tabs: Map, Records and Notes. The Toolbox is its own page for the workflows, the tools, the data sources and other tool servers. Settings is a page in the window that explains the engine, the account it uses and where data goes.
 
-A run strip stays across the top of the window at all times. It shows the current stage, how many tiles have been screened, how many known sites were found again, the number of candidates, and anything waiting for a person. The full list of stages and their checks opens from the strip.
+The message box follows ChatGPT: one pill for the model and its thinking effort, which opens an effort slider with the searchable model list behind the model's name. It takes images, video, audio and other files. The chat shows the agent's plan as a checklist, each step it takes, helper agents, and folds long runs into one line.
+
+In a project, a run strip stays across the top of the window. It shows how many tiles have been screened, how many known sites were found again, the number of candidates, and anything waiting for a person.
 
 ## Connecting to Codex and OCX
 

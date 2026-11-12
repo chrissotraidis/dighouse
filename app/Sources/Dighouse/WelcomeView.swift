@@ -6,6 +6,8 @@ struct WelcomeView: View {
     @EnvironmentObject var engine: Engine
     @State private var page = 0
     @State private var choice = StartingPoints.all[0]
+    @State private var busy = false
+    @State private var problem: String?
 
     private let titles = ["Welcome", "How it works", "Set up", "First project"]
 
@@ -92,10 +94,20 @@ struct WelcomeView: View {
     private var how: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("How a search works").font(.system(size: 28, weight: .bold))
-            Text("A run repeats these six stages. You can watch, steer by typing, or leave it and review later.")
-                .font(.system(size: 14)).foregroundStyle(Theme.dim)
-            GuideView(showTools: false)
-            Text("The Guide tab in the main window lists every tool the agents use and what it does.")
+            Text("Dighouse gives the agent six sets of tools, used roughly in this order. You can watch, steer by typing, or leave a run and review it later.")
+                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(Array(ToolGuide.packs.enumerated()), id: \.element.id) { index, pack in
+                    HStack(alignment: .top, spacing: 14) {
+                        IconTile(name: pack.icon)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(index + 1). \(pack.title)").font(.system(size: 14, weight: .semibold))
+                            Text(pack.summary).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            Text("The Toolbox in the main window lists every tool and the workflows that use them.")
                 .font(.system(size: 12.5)).foregroundStyle(Theme.faint)
         }
     }
@@ -135,8 +147,39 @@ struct WelcomeView: View {
                     .buttonStyle(.plain)
                 }
             }
-            ProjectForm(point: choice, actionTitle: "Create project") { app.finishOnboarding() }.id(choice.id)
-            Button("Skip for now") { app.finishOnboarding() }.buttonStyle(.plain).foregroundStyle(Theme.dim)
+            if let problem { Text(problem).font(.system(size: 12.5)).foregroundStyle(Theme.amber) }
+            HStack(spacing: 10) {
+                if !app.onboarded { Button("Skip for now") { app.finishOnboarding() }.buttonStyle(SecondaryButton()) }
+                Button("Help me choose a place") {
+                    app.finishOnboarding()
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "choose" }) { app.run(flow) }
+                }
+                .buttonStyle(SecondaryButton()).disabled(!engine.ready)
+                Spacer()
+                if busy { ProgressView().controlSize(.small) }
+                Button(choice.kind == .own ? "Pick an area" : "Create project", action: begin)
+                    .buttonStyle(PrimaryButton()).disabled(busy || !engine.ready)
+            }
+        }
+    }
+
+    /// Create the project for a listed place, or go to the map for an area of the person's own.
+    private func begin() {
+        guard choice.kind != .own else {
+            app.finishOnboarding()
+            app.startProject()
+            return
+        }
+        busy = true
+        problem = nil
+        Task { @MainActor in
+            do {
+                try await app.createProject(name: choice.name, question: choice.question, box: choice.box.compactMap(Double.init))
+                app.finishOnboarding()
+            } catch {
+                problem = error.localizedDescription
+            }
+            busy = false
         }
     }
 
@@ -183,15 +226,10 @@ struct SetupChecklist: View {
                 Rectangle().fill(Theme.line).frame(height: 1)
                 row(engine.ready, "Models", "The AI models the agents think with.",
                     engine.ready
-                    ? "\(engine.models.count) available" + (engine.account.map { ", signed in as \($0)" } ?? "")
-                      + (setup.ocxRunning ? ". OpenCodex router is running." : ".")
+                    ? "\(engine.models.count) available" + (setup.ocxRunning ? ", through Codex and the OpenCodex router." : ", from the Codex sign-in on this Mac.")
                     : app.starting ? "Checking…" : (engine.problem ?? "Available once the engine and the tools are ready.")) {
                     if engine.ready {
-                        PillMenu(title: app.modelName) {
-                            ForEach(engine.models) { model in
-                                Button(model.name + (model.readsImages ? "" : "  (text only)")) { app.modelID = model.id }
-                            }
-                        }
+                        ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
                     }
                 }
             }

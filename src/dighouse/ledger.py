@@ -150,8 +150,8 @@ def _body(meta: dict) -> str:
     s = checks.get("section")
     out.append(_tick(s and s.get("in_ground"), "Feature is in the ground returns",
                      f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} ground returns at the peak" if s else ""))
-    l = checks.get("second_look")
-    out.append(_tick(l and l.get("agrees"), "A second model agrees it looks built", f"{l['model']}: {l['note']}" if l else ""))
+    look = checks.get("second_look")
+    out.append(_tick(look and look.get("agrees"), "A second model agrees it looks built", f"{look['model']}: {look['note']}" if look else ""))
     m = checks.get("modern")
     out.append(_tick(m is not None and not m.get("likely_modern"), "Not a modern feature", m["summary"] if m else ""))
     read = sum(x["status"] == "read" for x in sources)

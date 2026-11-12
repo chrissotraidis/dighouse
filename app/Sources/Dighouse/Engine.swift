@@ -11,14 +11,58 @@ struct EngineError: LocalizedError {
     }
 }
 
+/// Splits the engine's output into messages on a background queue, so a large reply never stalls the window.
+private final class LineParser: @unchecked Sendable {
+    private var buffer = Data()
+
+    func feed(_ data: Data) -> [JSON] {
+        var out: [JSON] = []
+        var rest = data[...]
+        // Only the new bytes are searched for a line end, so a reply of many megabytes is read once.
+        while let newline = rest.firstIndex(of: 0x0A) {
+            buffer.append(rest[..<newline])
+            if let message = try? JSONSerialization.jsonObject(with: buffer) as? JSON, let light = Self.scrub(message) as? JSON {
+                out.append(light)
+            }
+            buffer.removeAll(keepingCapacity: true)
+            rest = rest[rest.index(after: newline)...]
+        }
+        buffer.append(rest)
+        return out
+    }
+
+    /// Tool results carry images as long base64 strings. The app shows the files instead, so drop them here.
+    private static func scrub(_ value: Any) -> Any {
+        if let dict = value as? JSON {
+            var out = JSON(minimumCapacity: dict.count)
+            for (key, inner) in dict {
+                if key == "data", let text = inner as? String, text.count > 4096 { out[key] = "" } else { out[key] = scrub(inner) }
+            }
+            return out
+        }
+        if let list = value as? [Any] { return list.map(scrub) }
+        return value
+    }
+}
+
+struct Connection: Identifiable {
+    let name: String
+    let tools: Int
+    var id: String { name }
+}
+
 /// The Codex engine, run as a child process and spoken to in JSON lines.
 @MainActor
 final class Engine: ObservableObject {
     @Published var ready = false
     @Published var problem: String?
     @Published var account: String?
+    @Published var plan: String?
     @Published var models: [ModelInfo] = []
     @Published var defaultModel: String?
+    @Published var connections: [Connection] = []
+    @Published var plugins: [String] = []
+    @Published var toolCount = 0
 
     var onNotification: ((String, JSON) -> Void)?
     var onServerRequest: ((Any, String, JSON) -> Void)?
@@ -27,20 +71,26 @@ final class Engine: ObservableObject {
     private var input: FileHandle?
     private var nextID = 0
     private var waiting: [Int: CheckedContinuation<JSON, Error>] = [:]
-    private var buffer = Data()
     private var serviceThread: String?
 
-    func start(codex: String, toolsBinary: String, path: String) async {
+    func start(codex: String, toolsBinary: String, path: String, extraServers: [ToolServer]) async {
         stop()
         problem = nil
         let p = Process()
         p.executableURL = URL(fileURLWithPath: codex)
-        p.arguments = [
+        var arguments = [
             "app-server",
             "-c", "mcp_servers.dighouse.command=\(toml(toolsBinary))",
             "-c", "mcp_servers.dighouse.args=[]",
             "-c", "mcp_servers.dighouse.startup_timeout_sec=60",
         ]
+        for server in extraServers {
+            let parts = Self.words(server.command)
+            guard let command = parts.first, !server.key.isEmpty else { continue }
+            arguments += ["-c", "mcp_servers.\(server.key).command=\(toml(command))",
+                          "-c", "mcp_servers.\(server.key).args=[\(parts.dropFirst().map(toml).joined(separator: ","))]"]
+        }
+        p.arguments = arguments
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = path
         p.environment = env
@@ -48,10 +98,13 @@ final class Engine: ObservableObject {
         p.standardInput = stdin
         p.standardOutput = stdout
         p.standardError = FileHandle.nullDevice
+        let parser = LineParser()
         stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            DispatchQueue.main.async { MainActor.assumeIsolated { self?.receive(data) } }
+            let messages = parser.feed(data)
+            guard !messages.isEmpty else { return }
+            DispatchQueue.main.async { MainActor.assumeIsolated { messages.forEach { self?.dispatch($0) } } }
         }
         p.terminationHandler = { [weak self] _ in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.ended() } }
@@ -63,11 +116,12 @@ final class Engine: ObservableObject {
         process = p
         input = stdin.fileHandleForWriting
         do {
-            _ = try await request("initialize", ["clientInfo": ["name": "dighouse", "title": "Dighouse", "version": "0.1.0"]])
+            _ = try await request("initialize", ["clientInfo": ["name": "dighouse", "title": "Dighouse", "version": "0.2.0"]])
             send(["method": "initialized"])
             let who = try await request("account/read")
             if let acct = who["account"] as? JSON {
                 account = (acct["email"] as? String) ?? (acct["type"] as? String)
+                plan = acct["planType"] as? String
             }
             try await loadModels()
             let service = try await request("thread/start", ["cwd": Paths.support.path, "ephemeral": true, "approvalPolicy": "never"])
@@ -104,10 +158,11 @@ final class Engine: ObservableObject {
             if let cursor { params["cursor"] = cursor }
             let page = try await request("model/list", params)
             for m in page["data"] as? [JSON] ?? [] where (m["hidden"] as? Bool) != true {
+                let inputs = m["inputModalities"] as? [String] ?? []
                 found.append(ModelInfo(
                     id: m["id"] as? String ?? "",
                     name: m["displayName"] as? String ?? (m["id"] as? String ?? ""),
-                    readsImages: (m["inputModalities"] as? [String] ?? []).contains("image"),
+                    readsImages: inputs.contains("image"), hearsAudio: inputs.contains("audio"),
                     isDefault: m["isDefault"] as? Bool ?? false,
                     efforts: (m["supportedReasoningEfforts"] as? [JSON] ?? []).compactMap { $0["reasoningEffort"] as? String },
                     defaultEffort: m["defaultReasoningEffort"] as? String))
@@ -115,6 +170,23 @@ final class Engine: ObservableObject {
             cursor = page["nextCursor"] as? String
         } while cursor != nil
         models = found
+    }
+
+    /// What the person's Codex setup adds: other tool servers and enabled plugins.
+    func loadConnections() async {
+        if let listed = try? await request("mcpServerStatus/list") {
+            let servers = listed["data"] as? [JSON] ?? []
+            toolCount = (servers.first { $0["name"] as? String == "dighouse" }?["tools"] as? JSON)?.count ?? 0
+            connections = servers.compactMap { server in
+                guard let name = server["name"] as? String, name != "dighouse" else { return nil }
+                return Connection(name: name, tools: (server["tools"] as? JSON)?.count ?? 0)
+            }.sorted { $0.tools > $1.tools }
+        }
+        if let installed = try? await request("plugin/installed") {
+            plugins = (installed["marketplaces"] as? [JSON] ?? []).flatMap { $0["plugins"] as? [JSON] ?? [] }
+                .filter { $0["installed"] as? Bool == true && $0["enabled"] as? Bool == true }
+                .compactMap { $0["name"] as? String }.sorted()
+        }
     }
 
     // MARK: talking to the engine
@@ -135,16 +207,21 @@ final class Engine: ObservableObject {
 
     /// Call one Dighouse tool directly, without an agent, and return its text.
     func callTool(_ tool: String, _ arguments: JSON) async throws -> String {
-        if serviceThread == nil {
-            let started = try await request("thread/start", ["cwd": Paths.support.path, "ephemeral": true, "approvalPolicy": "never"])
-            serviceThread = (started["thread"] as? JSON)?["id"] as? String
-        }
         let out = try await request("mcpServer/tool/call", [
             "threadId": serviceThread ?? "", "server": "dighouse", "tool": tool, "arguments": arguments,
         ])
-        let text = (out["content"] as? [JSON] ?? []).compactMap { $0["text"] as? String }.joined(separator: "\n")
-        if out["isError"] as? Bool == true { throw EngineError(message: text) }
-        return text
+        let texts = (out["content"] as? [JSON] ?? []).compactMap { $0["text"] as? String }
+        if out["isError"] as? Bool == true { throw EngineError(message: texts.joined(separator: "\n")) }
+        // A tool that returns a list sends one block per entry; put them back together as one JSON list.
+        return texts.count > 1 ? "[" + texts.joined(separator: ",") + "]" : texts.first ?? ""
+    }
+
+    /// The entries of a tool reply that is a list, or a single entry.
+    static func rows(_ text: String) -> [JSON] {
+        let parsed = try? JSONSerialization.jsonObject(with: Data(text.utf8))
+        if let list = parsed as? [JSON] { return list }
+        if let one = parsed as? JSON { return [one] }
+        return []
     }
 
     private func send(_ message: JSON) {
@@ -153,28 +230,36 @@ final class Engine: ObservableObject {
         try? input.write(contentsOf: data)
     }
 
-    private func receive(_ data: Data) {
-        buffer.append(data)
-        while let newline = buffer.firstIndex(of: 0x0A) {
-            let line = buffer.subdata(in: buffer.startIndex..<newline)
-            buffer.removeSubrange(buffer.startIndex...newline)
-            guard let message = try? JSONSerialization.jsonObject(with: line) as? JSON else { continue }
-            let method = message["method"] as? String
-            if let method, let id = message["id"] {
-                onServerRequest?(id, method, message["params"] as? JSON ?? [:])
-            } else if let method {
-                onNotification?(method, message["params"] as? JSON ?? [:])
-            } else if let id = message["id"] as? Int, let waiter = waiting.removeValue(forKey: id) {
-                if let error = message["error"] as? JSON {
-                    waiter.resume(throwing: EngineError(message: error["message"] as? String ?? "The engine reported an error."))
-                } else {
-                    waiter.resume(returning: message["result"] as? JSON ?? [:])
-                }
+    private func dispatch(_ message: JSON) {
+        let method = message["method"] as? String
+        if let method, let id = message["id"] {
+            onServerRequest?(id, method, message["params"] as? JSON ?? [:])
+        } else if let method {
+            onNotification?(method, message["params"] as? JSON ?? [:])
+        } else if let id = message["id"] as? Int, let waiter = waiting.removeValue(forKey: id) {
+            if let error = message["error"] as? JSON {
+                waiter.resume(throwing: EngineError(message: error["message"] as? String ?? "The engine reported an error."))
+            } else {
+                waiter.resume(returning: message["result"] as? JSON ?? [:])
             }
         }
     }
 
     private func toml(_ s: String) -> String {
         "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
+    }
+
+    /// Split a command into words, keeping anything inside double quotes together so paths may hold spaces.
+    static func words(_ command: String) -> [String] {
+        var out: [String] = []
+        var word = ""
+        var quoted = false
+        for c in command {
+            if c == "\"" { quoted.toggle() } else if c == " ", !quoted {
+                if !word.isEmpty { out.append(word); word = "" }
+            } else { word.append(c) }
+        }
+        if !word.isEmpty { out.append(word) }
+        return out
     }
 }

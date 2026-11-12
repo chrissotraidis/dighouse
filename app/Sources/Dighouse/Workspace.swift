@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The archaeology side of the window: the terrain, the candidate records, and the tools explained.
+/// The archaeology side of the window: the terrain, the candidate records, and the project's notes.
 struct WorkspaceView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
@@ -31,16 +31,7 @@ struct WorkspaceView: View {
             switch app.tab {
             case .map: MapView()
             case .records: RecordsView()
-            case .tools:
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        Text("How a search works").font(.system(size: 22, weight: .semibold))
-                        Text("These are the tools the agents use, in the order a search uses them. You can ask for any stage from the Tools button in the chat.")
-                            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                        GuideView()
-                    }
-                    .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
-                }
+            case .notes: NotesView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -83,7 +74,10 @@ struct MapView: View {
         if store.tiles.isEmpty {
             EmptyPane(icon: "mountain.2", title: "No terrain yet",
                       text: "Ask the agent to find open lidar for the project's area. The bare ground appears here as it is fetched.") {
-                Button("Find and fetch lidar") { app.ask(ToolGuide.stages[1].prompt) }.buttonStyle(PrimaryButton())
+                Button("Find and fetch lidar") {
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { app.run(flow) }
+                }
+                .buttonStyle(PrimaryButton())
             }
         } else {
             GeometryReader { geo in
@@ -188,7 +182,7 @@ struct MapView: View {
                         Image(nsImage: section).resizable().aspectRatio(contentMode: .fit)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
-                    Button("Open record") { app.tab = .records }.buttonStyle(SecondaryButton())
+                    Button("Open record") { app.showRecords(candidate.id) }.buttonStyle(SecondaryButton())
                 } else if let tile {
                     Text(tile.status == "unreadable" ? "Unreadable: the laser did not reach the ground here."
                          : tile.status == "screened" ? (tile.note ?? "") : "Nobody has looked at this tile yet.")
@@ -419,9 +413,8 @@ struct RecordsView: View {
                         ?? "A different model looks at the tile without seeing the first opinion.") {
                 HStack(spacing: 6) {
                     if app.secondLookBusy == c.id { ProgressView().controlSize(.small) }
-                    PillMenu(title: app.secondModelName) {
-                        ModelMenuItems(models: engine.models.filter { $0.readsImages }) { app.secondModelID = $0.id }
-                    }
+                    ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
+                                current: app.secondModelID) { app.secondModelID = $0.id }
                     Button("Ask") { app.secondLook(c) }.buttonStyle(SecondaryButton())
                         .disabled(app.secondLookBusy != nil || app.secondModelID == nil)
                 }
@@ -543,48 +536,59 @@ private struct DecisionSheet: View {
     }
 }
 
-// MARK: - Guide
+// MARK: - Notes
 
-struct GuideView: View {
-    var showTools = true
+/// The project's own Markdown: the brief, the run notes, the log of sources read, and any draft reports.
+struct NotesView: View {
+    @EnvironmentObject var store: ProjectStore
+    @State private var picked: String?
+
+    private var files: [String] {
+        guard let root = store.current?.path else { return [] }
+        let fm = FileManager.default
+        func folder(_ name: String) -> [String] {
+            ((try? fm.contentsOfDirectory(atPath: root + "/" + name)) ?? []).filter { $0.hasSuffix(".md") }.sorted().reversed().map { name + "/" + $0 }
+        }
+        return (["PROJECT.md"] + folder("notes") + ["sources/read-log.md"] + folder("reports")).filter { fm.fileExists(atPath: root + "/" + $0) }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ForEach(Array(ToolGuide.stages.enumerated()), id: \.element.id) { index, stage in
-                HStack(alignment: .top, spacing: 14) {
-                    IconTile(name: stage.icon)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("\(index + 1). \(stage.title)").font(.system(size: 14, weight: .semibold))
-                        Text(stage.summary).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                        if showTools {
-                            VStack(alignment: .leading, spacing: 5) {
-                                ForEach(stage.tools) { tool in
-                                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                        Text(tool.name).font(.system(size: 11.5, design: .monospaced)).foregroundStyle(Theme.green)
-                                            .frame(width: 128, alignment: .leading)
-                                        Text(tool.does).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                }
+        let all = files
+        let file = picked.flatMap { all.contains($0) ? $0 : nil } ?? all.first
+        let root = store.current?.path ?? ""
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(all, id: \.self) { name in
+                            Button { picked = name } label: {
+                                Text(name).font(.system(size: 12, design: .monospaced)).lineLimit(1)
+                                    .foregroundStyle(name == file ? Theme.text : Theme.dim)
+                                    .padding(.horizontal, 10).frame(height: 26)
+                                    .background(Capsule().fill(name == file ? Color.white.opacity(0.1) : .clear))
+                                    .contentShape(Capsule())
                             }
-                            .padding(.top, 2)
+                            .buttonStyle(.plain)
                         }
                     }
                 }
+                Button { NSWorkspace.shared.selectFile(file.map { root + "/" + $0 }, inFileViewerRootedAtPath: root) } label: {
+                    Image(systemName: "folder")
+                }
+                .buttonStyle(IconButton(size: 26)).help("Show the project folder in Finder")
             }
-            if showTools {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Rules the tools enforce").font(.system(size: 14, weight: .semibold))
-                    ForEach(ToolGuide.rules, id: \.self) { rule in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Image(systemName: "lock").font(.system(size: 11)).foregroundStyle(Theme.faint)
-                            Text(rule).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                        }
+            .padding(.horizontal, 12).frame(height: 40)
+            Hairline()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let file, let text = try? String(contentsOfFile: root + "/" + file, encoding: .utf8) {
+                        MarkdownText(text: text)
                     }
+                    Text("A project is a folder of Markdown, so it can be shared or kept in Git. Locations stay in private/ and are left out.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true).padding(.top, 8)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 16)
+                .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
             }
         }
-        .font(.system(size: 13))
     }
 }

@@ -28,3 +28,13 @@ def test_monks_mound_is_found_in_the_ground(tmp_path):
     tile = server.next_tiles(root, 1)[0]
     stats = json.loads(server.cut_section(root, tile, 0.5, 0.05, 0.5, 0.95)[0])
     assert stats["feature_height_m"] > 15 and stats["in_ground"]
+
+
+def test_discovery_tools_answer():
+    places = server.find_place("Cahokia Mounds State Historic Site")
+    assert places and abs(places[0]["lat"] - 38.65) < 0.1
+    surveys = server.open_surveys()
+    assert any("Yucatan" in s["title"] and s["fetchable_without_account"] for s in surveys)
+    area = server.survey_area(-90.2, 38.5, -89.9, 38.8)
+    assert any(d["id"].startswith("usgs:") for d in area["open_lidar"])
+    assert any("Cahokia" in site["name"] for site in area["known_sites"]["nearest"])

@@ -1,11 +1,20 @@
 import SwiftUI
 
+/// The one thing the window is showing.
+enum Route: Equatable {
+    case home, chat, newProject, toolbox, settings
+}
+
 enum PaneLayout: String {
     case chat, split, workspace
 }
 
 enum WorkTab: String, CaseIterable {
-    case map = "Map", records = "Records", tools = "Tools"
+    case map = "Map", records = "Records", notes = "Notes"
+}
+
+enum SettingsSection: String, CaseIterable {
+    case general = "General", models = "Models", engine = "Agent engine", privacy = "Data and privacy", about = "About"
 }
 
 @MainActor
@@ -15,18 +24,25 @@ final class AppState: ObservableObject {
     let store = ProjectStore()
     let chat = ChatModel()
 
+    @Published var route = Route.home
     @Published var onboarded = UserDefaults.standard.bool(forKey: "onboarded")
     @Published var showWelcome = false
-    @Published var exploring = false
     @Published var starting = true
     @Published var sidebarVisible = true
     @Published var sidebarPeek = false
     @Published var tab = WorkTab.map
-    @Published var newProject: StartingPoint?
+    @Published var settingsSection = SettingsSection.general
+    @Published var draftProject = StartingPoints.own
+    @Published var surveys: [Survey] = []
+    @Published var surveysLoading = false
+    @Published var surveysProblem: String?
     @Published var secondLookBusy: String?
     @Published var secondLookProblem: [String: String] = [:]
     @Published var layout = PaneLayout(rawValue: UserDefaults.standard.string(forKey: "layout") ?? "") ?? .split {
         didSet { UserDefaults.standard.set(layout.rawValue, forKey: "layout") }
+    }
+    @Published var chatWidth = UserDefaults.standard.object(forKey: "chatWidth") as? Double ?? 440 {
+        didSet { UserDefaults.standard.set(chatWidth, forKey: "chatWidth") }
     }
     @Published var modelID: String? = UserDefaults.standard.string(forKey: "model") {
         didSet { UserDefaults.standard.set(modelID, forKey: "model") }
@@ -40,11 +56,13 @@ final class AppState: ObservableObject {
     @Published var userName = UserDefaults.standard.string(forKey: "userName") ?? NSFullUserName() {
         didSet { UserDefaults.standard.set(userName, forKey: "userName") }
     }
+    @Published var toolServers: [ToolServer] = (UserDefaults.standard.data(forKey: "toolServers"))
+        .flatMap { try? JSONDecoder().decode([ToolServer].self, from: $0) } ?? [] {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(toolServers), forKey: "toolServers") }
+    }
 
     private var secondLooks: [String: String] = [:]
-
-    /// True when the Explore page is showing instead of a project.
-    var onStart: Bool { exploring || store.current == nil }
+    private var secondLookQueue: [String] = []
 
     var model: ModelInfo? {
         let id = modelID ?? engine.defaultModel
@@ -55,25 +73,35 @@ final class AppState: ObservableObject {
     var activeEffort: String? {
         guard let model, !model.efforts.isEmpty else { return nil }
         if let effort, model.efforts.contains(effort) { return effort }
-        return model.defaultEffort
+        return model.defaultEffort ?? model.efforts.first
     }
 
     init() {
+        route = store.current == nil ? .home : .chat
         chat.engine = engine
-        chat.model = { [weak self] in self?.modelID }
+        chat.model = { [weak self] in self?.model }
+        chat.modelID = { [weak self] in self?.modelID }
         chat.effort = { [weak self] in
             guard let self, let effort = self.effort, self.model?.efforts.contains(effort) == true else { return nil }
             return effort
         }
         chat.instructions = { [weak self] in
-            guard let self, let project = self.store.current else { return "" }
-            return self.setup.skill + "\n\nYou are running inside the Dighouse app. The open project folder is \(project.path). "
-                + "Pass that path as the project argument to every dighouse tool. Keep replies short and plain. "
-                + "The person sees the map, the tiles and the records beside this chat, so do not paste images or file contents. "
-                + "Do not record a second look yourself: the person asks a different model for it from the record."
+            guard let self else { return "" }
+            let shared = "Keep replies short and plain. Keep a plan for anything with more than two stages."
+            if let project = self.store.current {
+                return self.setup.skill + "\n\nYou are running inside the Dighouse app. The open project folder is \(project.path). "
+                    + "Pass that path as the project argument to every dighouse tool. "
+                    + "The person sees the map, the tiles and the records beside this chat, so do not paste images or file contents. "
+                    + "Do not record a second look yourself: the person asks a different model for it from the record. " + shared
+            }
+            return self.setup.skill + "\n\nYou are running inside the Dighouse app and no project is open. Help the person choose "
+                + "where to look, or answer their question. New projects go inside \(Paths.projectsHome.path): pass a new folder "
+                + "there as the project argument to init_project. After creating one, tell the person to open it from the card "
+                + "in the chat. " + shared
         }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }
+            if tool == "init_project", let path = args["project"] as? String { self.store.register(path: path) }
             self.store.reloadIfChanged()
             if ["view_tile", "cut_section", "flag_candidate", "record_verdict"].contains(tool), let tile = args["tile"] as? String {
                 self.store.selectedTile = tile
@@ -87,8 +115,10 @@ final class AppState: ObservableObject {
                 self.secondLookBusy = nil
                 if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
                     self.secondLookProblem[candidate] = EngineError.plain(failure)
+                    self.secondLookQueue = []
                 }
                 self.store.reloadIfChanged()
+                self.nextSecondLook()
             }
             self.chat.handle(method, params)
         }
@@ -112,7 +142,7 @@ final class AppState: ObservableObject {
         starting = true
         await setup.detect()
         if let codex = setup.codex, setup.toolsReady {
-            await engine.start(codex: codex, toolsBinary: setup.toolsBinary, path: setup.path)
+            await engine.start(codex: codex, toolsBinary: setup.toolsBinary, path: setup.path, extraServers: toolServers)
             if engine.ready {
                 await chat.open(project: store.current?.path)
                 if let project = store.current { store.open(project) }
@@ -121,31 +151,60 @@ final class AppState: ObservableObject {
         starting = false
     }
 
-    func open(_ project: ProjectRef) {
-        exploring = false
+    // MARK: moving around
+
+    func goHome() {
         sidebarPeek = false
-        store.open(project)
-        Task { await chat.open(project: project.path) }
+        store.close()
+        route = .home
+        Task { @MainActor in await chat.open(project: nil) }
     }
 
-    func openChat(_ thread: ChatThread) {
-        exploring = false
+    func open(_ project: ProjectRef) {
+        sidebarPeek = false
+        store.open(project)
+        route = .chat
+        tab = .map
+        Task { @MainActor in await chat.open(project: project.path) }
+    }
+
+    func openChat(_ thread: ChatThread, in project: ProjectRef?) {
         sidebarPeek = false
         if layout == .workspace { layout = .split }
-        Task { await chat.select(thread) }
+        route = .chat
+        // Coming back to the chat that is already open keeps what is on screen, including a run in progress.
+        if thread.id == chat.active, project?.path == store.current?.path { return }
+        Task { @MainActor in
+            if project?.path != store.current?.path {
+                if let project { store.open(project) } else { store.close() }
+                await chat.open(project: project?.path)
+            }
+            await chat.select(thread)
+        }
     }
 
     func newChat() {
-        guard store.current != nil else { exploring = true; return }
-        exploring = false
         sidebarPeek = false
         if layout == .workspace { layout = .split }
-        chat.newChat()
+        if route != .chat, store.current != nil {
+            // From Home, Toolbox or Settings, New chat means a general chat, not one inside whichever project was last open.
+            store.close()
+            Task { @MainActor in await chat.open(project: nil) }
+        } else {
+            chat.newChat()
+        }
+        route = .chat
     }
 
-    func show(_ tab: WorkTab) {
-        exploring = false
-        self.tab = tab
+    func show(_ page: Route) {
+        sidebarPeek = false
+        route = page
+    }
+
+    func showRecords(_ candidate: String? = nil) {
+        if let candidate { store.selectedCandidate = candidate }
+        tab = .records
+        route = .chat
         if layout == .chat { layout = .split }
     }
 
@@ -153,6 +212,24 @@ final class AppState: ObservableObject {
         onboarded = true
         showWelcome = false
         UserDefaults.standard.set(true, forKey: "onboarded")
+    }
+
+    // MARK: projects
+
+    func startProject(from point: StartingPoint = StartingPoints.own) {
+        sidebarPeek = false
+        draftProject = point
+        route = .newProject
+    }
+
+    func startProject(from survey: Survey) {
+        // Catalog titles run long: "Perry Mesa, AZ: Ancient Agricultural Features…" becomes "Perry Mesa, AZ".
+        let short = survey.title.split(separator: ":").first.map(String.init) ?? survey.title
+        startProject(from: StartingPoint(
+            id: survey.id, kind: .search, title: survey.title, place: "", about: survey.why, source: "OpenTopography",
+            name: short.trimmingCharacters(in: .whitespaces),
+            question: "Which built features show in this survey, and which of them are already published?",
+            box: survey.start.map { String($0) }, dataset: survey.id))
     }
 
     /// Create a project folder through the tools, so its layout always matches what they expect.
@@ -169,9 +246,8 @@ final class AppState: ObservableObject {
             "project": path, "name": name, "question": question,
             "west": box[0], "south": box[1], "east": box[2], "north": box[3],
         ])
-        store.add(path: path)
-        exploring = false
-        await chat.open(project: path)
+        store.register(path: path)
+        if let project = store.projects.first(where: { $0.path == path }) { open(project) }
     }
 
     func chooseProjectFolder() {
@@ -180,16 +256,84 @@ final class AppState: ObservableObject {
         panel.canChooseFiles = false
         panel.message = "Choose a Dighouse project folder (one that contains PROJECT.md)."
         if panel.runModal() == .OK, let url = panel.url {
-            store.add(path: url.path)
-            if let project = store.current, project.path == url.path { open(project) }
+            store.register(path: url.path)
+            if let project = store.projects.first(where: { $0.path == url.path }) { open(project) }
+        }
+    }
+
+    func loadSurveys() async {
+        guard engine.ready, !surveysLoading, surveys.isEmpty else { return }
+        surveysLoading = true
+        surveysProblem = nil
+        do {
+            let text = try await engine.callTool("open_surveys", [:])
+            surveys = Engine.rows(text).compactMap { row in
+                guard let title = row["title"] as? String, let w = row["west"] as? Double, let s = row["south"] as? Double,
+                      let e = row["east"] as? Double, let n = row["north"] as? Double, let id = row["id"] as? String,
+                      let start = row["checked_start"] as? [Double], start.count == 4 else { return nil }
+                return Survey(id: id, title: title, collected: row["collected"] as? String ?? "", why: row["why"] as? String ?? "",
+                              url: row["landing_page"] as? String ?? "", box: [w, s, e, n], start: start)
+            }
+        } catch {
+            surveysProblem = error.localizedDescription
+        }
+        surveysLoading = false
+    }
+
+    // MARK: workflows
+
+    /// Whether a workflow can run now, and a short note on where it stands.
+    func state(of flow: ToolGuide.Workflow) -> (ready: Bool, note: String) {
+        guard flow.scope == .project else { return (true, "") }
+        guard store.current != nil else { return (false, "Needs a project") }
+        let s = store.status, all = store.candidates
+        let open = all.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
+        func count(_ n: Int, _ noun: String) -> String { n == 0 ? "Done" : "\(n) \(noun)" }
+        switch flow.id {
+        case "terrain": return (true, s.tiles > 0 ? "Done" : "")
+        case "screen": return (s.unscreened > 0, s.tiles == 0 ? "Needs terrain" : count(s.unscreened, "tiles left"))
+        case "check":
+            let n = open.filter { $0.checks["section"] == nil || $0.checks["modern"] == nil }.count
+            return (n > 0, all.isEmpty ? "Needs candidates" : count(n, "to check"))
+        case "second":
+            let n = open.filter { $0.checks["second_look"] == nil }.count
+            return (n > 0 && secondModelID != nil, all.isEmpty ? "Needs candidates" : secondModelID == nil ? "Choose a second model" : count(n, "to ask"))
+        case "prior":
+            let n = open.filter { $0.sources.isEmpty }.count
+            return (n > 0, all.isEmpty ? "Needs candidates" : count(n, "to search"))
+        case "decide": return (!all.isEmpty, all.isEmpty ? "Needs candidates" : "\(open.count) open")
+        case "report":
+            let n = all.filter { $0.status == "no_match_in_sources_read" }.count
+            return (n > 0, n == 0 ? "Needs a decided candidate" : "\(n) ready")
+        default: return (true, "")
+        }
+    }
+
+    func run(_ flow: ToolGuide.Workflow) {
+        guard state(of: flow).ready else { return }
+        if flow.scope == .general, store.current != nil { store.close() }
+        if flow.id == "second" {
+            secondLookQueue = store.candidates
+                .filter { ($0.status == "flagged" || $0.status == "ground_confirmed") && $0.checks["second_look"] == nil }.map(\.id)
+            showRecords(secondLookQueue.first)
+            nextSecondLook()
+        } else if flow.scope == .general, chat.project != nil {
+            route = .chat
+            Task { @MainActor in
+                await chat.open(project: nil)
+                await chat.send(flow.prompt, title: flow.title)
+            }
+        } else {
+            ask(flow.prompt, title: flow.title)
         }
     }
 
     /// Send a message to the agent, making sure the chat is on screen.
-    func ask(_ text: String) {
-        exploring = false
+    func ask(_ text: String, title: String? = nil) {
+        sidebarPeek = false
+        route = .chat
         if layout == .workspace { layout = .split }
-        Task { @MainActor in await chat.send(text) }
+        Task { @MainActor in await chat.send(text, title: title) }
     }
 
     /// Record the person's own decision on a candidate.
@@ -201,9 +345,15 @@ final class AppState: ObservableObject {
         store.reloadIfChanged()
     }
 
+    private func nextSecondLook() {
+        guard secondLookBusy == nil, !secondLookQueue.isEmpty else { return }
+        let id = secondLookQueue.removeFirst()
+        if let candidate = store.candidates.first(where: { $0.id == id }) { secondLook(candidate) }
+    }
+
     /// Ask a different model for an independent opinion on a candidate, in its own short conversation.
     func secondLook(_ c: Candidate) {
-        guard let project = store.current, let model = secondModelID else { return }
+        guard let project = store.current, let model = secondModelID, secondLookBusy == nil else { return }
         secondLookBusy = c.id
         secondLookProblem[c.id] = nil
         let prompt = """
@@ -224,6 +374,7 @@ final class AppState: ObservableObject {
                 _ = try await engine.request("turn/start", ["threadId": id, "model": model, "input": [["type": "text", "text": prompt]]])
             } catch {
                 secondLookBusy = nil
+                secondLookQueue = []
                 secondLookProblem[c.id] = error.localizedDescription
             }
         }
@@ -241,43 +392,59 @@ extension View {
     }
 }
 
+/// Receives files dropped on the Dock icon or opened with Dighouse, however many arrive at once.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var openFiles: (([URL]) -> Void)?
+
+    func application(_ application: NSApplication, open urls: [URL]) { openFiles?(urls.filter(\.isFileURL)) }
+}
+
 @main
 struct DighouseApp: App {
     @StateObject private var app = AppState()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+
+    /// A file dropped on the Dock icon, or opened with Dighouse, is attached to the message being written.
+    private func attach(_ files: [URL]) {
+        files.filter(\.isFileURL).forEach { app.chat.attach($0.path) }
+        if app.route != .home, app.route != .chat { app.route = .chat }
+    }
 
     var body: some Scene {
         Window("Dighouse", id: "main") {
             RootView()
                 .withApp(app)
                 .frame(minWidth: 560, maxWidth: .infinity, minHeight: 520, maxHeight: .infinity)
+                .onOpenURL { attach([$0]) }
+                .onAppear { delegate.openFiles = attach }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1380, height: 880)
         .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") { app.show(.settings) }.keyboardShortcut(",")
+            }
             CommandGroup(replacing: .newItem) {
                 Button("New Chat") { app.newChat() }.keyboardShortcut("n")
-                Button("New Project…") { app.newProject = StartingPoints.own }.keyboardShortcut("n", modifiers: [.command, .shift])
+                Button("New Project…") { app.startProject() }.keyboardShortcut("n", modifiers: [.command, .shift])
                 Divider()
                 Button("Open Project Folder…") { app.chooseProjectFolder() }.keyboardShortcut("o")
-                Button("Explore Starting Points") { app.exploring = true }.keyboardShortcut("e", modifiers: [.command, .shift])
             }
             CommandGroup(after: .sidebar) {
+                Button("Home") { app.goHome() }.keyboardShortcut("0")
+                Button("Toolbox") { app.show(.toolbox) }.keyboardShortcut("t")
+                Divider()
                 Button(app.sidebarVisible ? "Hide Sidebar" : "Show Sidebar") { app.sidebarVisible.toggle() }
                     .keyboardShortcut("s", modifiers: [.command, .control])
-                Divider()
                 Button("Chat Only") { app.layout = .chat }.keyboardShortcut("1")
                 Button("Chat and Workspace") { app.layout = .split }.keyboardShortcut("2")
                 Button("Workspace Only") { app.layout = .workspace }.keyboardShortcut("3")
                 Divider()
-                Button("Map") { app.show(.map) }.keyboardShortcut("4")
-                Button("Records") { app.show(.records) }.keyboardShortcut("5")
-                Button("Tools") { app.show(.tools) }.keyboardShortcut("6")
-                Divider()
             }
             CommandMenu("Run") {
-                ForEach(ToolGuide.stages) { stage in
-                    Button(stage.title) { app.ask(stage.prompt) }.disabled(app.store.current == nil)
+                ForEach(ToolGuide.workflows.filter { $0.scope == .project }) { flow in
+                    Button(flow.title) { app.run(flow) }.disabled(!app.state(of: flow).ready)
                 }
                 Divider()
                 Button("Stop") { Task { await app.chat.stop() } }
@@ -285,14 +452,10 @@ struct DighouseApp: App {
             }
             CommandGroup(replacing: .help) {
                 Button("Welcome Guide") { app.showWelcome = true }
-                Button("Tools and How a Search Works") { app.show(.tools) }
+                Button("Toolbox: Tools and Workflows") { app.show(.toolbox) }
                 Divider()
                 Link("Dighouse on GitHub", destination: URL(string: "https://github.com/chrissotraidis/dighouse")!)
             }
-        }
-
-        Settings {
-            SettingsView().withApp(app)
         }
     }
 }
@@ -310,8 +473,5 @@ struct RootView: View {
             }
         }
         .foregroundStyle(Theme.text)
-        .sheet(item: $app.newProject) { point in
-            NewProjectSheet(point: point).withApp(app)
-        }
     }
 }

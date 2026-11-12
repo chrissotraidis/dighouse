@@ -1,12 +1,18 @@
 # Dighouse
 
-Dighouse is an open-source project for finding archaeological sites in open data with AI agents. This repository holds its first part: a tool server that gives any agent harness the archaeology tools, plus the project format the tools write to. The design for the full desktop app is in [docs/concept.md](docs/concept.md).
+Dighouse is an open-source project for finding archaeological sites in open data with AI agents. It is an agent harness with archaeology tools built in: a macOS app that runs the Codex engine with any model you have, and a tool server that finds, fetches and reads open lidar and keeps the records. The design is in [docs/concept.md](docs/concept.md), and the current work loop is in [docs/GOAL_LOOP.md](docs/GOAL_LOOP.md).
 
-The tools speak the Model Context Protocol, so they work in Codex, Claude Code and other harnesses today.
+The tools speak the Model Context Protocol, so they also work on their own in Codex, Claude Code and other harnesses.
 
 ## The app
 
-`app/` holds Dighouse for macOS: a native app that runs the Codex engine with these tools attached. It has a chat with the agent, a map of the bare-ground tiles, the candidate records with their checks, and an Explore page of starting points.
+`app/` holds Dighouse for macOS: a native app that runs the Codex engine with these tools attached.
+
+- **Home** has a message box and two ways in. "Help me choose a place" starts a chat in which the agent compares open surveys with what is already recorded. "I know where to look" opens a map where you place the search area and see which open lidar covers it. Below are open surveys read from OpenTopography's live catalog and published sites to learn on.
+- **Chat** works with or without a project. It shows the agent's plan, each step it takes, helper agents, and long runs folded into one line. The message box has one control for the model and its thinking effort, and takes images, video, audio and other files.
+- **A project** adds a workspace beside the chat: the map of bare-ground tiles, the candidate records with their checks, and the project's notes. The divider between them drags.
+- **Toolbox** lists the workflows with who does each part, the tools, the open data sources and whether they answer, and the tool servers and plugins that come from your Codex setup. You can add another tool server there.
+- **Settings** is a page in the window. It covers models, the agent engine and the account it uses, and what data goes where.
 
 ~~~sh
 cd app
@@ -22,6 +28,7 @@ The build is signed for local use only. It is not notarized, so it is not yet a 
 
 | Stage | Tools |
 |---|---|
+| Choose where to look | `find_place`, `open_surveys`, `survey_area` |
 | Set up | `init_project` |
 | Find and fetch open lidar | `find_data`, `fetch_terrain` |
 | Look at the bare ground | `view_terrain`, `make_tiles`, `next_tiles`, `view_tile` |
@@ -30,7 +37,7 @@ The build is signed for local use only. It is not notarized, so it is not yet a 
 | Prior art | `search_literature`, `log_source` |
 | Records and run | `add_evidence`, `set_status`, `list_candidates`, `add_control`, `run_status` |
 
-Data comes from two public sources that need no account: [OpenTopography](https://portal.opentopography.org/datasets)'s bulk datasets and the [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/) point clouds.
+Lidar comes from two public sources that need no account: [OpenTopography](https://portal.opentopography.org/datasets)'s bulk datasets and the [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/) point clouds. Place names and modern features come from OpenStreetMap, recorded sites from Wikidata, and the literature search from OpenAlex.
 
 ## The rules the tools enforce
 
@@ -79,7 +86,7 @@ The live test fetches USGS lidar over Monks Mound at Cahokia, Illinois, builds t
 
 ## Status
 
-Working: everything in the table above, and the macOS app. Not built yet: bulk screening through a model router, pushing records to Notion from the app, a notarized download, and sections that show canopy for datasets published as ground points only.
+Working: everything in the table above, and the macOS app as described. Not built yet: bulk screening through a model router, a button that pushes records to Notion, a notarized download, and sections that show canopy for datasets published as ground points only.
 
 ## Licence
 

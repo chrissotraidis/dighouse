@@ -1,30 +1,31 @@
 import SwiftUI
 
-/// The window: sidebar, top bar, and the chat and workspace panes, arranged to fit the width available.
+/// The window: sidebar, top bar, and one page at a time.
 struct MainView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
+    @EnvironmentObject var store: ProjectStore
 
     var body: some View {
         GeometryReader { geo in
-            let narrow = geo.size.width < 900
+            let narrow = geo.size.width < 860
             let sidebar = app.sidebarVisible && !narrow
-            let width = geo.size.width - (sidebar ? 261 : 0)
+            let width = geo.size.width - (sidebar ? 257 : 0)
             HStack(spacing: 0) {
                 if sidebar {
-                    Sidebar().frame(width: 260)
+                    Sidebar().frame(width: 256)
                     Hairline(vertical: true)
                 }
                 VStack(spacing: 0) {
                     TopBar(inset: !sidebar, narrow: narrow, width: width)
-                    content(width: width)
+                    page(width: width)
                 }
             }
             .overlay(alignment: .leading) {
                 if narrow && app.sidebarPeek {
                     ZStack(alignment: .leading) {
                         Color.black.opacity(0.45).onTapGesture { app.sidebarPeek = false }
-                        Sidebar().frame(width: 260).shadow(color: .black.opacity(0.5), radius: 24)
+                        Sidebar().frame(width: 256).shadow(color: .black.opacity(0.5), radius: 24)
                     }
                 }
             }
@@ -32,31 +33,43 @@ struct MainView: View {
         .ignoresSafeArea(edges: .top)
     }
 
-    @ViewBuilder private func content(width: CGFloat) -> some View {
+    @ViewBuilder private func page(width: CGFloat) -> some View {
         if !engine.ready {
-            VStack(spacing: 18) {
-                Text(app.starting ? "Starting Dighouse" : "Dighouse needs a few things").font(.system(size: 22, weight: .semibold))
-                if app.starting { ProgressView().controlSize(.small) } else { SetupChecklist().frame(maxWidth: 600) }
-            }
-            .padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if app.onStart {
-            StartView()
-        } else {
-            let mode: PaneLayout = app.layout == .split && width < 760 ? .chat : app.layout
-            HStack(spacing: 0) {
-                if mode != .workspace {
-                    ChatView()
-                        .frame(width: mode == .split ? min(max(width * 0.36, 340), 480) : nil)
-                        .frame(maxWidth: mode == .chat ? .infinity : nil)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(app.starting ? "Starting Dighouse" : "Dighouse needs a few things").font(.system(size: 22, weight: .semibold))
+                    if app.starting { ProgressView().controlSize(.small) } else { SetupChecklist() }
                 }
-                if mode == .split { Hairline(vertical: true) }
-                if mode != .chat { WorkspaceView() }
+                .padding(28).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
             }
+        } else {
+            switch app.route {
+            case .home: HomeView()
+            case .newProject: NewProjectView(point: app.draftProject).id(app.draftProject.id)
+            case .toolbox: ToolboxView()
+            case .settings: SettingsPage()
+            case .chat:
+                if store.current == nil { ChatView() } else { split(width: width) }
+            }
+        }
+    }
+
+    private func split(width: CGFloat) -> some View {
+        let mode: PaneLayout = app.layout == .split && width < 720 ? .chat : app.layout
+        let most = max(Double(width) - 380, 320)
+        return HStack(spacing: 0) {
+            if mode != .workspace {
+                ChatView()
+                    .frame(width: mode == .split ? min(max(app.chatWidth, 320), most) : nil)
+                    .frame(maxWidth: mode == .chat ? .infinity : nil)
+            }
+            if mode == .split { SplitHandle(width: $app.chatWidth, range: 320...most) }
+            if mode != .chat { WorkspaceView() }
         }
     }
 }
 
-/// Always on screen: the project, where its run stands, and how the panes are arranged.
+/// Always on screen: where you are and, in a project, where its run stands.
 struct TopBar: View {
     let inset: Bool
     let narrow: Bool
@@ -66,6 +79,18 @@ struct TopBar: View {
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var engine: Engine
 
+    private var inProject: Bool { app.route == .chat && store.current != nil }
+
+    private var title: String {
+        switch app.route {
+        case .home: return "Home"
+        case .newProject: return "New project"
+        case .toolbox: return "Toolbox"
+        case .settings: return "Settings"
+        case .chat: return store.current?.name ?? chat.title
+        }
+    }
+
     var body: some View {
         let s = store.status
         HStack(spacing: 8) {
@@ -73,23 +98,16 @@ struct TopBar: View {
                 if narrow { app.sidebarPeek.toggle() } else { app.sidebarVisible.toggle() }
             } label: { Image(systemName: "sidebar.left") }
                 .buttonStyle(IconButton()).help("Show or hide the sidebar")
-
-            if app.onStart {
-                Text("Explore").font(.system(size: 14, weight: .semibold))
-            } else {
-                Text(store.current?.name ?? "").font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                if width > 640 { stats(s) }
-            }
+            Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+            if inProject, width > 640 { stats(s) }
             Spacer(minLength: 8)
             if let problem = engine.problem {
-                Badge(text: problem, color: Theme.amber)
-            } else if !app.onStart {
+                Button { app.settingsSection = .engine; app.show(.settings) } label: { Badge(text: problem, color: Theme.amber) }
+                    .buttonStyle(.plain)
+            } else if inProject {
                 if chat.running { ProgressView().controlSize(.small).padding(.trailing, 2) }
                 if !s.needsPerson.isEmpty {
-                    Button {
-                        store.selectedCandidate = s.needsPerson.first
-                        app.show(.records)
-                    } label: {
+                    Button { app.showRecords(s.needsPerson.first) } label: {
                         Badge(text: "\(s.needsPerson.count) need\(s.needsPerson.count == 1 ? "s" : "") you", color: Theme.accent)
                     }
                     .buttonStyle(.plain).help("Candidates waiting for your decision")
@@ -104,7 +122,7 @@ struct TopBar: View {
             GeometryReader { geo in
                 ZStack(alignment: .bottomLeading) {
                     Hairline().frame(maxHeight: .infinity, alignment: .bottom)
-                    if !app.onStart, s.progress > 0 {
+                    if inProject, s.progress > 0 {
                         Rectangle().fill(Theme.accent).frame(width: geo.size.width * s.progress, height: 2)
                     }
                 }
@@ -167,45 +185,39 @@ struct Sidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Color.clear.frame(height: 46).background(WindowDragArea())
-            nav("square.and.pencil", "New chat", selected: false) { app.newChat() }
-            nav("binoculars", "Explore", selected: app.onStart) {
-                app.exploring = true
-                app.sidebarPeek = false
-            }
-            nav("wrench.and.screwdriver", "Tools", selected: !app.onStart && app.tab == .tools && app.layout != .chat) {
-                app.show(.tools)
-                app.sidebarPeek = false
-            }
-
-            HStack {
-                Text("Projects").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.faint)
-                Spacer()
-                Button { app.newProject = StartingPoints.own } label: { Image(systemName: "plus") }
-                    .buttonStyle(IconButton(size: 24)).help("New project")
-            }
-            .padding(.leading, 10).padding(.trailing, 2).padding(.top, 14)
+            nav("square.and.pencil", "New chat", selected: app.route == .chat && store.current == nil && chat.active == nil) { app.newChat() }
+            nav("house", "Home", selected: app.route == .home) { app.goHome() }
+            nav("wrench.and.screwdriver", "Toolbox", selected: app.route == .toolbox) { app.show(.toolbox) }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
+                    if !chat.generalThreads.isEmpty {
+                        header("Chats")
+                        ForEach(chat.generalThreads) { thread in chatRow(thread, in: nil, indent: 0) }
+                    }
+                    HStack {
+                        header("Projects")
+                        Spacer()
+                        Button { app.startProject() } label: { Image(systemName: "plus") }
+                            .buttonStyle(IconButton(size: 24, active: app.route == .newProject)).help("New project")
+                    }
                     ForEach(store.projects) { project in projectRows(project) }
                     if store.projects.isEmpty {
-                        Text("No projects yet. Pick a starting point in Explore.")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.faint).padding(10)
+                        Text("No projects yet. Start one from Home.")
+                            .font(.system(size: 12.5)).foregroundStyle(Theme.faint).padding(.horizontal, 10).padding(.vertical, 6)
                     }
                 }
             }
+            .padding(.top, 6)
 
             Hairline().padding(.vertical, 6)
-            SettingsLink {
-                Label("Settings", systemImage: "gearshape").font(.system(size: 13.5))
+            if !engine.ready {
+                Button { app.settingsSection = .engine; app.show(.settings) } label: {
+                    Label("Engine not running", systemImage: "exclamationmark.triangle").font(.system(size: 13)).foregroundStyle(Theme.amber)
+                }
+                .buttonStyle(RowButton())
             }
-            .buttonStyle(RowButton())
-            HStack(spacing: 8) {
-                Circle().fill(engine.ready ? Theme.green : Theme.amber).frame(width: 7, height: 7)
-                Text(engine.ready ? (engine.account ?? "Engine running") : "Engine not running")
-                    .font(.system(size: 12)).foregroundStyle(Theme.faint).lineLimit(1)
-            }
-            .padding(.horizontal, 12).padding(.top, 4).padding(.bottom, 2)
+            nav("gearshape", "Settings", selected: app.route == .settings) { app.show(.settings) }
         }
         .padding(.horizontal, 8).padding(.bottom, 10)
         .frame(maxHeight: .infinity, alignment: .top)
@@ -219,6 +231,11 @@ struct Sidebar: View {
         }
     }
 
+    private func header(_ title: String) -> some View {
+        Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.faint)
+            .padding(.leading, 10).padding(.top, 12).padding(.bottom, 2)
+    }
+
     private func nav(_ icon: String, _ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon).font(.system(size: 13.5))
@@ -226,48 +243,53 @@ struct Sidebar: View {
         .buttonStyle(RowButton(selected: selected))
     }
 
+    private func chatRow(_ thread: ChatThread, in project: ProjectRef?, indent: CGFloat) -> some View {
+        let selected = app.route == .chat && chat.active == thread.id
+        return Button { app.openChat(thread, in: project) } label: {
+            HStack(spacing: 6) {
+                Text(thread.title).font(.system(size: 13)).lineLimit(1).foregroundStyle(selected ? Theme.text : Theme.dim)
+                Spacer(minLength: 0)
+                if chat.live[thread.id] != nil { ProgressView().controlSize(.mini) }
+            }
+        }
+        .buttonStyle(RowButton(selected: selected))
+        .padding(.leading, indent)
+        .contextMenu {
+            Button("Rename…") {
+                newName = thread.title
+                renaming = thread
+            }
+            Button("Archive") { Task { await chat.archive(thread) } }
+        }
+    }
+
     @ViewBuilder private func projectRows(_ project: ProjectRef) -> some View {
         let current = project == store.current
         let open = current && !collapsed.contains(project.path)
         Button {
-            if current && !app.onStart {
+            if current && app.route == .chat && chat.active == nil {
                 if open { collapsed.insert(project.path) } else { collapsed.remove(project.path) }
             } else {
                 collapsed.remove(project.path)
-                app.open(project)
+                if current { app.newChat() } else { app.open(project) }
             }
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.faint)
                     .rotationEffect(.degrees(open ? 90 : 0)).frame(width: 10)
-                Text(project.name).font(.system(size: 13.5, weight: current ? .medium : .regular)).lineLimit(1)
+                Text(project.name).font(.system(size: 13.5)).lineLimit(1)
             }
         }
-        .buttonStyle(RowButton())
+        .buttonStyle(RowButton(selected: current && app.route == .chat && chat.active == nil))
         .contextMenu {
             Button("Show in Finder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
-            Button("Remove from List") { store.remove(project) }
+            Button("Remove from List") {
+                if current { app.goHome() }
+                store.remove(project)
+            }
         }
         if open {
-            ForEach(chat.threads) { thread in
-                Button { app.openChat(thread) } label: {
-                    Text(thread.title).font(.system(size: 13)).lineLimit(1)
-                        .foregroundStyle(chat.active == thread.id ? Theme.text : Theme.dim)
-                }
-                .buttonStyle(RowButton(selected: chat.active == thread.id && !app.onStart))
-                .padding(.leading, 18)
-                .contextMenu {
-                    Button("Rename…") {
-                        newName = thread.title
-                        renaming = thread
-                    }
-                    Button("Archive") { Task { await chat.archive(thread) } }
-                }
-            }
-            if chat.threads.isEmpty {
-                Text("No chats yet").font(.system(size: 12.5)).foregroundStyle(Theme.faint)
-                    .padding(.leading, 28).padding(.vertical, 6)
-            }
+            ForEach(chat.threads) { thread in chatRow(thread, in: project, indent: 18) }
         }
     }
 }

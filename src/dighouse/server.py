@@ -10,14 +10,15 @@ import re
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from . import checks, ledger, section, sources, tiles
+from . import checks, discover, ledger, section, sources, tiles
 from . import terrain as T
 from .project import Project
 
 mcp = MCPServer(
     "dighouse",
     instructions=(
-        "Archaeology tools for searching open lidar. Work inside one project folder. "
+        "Archaeology tools for searching open lidar. To choose where to look, use find_place, open_surveys and "
+        "survey_area; they need no project. Everything else works inside one project folder. "
         "Order of work: init_project, find_data, fetch_terrain, make_tiles, then for each tile view_tile and "
         "record_verdict; flag_candidate for anything that looks built; then cut_section, second_look, "
         "check_modern, search_literature and log_source for every flag; set_status last. "
@@ -49,6 +50,32 @@ def _reply(info: dict, image=None) -> list:
     if image is not None:
         out.append(Image(path=str(image)))
     return out
+
+
+@tool
+def find_place(query: str) -> list[dict]:
+    """Look up a place name. Returns matching places with their centre and bounding box in degrees."""
+    return discover.find_place(query)
+
+
+@tool
+def open_surveys(keyword: str = "") -> list[dict]:
+    """List open lidar surveys on OpenTopography flown with archaeology in mind, or matching a keyword.
+
+    Each has its footprint, why it matched, and whether its points can be fetched without an account.
+    checked_start is a small box known to hold ground data, for surveys whose fetch has been tested.
+    """
+    return discover.open_surveys(keyword)
+
+
+@tool
+def survey_area(west: float, south: float, east: float, north: float) -> dict:
+    """Size up an area before committing to it: which open lidar covers it and which sites are already recorded.
+
+    Use it on areas up to 2 degrees across. Recorded sites come from Wikidata and are listed by name,
+    distance and direction from the centre of the area.
+    """
+    return discover.survey_area([west, south, east, north])
 
 
 @tool

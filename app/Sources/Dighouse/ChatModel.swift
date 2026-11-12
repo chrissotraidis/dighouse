@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Foundation
 
 struct ChatThread: Identifiable, Hashable {
@@ -11,52 +12,96 @@ struct Approval {
     let message: String
 }
 
-/// The conversations of the open project, and the live state of the one on screen.
+enum Media {
+    /// Sample a few frames from a video so a model that reads images can see it.
+    static func frames(from path: String, count: Int = 6) async -> [String] {
+        let asset = AVURLAsset(url: URL(fileURLWithPath: path))
+        guard let duration = try? await asset.load(.duration), duration.seconds > 0 else { return [] }
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: 1280, height: 1280)
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("dighouse-frames-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var out: [String] = []
+        for i in 0..<count {
+            let time = CMTime(seconds: duration.seconds * (Double(i) + 0.5) / Double(count), preferredTimescale: 600)
+            guard let frame = try? await generator.image(at: time).image,
+                  let data = NSBitmapImageRep(cgImage: frame).representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+            else { continue }
+            let file = folder.appendingPathComponent("frame-\(i + 1).jpg")
+            if (try? data.write(to: file)) != nil { out.append(file.path) }
+        }
+        return out
+    }
+}
+
+/// The conversations of the open scope (a project, or the general chat) and the live state of the one on screen.
 @MainActor
 final class ChatModel: ObservableObject {
     @Published var threads: [ChatThread] = []
+    @Published var generalThreads: [ChatThread] = []
     @Published var active: String?
     @Published var items: [ChatItem] = []
     @Published var running = false
+    @Published var preparing = false
+    @Published var loading = false
     @Published var approval: Approval?
     @Published var draft = ""
-    @Published var attachments: [String] = []
+    @Published var attachments: [Attachment] = []
+    /// The chats with a run in progress, and the turn each is on.
+    @Published private(set) var live: [String: String] = [:]
 
     var engine: Engine?
     var instructions: () -> String = { "" }
-    var model: () -> String? = { nil }
+    var model: () -> ModelInfo? = { nil }
+    var modelID: () -> String? = { nil }
     var effort: () -> String? = { nil }
     var onToolFinished: ((String, JSON) -> Void)?
 
-    private var project: String?
+    private(set) var project: String?
     private var turn: String?
     private var resumed: Set<String> = []
 
-    var title: String { threads.first { $0.id == active }?.title ?? "New chat" }
+    var scope: String { project ?? Paths.general.path }
+    var title: String { (threads + generalThreads).first { $0.id == active }?.title ?? "New chat" }
 
     func open(project path: String?) async {
+        if path != project { threads = [] }
         project = path
         newChat()
         await refreshThreads()
     }
 
     func refreshThreads() async {
-        guard let engine, let project else { threads = []; return }
-        let listed = try? await engine.request("thread/list", ["cwd": project, "limit": 40])
-        let open = threads.first { $0.id == active }
-        var fresh: [ChatThread] = (listed?["data"] as? [JSON] ?? []).compactMap { t in
+        guard let engine, engine.ready else { return }
+        let scope = project
+        let general = await list(Paths.general.path)
+        let own = scope == nil ? [] : await list(scope ?? "")
+        guard scope == project else { return }
+        // A chat that was just started may not be in the engine's list yet, so keep the open one.
+        generalThreads = keepingOpen(general, from: generalThreads)
+        threads = scope == nil ? [] : keepingOpen(own, from: threads)
+    }
+
+    private func keepingOpen(_ fresh: [ChatThread], from old: [ChatThread]) -> [ChatThread] {
+        guard let open = old.first(where: { $0.id == active }), !fresh.contains(where: { $0.id == open.id }) else { return fresh }
+        return [open] + fresh
+    }
+
+    private func list(_ cwd: String) async -> [ChatThread] {
+        let listed = try? await engine?.request("thread/list", ["cwd": cwd, "limit": 40])
+        return (listed?["data"] as? [JSON] ?? []).compactMap { t in
             guard let id = t["id"] as? String else { return nil }
             let title = (t["name"] as? String) ?? (t["preview"] as? String) ?? ""
             return ChatThread(id: id, title: title.isEmpty ? "New chat" : String(title.prefix(80)))
         }
-        if let open, !fresh.contains(where: { $0.id == open.id }) { fresh.insert(open, at: 0) }
-        threads = fresh
     }
 
     func newChat() {
         active = nil
         items = []
         running = false
+        loading = false
         attachments = []
     }
 
@@ -64,19 +109,27 @@ final class ChatModel: ObservableObject {
         guard let engine else { return }
         active = thread.id
         items = []
-        running = false
+        running = live[thread.id] != nil
+        turn = live[thread.id]
+        loading = true
+        defer { if active == thread.id { loading = false } }
         do {
-            if !resumed.contains(thread.id) {
-                _ = try await engine.request("thread/resume", threadSettings(["threadId": thread.id]))
-                resumed.insert(thread.id)
-            }
             let read = try await engine.request("thread/read", ["threadId": thread.id, "includeTurns": true])
             let turns = (read["thread"] as? JSON)?["turns"] as? [JSON] ?? []
             guard active == thread.id else { return }
             items = turns.flatMap { $0["items"] as? [JSON] ?? [] }.compactMap { item(from: $0, finished: true) }
+            loading = false
+            try await resume(thread.id)
         } catch {
             items = [problem(error.localizedDescription)]
         }
+    }
+
+    /// The engine has to load a stored chat before it can take another message.
+    private func resume(_ id: String) async throws {
+        guard let engine, !resumed.contains(id) else { return }
+        _ = try await engine.request("thread/resume", threadSettings(["threadId": id]))
+        resumed.insert(id)
     }
 
     func rename(_ thread: ChatThread, to name: String) async {
@@ -84,25 +137,58 @@ final class ChatModel: ObservableObject {
         guard let engine, !name.isEmpty else { return }
         _ = try? await engine.request("thread/name/set", ["threadId": thread.id, "name": name])
         if let i = threads.firstIndex(of: thread) { threads[i].title = name }
+        if let i = generalThreads.firstIndex(of: thread) { generalThreads[i].title = name }
     }
 
     func archive(_ thread: ChatThread) async {
         guard let engine else { return }
         _ = try? await engine.request("thread/archive", ["threadId": thread.id])
         threads.removeAll { $0.id == thread.id }
+        generalThreads.removeAll { $0.id == thread.id }
         if active == thread.id { newChat() }
     }
 
-    func send(_ text: String) async {
+    func attach(_ path: String) {
+        guard FileManager.default.fileExists(atPath: path), !attachments.contains(where: { $0.path == path }) else { return }
+        attachments.append(Attachment(path: path))
+    }
+
+    /// Send a message. A title names the chat when this message starts one.
+    func send(_ text: String, title: String? = nil) async {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let engine, !text.isEmpty || !attachments.isEmpty else { return }
-        var input: [JSON] = attachments.map { ["type": "localImage", "path": $0] }
-        if !text.isEmpty { input.append(["type": "text", "text": text]) }
-        var shown = ChatItem(id: UUID().uuidString, kind: .user, text: text)
-        shown.images = attachments.compactMap { Images.load($0) }
-        items.append(shown)
+        let sending = attachments
         attachments = []
+        var shown = ChatItem(id: UUID().uuidString, kind: .user, text: text)
+        shown.images = sending.filter { $0.kind == .image }.map(\.path)
+        shown.files = sending.filter { $0.kind != .image }.map(\.name)
+        items.append(shown)
+
+        var input: [JSON] = []
+        var notes: [String] = []
+        preparing = true
+        for file in sending {
+            switch file.kind {
+            case .image:
+                input.append(["type": "localImage", "path": file.path])
+            case .audio:
+                if model()?.hearsAudio == true { input.append(["type": "localAudio", "path": file.path]) }
+                else { notes.append("Attached audio file, which this model cannot hear directly: \(file.path)") }
+            case .video:
+                let frames = await Media.frames(from: file.path)
+                frames.forEach { input.append(["type": "localImage", "path": $0]) }
+                notes.append(frames.isEmpty ? "Attached video file: \(file.path)"
+                             : "The \(frames.count) images above are frames sampled evenly through the video \(file.name) (\(file.path)).")
+            case .file:
+                notes.append("Attached file: \(file.path)")
+            }
+        }
+        preparing = false
+        let full = ([text] + notes).filter { !$0.isEmpty }.joined(separator: "\n\n")
+        if !full.isEmpty { input.append(["type": "text", "text": full]) }
+
         do {
+            if let active { try await resume(active) }
             if running, let turn, let active {
                 _ = try await engine.request("turn/steer", ["threadId": active, "expectedTurnId": turn, "input": input])
                 return
@@ -112,11 +198,13 @@ final class ChatModel: ObservableObject {
                 guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
                 active = id
                 resumed.insert(id)
-                threads.insert(ChatThread(id: id, title: String((text.isEmpty ? "Image" : text).prefix(80))), at: 0)
+                let new = ChatThread(id: id, title: title ?? String((text.isEmpty ? sending.first?.name ?? "Chat" : text).prefix(80)))
+                if project == nil { generalThreads.insert(new, at: 0) } else { threads.insert(new, at: 0) }
+                if let title { _ = try? await engine.request("thread/name/set", ["threadId": id, "name": title]) }
             }
             running = true
             var params: JSON = ["threadId": active ?? "", "input": input]
-            if let model = model() { params["model"] = model }
+            if let model = modelID() { params["model"] = model }
             if let effort = effort() { params["effort"] = effort }
             _ = try await engine.request("turn/start", params)
         } catch {
@@ -138,28 +226,36 @@ final class ChatModel: ObservableObject {
 
     private func threadSettings(_ extra: JSON) -> JSON {
         var settings: JSON = [
-            "cwd": project ?? Paths.support.path,
+            "cwd": scope,
             "approvalPolicy": "never",
             "sandbox": "workspace-write",
             "serviceName": "Dighouse",
             "developerInstructions": instructions(),
         ]
-        if let model = model() { settings["model"] = model }
+        if let model = modelID() { settings["model"] = model }
         return settings.merging(extra) { _, new in new }
     }
 
     private func problem(_ text: String) -> ChatItem {
-        ChatItem(id: UUID().uuidString, kind: .step, text: text, icon: "exclamationmark.triangle", state: .failed)
+        ChatItem(id: UUID().uuidString, kind: .step, text: EngineError.plain(text), icon: "exclamationmark.triangle", state: .failed)
     }
 
     // MARK: what the engine tells us
 
     func handle(_ method: String, _ params: JSON) {
-        guard params["threadId"] as? String == active, active != nil else { return }
+        guard let thread = params["threadId"] as? String else { return }
+        // Runs carry on while another chat is on screen, so keep track of every chat's turn.
+        if method == "turn/started" { live[thread] = (params["turn"] as? JSON)?["id"] as? String ?? "" }
+        if method == "turn/completed" { live[thread] = nil }
+        guard thread == active else { return }
         switch method {
         case "turn/started":
             running = true
             turn = (params["turn"] as? JSON)?["id"] as? String
+        case "turn/plan/updated":
+            var card = ChatItem(id: "plan-" + (params["turnId"] as? String ?? ""), kind: .plan, text: params["explanation"] as? String ?? "")
+            card.plan = (params["plan"] as? [JSON] ?? []).map { PlanStep(text: $0["step"] as? String ?? "", status: $0["status"] as? String ?? "") }
+            if let i = items.firstIndex(where: { $0.id == card.id }) { items[i] = card } else { items.append(card) }
         case "item/started":
             guard let raw = params["item"] as? JSON, raw["type"] as? String != "userMessage",
                   let new = item(from: raw, finished: false) else { return }
@@ -168,17 +264,20 @@ final class ChatModel: ObservableObject {
             guard let id = params["itemId"] as? String, let i = items.firstIndex(where: { $0.id == id }) else { return }
             items[i].text += params["delta"] as? String ?? ""
         case "item/completed":
-            guard let raw = params["item"] as? JSON, raw["type"] as? String != "userMessage",
-                  let done = item(from: raw, finished: true) else { return }
+            guard let raw = params["item"] as? JSON, raw["type"] as? String != "userMessage" else { return }
+            guard let done = item(from: raw, finished: true) else {
+                items.removeAll { $0.id == raw["id"] as? String }
+                return
+            }
             if let i = items.firstIndex(where: { $0.id == done.id }) { items[i] = done } else { items.append(done) }
-            if raw["type"] as? String == "mcpToolCall", raw["server"] as? String == "dighouse" {
+            if raw["type"] as? String == "mcpToolCall", raw["server"] as? String == "dighouse", done.state != .failed {
                 onToolFinished?(raw["tool"] as? String ?? "", raw["arguments"] as? JSON ?? [:])
             }
         case "turn/completed":
             running = false
             turn = nil
             if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
-                items.append(problem(EngineError.plain(failure)))
+                items.append(problem(failure))
             }
             Task { @MainActor in await refreshThreads() }
         default:
@@ -198,6 +297,20 @@ final class ChatModel: ObservableObject {
         }
     }
 
+    /// Where the picture a tool made was saved, so the chat can show the file.
+    private func pictures(_ tool: String, _ args: JSON) -> [String] {
+        guard let root = project else { return [] }
+        let tile = args["tile"] as? String ?? "", style = args["style"] as? String ?? "composite"
+        switch tool {
+        case "view_tile": return ["\(root)/data/tiles/\(tile)-\(style).png"]
+        case "view_terrain": return ["\(root)/data/tiles/\(args["terrain"] as? String ?? "")-overview-\(style).png"]
+        case "cut_section":
+            if let candidate = args["candidate"] as? String, !candidate.isEmpty { return ["\(root)/candidates/img/\(candidate)-section.png"] }
+            return ["\(root)/data/tiles/\(tile)-section.png"]
+        default: return []
+        }
+    }
+
     private func item(from raw: JSON, finished: Bool) -> ChatItem? {
         guard let id = raw["id"] as? String, let type = raw["type"] as? String else { return nil }
         let status = raw["status"] as? String ?? ""
@@ -212,10 +325,16 @@ final class ChatModel: ObservableObject {
         case "userMessage":
             let content = raw["content"] as? [JSON] ?? []
             var shown = ChatItem(id: id, kind: .user, text: content.compactMap { $0["text"] as? String }.joined(separator: "\n"))
-            shown.images = content.compactMap { $0["path"] as? String }.compactMap { Images.load($0) }
+            shown.images = content.compactMap { $0["path"] as? String }
             return shown
         case "agentMessage":
             return ChatItem(id: id, kind: .agent, text: raw["text"] as? String ?? "")
+        case "reasoning":
+            let summary = (raw["summary"] as? [String] ?? []).joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard finished, !summary.isEmpty else { return nil }
+            var s = step("brain", "Thought it through", tool: "thinking")
+            s.result = summary
+            return s
         case "mcpToolCall":
             let tool = raw["tool"] as? String ?? "", args = raw["arguments"] as? JSON ?? [:]
             let ours = raw["server"] as? String == "dighouse"
@@ -225,8 +344,11 @@ final class ChatModel: ObservableObject {
             let content = (raw["result"] as? JSON)?["content"] as? [JSON] ?? []
             s.result = content.compactMap { $0["text"] as? String }.joined(separator: "\n")
             if let failure = (raw["error"] as? JSON)?["message"] as? String { s.result = failure }
-            s.images = content.compactMap { $0["data"] as? String }
-                .compactMap { Data(base64Encoded: $0) }.compactMap { NSImage(data: $0) }
+            if ours, finished, !failed {
+                s.images = pictures(tool, args)
+                s.showsImage = tool == "cut_section"
+                if tool == "init_project" { s.projectPath = args["project"] as? String }
+            }
             return s
         case "commandExecution":
             var command = raw["command"] as? String ?? "a command"
@@ -246,10 +368,22 @@ final class ChatModel: ObservableObject {
             return step("globe", "Searched the web: \(raw["query"] as? String ?? "")", tool: "web")
         case "imageView":
             var s = step("photo", "Looked at an image", tool: "image")
-            if let path = raw["path"] as? String, let image = Images.load(path) { s.images = [image] }
+            if let path = raw["path"] as? String { s.images = [path] }
             return s
         case "collabAgentToolCall":
-            return step("person.2", "Worked with another agent", tool: "agent")
+            let states = raw["agentsStates"] as? [String: JSON] ?? [:]
+            switch raw["tool"] as? String ?? "" {
+            case "spawnAgent":
+                var s = step("person.badge.plus", "Started a helper agent", tool: "sub-agent")
+                s.details = [raw["model"] as? String ?? "", raw["prompt"] as? String ?? ""].filter { !$0.isEmpty }
+                return s
+            case "wait":
+                var s = step("person.2", "Waited for \(max(states.count, 1)) helper agent\(states.count > 1 ? "s" : "")", tool: "sub-agent")
+                s.result = states.values.compactMap { $0["message"] as? String }.joined(separator: "\n\n")
+                return s
+            default:
+                return step("person.2", "Worked with helper agents", tool: "sub-agent")
+            }
         case "contextCompaction":
             return step("arrow.triangle.2.circlepath", "Summarized the conversation so far")
         default:

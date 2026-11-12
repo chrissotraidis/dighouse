@@ -30,24 +30,28 @@ final class ProjectStore: ObservableObject {
         reloadIfChanged()
     }
 
-    func add(path: String) {
-        guard FileManager.default.fileExists(atPath: path + "/PROJECT.md") else { return }
+    /// Add a project folder to the list without opening it.
+    func register(path: String) {
+        guard FileManager.default.fileExists(atPath: path + "/PROJECT.md"), !projects.contains(where: { $0.path == path }) else { return }
         let state = json(path + "/private/state/project.json") as? JSON
-        let ref = ProjectRef(path: path, name: state?["name"] as? String ?? URL(fileURLWithPath: path).lastPathComponent)
-        if !projects.contains(ref) { projects.append(ref) }
+        projects.append(ProjectRef(path: path, name: state?["name"] as? String ?? URL(fileURLWithPath: path).lastPathComponent))
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
-        open(ref)
+    }
+
+    /// Leave the open project, back to the general chat.
+    func close() {
+        current = nil
+        selectedTile = nil
+        selectedCandidate = nil
+        UserDefaults.standard.removeObject(forKey: "currentProject")
+        signature = ""
+        reloadIfChanged()
     }
 
     func remove(_ ref: ProjectRef) {
         projects.removeAll { $0 == ref }
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
-        if current == ref {
-            current = nil
-            UserDefaults.standard.removeObject(forKey: "currentProject")
-            signature = ""
-            reloadIfChanged()
-        }
+        if current == ref { close() }
     }
 
     func open(_ ref: ProjectRef) {
