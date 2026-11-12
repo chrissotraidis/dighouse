@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+import time
 
 import httpx
 
 OVERPASS = "https://overpass-api.de/api/interpreter"
 OPENALEX = "https://api.openalex.org/works"
 logging.getLogger("httpx").setLevel(logging.WARNING)
-_client = httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": "dighouse/0.1"})
+_client = httpx.Client(timeout=40, follow_redirects=True, headers={"User-Agent": "dighouse/0.1"})
 
 
 def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
@@ -19,8 +20,17 @@ def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
 (way{around}[highway]; way{around}[building]; way{around}[landuse]; nwr{around}[man_made];
  nwr(around:2000,{lat},{lon})[historic];);
 out tags 200;"""
-    r = _client.post(OVERPASS, data={"data": query})
-    r.raise_for_status()
+    r = None
+    for wait in (0, 4, 10):  # the public map service refuses requests that arrive too close together
+        time.sleep(wait)
+        try:
+            r = _client.post(OVERPASS, data={"data": query})
+        except httpx.HTTPError:
+            continue
+        if r.status_code == 200:
+            break
+    if r is None or r.status_code != 200:
+        raise RuntimeError("The open map service is busy and did not answer. Wait a minute, then run this check again.")
     kinds = {"roads": [], "buildings": [], "land_use": [], "structures": [], "historic_within_2km": []}
     for el in r.json().get("elements", []):
         tags = el.get("tags", {})

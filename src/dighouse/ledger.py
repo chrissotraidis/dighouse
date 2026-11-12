@@ -52,12 +52,13 @@ def write(p: Project, meta: dict, notes: str = "") -> None:
     _file(p, meta["id"]).write_text(f"---\n{head}\n---\n{_body(meta)}\n{NOTES}\n\n{notes}\n")
 
 
-def create(p: Project, name: str, tile: str, lonlat: tuple[float, float], note: str, flagged_by: str) -> dict:
+def create(p: Project, name: str, tile: str, lonlat: tuple[float, float], note: str, flagged_by: str,
+           at: tuple[float, float] = (0.5, 0.5)) -> dict:
     n = max([int(c["id"][2:]) for c in everything(p)] or [0]) + 1
     meta = {"id": f"C-{n:03d}", "name": name, "status": "flagged", "flagged": today(), "flagged_by": flagged_by,
             "tile": tile, "evidence": [note] if note else [], "checks": {}, "sources": [], "decisions": []}
     locations = p.load("locations", {})
-    locations[meta["id"]] = {"lon": lonlat[0], "lat": lonlat[1]}
+    locations[meta["id"]] = {"lon": lonlat[0], "lat": lonlat[1], "tile": tile, "x": at[0], "y": at[1]}
     p.save("locations", locations)
     write(p, meta)
     return meta

@@ -4,3 +4,6 @@ __pycache__/
 .pytest_cache/
 dist/
 .DS_Store
+app/.build/
+app/build/
+app/Resources/AppIcon.iconset/

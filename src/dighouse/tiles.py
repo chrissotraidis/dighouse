@@ -40,6 +40,9 @@ def make_tiles(p: Project, terrain_id: str, tile_m: float = 250, overlap_m: floa
             added += 1
             unreadable += bad
     p.save("tiles", tiles)
+    for tid in tiles:
+        cached_tile(p, tid)
+    p.save("tiles", tiles)  # saved again so anything watching the project sees the finished images
     return {"tiles_added": added, "unreadable": int(unreadable)}
 
 

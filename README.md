@@ -4,6 +4,20 @@ Dighouse is an open-source project for finding archaeological sites in open data
 
 The tools speak the Model Context Protocol, so they work in Codex, Claude Code and other harnesses today.
 
+## The app
+
+`app/` holds Dighouse for macOS: a native app that runs the Codex engine with these tools attached. It has a chat with the agent, a map of the bare-ground tiles, the candidate records with their checks, and an Explore page of starting points.
+
+~~~sh
+cd app
+./scripts/bundle.sh          # builds app/build/Dighouse.app
+open build/Dighouse.app
+~~~
+
+It needs [Codex](https://github.com/openai/codex) and [uv](https://docs.astral.sh/uv/) installed. The first launch walks through setup. If the OpenCodex router is running, every model in its roster appears in the model menu.
+
+The build is signed for local use only. It is not notarized, so it is not yet a download for other people.
+
 ## What the tools do
 
 | Stage | Tools |
@@ -65,7 +79,7 @@ The live test fetches USGS lidar over Monks Mound at Cahokia, Illinois, builds t
 
 ## Status
 
-Working: everything in the table above. Not built yet: bulk screening through a model router, the desktop window, and sections that show canopy for datasets published as ground points only.
+Working: everything in the table above, and the macOS app. Not built yet: bulk screening through a model router, pushing records to Notion from the app, a notarized download, and sections that show canopy for datasets published as ground points only.
 
 ## Licence
 

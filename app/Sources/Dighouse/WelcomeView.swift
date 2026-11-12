@@ -1,0 +1,228 @@
+import SwiftUI
+
+/// The first-run guide: what Dighouse is, how a search works, setting up inference, and a first project.
+struct WelcomeView: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var engine: Engine
+    @State private var page = 0
+    @State private var choice = StartingPoints.all[0]
+
+    private let titles = ["Welcome", "How it works", "Set up", "First project"]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            steps.padding(.top, 52)
+
+            ScrollView {
+                Group {
+                    switch page {
+                    case 0: intro
+                    case 1: how
+                    case 2: setupPage
+                    default: first
+                    }
+                }
+                .frame(width: 640, alignment: .leading).padding(.vertical, 36)
+                .frame(maxWidth: .infinity)
+            }
+
+            Rectangle().fill(Theme.line).frame(height: 1)
+            HStack(spacing: 10) {
+                if page > 0 { Button("Back") { page -= 1 }.buttonStyle(SecondaryButton()) }
+                Spacer()
+                if app.onboarded { Button("Close guide") { app.showWelcome = false }.buttonStyle(SecondaryButton()) }
+                if page < 3 {
+                    Button(page == 0 ? "Get started" : "Continue") { page += 1 }
+                        .buttonStyle(PrimaryButton()).disabled(page == 2 && !engine.ready)
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+            .frame(width: 640).padding(.vertical, 18)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var steps: some View {
+        HStack(spacing: 10) {
+            ForEach(titles.indices, id: \.self) { i in
+                Button { if i < page { page = i } } label: {
+                    HStack(spacing: 7) {
+                        ZStack {
+                            Circle().fill(i == page ? Color.white : i < page ? Theme.green.opacity(0.9) : Theme.raised)
+                            if i < page {
+                                Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(.black)
+                            } else {
+                                Text("\(i + 1)").font(.system(size: 11, weight: .semibold)).foregroundStyle(i == page ? .black : Theme.dim)
+                            }
+                        }
+                        .frame(width: 20, height: 20)
+                        Text(titles[i]).font(.system(size: 12.5, weight: i == page ? .semibold : .regular))
+                            .foregroundStyle(i == page ? .white : Theme.dim)
+                    }
+                }
+                .buttonStyle(.plain)
+                if i < titles.count - 1 { Rectangle().fill(Theme.line).frame(width: 28, height: 1) }
+            }
+        }
+    }
+
+    private var intro: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 92, height: 92)
+            Text("Dighouse").font(.system(size: 40, weight: .bold))
+            Text("Find places people built and the forest covered. AI agents do the looking, and you make the calls.")
+                .font(.system(size: 17)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            Text("Dighouse works with lidar: laser scans made from aircraft that measure the ground through gaps in the trees. Much of it is public, and most of it has never been searched closely.")
+                .foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                point("square.grid.3x3", "Agents do the patient part",
+                      "They fetch public lidar surveys, strip the trees away, and look at every tile of ground.")
+                Rectangle().fill(Theme.line).frame(height: 1)
+                point("checkmark.seal", "Every flag is checked",
+                      "A slice through the raw laser points, a second model's opinion, a search for modern features, and a literature search.")
+                Rectangle().fill(Theme.line).frame(height: 1)
+                point("person", "You decide",
+                      "Nothing is called new. You see the evidence and choose what happens next, and locations never leave this Mac.")
+            }
+            .panel()
+        }
+        .font(.system(size: 13.5))
+    }
+
+    private var how: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("How a search works").font(.system(size: 28, weight: .bold))
+            Text("A run repeats these six stages. You can watch, steer by typing, or leave it and review later.")
+                .font(.system(size: 14)).foregroundStyle(Theme.dim)
+            GuideView(showTools: false)
+            Text("The Guide tab in the main window lists every tool the agents use and what it does.")
+                .font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+        }
+    }
+
+    private var setupPage: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Set up").font(.system(size: 28, weight: .bold))
+            Text("Dighouse runs its agents on the Codex engine, using the models you already have. Your work goes only to the model provider you choose.")
+                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            SetupChecklist()
+        }
+    }
+
+    private var first: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Your first project").font(.system(size: 28, weight: .bold))
+            Text("A project is a folder: the question, the area, and everything the agents find. A good first run is a place that is already published, so you can see what a real site looks like.")
+                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 8) {
+                ForEach(StartingPoints.all + [StartingPoints.own]) { option in
+                    Button { choice = option } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: choice == option ? "largecircle.fill.circle" : "circle")
+                                .foregroundStyle(choice == option ? Theme.accent : Theme.faint)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(option.title).font(.system(size: 13.5, weight: .semibold))
+                                Text(option.place).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                            }
+                            Spacer()
+                            if !option.source.isEmpty { Badge(text: option.source) }
+                        }
+                        .padding(12)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.035)))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(choice == option ? Theme.accent.opacity(0.7) : Theme.line))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            ProjectForm(point: choice, actionTitle: "Create project") { app.finishOnboarding() }.id(choice.id)
+            Button("Skip for now") { app.finishOnboarding() }.buttonStyle(.plain).foregroundStyle(Theme.dim)
+        }
+    }
+
+    private func point(_ icon: String, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            IconTile(name: icon)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(size: 14, weight: .semibold))
+                Text(text).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .font(.system(size: 13)).padding(16)
+    }
+}
+
+/// What Dighouse needs, whether it is there, and how to fix what is missing.
+struct SetupChecklist: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var setup: Setup
+    @EnvironmentObject var engine: Engine
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(spacing: 0) {
+                row(setup.codex != nil, "Codex engine", "Runs the agents.",
+                    setup.codex != nil ? setup.codexVersion : "Not found. Install Codex, then check again.",
+                    link: setup.codex == nil ? ("Get Codex", "https://github.com/openai/codex") : nil)
+                Rectangle().fill(Theme.line).frame(height: 1)
+                row(setup.toolsReady, "Archaeology tools", "Fetch lidar, build the bare ground, cut sections, keep records.",
+                    setup.toolsReady ? "Ready"
+                    : setup.toolsSource == nil ? "The tools are missing from this copy of Dighouse."
+                    : setup.uv == nil ? "Needs uv, a small program that runs the tools. Install it, then check again."
+                    : setup.toolsBusy ? "Preparing. This takes about a minute the first time."
+                    : (setup.toolsProblem ?? "Not prepared yet."),
+                    link: setup.uv == nil ? ("Get uv", "https://docs.astral.sh/uv/getting-started/installation/") : nil) {
+                    if !setup.toolsReady, setup.uv != nil, setup.toolsSource != nil {
+                        if setup.toolsBusy { ProgressView().controlSize(.small) } else {
+                            Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }
+                                .buttonStyle(PrimaryButton())
+                        }
+                    }
+                }
+                Rectangle().fill(Theme.line).frame(height: 1)
+                row(engine.ready, "Models", "The AI models the agents think with.",
+                    engine.ready
+                    ? "\(engine.models.count) available" + (engine.account.map { ", signed in as \($0)" } ?? "")
+                      + (setup.ocxRunning ? ". OpenCodex router is running." : ".")
+                    : app.starting ? "Checking…" : (engine.problem ?? "Available once the engine and the tools are ready.")) {
+                    if engine.ready {
+                        PillMenu(title: app.modelName) {
+                            ForEach(engine.models) { model in
+                                Button(model.name + (model.readsImages ? "" : "  (text only)")) { app.modelID = model.id }
+                            }
+                        }
+                    }
+                }
+            }
+            .panel()
+
+            HStack(spacing: 12) {
+                Button("Check again") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
+                if app.starting { ProgressView().controlSize(.small) }
+                if engine.ready {
+                    Text("Screening tiles needs a model that reads images. You can change the model at any time from the chat.")
+                        .font(.system(size: 12.5)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .font(.system(size: 13))
+    }
+
+    private func row(_ ok: Bool, _ title: String, _ what: String, _ detail: String, link: (String, String)? = nil,
+                     @ViewBuilder action: () -> some View = { EmptyView() }) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: ok ? "checkmark.circle.fill" : "circle").font(.system(size: 16))
+                .foregroundStyle(ok ? Theme.green : Theme.faint).frame(width: 22).padding(.top, 1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(size: 14, weight: .semibold))
+                Text(what).foregroundStyle(Theme.faint)
+                Text(detail).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+                if let link, let url = URL(string: link.1) { Link(link.0, destination: url).foregroundStyle(Theme.accent) }
+            }
+            Spacer(minLength: 8)
+            action()
+        }
+        .padding(16)
+    }
+}

@@ -156,7 +156,7 @@ def flag_candidate(project: str, tile: str, x: float, y: float, name: str, note:
     x and y give its centre as fractions of the tile image: 0,0 is the top left corner, 1,1 the bottom right.
     """
     p = Project(project).check()
-    meta = ledger.create(p, name, tile, tiles.tile_lonlat(p, tile, x, y), note, model)
+    meta = ledger.create(p, name, tile, tiles.tile_lonlat(p, tile, x, y), note, model, at=(x, y))
     f = p.path("candidates", "img", f"{meta['id']}-relief.png")
     tiles.tile_image(p, tile, "composite", mark=(x, y)).save(f)
     p.note(f"{meta['id']} flagged on {tile} by {model}: {name}")

@@ -38,7 +38,7 @@ flowchart LR
 | Archaeology tools | A tool server for the data work, plus the panes that show it | Built |
 | Projects and records | A folder per project, Markdown records, a mirror in Notion | Built |
 
-The window follows the Codex layout: projects on the far left, a narrow chat beside them, tools on the right. The chat collapses to a thin rail so the tools can take the full width, and a small composer stays available over the map while it is collapsed. The tools pane has three tabs: Map, Records and Crew.
+The window follows the Codex layout: projects on the far left, a narrow chat beside them, tools on the right. The chat collapses to a thin rail so the tools can take the full width, and a small composer stays available over the map while it is collapsed. The workspace has three tabs: Map, Records and Tools. Model choices for the agent and the second look are in Settings.
 
 A run strip stays across the top of the window at all times. It shows the current stage, how many tiles have been screened, how many known sites were found again, the number of candidates, and anything waiting for a person. The full list of stages and their checks opens from the strip.
 

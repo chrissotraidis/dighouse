@@ -1,0 +1,590 @@
+import SwiftUI
+
+/// The archaeology side of the window: the terrain, the candidate records, and the tools explained.
+struct WorkspaceView: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                ForEach(WorkTab.allCases, id: \.self) { tab in
+                    Button { app.tab = tab } label: {
+                        HStack(spacing: 6) {
+                            Text(tab.rawValue)
+                            if tab == .records, !store.candidates.isEmpty {
+                                Text("\(store.candidates.count)").foregroundStyle(Theme.faint)
+                            }
+                        }
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(app.tab == tab ? Theme.text : Theme.dim)
+                        .padding(.horizontal, 12).frame(height: 30)
+                        .background(Capsule().fill(app.tab == tab ? Color.white.opacity(0.1) : .clear))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 12).frame(height: 46)
+            Hairline()
+            switch app.tab {
+            case .map: MapView()
+            case .records: RecordsView()
+            case .tools:
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text("How a search works").font(.system(size: 22, weight: .semibold))
+                        Text("These are the tools the agents use, in the order a search uses them. You can ask for any stage from the Tools button in the chat.")
+                            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        GuideView()
+                    }
+                    .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.bg)
+    }
+}
+
+/// A centred message for a pane with nothing in it yet.
+private struct EmptyPane<Action: View>: View {
+    let icon: String, title: String, text: String
+    @ViewBuilder let action: () -> Action
+
+    var body: some View {
+        VStack(spacing: 12) {
+            IconTile(name: icon, size: 52)
+            Text(title).font(.system(size: 18, weight: .semibold)).padding(.top, 4)
+            Text(text).font(.system(size: 13.5)).foregroundStyle(Theme.dim)
+                .multilineTextAlignment(.center).frame(maxWidth: 380)
+            action().padding(.top, 6)
+        }
+        .padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Map
+
+/// The terrain as a mosaic of its tiles, with what was found on each and where the candidates sit.
+struct MapView: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+    @State private var terrain: String?
+    @State private var zoom = 1.0
+
+    private var shown: [Tile] {
+        let id = terrain ?? store.terrains.first?.id
+        return store.tiles.filter { $0.terrain == id }
+    }
+
+    var body: some View {
+        if store.tiles.isEmpty {
+            EmptyPane(icon: "mountain.2", title: "No terrain yet",
+                      text: "Ask the agent to find open lidar for the project's area. The bare ground appears here as it is fetched.") {
+                Button("Find and fetch lidar") { app.ask(ToolGuide.stages[1].prompt) }.buttonStyle(PrimaryButton())
+            }
+        } else {
+            GeometryReader { geo in
+                let tiles = shown
+                let width = Double(tiles.map { $0.col + $0.cols }.max() ?? 1)
+                let height = Double(tiles.map { $0.row + $0.rows }.max() ?? 1)
+                let scale = min((geo.size.width - 32) / width, (geo.size.height - 72) / height) * zoom
+                ScrollView([.horizontal, .vertical]) {
+                    ZStack(alignment: .topLeading) {
+                        ForEach(tiles) { tile in
+                            TileView(tile: tile, selected: store.selectedTile == tile.id)
+                                .frame(width: Double(tile.cols) * scale, height: Double(tile.rows) * scale)
+                                .offset(x: Double(tile.col) * scale, y: Double(tile.row) * scale)
+                                .onTapGesture {
+                                    store.selectedTile = tile.id
+                                    store.selectedCandidate = nil
+                                }
+                        }
+                        ForEach(store.candidates) { c in
+                            if let tile = tiles.first(where: { $0.id == c.tile }) {
+                                Pin(label: c.id, selected: store.selectedCandidate == c.id)
+                                    .offset(x: (Double(tile.col) + c.x * Double(tile.cols)) * scale - 8,
+                                            y: (Double(tile.row) + c.y * Double(tile.rows)) * scale - 8)
+                                    .onTapGesture {
+                                        store.selectedCandidate = c.id
+                                        store.selectedTile = c.tile
+                                    }
+                            }
+                        }
+                    }
+                    .frame(width: width * scale, height: height * scale, alignment: .topLeading)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16).padding(.top, 56).padding(.bottom, 16)
+                    .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .top)
+                }
+            }
+            .overlay(alignment: .topLeading) { controls.padding(12) }
+            .overlay(alignment: .topTrailing) { legend.padding(12) }
+            .overlay(alignment: .bottomLeading) { selection.padding(12) }
+        }
+    }
+
+    private var controls: some View {
+        HStack(spacing: 2) {
+            Button { zoom = max(1, zoom / 1.5) } label: { Image(systemName: "minus") }
+                .buttonStyle(IconButton(size: 28)).disabled(zoom <= 1).help("Zoom out")
+            Button { zoom = min(8, zoom * 1.5) } label: { Image(systemName: "plus") }
+                .buttonStyle(IconButton(size: 28)).help("Zoom in")
+            if store.terrains.count > 1 {
+                PillMenu(title: store.terrains.first { $0.id == (terrain ?? store.terrains.first?.id) }?.dataset
+                    .split(separator: ":").last.map(String.init) ?? "Terrain", quiet: true) {
+                    ForEach(store.terrains) { t in
+                        Button(t.dataset.split(separator: ":").last.map(String.init) ?? t.id) { terrain = t.id }
+                    }
+                }
+            }
+        }
+        .padding(3).background(RoundedRectangle(cornerRadius: 11).fill(Theme.bg.opacity(0.92)))
+        .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Theme.line))
+    }
+
+    private var legend: some View {
+        HStack(spacing: 12) {
+            key(Theme.accent, "Looks built")
+            key(Theme.amber, "Possible")
+            key(Theme.faint, "Not screened")
+        }
+        .font(.system(size: 11.5)).foregroundStyle(Theme.dim)
+        .padding(.horizontal, 10).frame(height: 28)
+        .background(RoundedRectangle(cornerRadius: 9).fill(Theme.bg.opacity(0.92)))
+        .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.line))
+    }
+
+    private func key(_ color: Color, _ label: String) -> some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 2).strokeBorder(color, lineWidth: 1.5).frame(width: 10, height: 10)
+            Text(label)
+        }
+    }
+
+    @ViewBuilder private var selection: some View {
+        let tile = store.tiles.first { $0.id == store.selectedTile }
+        let candidate = store.candidates.first { $0.id == store.selectedCandidate }
+        if tile != nil || candidate != nil {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    if let candidate {
+                        Text("\(candidate.id) \(candidate.name)").font(.system(size: 13.5, weight: .semibold)).lineLimit(1)
+                        Badge(text: candidate.statusLabel, color: candidate.statusColor)
+                    } else if let tile {
+                        Text("Tile \(tile.short)").font(.system(size: 13.5, weight: .semibold))
+                        if let verdict = tile.verdict { Badge(text: verdict.capitalized, color: verdict == "built" ? Theme.accent : Theme.dim) }
+                    }
+                    Spacer(minLength: 4)
+                    Button {
+                        store.selectedTile = nil
+                        store.selectedCandidate = nil
+                    } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22))
+                }
+                if let candidate {
+                    if let section = Images.load(candidate.section) {
+                        Image(nsImage: section).resizable().aspectRatio(contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    Button("Open record") { app.tab = .records }.buttonStyle(SecondaryButton())
+                } else if let tile {
+                    Text(tile.status == "unreadable" ? "Unreadable: the laser did not reach the ground here."
+                         : tile.status == "screened" ? (tile.note ?? "") : "Nobody has looked at this tile yet.")
+                        .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if tile.status != "unreadable" {
+                        Button("Ask the agent to look here") {
+                            app.ask("Look at tile \(tile.id) in two renderings and tell me what you see. Record your verdict.")
+                        }.buttonStyle(SecondaryButton())
+                    }
+                }
+            }
+            .padding(12).frame(width: 340, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.raised))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
+            .shadow(color: .black.opacity(0.35), radius: 14, y: 4)
+        }
+    }
+}
+
+private struct TileView: View {
+    @EnvironmentObject var store: ProjectStore
+    let tile: Tile
+    let selected: Bool
+
+    var body: some View {
+        let path = "\(store.current?.path ?? "")/data/tiles/\(tile.id)-composite.png"
+        ZStack {
+            if let image = Images.load(path) {
+                Image(nsImage: image).resizable().interpolation(.medium)
+            } else {
+                Rectangle().fill(Theme.side)
+            }
+            if tile.status == "unreadable" {
+                Rectangle().fill(.black.opacity(0.5))
+                Image(systemName: "eye.slash").foregroundStyle(Theme.dim)
+            } else if tile.status == "unscreened" {
+                Rectangle().fill(.black.opacity(0.3))
+            }
+            Rectangle().strokeBorder(outline, lineWidth: selected ? 2 : (tile.verdict == "built" || tile.verdict == "possible" ? 1.5 : 0.5))
+        }
+        .contentShape(Rectangle())
+    }
+
+    private var outline: Color {
+        if selected { return .white }
+        switch tile.verdict {
+        case "built": return Theme.accent
+        case "possible": return Theme.amber
+        default: return .white.opacity(0.1)
+        }
+    }
+}
+
+private struct Pin: View {
+    let label: String
+    let selected: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle().fill(selected ? Theme.accent : .white).frame(width: 16, height: 16)
+                .overlay(Circle().strokeBorder(.black.opacity(0.55), lineWidth: 1.5))
+            Text(label).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white)
+                .padding(.horizontal, 6).frame(height: 18)
+                .background(Capsule().fill(selected ? Theme.accent : .black.opacity(0.78)))
+        }
+        .fixedSize().contentShape(Rectangle())
+    }
+}
+
+// MARK: - Records
+
+private struct Decision: Identifiable {
+    let candidate: Candidate
+    let status: String
+    var id: String { candidate.id + status }
+}
+
+struct RecordsView: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+    @EnvironmentObject var engine: Engine
+    @State private var deciding: Decision?
+
+    private var current: Candidate? {
+        store.candidates.first { $0.id == store.selectedCandidate } ?? store.candidates.first
+    }
+
+    var body: some View {
+        if store.candidates.isEmpty {
+            EmptyPane(icon: "doc.text", title: "No candidates yet",
+                      text: "When the agent flags something that looks built, its record appears here with its evidence and checks.") {
+                EmptyView()
+            }
+        } else {
+            GeometryReader { geo in
+                HStack(spacing: 0) {
+                    if geo.size.width >= 760 {
+                        ScrollView {
+                            VStack(spacing: 2) {
+                                ForEach(store.candidates) { c in listRow(c) }
+                            }.padding(8)
+                        }
+                        .frame(width: 236)
+                        Hairline(vertical: true)
+                    }
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            if geo.size.width < 760, let c = current {
+                                PillMenu(title: "\(c.id) \(c.name)") {
+                                    ForEach(store.candidates) { other in
+                                        Button("\(other.id) \(other.name)") { store.selectedCandidate = other.id }
+                                    }
+                                }
+                                .padding(.bottom, 16)
+                            }
+                            if let c = current { record(c) }
+                        }
+                        .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            .sheet(item: $deciding) { decision in
+                DecisionSheet(decision: decision).withApp(app)
+            }
+        }
+    }
+
+    private func listRow(_ c: Candidate) -> some View {
+        Button { store.selectedCandidate = c.id } label: {
+            HStack(spacing: 10) {
+                Circle().fill(c.statusColor).frame(width: 7, height: 7)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(c.id) \(c.name)").font(.system(size: 13)).lineLimit(1)
+                    Text(c.statusLabel).font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineLimit(1)
+                }
+            }
+            .padding(.vertical, 5)
+        }
+        .buttonStyle(RowButton(selected: current?.id == c.id))
+    }
+
+    @ViewBuilder private func record(_ c: Candidate) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("candidates/\(c.id).md").font(.system(size: 11.5, design: .monospaced)).foregroundStyle(Theme.faint)
+                Spacer()
+                Label("Location kept on this Mac", systemImage: "lock").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("\(c.id) \(c.name)").font(.system(size: 24, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    Badge(text: c.statusLabel, color: c.statusColor)
+                    Text("Flagged \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(1)
+                }
+            }
+            HStack(alignment: .top, spacing: 12) {
+                figure(c.relief, "Bare-ground relief")
+                figure(c.section, "Section through the feature")
+            }
+            if !c.evidence.isEmpty {
+                section("Evidence") {
+                    ForEach(c.evidence, id: \.self) { line in
+                        Text(line).font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            section("Checks") { checks(c) }
+            if !c.sources.isEmpty {
+                section("Sources") {
+                    ForEach(c.sources) { s in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(s.title).font(.system(size: 13))
+                            Text("\(s.status.replacingOccurrences(of: "_", with: " ").capitalized) · \(s.finding)")
+                                .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            if !c.decisions.isEmpty {
+                section("Decisions") {
+                    ForEach(c.decisions, id: \.self) { Text($0).font(.system(size: 12.5)).foregroundStyle(Theme.dim) }
+                }
+            }
+            section("Your decision") {
+                Text("You decide what this is. Your name and reason are written into the record.")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                Flow(spacing: 8) {
+                    Button("Already published") { deciding = Decision(candidate: c, status: "already_published") }
+                    Button("Natural feature") { deciding = Decision(candidate: c, status: "natural") }
+                    Button("Modern feature") { deciding = Decision(candidate: c, status: "modern") }
+                    Button("No match in sources read") { deciding = Decision(candidate: c, status: "no_match_in_sources_read") }
+                    Button("Show file") { NSWorkspace.shared.selectFile(c.file, inFileViewerRootedAtPath: c.folder) }
+                }
+                .buttonStyle(SecondaryButton())
+            }
+        }
+        .textSelection(.enabled)
+    }
+
+    private func section(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.system(size: 14, weight: .semibold))
+            content()
+        }
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder private func checks(_ c: Candidate) -> some View {
+        let cut = c.checks["section"] as? JSON
+        let look = c.checks["second_look"] as? JSON
+        let modern = c.checks["modern"] as? JSON
+        let read = c.sources.filter { $0.status == "read" }.count
+        let unread = c.sources.filter { $0.status == "could_not_open" }.count
+        VStack(spacing: 0) {
+            CheckRow(done: cut?["in_ground"] as? Bool, title: "Feature is in the ground returns",
+                     detail: cut.map { "\($0["feature_height_m"] ?? "?") m high, \($0["ground_returns_within_5m_of_peak"] ?? "?") ground returns at its peak" }
+                        ?? "A slice through the raw points shows whether it is ground or canopy.") {
+                Button(cut == nil ? "Cut section" : "Cut again") {
+                    app.ask("Cut a section through \(c.id), starting and ending on the surrounding ground, and file it on its record.")
+                }.buttonStyle(SecondaryButton())
+            }
+            Hairline()
+            CheckRow(done: look?["agrees"] as? Bool, title: "A second model agrees it looks built",
+                     detail: app.secondLookProblem[c.id].map { "The second look did not run. " + $0 }
+                        ?? look.map { "\($0["model"] as? String ?? ""): \($0["note"] as? String ?? "")" }
+                        ?? "A different model looks at the tile without seeing the first opinion.") {
+                HStack(spacing: 6) {
+                    if app.secondLookBusy == c.id { ProgressView().controlSize(.small) }
+                    PillMenu(title: app.secondModelName) {
+                        ModelMenuItems(models: engine.models.filter { $0.readsImages }) { app.secondModelID = $0.id }
+                    }
+                    Button("Ask") { app.secondLook(c) }.buttonStyle(SecondaryButton())
+                        .disabled(app.secondLookBusy != nil || app.secondModelID == nil)
+                }
+            }
+            Hairline()
+            CheckRow(done: modern.map { $0["likely_modern"] as? Bool != true }, title: "Not a modern feature",
+                     detail: modern?["summary"] as? String ?? "Open maps are checked for roads, buildings and sites already mapped nearby.") {
+                Button(modern == nil ? "Check" : "Check again") {
+                    app.ask("Check for modern features near \(c.id) and tell me what the map shows.")
+                }.buttonStyle(SecondaryButton())
+            }
+            Hairline()
+            CheckRow(done: c.sources.isEmpty ? nil : (read > 0 && unread == 0), title: "Sources searched",
+                     detail: c.sources.isEmpty ? "The literature is searched, and every source is logged as read or not opened."
+                        : "\(read) read, \(unread) could not be opened") {
+                Button("Search") {
+                    app.ask("Search the literature for \(c.id), starting with studies of this dataset. Read what you find and log every source on its record.")
+                }.buttonStyle(SecondaryButton())
+            }
+        }
+        .panel()
+    }
+
+    @ViewBuilder private func figure(_ path: String, _ caption: String) -> some View {
+        if let image = Images.load(path) {
+            VStack(alignment: .leading, spacing: 5) {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 230)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Text(caption).font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+            }
+        }
+    }
+}
+
+/// One check on a record: whether it passed, what it found, and the action that runs it.
+private struct CheckRow<Action: View>: View {
+    let done: Bool?
+    let title: String
+    let detail: String
+    @ViewBuilder let action: () -> Action
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: done == true ? "checkmark.circle.fill" : done == false ? "exclamationmark.circle.fill" : "circle")
+                .font(.system(size: 16))
+                .foregroundStyle(done == true ? Theme.green : done == false ? Theme.amber : Theme.faint)
+                .frame(width: 20).padding(.top, 1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(size: 13.5, weight: .medium))
+                Text(detail).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                action().padding(.top, 7)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+    }
+}
+
+/// Confirms a decision the person makes about a candidate, with their reason.
+private struct DecisionSheet: View {
+    @EnvironmentObject var app: AppState
+    @Environment(\.dismiss) private var dismiss
+    let decision: Decision
+    @State private var reason = ""
+    @State private var problem: String?
+    @State private var busy = false
+
+    private var open: [String] {
+        guard decision.status == "no_match_in_sources_read" else { return [] }
+        let c = decision.candidate
+        var items: [String] = []
+        if (c.checks["section"] as? JSON)?["in_ground"] as? Bool != true { items.append("No section shows the feature in the ground returns.") }
+        if (c.checks["second_look"] as? JSON)?["agrees"] as? Bool != true { items.append("No second model has agreed that it looks built.") }
+        if c.checks["modern"] == nil { items.append("Modern features have not been checked.") }
+        if !c.sources.contains(where: { $0.status == "read" }) { items.append("No source has been read.") }
+        let unread = c.sources.filter { $0.status == "could_not_open" }.count
+        if unread > 0 { items.append("\(unread) source\(unread == 1 ? "" : "s") could not be opened.") }
+        return items
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Mark \(decision.candidate.id) as \((Candidate.labels[decision.status] ?? "").lowercased())")
+                .font(.system(size: 18, weight: .semibold))
+            if !open.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Still open on this record").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.amber)
+                    ForEach(open, id: \.self) { Text("• " + $0).font(.system(size: 12.5)).foregroundStyle(Theme.dim) }
+                    Text("You can still decide. These are written into the record beside your decision.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.faint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 12, radius: 10)
+            }
+            TextField(decision.status == "already_published" ? "Where is it published?" : "Your reason", text: $reason, axis: .vertical)
+                .lineLimit(2...4).field().font(.system(size: 13))
+            Text("Recorded as decided by \(app.userName). Change your name in Settings.")
+                .font(.system(size: 12)).foregroundStyle(Theme.faint)
+            if let problem { Text(problem).font(.system(size: 12.5)).foregroundStyle(Theme.amber) }
+            HStack(spacing: 8) {
+                Spacer()
+                Button("Cancel") { dismiss() }.buttonStyle(SecondaryButton())
+                Button("Record decision") {
+                    busy = true
+                    Task { @MainActor in
+                        do {
+                            try await app.decide(decision.candidate, status: decision.status, reason: reason)
+                            dismiss()
+                        } catch {
+                            problem = error.localizedDescription
+                        }
+                        busy = false
+                    }
+                }
+                .buttonStyle(PrimaryButton()).disabled(busy || reason.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(24).frame(width: 480)
+        .background(Theme.bg).foregroundStyle(Theme.text)
+    }
+}
+
+// MARK: - Guide
+
+struct GuideView: View {
+    var showTools = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            ForEach(Array(ToolGuide.stages.enumerated()), id: \.element.id) { index, stage in
+                HStack(alignment: .top, spacing: 14) {
+                    IconTile(name: stage.icon)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("\(index + 1). \(stage.title)").font(.system(size: 14, weight: .semibold))
+                        Text(stage.summary).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        if showTools {
+                            VStack(alignment: .leading, spacing: 5) {
+                                ForEach(stage.tools) { tool in
+                                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                        Text(tool.name).font(.system(size: 11.5, design: .monospaced)).foregroundStyle(Theme.green)
+                                            .frame(width: 128, alignment: .leading)
+                                        Text(tool.does).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
+                            .padding(.top, 2)
+                        }
+                    }
+                }
+            }
+            if showTools {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Rules the tools enforce").font(.system(size: 14, weight: .semibold))
+                    ForEach(ToolGuide.rules, id: \.self) { rule in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Image(systemName: "lock").font(.system(size: 11)).foregroundStyle(Theme.faint)
+                            Text(rule).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 16)
+            }
+        }
+        .font(.system(size: 13))
+    }
+}
