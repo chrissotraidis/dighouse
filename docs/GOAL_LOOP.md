@@ -132,3 +132,7 @@ Figures used in the app, each read from the service on 2026-11-12: Open Context 
 OpenStreetMap's query service timed out or refused during most of these checks. The tools report which source did not answer and carry on with the others.
 
 Not done: the agent driving the Sources browser; reading Pleiades in bulk; tDAR (its interface for programs needs approval); national lidar outside the United States; the Archaeology Data Service, EAMENA and CORONA, whose sizes were not verified. The real-mouse check of the draggable edges (G11) is still Chris's to confirm.
+
+### Handoff, 2026-11-12
+
+Work on this loop stopped here at Chris's request. What was in progress, what is unverified and what remains are in [HANDOFF.md](HANDOFF.md). The goals that follow are in [NEXT_LOOP.md](NEXT_LOOP.md).

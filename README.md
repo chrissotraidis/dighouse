@@ -1,6 +1,6 @@
 # Dighouse
 
-Dighouse is an open-source project for finding archaeological sites in open data with AI agents. It is an agent harness with archaeology tools built in: a macOS app that runs the Codex engine with any model you have, and a tool server that finds, fetches and reads open lidar and keeps the records. The design is in [docs/concept.md](docs/concept.md), and the current work loop is in [docs/GOAL_LOOP.md](docs/GOAL_LOOP.md).
+Dighouse is an open-source project for finding archaeological sites in open data with AI agents. It is an agent harness with archaeology tools built in: a macOS app that runs the Codex engine with any model you have, and a tool server that finds, fetches and reads open lidar and keeps the records. The design is in [docs/concept.md](docs/concept.md), the first work loop and its log are in [docs/GOAL_LOOP.md](docs/GOAL_LOOP.md), and the state of the work and what comes next are in [docs/HANDOFF.md](docs/HANDOFF.md) and [docs/NEXT_LOOP.md](docs/NEXT_LOOP.md).
 
 The tools speak the Model Context Protocol, so they also work on their own in Codex, Claude Code and other harnesses.
 
