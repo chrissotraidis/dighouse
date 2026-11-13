@@ -107,7 +107,10 @@ final class ProjectStore: ObservableObject {
         let terrainState = json(root + "/private/state/terrains.json") as? [String: JSON] ?? [:]
         terrains = terrainState.map { id, t in
             Terrain(id: id, dataset: t["dataset"] as? String ?? "", areaKm2: t["area_km2"] as? Double ?? 0,
-                    groundPerM2: t["ground_points_per_m2"] as? Double ?? 0)
+                    groundPerM2: t["ground_points_per_m2"] as? Double ?? 0, res: t["res"] as? Double ?? 0.5,
+                    box: (t["box"] as? [Double]) ?? [], epsg: t["epsg"] as? Int ?? 0,
+                    source: t["source"] as? String ?? "", collected: t["collected"] as? String ?? "",
+                    file: t["file"] as? String ?? "", points: t["points"] as? String)
         }.sorted { $0.id < $1.id }
 
         let tileState = json(root + "/private/state/tiles.json") as? [String: JSON] ?? [:]

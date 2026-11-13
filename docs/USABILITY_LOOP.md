@@ -183,3 +183,26 @@ Checked from Home: typed "Fort Ancient Ohio" and clicked **Start a project at Fo
 
 Not done here: the map does not show where the area is before terrain arrives. The terrain now comes in within a minute of creating the project, so the blank map is brief.
 
+
+### 2026-11-13, U7: pulling in data is visible and in your hands
+
+A project now has a **Data** tab:
+
+- **Terrain in this project:** each terrain with its survey, area, cell size, ground returns per square metre, the year flown when the survey's name gives it, how many tiles, and its size on disk. One not yet cut has "Cut into tiles".
+- **Fetch more, Widen the area, Use another survey:** each asks the agent to do that one thing. "Use another survey" lists every survey over the area and asks before fetching.
+- **Your own data:** drop or choose a GeoTIFF ground model or a LAS/LAZ point cloud. A new tool, `import_terrain`, reads it into the project like fetched terrain: a point cloud's ground returns are gridded at 0.5 m and its points are kept, so sections show canopy; a GeoTIFF is used at its own cell size. Files without a projected coordinate system in metres are refused with a plain reason. The agent is then asked to cut it into tiles.
+- **Take it with you:** "Export finds" writes the candidates as GeoJSON under `private/exports/` and shows it in Finder. "Export project…" zips the records, notes, sources and reports, leaving out `data/` and `private/`. "Draft a report" runs the report workflow once a candidate has been decided as no match in the sources read.
+- **The map puts terrains side by side.** With no terrain picked, every tiled terrain in the same coordinate system and within 5 km is drawn together, each tile at its real position. Fetching more of an area or widening it adds tiles beside the old ones, and candidates sit on the right tile. The menu still shows one terrain at a time.
+
+Checked:
+
+| Check | Seen |
+|---|---|
+| Mound City map, "All terrain" | The project's two terrains (0.32 and 0.15 sq km, fetched separately during N3) drawn as one mosaic, the enclosure and its mounds continuous across both, all five candidates on it. Before, only one terrain showed and C-005 sat on its own small map. |
+| Choose a file: a GeoTIFF of real ground (Fort Ancient's) | Added as "dh-own-dtm.tif, 0.39 sq km, your own file", cut into 9 tiles, 0 unreadable, and drawn on the map. Removed again afterwards, since it was not Mound City ground. |
+| `import_terrain` with a LAZ, from the tools directly | 0.36 sq km at 10.8 ground returns per square metre, 3 tiles, a sky-view tile and a section with ground returns. A missing file gave "No file at …". |
+| Export finds | "Saved 5 candidates to …/private/exports/candidates.geojson", five points. |
+| Export project… | `mound-city-group.zip`, 25 files, 2 MB: records with their pictures, notes, sources, PROJECT.md. No entries under data/ or private/, and no coordinates in any text file. |
+
+Widen the area and Use another survey were not run end to end here; they hand the agent a plain request, and the map change they rely on (new tiles beside old ones) is what the Mound City mosaic shows.
+

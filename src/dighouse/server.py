@@ -9,6 +9,7 @@ import re
 import time
 
 import numpy as np
+from pathlib import Path
 
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -218,6 +219,9 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
     T.save_terrain(p.path("data", "terrain", f"{tid}.tif"), dtm, gap, outside, x0, y1, resolution_m, epsg)
     meta = {"dataset": dataset, "file": f"data/terrain/{tid}.tif", "points": points,
             "epsg": epsg, "res": resolution_m, "box": [x0, y0, x1, y1], "area_km2": round(km2, 2), **stats, **how}
+    year = re.search(r"(?<!\d)(19|20)\d\d(?!\d)", dataset)  # most survey names carry the year they were flown
+    if year:
+        meta["collected"] = year.group(0)
     terrains = p.load("terrains", {})
     terrains[tid] = meta
     p.save("terrains", terrains)
@@ -225,6 +229,80 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
     warn = [] if stats["ground_classified"] else ["This dataset has no ground classification; the model uses the lowest return per cell and will include low vegetation."]
     if points is None:
         warn.append("This is a national agency's ready-made ground model. There are no raw points, so a section shows the ground profile only and cannot tell a feature in the ground from one in the trees.")
+    return {"terrain": tid, **{k: v for k, v in meta.items() if k not in ("box", "file", "points", "epsg")}, "warnings": warn}
+
+
+@tool
+def import_terrain(project: str, file: str, name: str = "") -> dict:
+    """Use the person's own data as a terrain: a ground model (GeoTIFF) or a point cloud (LAS or LAZ) on this Mac.
+
+    The file needs a coordinate system in metres (a projected one, such as UTM or a national grid). A point
+    cloud's ground returns are gridded at 0.5 m; a ground model is used at its own cell size. The terrain then
+    tiles, renders and cuts like one that was fetched.
+    """
+    import rasterio
+    p = Project(project).check()
+    src = Path(file).expanduser()
+    if not src.exists():
+        raise ValueError(f"No file at {src}.")
+    stem = re.sub(r"[^a-z0-9]+", "-", (name or src.stem).lower()).strip("-")[:28] or "own"
+    tid = stem + "-" + hashlib.sha1(str(src.resolve()).encode()).hexdigest()[:4]
+    ext = src.suffix.lower()
+    if ext in (".tif", ".tiff"):
+        with rasterio.open(src) as r:
+            if r.crs is None or not r.crs.is_projected:
+                raise ValueError("This GeoTIFF has no projected coordinate system in metres, so distances and heights "
+                                 "cannot be measured. Reproject it (for example to UTM) and try again.")
+            epsg = r.crs.to_epsg()
+            if epsg is None:
+                raise ValueError("Dighouse could not read an EPSG code from this GeoTIFF's coordinate system.")
+            dtm = r.read(1).astype(np.float32)
+            if r.nodata is not None:
+                dtm[dtm == r.nodata] = np.nan
+            res, x0, y1 = abs(r.transform.a), r.transform.c, r.transform.f
+        dtm[(dtm < -500) | (dtm > 9000)] = np.nan
+        outside = np.isnan(dtm)
+        if outside.all():
+            raise ValueError("This GeoTIFF has no valid heights.")
+        dtm[outside] = float(np.nanmedian(dtm))
+        gap = np.zeros_like(dtm)
+        x1, y0 = x0 + dtm.shape[1] * res, y1 - dtm.shape[0] * res
+        stats = {"ground_classified": True, "ground_points": None, "ground_points_per_m2": None,
+                 "share_outside_survey": round(float(outside.mean()), 3), "share_without_ground_data": 0.0}
+        points, kind = None, "ground model"
+    elif ext in (".las", ".laz"):
+        import laspy
+        with laspy.open(src) as reader:
+            crs = reader.header.parse_crs()
+            h = reader.header
+            box = (h.x_min, h.y_min, h.x_max, h.y_max)
+        if crs is None or not crs.is_projected:
+            raise ValueError("This point cloud has no projected coordinate system in metres. Add one (for example with "
+                             "PDAL or LAStools) and try again.")
+        epsg = crs.to_epsg()
+        if epsg is None:
+            raise ValueError("Dighouse could not read an EPSG code from this point cloud's coordinate system.")
+        pts = sources._join([sources._read_las(src, box)], epsg)
+        if not len(pts):
+            raise ValueError("The point cloud is empty.")
+        res = 0.5
+        x0, y0, x1, y1 = (round(v / res) * res for v in box)
+        dtm, gap, outside, stats = T.grid_ground(pts, (x0, y0, x1, y1), res)
+        points = f"data/points/{tid}.npz"
+        pts.save(p.path(points))
+        kind = "point cloud"
+    else:
+        raise ValueError("Dighouse reads ground models as GeoTIFF (.tif) and point clouds as LAS or LAZ.")
+    km2 = round((x1 - x0) * (y1 - y0) / 1e6, 2)
+    p.path("data", "terrain").mkdir(parents=True, exist_ok=True)
+    T.save_terrain(p.path("data", "terrain", f"{tid}.tif"), dtm, gap, outside, x0, y1, res, epsg)
+    meta = {"dataset": f"own:{src.name}", "file": f"data/terrain/{tid}.tif", "points": points, "epsg": epsg, "res": res,
+            "box": [x0, y0, x1, y1], "area_km2": km2, **stats, "source": "the person's own file", "imported_from": src.name}
+    terrains = p.load("terrains", {})
+    terrains[tid] = meta
+    p.save("terrains", terrains)
+    p.note(f"Imported the person's own {kind} {src.name} as terrain {tid}: {km2} sq km at {res:g} m")
+    warn = [] if points is not None else ["A ground model has no raw points, so a section shows the ground profile only."]
     return {"terrain": tid, **{k: v for k, v in meta.items() if k not in ("box", "file", "points", "epsg")}, "warnings": warn}
 
 

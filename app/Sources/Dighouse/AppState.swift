@@ -10,7 +10,7 @@ enum PaneLayout: String {
 }
 
 enum WorkTab: String, CaseIterable {
-    case map = "Map", records = "Records", notes = "Notes", sources = "Sources"
+    case map = "Map", records = "Records", notes = "Notes", sources = "Sources", data = "Data"
 }
 
 enum SettingsSection: String, CaseIterable {

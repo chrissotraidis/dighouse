@@ -37,6 +37,7 @@ struct WorkspaceView: View {
             case .records: RecordsView()
             case .notes: NotesView()
             case .sources: SourcesView()
+            case .data: DataView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -70,12 +71,42 @@ struct MapView: View {
     @State private var terrain: String?
     @State private var zoom = 1.0
 
-    /// The terrain on the map. Unless the person picked one, a terrain that has tiles: one just fetched has none until it is cut.
+    /// The terrain picked from the menu, or the first one with tiles. With no pick, every tiled terrain in the same
+    /// coordinate system is shown together, so fetching more of an area adds its tiles beside the old ones.
     private var current: String? {
         terrain ?? store.terrains.first { t in store.tiles.contains { $0.terrain == t.id } }?.id ?? store.terrains.first?.id
     }
 
-    private var shown: [Tile] { store.tiles.filter { $0.terrain == current } }
+    private var shownTerrains: [Terrain] {
+        if let terrain { return store.terrains.filter { $0.id == terrain } }
+        guard let first = store.terrains.first(where: { $0.id == current }) else { return [] }
+        // Terrains near each other only: a far-off one would shrink everything else to specks.
+        func near(_ t: Terrain) -> Bool {
+            guard t.box.count == 4, first.box.count == 4 else { return t.id == first.id }
+            return abs(t.box[0] - first.box[0]) < 5000 && abs(t.box[1] - first.box[1]) < 5000
+        }
+        return store.terrains.filter { t in t.epsg == first.epsg && near(t) && store.tiles.contains { $0.terrain == t.id } }
+    }
+
+    private var shown: [Tile] {
+        let ids = Set(shownTerrains.map(\.id))
+        return store.tiles.filter { ids.contains($0.terrain) }
+    }
+
+    /// Where each tile sits, in metres from the top-left corner of everything shown.
+    private struct Placed { let tile: Tile; let x, y, w, h: Double }
+
+    private var placed: [Placed] {
+        let byID = Dictionary(uniqueKeysWithValues: store.terrains.map { ($0.id, $0) })
+        let raw: [Placed] = shown.compactMap { tile in
+            guard let t = byID[tile.terrain] else { return nil }
+            let left = t.box.count == 4 ? t.box[0] : 0, top = t.box.count == 4 ? t.box[3] : 0
+            return Placed(tile: tile, x: left + Double(tile.col) * t.res, y: top - Double(tile.row) * t.res,
+                          w: Double(tile.cols) * t.res, h: Double(tile.rows) * t.res)
+        }
+        guard let minX = raw.map(\.x).min(), let maxY = raw.map(\.y).max() else { return [] }
+        return raw.map { Placed(tile: $0.tile, x: $0.x - minX, y: maxY - $0.y, w: $0.w, h: $0.h) }
+    }
 
     /// A terrain's name in the menu: its survey, its size, and whether it has been cut into tiles yet.
     private func label(_ t: Terrain) -> String {
@@ -117,25 +148,26 @@ struct MapView: View {
                     }
                     .frame(width: geo.size.width, height: geo.size.height)
                 }
-                let width = Double(tiles.map { $0.col + $0.cols }.max() ?? 1)
-                let height = Double(tiles.map { $0.row + $0.rows }.max() ?? 1)
+                let spots = placed
+                let width = max(spots.map { $0.x + $0.w }.max() ?? 1, 1)
+                let height = max(spots.map { $0.y + $0.h }.max() ?? 1, 1)
                 let scale = min((geo.size.width - 32) / width, (geo.size.height - 72) / height) * zoom
                 ScrollView([.horizontal, .vertical]) {
                     ZStack(alignment: .topLeading) {
-                        ForEach(tiles) { tile in
-                            TileView(tile: tile, selected: store.selectedTile == tile.id)
-                                .frame(width: Double(tile.cols) * scale, height: Double(tile.rows) * scale)
-                                .offset(x: Double(tile.col) * scale, y: Double(tile.row) * scale)
+                        ForEach(spots, id: \.tile.id) { spot in
+                            TileView(tile: spot.tile, selected: store.selectedTile == spot.tile.id)
+                                .frame(width: spot.w * scale, height: spot.h * scale)
+                                .offset(x: spot.x * scale, y: spot.y * scale)
                                 .onTapGesture {
-                                    store.selectedTile = tile.id
+                                    store.selectedTile = spot.tile.id
                                     store.selectedCandidate = nil
                                 }
                         }
                         ForEach(store.candidates) { c in
-                            if let tile = tiles.first(where: { $0.id == c.tile }) {
+                            if let spot = spots.first(where: { $0.tile.id == c.tile }) {
                                 Pin(label: c.id, selected: store.selectedCandidate == c.id)
-                                    .offset(x: (Double(tile.col) + c.x * Double(tile.cols)) * scale - 8,
-                                            y: (Double(tile.row) + c.y * Double(tile.rows)) * scale - 8)
+                                    .offset(x: (spot.x + c.x * spot.w) * scale - 8,
+                                            y: (spot.y + c.y * spot.h) * scale - 8)
                                     .onTapGesture {
                                         store.selectedCandidate = c.id
                                         store.selectedTile = c.tile
@@ -162,8 +194,9 @@ struct MapView: View {
             Button { zoom = min(8, zoom * 1.5) } label: { Image(systemName: "plus") }
                 .buttonStyle(IconButton(size: 28)).help("Zoom in")
             if store.terrains.count > 1 {
-                PillMenu(title: store.terrains.first { $0.id == current }?.dataset
-                    .split(separator: ":").last.map(String.init) ?? "Terrain", quiet: true) {
+                PillMenu(title: terrain == nil && shownTerrains.count > 1 ? "All terrain"
+                         : store.terrains.first { $0.id == current }?.name ?? "Terrain", quiet: true) {
+                    Button("All terrain, side by side") { terrain = nil }
                     ForEach(store.terrains) { t in
                         Button(label(t)) { terrain = t.id }
                     }

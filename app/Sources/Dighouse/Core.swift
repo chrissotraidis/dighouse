@@ -148,6 +148,18 @@ struct Terrain: Identifiable {
     let dataset: String
     let areaKm2: Double
     let groundPerM2: Double
+    var res = 0.5
+    /// The corner and far corner of the terrain in its own metres, and the coordinate system they are in.
+    var box: [Double] = []
+    var epsg = 0
+    var source = ""
+    var collected = ""
+    var file = ""
+    var points: String?
+
+    /// The survey's name, without the "usgs:" or "own:" in front.
+    var name: String { dataset.split(separator: ":", maxSplits: 1).last.map(String.init) ?? dataset }
+    var isOwn: Bool { dataset.hasPrefix("own:") }
 }
 
 struct Tile: Identifiable {
