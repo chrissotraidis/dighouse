@@ -15,7 +15,7 @@ private struct Pressable<Label: View>: View {
     var body: some View {
         label
             .labelStyle(ButtonLabelStyle())
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: 13 * Theme.scale, weight: .medium))
             .lineLimit(1).fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(text.opacity(enabled ? 1 : 0.4))
             .padding(.horizontal, 12).frame(height: 30)
@@ -33,7 +33,7 @@ private struct Pressable<Label: View>: View {
 private struct ButtonLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 6) {
-            configuration.icon.font(.system(size: 11.5, weight: .semibold)).opacity(0.85)
+            configuration.icon.font(.system(size: 11.5 * Theme.scale, weight: .semibold)).opacity(0.85)
             configuration.title
         }
     }
@@ -75,7 +75,7 @@ struct IconButton: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 14 * Theme.scale, weight: .medium))
                 .foregroundStyle((active ? Theme.text : Theme.dim).opacity(enabled ? 1 : 0.35))
                 .frame(width: size, height: size)
                 .background(RoundedRectangle(cornerRadius: 8).fill(
@@ -142,9 +142,9 @@ struct PillMenu<Content: View>: View {
         } label: {
             HStack(spacing: 5) {
                 Text(title).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 8.5, weight: .bold))
+                Image(systemName: "chevron.down").font(.system(size: 8.5 * Theme.scale, weight: .bold))
             }
-            .font(.system(size: 12.5))
+            .font(.system(size: 12.5 * Theme.scale))
             .foregroundStyle(quiet ? Theme.dim : Theme.text)
             .padding(.horizontal, quiet ? 8 : 12).frame(height: 28)
             .background(Capsule().fill(Theme.ink.opacity(quiet ? 0 : 0.05)))
@@ -161,7 +161,7 @@ struct Badge: View {
     var color = Theme.dim
 
     var body: some View {
-        Text(text).font(.system(size: 11.5, weight: .medium)).foregroundStyle(color)
+        Text(text).font(.system(size: 11.5 * Theme.scale, weight: .medium)).foregroundStyle(color)
             .lineLimit(1).fixedSize()
             .padding(.horizontal, 8).frame(height: 22)
             .background(Capsule().fill(color.opacity(0.14)))
@@ -294,14 +294,14 @@ struct MarkdownText: View {
                 case .paragraph(let s):
                     Text(s.inlineMarkdown).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                 case .heading(let s):
-                    Text(s.inlineMarkdown).font(.system(size: 15, weight: .semibold)).padding(.top, 4)
+                    Text(s.inlineMarkdown).font(.system(size: 15 * Theme.scale, weight: .semibold)).padding(.top, 4)
                 case .bullet(let mark, let s):
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(mark).foregroundStyle(Theme.dim).frame(minWidth: 14, alignment: .trailing)
                         Text(s.inlineMarkdown).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                     }
                 case .code(let s):
-                    Text(s).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.dim)
+                    Text(s).font(.system(size: 12 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.dim)
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.3)))
                 case .table(let rows):
@@ -310,7 +310,7 @@ struct MarkdownText: View {
                             if index > 0 { Hairline().gridCellUnsizedAxes(.horizontal) }
                             GridRow {
                                 ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
-                                    Text(cell.inlineMarkdown).font(.system(size: 13, weight: index == 0 ? .semibold : .regular))
+                                    Text(cell.inlineMarkdown).font(.system(size: 13 * Theme.scale, weight: index == 0 ? .semibold : .regular))
                                         .foregroundStyle(index == 0 ? Theme.text : Theme.dim)
                                         .fixedSize(horizontal: false, vertical: true).padding(.vertical, 7)
                                 }
@@ -322,7 +322,7 @@ struct MarkdownText: View {
                 }
             }
         }
-        .font(.system(size: 14)).foregroundStyle(Theme.text).textSelection(.enabled)
+        .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.text).textSelection(.enabled)
     }
 }
 
@@ -379,7 +379,7 @@ struct StepSlider: View {
                     let usable = max(geo.size.width - knob, 1)
                     let last = CGFloat(max(steps.count - 1, 1))
                     ForEach(steps.indices, id: \.self) { i in
-                        Text(Effort.short(steps[i])).font(.system(size: 10.5, weight: steps[i] == value ? .semibold : .regular))
+                        Text(Effort.short(steps[i])).font(.system(size: 10.5 * Theme.scale, weight: steps[i] == value ? .semibold : .regular))
                             .foregroundStyle(steps[i] == value ? Theme.text : Theme.faint).fixedSize()
                             .position(x: knob / 2 + usable * CGFloat(i) / last, y: 7)
                     }
@@ -414,11 +414,11 @@ struct ModelList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Select model").font(.system(size: 13)).foregroundStyle(Theme.faint).padding(.horizontal, 12).padding(.top, 4)
+            Text("Select model").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(.horizontal, 12).padding(.top, 4)
             if models.count > 12 {
                 HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(Theme.faint)
-                    TextField("Search", text: $query).textFieldStyle(.plain).font(.system(size: 13)).focused($searching)
+                    Image(systemName: "magnifyingglass").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint)
+                    TextField("Search", text: $query).textFieldStyle(.plain).font(.system(size: 13 * Theme.scale)).focused($searching)
                 }
                 .padding(.horizontal, 10).frame(height: 30)
                 .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ink.opacity(0.06)))
@@ -429,21 +429,21 @@ struct ModelList: View {
                     ForEach(shown) { model in
                         Button { pick(model) } label: {
                             HStack(spacing: 8) {
-                                Text(model.name).font(.system(size: 14)).lineLimit(1)
-                                if !model.readsImages { Text("text only").font(.system(size: 11)).foregroundStyle(Theme.faint) }
+                                Text(model.name).font(.system(size: 14 * Theme.scale)).lineLimit(1)
+                                if !model.readsImages { Text("text only").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint) }
                                 Spacer(minLength: 0)
                                 if let check = checks[model.id] {
-                                    Text(check.ok ? "tested" : "failed test").font(.system(size: 11))
+                                    Text(check.ok ? "tested" : "failed test").font(.system(size: 11 * Theme.scale))
                                         .foregroundStyle(check.ok ? Theme.faint : Theme.amber)
                                         .help(check.ok ? "Answered a test message\(check.effort.map { " at \(Effort.label($0))" } ?? "")." : check.message)
                                 }
-                                if model.id == current { Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)) }
+                                if model.id == current { Image(systemName: "checkmark").font(.system(size: 11 * Theme.scale, weight: .semibold)) }
                             }
                             .padding(.vertical, 3)
                         }
                         .buttonStyle(RowButton(selected: model.id == current))
                     }
-                    if shown.isEmpty { Text("No model matches.").font(.system(size: 13)).foregroundStyle(Theme.faint).padding(12) }
+                    if shown.isEmpty { Text("No model matches.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(12) }
                 }
                 .padding(.horizontal, 6)
             }
@@ -473,9 +473,9 @@ struct ModelPicker: View {
         Button { open = true } label: {
             HStack(spacing: 5) {
                 Text(title).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 8.5, weight: .bold))
+                Image(systemName: "chevron.down").font(.system(size: 8.5 * Theme.scale, weight: .bold))
             }
-            .font(.system(size: 12.5)).foregroundStyle(Theme.text)
+            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.text)
             .padding(.horizontal, 12).frame(height: 28)
             .overlay(Capsule().strokeBorder(Theme.ink.opacity(0.16))).contentShape(Capsule())
         }
@@ -580,7 +580,7 @@ struct RevealSlider: View {
                 tag(rightLabel).padding(10).frame(width: w, alignment: .trailing).opacity(split < 0.84 ? 1 : 0)
                 Rectangle().fill(.white).frame(width: 2, height: h).offset(x: w * split - 1)
                 Circle().fill(.white).frame(width: 34, height: 34)
-                    .overlay(Image(systemName: "arrow.left.and.right").font(.system(size: 13, weight: .bold)).foregroundStyle(.black))
+                    .overlay(Image(systemName: "arrow.left.and.right").font(.system(size: 13 * Theme.scale, weight: .bold)).foregroundStyle(.black))
                     .shadow(color: .black.opacity(0.5), radius: 5, y: 1)
                     .offset(x: w * split - 17, y: h / 2 - 17)
             }
@@ -602,7 +602,7 @@ struct RevealSlider: View {
     }
 
     private func tag(_ text: String) -> some View {
-        Text(text).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(.white)
+        Text(text).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(.white)
             .padding(.horizontal, 9).frame(height: 24)
             .background(Capsule().fill(.black.opacity(0.68)))
     }
@@ -675,9 +675,9 @@ struct PageSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 16, weight: .semibold))
+                Text(title).font(.system(size: 16 * Theme.scale, weight: .semibold))
                 if !caption.isEmpty {
-                    Text(caption).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    Text(caption).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 }
             }
             content()

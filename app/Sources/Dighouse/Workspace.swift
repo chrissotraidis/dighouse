@@ -20,7 +20,7 @@ struct WorkspaceView: View {
                                 Text("\(Set(store.candidates.flatMap(\.sources).map(\.title)).count)").foregroundStyle(Theme.faint)
                             }
                         }
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13 * Theme.scale, weight: .medium))
                         .foregroundStyle(app.tab == tab ? Theme.text : Theme.dim)
                         .padding(.horizontal, 12).frame(height: 30)
                         .background(Capsule().fill(app.tab == tab ? Theme.ink.opacity(0.1) : .clear))
@@ -53,8 +53,8 @@ private struct EmptyPane<Action: View>: View {
     var body: some View {
         VStack(spacing: 12) {
             IconTile(name: icon, size: 52)
-            Text(title).font(.system(size: 18, weight: .semibold)).padding(.top, 4)
-            Text(text).font(.system(size: 13.5)).foregroundStyle(Theme.dim)
+            Text(title).font(.system(size: 18 * Theme.scale, weight: .semibold)).padding(.top, 4)
+            Text(text).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim)
                 .multilineTextAlignment(.center).frame(maxWidth: 380)
             action().padding(.top, 6)
         }
@@ -233,7 +233,7 @@ struct MapView: View {
                 if drawing && line == nil && !cutting {
                     Text(store.selectedCandidate.map { "Drag a line across the ground. The section goes on \($0)'s record." }
                          ?? "Drag a line across the ground, starting and ending on the surrounding ground.")
-                        .font(.system(size: 12.5)).padding(.horizontal, 12).frame(height: 30)
+                        .font(.system(size: 12.5 * Theme.scale)).padding(.horizontal, 12).frame(height: 30)
                         .background(Capsule().fill(Theme.raised)).overlay(Capsule().strokeBorder(Theme.line))
                         .padding(.top, 56)
                 }
@@ -333,7 +333,7 @@ struct MapView: View {
     @ViewBuilder private var cutCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(cutting ? "Cutting the section…" : "Section").font(.system(size: 13.5, weight: .semibold))
+                Text(cutting ? "Cutting the section…" : "Section").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 if cutting { ProgressView().controlSize(.small) }
                 Spacer()
                 Button { cut = nil; line = nil } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22))
@@ -342,7 +342,7 @@ struct MapView: View {
                 if !cut.image.isEmpty, let img = Images.load(cut.image) {
                     Image(nsImage: img).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 6))
                 }
-                Text(cut.text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                Text(cut.text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(12).frame(width: 360, alignment: .leading)
@@ -358,7 +358,7 @@ struct MapView: View {
             key(Theme.amber, "Possible")
             key(Theme.faint, "Not screened")
         }
-        .font(.system(size: 11.5)).foregroundStyle(Theme.dim)
+        .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.dim)
         .padding(.horizontal, 10).frame(height: 28)
         .background(RoundedRectangle(cornerRadius: 9).fill(Theme.bg.opacity(0.92)))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.line))
@@ -378,10 +378,10 @@ struct MapView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     if let candidate {
-                        Text("\(candidate.id) \(candidate.name)").font(.system(size: 13.5, weight: .semibold)).lineLimit(1)
+                        Text("\(candidate.id) \(candidate.name)").font(.system(size: 13.5 * Theme.scale, weight: .semibold)).lineLimit(1)
                         Badge(text: candidate.statusLabel, color: candidate.statusColor)
                     } else if let tile {
-                        Text("Tile \(tile.short)").font(.system(size: 13.5, weight: .semibold))
+                        Text("Tile \(tile.short)").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                         if let verdict = tile.verdict { Badge(text: verdict.capitalized, color: verdict == "built" ? Theme.accent : Theme.dim) }
                     }
                     Spacer(minLength: 4)
@@ -399,7 +399,7 @@ struct MapView: View {
                 } else if let tile {
                     Text(tile.status == "unreadable" ? "Unreadable: the laser did not reach the ground here."
                          : tile.status == "screened" ? (tile.note ?? "") : "Nobody has looked at this tile yet.")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(4)
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(4)
                         .fixedSize(horizontal: false, vertical: true)
                     if tile.status != "unreadable" {
                         Button {
@@ -464,7 +464,7 @@ private struct Pin: View {
         HStack(spacing: 4) {
             Circle().fill(selected ? Theme.accent : .white).frame(width: 16, height: 16)
                 .overlay(Circle().strokeBorder(.black.opacity(0.55), lineWidth: 1.5))
-            Text(label).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white)
+            Text(label).font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(.white)
                 .padding(.horizontal, 6).frame(height: 18)
                 .background(Capsule().fill(selected ? Theme.accent : .black.opacity(0.78)))
         }
@@ -537,8 +537,8 @@ struct RecordsView: View {
             HStack(spacing: 10) {
                 Circle().fill(c.statusColor).frame(width: 7, height: 7)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(c.id) \(c.name)").font(.system(size: 13)).lineLimit(1)
-                    Text(c.statusLabel).font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineLimit(1)
+                    Text("\(c.id) \(c.name)").font(.system(size: 13 * Theme.scale)).lineLimit(1)
+                    Text(c.statusLabel).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
                 }
             }
             .padding(.vertical, 5)
@@ -549,15 +549,15 @@ struct RecordsView: View {
     @ViewBuilder private func record(_ c: Candidate) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("candidates/\(c.id).md").font(.system(size: 11.5, design: .monospaced)).foregroundStyle(Theme.faint)
+                Text("candidates/\(c.id).md").font(.system(size: 11.5 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.faint)
                 Spacer()
-                Label("Location kept on this Mac", systemImage: "lock").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+                Label("Location kept on this Mac", systemImage: "lock").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text("\(c.id) \(c.name)").font(.system(size: 24, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                Text("\(c.id) \(c.name)").font(.system(size: 24 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     Badge(text: c.statusLabel, color: c.statusColor)
-                    Text("Flagged \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(1)
+                    Text("Flagged \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
                     Spacer(minLength: 8)
                     Button("Review and decide") { app.reviewing = true }.buttonStyle(SecondaryButton())
                         .help("Go through the candidates one at a time and decide each, from the keyboard")
@@ -570,7 +570,7 @@ struct RecordsView: View {
             if !c.evidence.isEmpty {
                 section("Evidence") {
                     ForEach(c.evidence, id: \.self) { line in
-                        Text(line).font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3)
+                        Text(line).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -580,21 +580,21 @@ struct RecordsView: View {
                 section("Sources") {
                     ForEach(c.sources) { s in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(s.title).font(.system(size: 13))
+                            Text(s.title).font(.system(size: 13 * Theme.scale))
                             Text("\(s.status.replacingOccurrences(of: "_", with: " ").capitalized) · \(s.finding)")
-                                .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
             }
             if !c.decisions.isEmpty {
                 section("Decisions") {
-                    ForEach(c.decisions, id: \.self) { Text($0).font(.system(size: 12.5)).foregroundStyle(Theme.dim) }
+                    ForEach(c.decisions, id: \.self) { Text($0).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim) }
                 }
             }
             section("Your decision") {
                 Text("You decide what this is. Your name and reason are written into the record.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                 Flow(spacing: 8) {
                     Button("Already published") { deciding = Decision(candidate: c, status: "already_published") }
                     Button("Natural feature") { deciding = Decision(candidate: c, status: "natural") }
@@ -610,7 +610,7 @@ struct RecordsView: View {
 
     private func section(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 14, weight: .semibold))
+            Text(title).font(.system(size: 14 * Theme.scale, weight: .semibold))
             content()
         }
         .padding(.top, 4)
@@ -669,7 +669,7 @@ struct RecordsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     // Drag a record's picture onto the message box to attach it.
                     .onDrag { NSItemProvider(contentsOf: URL(fileURLWithPath: path)) ?? NSItemProvider() }
-                Text(caption).font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+                Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
         }
     }
@@ -685,12 +685,12 @@ private struct CheckRow<Action: View>: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: done == true ? "checkmark.circle.fill" : done == false ? "exclamationmark.circle.fill" : "circle")
-                .font(.system(size: 16))
+                .font(.system(size: 16 * Theme.scale))
                 .foregroundStyle(done == true ? Theme.green : done == false ? Theme.amber : Theme.faint)
                 .frame(width: 20).padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13.5, weight: .medium))
-                Text(detail).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                Text(detail).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 action().padding(.top, 7)
             }
             Spacer(minLength: 0)
@@ -724,21 +724,21 @@ private struct DecisionSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Mark \(decision.candidate.id) as \((Candidate.labels[decision.status] ?? "").lowercased())")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 18 * Theme.scale, weight: .semibold))
             if !open.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Still open on this record").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.amber)
-                    ForEach(open, id: \.self) { Text("• " + $0).font(.system(size: 12.5)).foregroundStyle(Theme.dim) }
+                    Text("Still open on this record").font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.amber)
+                    ForEach(open, id: \.self) { Text("• " + $0).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim) }
                     Text("You can still decide. These are written into the record beside your decision.")
-                        .font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 12, radius: 10)
             }
             TextField(decision.status == "already_published" ? "Where is it published?" : "Your reason", text: $reason, axis: .vertical)
-                .lineLimit(2...4).field().font(.system(size: 13))
+                .lineLimit(2...4).field().font(.system(size: 13 * Theme.scale))
             Text("Recorded as decided by \(app.userName). Change your name in Settings.")
-                .font(.system(size: 12)).foregroundStyle(Theme.faint)
-            if let problem { Text(problem).font(.system(size: 12.5)).foregroundStyle(Theme.amber) }
+                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+            if let problem { Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
             HStack(spacing: 8) {
                 Spacer()
                 Button("Cancel") { dismiss() }.buttonStyle(SecondaryButton())
@@ -766,58 +766,95 @@ private struct DecisionSheet: View {
 
 /// The project's own Markdown: the brief, the run notes, the log of sources read, and any draft reports.
 struct NotesView: View {
+    @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
+    @State private var part = "runs"
     @State private var picked: String?
 
-    private var files: [String] {
+    /// The project's notes in three parts: the method the agent follows, the run summaries, and the running log.
+    private func files(_ part: String) -> [String] {
         guard let root = store.current?.path else { return [] }
         let fm = FileManager.default
-        func folder(_ name: String) -> [String] {
-            ((try? fm.contentsOfDirectory(atPath: root + "/" + name)) ?? []).filter { $0.hasSuffix(".md") }.sorted().reversed().map { name + "/" + $0 }
+        let notes = ((try? fm.contentsOfDirectory(atPath: root + "/notes")) ?? []).filter { $0.hasSuffix(".md") }.sorted().reversed()
+        switch part {
+        case "method": return ["METHODOLOGY.md", "PROJECT.md"].filter { fm.fileExists(atPath: root + "/" + $0) }
+        case "runs": return notes.filter { $0.contains("-run-") }.map { "notes/" + $0 }
+        default:
+            let reports = ((try? fm.contentsOfDirectory(atPath: root + "/reports")) ?? []).filter { $0.hasSuffix(".md") }.sorted().map { "reports/" + $0 }
+            return notes.filter { !$0.contains("-run-") && $0 != "INDEX.md" }.map { "notes/" + $0 }
+                + ["sources/read-log.md"].filter { fm.fileExists(atPath: root + "/" + $0) } + reports
         }
-        return (["PROJECT.md"] + folder("notes") + ["sources/read-log.md"] + folder("reports")).filter { fm.fileExists(atPath: root + "/" + $0) }
+    }
+
+    private func label(_ file: String) -> String {
+        let name = URL(fileURLWithPath: file).deletingPathExtension().lastPathComponent
+        if name == "METHODOLOGY" { return "Method" }
+        if name == "PROJECT" { return "Question and rules" }
+        if name == "read-log" { return "Sources read" }
+        if name.contains("-run-") {
+            let p = name.components(separatedBy: "-run-")
+            return p[0] + " " + (p.count > 1 && p[1].count == 4 ? String(p[1].prefix(2)) + ":" + String(p[1].suffix(2)) : "")
+        }
+        return name
     }
 
     var body: some View {
-        let all = files
-        let file = picked.flatMap { all.contains($0) ? $0 : nil } ?? all.first
+        let list = files(part)
+        let file = picked.flatMap { list.contains($0) ? $0 : nil } ?? list.first
         let root = store.current?.path ?? ""
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(all, id: \.self) { name in
-                            Button { picked = name } label: {
-                                Text(name).font(.system(size: 12, design: .monospaced)).lineLimit(1)
-                                    .foregroundStyle(name == file ? Theme.text : Theme.dim)
-                                    .padding(.horizontal, 10).frame(height: 26)
-                                    .background(Capsule().fill(name == file ? Theme.ink.opacity(0.1) : .clear))
-                                    .contentShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
+                HStack(spacing: 2) {
+                    ForEach([("runs", "Runs"), ("method", "Method"), ("log", "Log")], id: \.0) { item in
+                        Button { part = item.0; picked = nil } label: {
+                            Text(item.1).font(.system(size: 12.5 * Theme.scale, weight: part == item.0 ? .semibold : .medium))
+                                .foregroundStyle(part == item.0 ? Theme.text : Theme.dim)
+                                .padding(.horizontal, 12).frame(height: 26)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(part == item.0 ? Theme.raised : .clear))
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(2).background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
+                if list.count > 1 {
+                    PillMenu(title: file.map(label) ?? "", quiet: true) {
+                        ForEach(list, id: \.self) { f in Button(label(f)) { picked = f } }
+                    }
+                }
+                Spacer()
                 Button { NSWorkspace.shared.selectFile(file.map { root + "/" + $0 }, inFileViewerRootedAtPath: root) } label: {
                     Image(systemName: "folder")
                 }
-                .buttonStyle(IconButton(size: 26)).help("Show the project folder in Finder")
+                .buttonStyle(IconButton(size: 26)).help("Show the file in Finder")
             }
-            .padding(.horizontal, 12).frame(height: 40)
+            .padding(.horizontal, 12).frame(height: 44)
             Hairline()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    Text(part == "runs" ? "What each run did and found, newest first."
+                         : part == "method" ? "How searches in this project are done. The agent reads this before every run and follows it; edit it to change the method."
+                         : "The running log the tools write as work happens, the sources read, and report drafts.")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
                     if let file, let text = try? String(contentsOfFile: root + "/" + file, encoding: .utf8) {
                         MarkdownText(text: text)
+                    } else if part == "method" {
+                        Text("This project was made before projects had a method file.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+                        Button { app.ask("Write METHODOLOGY.md for this project: the order of work Dighouse follows (read, terrain, screen, flag, check, search what is published, suggest decisions, summarise), the rules, and a Lessons section with anything the notes so far have taught. No coordinates.") } label: {
+                            Label("Ask the agent to write it", systemImage: "sparkles")
+                        }
+                        .buttonStyle(SecondaryButton())
+                    } else {
+                        Text(part == "runs" ? "No run summaries yet. A run writes one when it ends." : "Nothing logged yet.")
+                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                     }
-                    Text("A project is a folder of Markdown, so it can be shared or kept in Git. Locations stay in private/ and are left out.")
-                        .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true).padding(.top, 8)
                 }
                 .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
             }
         }
     }
 }
+
 
 // MARK: - Sources
 
@@ -913,14 +950,14 @@ struct SourcesView: View {
         let all = sources
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: "globe").font(.system(size: 12)).foregroundStyle(Theme.faint)
-                TextField("Open a web address, or search", text: $address).textFieldStyle(.plain).font(.system(size: 13)).onSubmit { go(address) }
+                Image(systemName: "globe").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                TextField("Open a web address, or search", text: $address).textFieldStyle(.plain).font(.system(size: 13 * Theme.scale)).onSubmit { go(address) }
                 if let url = app.browserURL {
                     Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.forward.square") }
                         .buttonStyle(IconButton(size: 26)).help("Open in your browser")
                     if handing { ProgressView().controlSize(.small) }
                     Button { handOver(url) } label: {
-                        Text("Give this page to the agent").font(.system(size: 12))
+                        Text("Give this page to the agent").font(.system(size: 12 * Theme.scale))
                     }
                     .buttonStyle(SecondaryButton()).disabled(handing)
                     .help("Saves the text you can see into the project, so the agent can read a page that refused it, and log it on the records.")
@@ -933,9 +970,9 @@ struct SourcesView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(all.isEmpty ? "No sources yet" : "\(all.count) sources on this project's records").font(.system(size: 18, weight: .semibold))
+                        Text(all.isEmpty ? "No sources yet" : "\(all.count) sources on this project's records").font(.system(size: 18 * Theme.scale, weight: .semibold))
                         Text("Each source the agent logs appears here as read, could not open, or not relevant. Click one to open it. Publishers often refuse a program and let a person in, so the ones marked could not open are worth opening yourself.")
-                            .font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         list(all)
                     }
                     .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
@@ -949,7 +986,7 @@ struct SourcesView: View {
                     Button("Back to the list") { app.browserURL = nil }.buttonStyle(SecondaryButton())
                         .background(Capsule().fill(Theme.bg))
                     if let handProblem {
-                        Text(handProblem).font(.system(size: 12)).foregroundStyle(Theme.amber)
+                        Text(handProblem).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber)
                             .padding(.horizontal, 10).padding(.vertical, 6)
                             .background(RoundedRectangle(cornerRadius: 8).fill(Theme.bg))
                     }
@@ -967,12 +1004,12 @@ struct SourcesView: View {
                     HStack(alignment: .top, spacing: 10) {
                         Circle().fill(color(source.status)).frame(width: 7, height: 7).padding(.top, 6)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(source.title).font(.system(size: 13, weight: .medium)).multilineTextAlignment(.leading)
+                            Text(source.title).font(.system(size: 13 * Theme.scale, weight: .medium)).multilineTextAlignment(.leading)
                             Text("\(source.status.replacingOccurrences(of: "_", with: " ").capitalized) · \(source.finding)")
-                                .font(.system(size: 12)).foregroundStyle(Theme.dim).lineLimit(3).multilineTextAlignment(.leading)
+                                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(3).multilineTextAlignment(.leading)
                         }
                         Spacer(minLength: 6)
-                        if !source.link.isEmpty { Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint) }
+                        if !source.link.isEmpty { Image(systemName: "chevron.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint) }
                     }
                     .padding(.vertical, 5)
                 }

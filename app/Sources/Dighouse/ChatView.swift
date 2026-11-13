@@ -10,13 +10,13 @@ struct ChatView: View {
             if chat.loading {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Opening the chat").font(.system(size: 13)).foregroundStyle(Theme.faint)
+                    Text("Opening the chat").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if chat.items.isEmpty { EmptyChat() } else { Messages() }
             if let approval = chat.approval {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(approval.message).font(.system(size: 13))
+                    Text(approval.message).font(.system(size: 13 * Theme.scale))
                     HStack(spacing: 8) {
                         Button("Allow") { chat.answer(true) }.buttonStyle(PrimaryButton())
                         Button("Decline") { chat.answer(false) }.buttonStyle(SecondaryButton())
@@ -51,7 +51,7 @@ private struct StatusLine: View {
                     .help("From your account's limits, as the engine reports them. /status gives the details.")
             }
         }
-        .font(.system(size: 11.5))
+        .font(.system(size: 11.5 * Theme.scale))
     }
 }
 
@@ -120,7 +120,7 @@ private struct Messages: View {
                     if chat.running {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small)
-                            Text(working).font(.system(size: 13)).foregroundStyle(Theme.faint).lineLimit(1)
+                            Text(working).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
                         }
                         .padding(.top, 2)
                     }
@@ -174,14 +174,14 @@ private struct ChatRow: View {
                 if !item.files.isEmpty {
                     HStack(spacing: 6) {
                         ForEach(item.files, id: \.self) { name in
-                            Label(name, systemImage: Attachment(path: name).icon).font(.system(size: 12)).lineLimit(1)
+                            Label(name, systemImage: Attachment(path: name).icon).font(.system(size: 12 * Theme.scale)).lineLimit(1)
                                 .padding(.horizontal, 10).frame(height: 28)
                                 .background(Capsule().fill(Theme.ink.opacity(0.06)))
                         }
                     }
                 }
                 if !item.text.isEmpty {
-                    Text(item.text).font(.system(size: 14)).lineSpacing(3).textSelection(.enabled)
+                    Text(item.text).font(.system(size: 14 * Theme.scale)).lineSpacing(3).textSelection(.enabled)
                         .padding(.horizontal, 14).padding(.vertical, 9)
                         .background(RoundedRectangle(cornerRadius: 18).fill(Theme.raised))
                         .frame(maxWidth: 520, alignment: .trailing)
@@ -189,9 +189,9 @@ private struct ChatRow: View {
                 if let instructions = item.result {
                     // A workflow: its name above, and the instructions it sent folded away.
                     Button(showInstructions ? "Hide the instructions" : "Show the instructions") { showInstructions.toggle() }
-                        .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        .buttonStyle(.plain).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                     if showInstructions {
-                        Text(instructions).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).textSelection(.enabled)
+                        Text(instructions).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).textSelection(.enabled)
                             .padding(12).frame(maxWidth: 520, alignment: .leading)
                             .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
                     }
@@ -212,7 +212,7 @@ private struct ChatRow: View {
             PlanCard(item: item)
         case .note:
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "info.circle").font(.system(size: 13)).foregroundStyle(Theme.tan).padding(.top, 2)
+                Image(systemName: "info.circle").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.tan).padding(.top, 2)
                 MarkdownText(text: item.text).frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -262,7 +262,7 @@ private struct ChatRow: View {
 
     private func action(_ icon: String, _ help: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Image(systemName: icon).font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+            Image(systemName: icon).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                 .frame(width: 26, height: 22).contentShape(Rectangle())
         }
         .buttonStyle(.plain).help(help).accessibilityLabel(help)
@@ -278,19 +278,19 @@ private struct PlanCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack {
-                Label("Plan", systemImage: "list.bullet.clipboard").font(.system(size: 12.5, weight: .semibold))
+                Label("Plan", systemImage: "list.bullet.clipboard").font(.system(size: 12.5 * Theme.scale, weight: .semibold))
                 Spacer()
-                Text("\(done) of \(item.plan.count) done").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                Text("\(done) of \(item.plan.count) done").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             ForEach(Array(item.plan.enumerated()), id: \.offset) { _, step in
                 HStack(alignment: .firstTextBaseline, spacing: 9) {
                     Image(systemName: step.status == "completed" ? "checkmark.circle.fill"
                           : step.status.lowercased().contains("progress") ? "circle.dotted.circle" : "circle")
-                        .font(.system(size: 13))
+                        .font(.system(size: 13 * Theme.scale))
                         .foregroundStyle(step.status == "completed" ? Theme.green
                                          : step.status.lowercased().contains("progress") ? Theme.accent : Theme.faint)
                         .frame(width: 16)
-                    Text(step.text).font(.system(size: 13))
+                    Text(step.text).font(.system(size: 13 * Theme.scale))
                         .foregroundStyle(step.status == "completed" ? Theme.dim : Theme.text)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -312,9 +312,9 @@ private struct ProjectCard: View {
         HStack(spacing: 12) {
             IconTile(name: "folder")
             VStack(alignment: .leading, spacing: 2) {
-                Text(project?.name ?? URL(fileURLWithPath: path).lastPathComponent).font(.system(size: 13.5, weight: .semibold))
+                Text(project?.name ?? URL(fileURLWithPath: path).lastPathComponent).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Text("Project created. Open it to work with its map and records beside the chat.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
             Button("Open project") {
@@ -342,11 +342,11 @@ private struct StepGroup: View {
                     if !open, let last = steps.last {
                         Text("· " + last.text).foregroundStyle(Theme.faint).lineLimit(1)
                     }
-                    Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold)).foregroundStyle(Theme.faint)
+                    Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
                         .rotationEffect(.degrees(open ? 90 : 0))
                     Spacer(minLength: 0)
                 }
-                .font(.system(size: 13)).foregroundStyle(hover ? Theme.text : Theme.dim)
+                .font(.system(size: 13 * Theme.scale)).foregroundStyle(hover ? Theme.text : Theme.dim)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -382,12 +382,12 @@ private struct StepRow: View {
                     .frame(width: 18)
                     Text(item.text).lineLimit(open ? 3 : 1).multilineTextAlignment(.leading)
                     if expandable {
-                        Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold)).foregroundStyle(Theme.faint)
+                        Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
                             .rotationEffect(.degrees(open ? 90 : 0))
                     }
                     Spacer(minLength: 0)
                 }
-                .font(.system(size: 13))
+                .font(.system(size: 13 * Theme.scale))
                 .foregroundStyle(item.state == .failed ? Theme.amber : hover ? Theme.text : Theme.dim)
                 .contentShape(Rectangle())
             }
@@ -397,7 +397,7 @@ private struct StepRow: View {
             if open {
                 VStack(alignment: .leading, spacing: 8) {
                     if let tool = item.tool {
-                        Text(tool).font(.system(size: 12, weight: .medium, design: .monospaced)).foregroundStyle(Theme.green)
+                        Text(tool).font(.system(size: 12 * Theme.scale, weight: .medium, design: .monospaced)).foregroundStyle(Theme.green)
                     }
                     if !item.details.isEmpty {
                         Text(item.details.joined(separator: "\n")).foregroundStyle(Theme.dim).lineLimit(14)
@@ -408,7 +408,7 @@ private struct StepRow: View {
                     }
                     ForEach(item.images, id: \.self) { path in picture(path, height: 280) }
                 }
-                .font(.system(size: 11.5, design: .monospaced)).textSelection(.enabled)
+                .font(.system(size: 11.5 * Theme.scale, design: .monospaced)).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .panel(padding: 12, radius: 10)
                 .padding(.leading, 26)
@@ -441,22 +441,22 @@ struct WorkflowRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 if done {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).foregroundStyle(Theme.green).frame(width: 30, height: 30)
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.green).frame(width: 30, height: 30)
                 } else {
                     IconTile(name: flow.icon, size: 30).opacity(state.ready ? 1 : 0.5)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(flow.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(state.ready || done ? Theme.text : Theme.dim)
+                    Text(flow.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).foregroundStyle(state.ready || done ? Theme.text : Theme.dim)
                     // A workflow that cannot run says why, in place of what it does.
-                    Text(state.ready || done ? flow.summary : state.note + ".").font(.system(size: 12.5))
+                    Text(state.ready || done ? flow.summary : state.note + ".").font(.system(size: 12.5 * Theme.scale))
                         .foregroundStyle(state.ready ? Theme.dim : Theme.faint)
                         .lineLimit(outlined ? 2 : 1).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 8)
                 if done {
-                    Text("Done").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.green)
+                    Text("Done").font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.green)
                 } else if state.ready, !state.note.isEmpty {
-                    Text(state.note).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.tan).lineLimit(1).fixedSize()
+                    Text(state.note).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan).lineLimit(1).fixedSize()
                 }
             }
             .padding(.vertical, 6)
@@ -511,8 +511,8 @@ private struct EmptyChat: View {
                 VStack(spacing: 22) {
                     VStack(spacing: 8) {
                         if store.current == nil { MoundMark(lively: true).frame(width: 64, height: 28).padding(.bottom, 4) }
-                        Text(heading.0).font(.system(size: 26, weight: .semibold))
-                        Text(heading.1).font(.system(size: 14)).foregroundStyle(Theme.dim).multilineTextAlignment(.center).lineSpacing(2)
+                        Text(heading.0).font(.system(size: 26 * Theme.scale, weight: .semibold))
+                        Text(heading.1).font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).multilineTextAlignment(.center).lineSpacing(2)
                             .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 520)
                     }
                     if store.current == nil { general }
@@ -535,16 +535,16 @@ private struct EmptyChat: View {
                 }
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("Or ask a question").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint).padding(.leading, 10)
+                Text("Or ask a question").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint).padding(.leading, 10)
                 VStack(spacing: 0) {
                     ForEach(Array(questions.enumerated()), id: \.offset) { index, question in
                         if index > 0 { Hairline().padding(.leading, 40) }
                         Button { app.ask(question.1) } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: question.0).font(.system(size: 12)).foregroundStyle(Theme.tan).frame(width: 18)
-                                Text(question.1).font(.system(size: 13.5)).multilineTextAlignment(.leading)
+                                Image(systemName: question.0).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 18)
+                                Text(question.1).font(.system(size: 13.5 * Theme.scale)).multilineTextAlignment(.leading)
                                 Spacer(minLength: 8)
-                                Image(systemName: "arrow.up").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.faint)
+                                Image(systemName: "arrow.up").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
                             }
                             .padding(.vertical, 5)
                         }
@@ -573,7 +573,7 @@ struct StartTile: View {
                         IconTile(name: icon, size: 42)
                         words
                         Spacer(minLength: 8)
-                        Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.tan)
+                        Image(systemName: "arrow.right").font(.system(size: 13 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 10) {
@@ -595,7 +595,7 @@ struct StartTile: View {
     private var words: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.system(size: strong ? 15.5 : 13.5, weight: .semibold))
-            Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+            Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                 .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -630,9 +630,9 @@ private struct EffortTestLine: View {
     var body: some View {
         if let check = app.modelChecks[model.id], check.effort == effort {
             Text(check.ok ? "Tested at this step: it answered." : "Failed its test at this step. See Settings.")
-                .font(.system(size: 11.5)).foregroundStyle(check.ok ? Theme.faint : Theme.amber)
+                .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(check.ok ? Theme.faint : Theme.amber)
         } else {
-            Text("Not tested at this step. Settings can test it.").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+            Text("Not tested at this step. Settings can test it.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
         }
     }
 }
@@ -652,9 +652,9 @@ struct ModelControl: View {
             HStack(spacing: 6) {
                 Text(app.modelName).foregroundStyle(Theme.text).lineLimit(1)
                 if let effort = app.activeEffort { Text(Effort.label(effort)).foregroundStyle(Theme.faint).lineLimit(1) }
-                Image(systemName: "chevron.down").font(.system(size: 8.5, weight: .bold)).foregroundStyle(Theme.dim)
+                Image(systemName: "chevron.down").font(.system(size: 8.5 * Theme.scale, weight: .bold)).foregroundStyle(Theme.dim)
             }
-            .font(.system(size: 12.5))
+            .font(.system(size: 12.5 * Theme.scale))
             .padding(.horizontal, 12).frame(height: 30)
             .background(Capsule().fill(Theme.ink.opacity(open ? 0.12 : 0.06)))
             .contentShape(Capsule())
@@ -677,20 +677,20 @@ struct ModelControl: View {
                 } else if let model = app.model, let effort = app.activeEffort {
                     VStack(spacing: 16) {
                         VStack(spacing: 5) {
-                            Text(Effort.label(effort)).font(.system(size: 22, weight: .semibold)).foregroundStyle(Theme.accent)
+                            Text(Effort.label(effort)).font(.system(size: 22 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.accent)
                             Button { listing = true } label: {
                                 HStack(spacing: 5) {
                                     Text(model.name)
-                                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                                    Image(systemName: "chevron.right").font(.system(size: 10 * Theme.scale, weight: .semibold))
                                 }
-                                .font(.system(size: 14.5)).foregroundStyle(Theme.dim).contentShape(Rectangle())
+                                .font(.system(size: 14.5 * Theme.scale)).foregroundStyle(Theme.dim).contentShape(Rectangle())
                             }
                             .buttonStyle(.plain).help("Choose another model")
                         }
                         StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
-                        Text(Effort.note(effort)).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        Text(Effort.note(effort)).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                         EffortTestLine(model: model, effort: effort)
-                        Text("The steps are the ones your model list gives for this model.").font(.system(size: 11)).foregroundStyle(Theme.faint.opacity(0.8))
+                        Text("The steps are the ones your model list gives for this model.").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint.opacity(0.8))
                     }
                     .padding(.horizontal, 20).padding(.vertical, 18).frame(width: 340)
                 }
@@ -752,10 +752,10 @@ struct Composer: View {
                 // On Home, short text that looks like a place can start a project there.
                 Button { chat.draft = ""; app.startProject(at: place) } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: "mappin.and.ellipse").font(.system(size: 12)).foregroundStyle(Theme.tan)
-                        Text("Start a project at \(place)").font(.system(size: 13, weight: .medium))
+                        Image(systemName: "mappin.and.ellipse").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.tan)
+                        Text("Start a project at \(place)").font(.system(size: 13 * Theme.scale, weight: .medium))
                         Spacer()
-                        Text("or press Return to ask the agent").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        Text("or press Return to ask the agent").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                     }
                     .padding(.horizontal, 10).frame(height: 30)
                     .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
@@ -765,7 +765,7 @@ struct Composer: View {
             }
             if !chat.attachments.isEmpty || !shownMentions.isEmpty { chips }
             TextField(placeholder, text: $chat.draft, axis: .vertical)
-                .textFieldStyle(.plain).lineLimit(1...8).font(.system(size: 14))
+                .textFieldStyle(.plain).lineLimit(1...8).font(.system(size: 14 * Theme.scale))
                 .focused($focused).onSubmit { listCount == 0 ? send() : runSelected() }
                 .padding(.horizontal, 4)
             ViewThatFits(in: .horizontal) {
@@ -807,11 +807,11 @@ struct Composer: View {
                     ForEach(Array(list.enumerated()), id: \.element.id) { index, m in
                         Button { selected = index; runSelected() } label: {
                             HStack(spacing: 10) {
-                                Image(systemName: m.icon).font(.system(size: 12)).foregroundStyle(Theme.tan).frame(width: 16)
-                                Text(m.label).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.text).lineLimit(1)
-                                Text(m.detail).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(1)
+                                Image(systemName: m.icon).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 16)
+                                Text(m.label).font(.system(size: 13 * Theme.scale, weight: .medium)).foregroundStyle(Theme.text).lineLimit(1)
+                                Text(m.detail).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
                                 Spacer(minLength: 8)
-                                Text(m.kind.rawValue).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                                Text(m.kind.rawValue).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                             }
                             .padding(.horizontal, 10).frame(height: 30)
                             .background(RoundedRectangle(cornerRadius: 8).fill(index == selected ? Theme.ink.opacity(0.09) : .clear))
@@ -838,14 +838,14 @@ struct Composer: View {
                         let reason = app.unavailable(c)
                         Button { selected = index; runSelected() } label: {
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                Text(c.name).font(.system(size: 13, weight: .medium, design: .monospaced))
+                                Text(c.name).font(.system(size: 13 * Theme.scale, weight: .medium, design: .monospaced))
                                     .foregroundStyle(reason == nil ? Theme.text : Theme.faint)
                                 if let arg = c.argument {
-                                    Text(arg).font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+                                    Text(arg).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
                                 }
-                                Text(c.summary).font(.system(size: 12.5)).foregroundStyle(reason == nil ? Theme.dim : Theme.faint).lineLimit(1)
+                                Text(c.summary).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(reason == nil ? Theme.dim : Theme.faint).lineLimit(1)
                                 Spacer(minLength: 8)
-                                if let reason { Text(reason).font(.system(size: 12)).foregroundStyle(Theme.faint).lineLimit(1) }
+                                if let reason { Text(reason).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1) }
                             }
                             .padding(.horizontal, 10).frame(height: 30)
                             .background(RoundedRectangle(cornerRadius: 8).fill(index == selected ? Theme.ink.opacity(0.09) : .clear))
@@ -911,13 +911,13 @@ struct Composer: View {
             HStack(spacing: 8) {
                 ForEach(shownMentions) { m in
                     HStack(spacing: 6) {
-                        Image(systemName: m.icon).font(.system(size: 11)).foregroundStyle(Theme.tan)
-                        Text("@" + m.label).font(.system(size: 12)).lineLimit(1).frame(maxWidth: 180, alignment: .leading)
+                        Image(systemName: m.icon).font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.tan)
+                        Text("@" + m.label).font(.system(size: 12 * Theme.scale)).lineLimit(1).frame(maxWidth: 180, alignment: .leading)
                         Button {
                             chat.draft = chat.draft.replacingOccurrences(of: "@" + m.label, with: m.label)
                             picked.removeAll { $0 == m }
                         } label: {
-                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.dim)
+                            Image(systemName: "xmark").font(.system(size: 9 * Theme.scale, weight: .bold)).foregroundStyle(Theme.dim)
                                 .frame(width: 16, height: 16).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain).help("Keep the words, drop the link")
@@ -933,12 +933,12 @@ struct Composer: View {
                             Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
                                 .frame(width: 30, height: 30).clipShape(RoundedRectangle(cornerRadius: 6))
                         } else {
-                            Image(systemName: file.icon).font(.system(size: 13)).foregroundStyle(Theme.tan).frame(width: 30, height: 30)
+                            Image(systemName: file.icon).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 30, height: 30)
                                 .background(RoundedRectangle(cornerRadius: 6).fill(Theme.ink.opacity(0.07)))
                         }
-                        Text(file.name).font(.system(size: 12)).lineLimit(1).frame(maxWidth: 150, alignment: .leading)
+                        Text(file.name).font(.system(size: 12 * Theme.scale)).lineLimit(1).frame(maxWidth: 150, alignment: .leading)
                         Button { chat.attachments.removeAll { $0 == file } } label: {
-                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.dim)
+                            Image(systemName: "xmark").font(.system(size: 9 * Theme.scale, weight: .bold)).foregroundStyle(Theme.dim)
                                 .frame(width: 18, height: 18).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain).help("Remove")
@@ -962,7 +962,7 @@ struct Composer: View {
                     Button("Attach the section through \(c.id)") { chat.attach(c.section) }
                 }
             } label: {
-                Image(systemName: "plus").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.dim)
+                Image(systemName: "plus").font(.system(size: 15 * Theme.scale, weight: .medium)).foregroundStyle(Theme.dim)
                     .frame(width: 30, height: 30).contentShape(Rectangle())
             }
             .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
@@ -970,8 +970,8 @@ struct Composer: View {
 
             Button { showFlows.toggle() } label: {
                 HStack(spacing: 5) {
-                    Image(systemName: "point.3.connected.trianglepath.dotted").font(.system(size: 12))
-                    if wide { Text("Workflows").font(.system(size: 12.5)) }
+                    Image(systemName: "point.3.connected.trianglepath.dotted").font(.system(size: 12 * Theme.scale))
+                    if wide { Text("Workflows").font(.system(size: 12.5 * Theme.scale)) }
                 }
                 .foregroundStyle(Theme.dim).padding(.horizontal, 8).frame(height: 30).contentShape(Rectangle())
             }
@@ -988,13 +988,13 @@ struct Composer: View {
             ModelControl()
             if chat.running && !canSend {
                 Button { Task { await chat.stop() } } label: {
-                    Image(systemName: "stop.fill").font(.system(size: 11)).foregroundStyle(.black)
+                    Image(systemName: "stop.fill").font(.system(size: 11 * Theme.scale)).foregroundStyle(.black)
                         .frame(width: 30, height: 30).background(Circle().fill(Theme.primary))
                 }
                 .buttonStyle(.plain).help("Stop the run").padding(.leading, 6)
             } else {
                 Button(action: send) {
-                    Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold)).foregroundStyle(.black)
+                    Image(systemName: "arrow.up").font(.system(size: 13 * Theme.scale, weight: .bold)).foregroundStyle(.black)
                         .frame(width: 30, height: 30).background(Circle().fill(canSend ? Color.white : Theme.ink.opacity(0.25)))
                 }
                 .buttonStyle(.plain).disabled(!canSend).padding(.leading, 6)
@@ -1033,7 +1033,7 @@ private struct WorkflowMenu: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(store.current == nil ? "Workflows" : "Workflows for this project")
-                .font(.system(size: 13)).foregroundStyle(Theme.faint).padding(.horizontal, 10).padding(.vertical, 4)
+                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(.horizontal, 10).padding(.vertical, 4)
             ScrollView {
                 VStack(spacing: 1) {
                     ForEach(flows) { flow in
@@ -1050,7 +1050,7 @@ private struct WorkflowMenu: View {
                 close()
                 app.show(.toolbox)
             } label: {
-                Label("Open the Toolbox", systemImage: "wrench.and.screwdriver").font(.system(size: 13))
+                Label("Open the Toolbox", systemImage: "wrench.and.screwdriver").font(.system(size: 13 * Theme.scale))
             }
             .buttonStyle(RowButton())
         }

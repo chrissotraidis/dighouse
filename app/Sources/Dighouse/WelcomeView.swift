@@ -59,13 +59,13 @@ struct WelcomeView: View {
                         ZStack {
                             Circle().fill(i == page ? Theme.primary : i < page ? Theme.green.opacity(0.9) : Theme.raised)
                             if i < page {
-                                Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(.black)
+                                Image(systemName: "checkmark").font(.system(size: 9 * Theme.scale, weight: .bold)).foregroundStyle(.black)
                             } else {
-                                Text("\(i + 1)").font(.system(size: 11, weight: .semibold)).foregroundStyle(i == page ? .black : Theme.dim)
+                                Text("\(i + 1)").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(i == page ? .black : Theme.dim)
                             }
                         }
                         .frame(width: 20, height: 20)
-                        Text(titles[i]).font(.system(size: 12.5, weight: i == page ? .semibold : .regular))
+                        Text(titles[i]).font(.system(size: 12.5 * Theme.scale, weight: i == page ? .semibold : .regular))
                             .foregroundStyle(i == page ? .white : Theme.dim)
                     }
                 }
@@ -79,13 +79,13 @@ struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 16) {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 64, height: 64)
-                Text("Dighouse").font(.system(size: 40, weight: .bold))
+                Text("Dighouse").font(.system(size: 40 * Theme.scale, weight: .bold))
             }
             Text("Open archaeology on your Mac. AI agents search public lidar for places people built and check what they find. You make the calls.")
-                .font(.system(size: 17)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 7) {
                 ForestReveal()
-                Text("Serpent Mound, Ohio. Drag the handle to take the trees away.").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+                Text("Serpent Mound, Ohio. Drag the handle to take the trees away.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             Text("Dighouse works with lidar: laser scans made from aircraft that measure the ground through gaps in the trees. A great deal of it is public. Dighouse gives an AI model the tools to fetch it, search it, and check what it finds, which a chat app cannot do.")
                 .foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -101,44 +101,44 @@ struct WelcomeView: View {
             }
             .panel()
         }
-        .font(.system(size: 13.5))
+        .font(.system(size: 13.5 * Theme.scale))
     }
 
     private var how: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("How a search works").font(.system(size: 28, weight: .bold))
+            Text("How a search works").font(.system(size: 28 * Theme.scale, weight: .bold))
             Text("Dighouse gives the agent six sets of tools, used roughly in this order. You can watch, steer by typing, or leave a run and review it later.")
-                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(Array(ToolGuide.packs.enumerated()), id: \.element.id) { index, pack in
                     HStack(alignment: .top, spacing: 14) {
                         IconTile(name: pack.icon)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(index + 1). \(pack.title)").font(.system(size: 14, weight: .semibold))
-                            Text(pack.summary).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                            Text("\(index + 1). \(pack.title)").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                            Text(pack.summary).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
             }
             Text("The Toolbox in the main window lists every tool and the workflows that use them.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
         }
     }
 
     private var setupPage: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Set up").font(.system(size: 28, weight: .bold))
+            Text("Set up").font(.system(size: 28 * Theme.scale, weight: .bold))
             Text("Dighouse runs its agents on the Codex engine, using the models you already have. Your work goes only to the model provider you choose.")
-                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             SetupChecklist()
         }
     }
 
     private var first: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Your first project").font(.system(size: 28, weight: .bold))
+            Text("Your first project").font(.system(size: 28 * Theme.scale, weight: .bold))
             Text("A project is a folder: the question, the area, and everything the agents find. A good first run is a place that is already published, so you can see what a real site looks like.")
-                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 8) {
                 ForEach(StartingPoints.all + [StartingPoints.own]) { option in
                     Button { choice = option } label: {
@@ -146,9 +146,9 @@ struct WelcomeView: View {
                             Image(systemName: choice == option ? "largecircle.fill.circle" : "circle")
                                 .foregroundStyle(choice == option ? Theme.accent : Theme.faint)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(option.title).font(.system(size: 13.5, weight: .semibold))
-                                Text(option.place).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
-                                Text(option.about).font(.system(size: 12)).foregroundStyle(Theme.faint).lineLimit(2)
+                                Text(option.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                                Text(option.place).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                Text(option.about).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(2)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer()
@@ -162,7 +162,7 @@ struct WelcomeView: View {
                     .buttonStyle(.plain)
                 }
             }
-            if let problem { Text(problem).font(.system(size: 12.5)).foregroundStyle(Theme.amber) }
+            if let problem { Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
         }
     }
 
@@ -205,12 +205,12 @@ struct WelcomeView: View {
         HStack(alignment: .top, spacing: 14) {
             IconTile(name: icon)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 14, weight: .semibold))
+                Text(title).font(.system(size: 14 * Theme.scale, weight: .semibold))
                 Text(text).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
-        .font(.system(size: 13)).padding(16)
+        .font(.system(size: 13 * Theme.scale)).padding(16)
     }
 }
 
@@ -258,20 +258,20 @@ struct SetupChecklist: View {
                 if app.starting { ProgressView().controlSize(.small) }
                 if engine.ready {
                     Text("Screening tiles needs a model that reads images. You can change the model at any time from the chat.")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .font(.system(size: 13))
+        .font(.system(size: 13 * Theme.scale))
     }
 
     private func row(_ ok: Bool, _ title: String, _ what: String, _ detail: String, link: (String, String)? = nil,
                      @ViewBuilder action: () -> some View = { EmptyView() }) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: ok ? "checkmark.circle.fill" : "circle").font(.system(size: 16))
+            Image(systemName: ok ? "checkmark.circle.fill" : "circle").font(.system(size: 16 * Theme.scale))
                 .foregroundStyle(ok ? Theme.green : Theme.faint).frame(width: 22).padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 14, weight: .semibold))
+                Text(title).font(.system(size: 14 * Theme.scale, weight: .semibold))
                 Text(what).foregroundStyle(Theme.faint)
                 Text(detail).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
                 if let link, let url = URL(string: link.1) { Link(link.0, destination: url).foregroundStyle(Theme.accent) }

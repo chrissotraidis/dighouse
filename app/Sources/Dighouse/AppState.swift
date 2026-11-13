@@ -27,6 +27,9 @@ final class AppState: ObservableObject {
     @Published var route = Route.home
     @Published var onboarded = UserDefaults.standard.bool(forKey: "onboarded")
     @Published var showWelcome = false
+    @Published var textSize = UserDefaults.standard.string(forKey: "textSize") ?? "standard" {
+        didSet { UserDefaults.standard.set(textSize, forKey: "textSize") }
+    }
     /// A slash command asking the message box to open the model list or the effort slider.
     @Published var pickerRequest: PickerRequest?
     /// A slash command asking the sidebar to rename a chat.
@@ -334,6 +337,8 @@ final class AppState: ObservableObject {
     var nextStep: ToolGuide.Workflow? {
         guard store.current != nil, chat.live.isEmpty, secondLookBusy == nil else { return nil }
         let order = store.status.tiles == 0 ? ["terrain"] : ["screen", "check", "second", "prior", "decide"]
+        // Once every find has been decided, the search is done; nothing is next.
+        if !store.candidates.isEmpty, store.candidates.allSatisfy({ $0.status != "flagged" && $0.status != "ground_confirmed" }) { return nil }
         return order.compactMap { id in ToolGuide.workflows.first { $0.id == id } }.first { state(of: $0).ready }
     }
 
@@ -388,7 +393,9 @@ final class AppState: ObservableObject {
         case "prior":
             let n = open.filter { $0.sources.isEmpty }.count
             return (n > 0, all.isEmpty ? "Needs candidates" : count(n, "to search"))
-        case "decide": return (!all.isEmpty, all.isEmpty ? "Needs candidates" : "\(open.count) open")
+        case "decide":
+            let unprepared = open.filter { $0.suggestion == nil }.count
+            return (unprepared > 0, all.isEmpty ? "Needs candidates" : open.isEmpty ? "All decided" : unprepared == 0 ? "Prepared" : "\(unprepared) to prepare")
         case "report":
             let n = all.filter { $0.status == "no_match_in_sources_read" }.count
             return (n > 0, n == 0 ? "Needs a decided candidate" : "\(n) ready")
@@ -649,6 +656,6 @@ struct RootView: View {
         }
         .foregroundStyle(Theme.text)
         .tint(Theme.accent)
-        .id(app.look)   // every colour is read when a view is built, so a new look rebuilds the window
+        .id("\(app.look.rawValue)-\(app.textSize)")   // colours and sizes are read when a view is built, so a change rebuilds the window
     }
 }

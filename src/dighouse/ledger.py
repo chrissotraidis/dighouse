@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import math
 
-from .project import Project, today
+from .project import Project, commit, today
 
 STATUSES = ("flagged", "ground_confirmed", "modern", "natural", "already_published",
             "no_match_in_sources_read", "reported")
@@ -107,6 +107,8 @@ def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: 
     meta["status"] = status
     write(p, meta, notes)
     p.note(f"{cid} marked {status}" + (f" by {decided_by}" if decided_by else ""))
+    if decided_by:
+        commit(p.root, f"{cid} marked {LABELS[status].lower()} by {decided_by}")
     return meta
 
 

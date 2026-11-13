@@ -28,7 +28,8 @@ enum SlashCommands {
         SlashCommand(id: "check", summary: "Cut a section and look for modern features on each flag", group: .search, workflow: "check"),
         SlashCommand(id: "second-look", summary: "Ask your second-look model about each flag", group: .search, workflow: "second"),
         SlashCommand(id: "sources", summary: "Search what is published and log every source", group: .search, workflow: "prior"),
-        SlashCommand(id: "decide", summary: "See each candidate and what is waiting for your decision", group: .search, workflow: "decide"),
+        SlashCommand(id: "decide", summary: "Have the agent suggest a decision on each find, ready for your review", group: .search, workflow: "decide"),
+        SlashCommand(id: "review", summary: "Go through the finds one at a time and decide each", group: .search),
         SlashCommand(id: "report", summary: "Draft a report for the heritage authority", group: .search, workflow: "report"),
         SlashCommand(id: "new", summary: "Start a new chat", group: .chat),
         SlashCommand(id: "model", summary: "Choose the model", group: .chat),
@@ -95,6 +96,7 @@ extension AppState {
             if chat.running { return "Stop the run first" }
             return chat.items.contains { $0.kind == .user } ? nil : "Nothing to take back"
         case "goal": return chat.running ? "Wait for the run to finish" : nil
+        case "review": return store.candidates.isEmpty ? "Needs candidates" : nil
         default: return nil
         }
     }
@@ -108,6 +110,7 @@ extension AppState {
         let thread = (chat.threads + chat.generalThreads).first { $0.id == chat.active }
         switch c.id {
         case "new-project": startProject()
+        case "review": reviewing = true
         case "new": newChat()
         case "model": pickerRequest = .model
         case "effort": pickerRequest = .effort

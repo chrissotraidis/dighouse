@@ -12,7 +12,7 @@ struct SettingsPage: View {
                     VStack(spacing: 2) {
                         ForEach(SettingsSection.allCases, id: \.self) { section in
                             Button { app.settingsSection = section } label: {
-                                Label(section.rawValue, systemImage: icon(section)).font(.system(size: 13.5))
+                                Label(section.rawValue, systemImage: icon(section)).font(.system(size: 13.5 * Theme.scale))
                             }
                             .buttonStyle(RowButton(selected: app.settingsSection == section))
                         }
@@ -28,7 +28,7 @@ struct SettingsPage: View {
                                 HStack(spacing: 4) {
                                     ForEach(SettingsSection.allCases, id: \.self) { section in
                                         Button { app.settingsSection = section } label: {
-                                            Text(section.rawValue).font(.system(size: 13, weight: .medium))
+                                            Text(section.rawValue).font(.system(size: 13 * Theme.scale, weight: .medium))
                                                 .foregroundStyle(app.settingsSection == section ? Theme.text : Theme.dim)
                                                 .padding(.horizontal, 12).frame(height: 30)
                                                 .background(Capsule().fill(app.settingsSection == section ? Theme.ink.opacity(0.1) : .clear))
@@ -39,7 +39,7 @@ struct SettingsPage: View {
                                 }
                             }
                         }
-                        Text(app.settingsSection.rawValue).font(.system(size: 24, weight: .bold))
+                        Text(app.settingsSection.rawValue).font(.system(size: 24 * Theme.scale, weight: .bold))
                         switch app.settingsSection {
                         case .general: GeneralSettings()
                         case .look: LookSettings()
@@ -86,9 +86,9 @@ private struct SettingRow<Content: View>: View {
 
     private var label: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.system(size: 13.5, weight: .medium))
+            Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
             if !note.isEmpty {
-                Text(note).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                Text(note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -101,7 +101,7 @@ private struct GeneralSettings: View {
     var body: some View {
         VStack(spacing: 0) {
             SettingRow(title: "Your name", note: "Written into a record when you make a decision on a candidate.") {
-                TextField("Name", text: $app.userName).field().font(.system(size: 13)).frame(width: 220)
+                TextField("Name", text: $app.userName).field().font(.system(size: 13 * Theme.scale)).frame(width: 220)
             }
             Hairline()
             SettingRow(title: "Projects folder", note: "New projects are created in \(projectsHome.isEmpty ? Paths.projectsHome.path : projectsHome).") {
@@ -139,8 +139,27 @@ private struct LookSettings: View {
     @EnvironmentObject var app: AppState
 
     var body: some View {
+        VStack(spacing: 0) {
+            SettingRow(title: "Text size", note: "Makes every word in Dighouse larger. The window redraws when you change it.") {
+                HStack(spacing: 2) {
+                    ForEach([("standard", "Standard"), ("large", "Large"), ("larger", "Larger")], id: \.0) { item in
+                        Button { app.textSize = item.0 } label: {
+                            Text(item.1).font(.system(size: 12.5 * Theme.scale, weight: app.textSize == item.0 ? .semibold : .medium))
+                                .foregroundStyle(app.textSize == item.0 ? Theme.text : Theme.dim)
+                                .padding(.horizontal, 12).frame(height: 26)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(app.textSize == item.0 ? Theme.raised : .clear))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(2).background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
+            }
+        }
+        .panel()
+        Text("Colours").font(.system(size: 15 * Theme.scale, weight: .semibold)).padding(.top, 4)
         Text("Dighouse wears the colours of its icon: dark soil, the tan line of the ground, and the green of the canopy above it. Pick another look if you prefer.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12, alignment: .top)], alignment: .leading, spacing: 12) {
             ForEach(Look.allCases, id: \.self) { look in
                 let p = look.palette
@@ -162,12 +181,12 @@ private struct LookSettings: View {
                         }
                         .frame(height: 78).clipShape(RoundedRectangle(cornerRadius: 9))
                         HStack(spacing: 6) {
-                            Text(look.rawValue).font(.system(size: 13.5, weight: .semibold))
-                            if look == .earth { Text("Default").font(.system(size: 11.5)).foregroundStyle(Theme.faint) }
+                            Text(look.rawValue).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                            if look == .earth { Text("Default").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint) }
                             Spacer()
                             if app.look == look { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent) }
                         }
-                        Text(look.note).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                        Text(look.note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                             .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(12).frame(maxWidth: .infinity, minHeight: 176, alignment: .topLeading)
@@ -186,7 +205,41 @@ private struct ModelSettings: View {
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var setup: Setup
 
+    /// The maker behind a model, from its id, so two choices from the same maker can be pointed out.
+    private func maker(_ id: String?) -> String? {
+        guard let id = id?.lowercased() else { return nil }
+        for (key, name) in [("claude", "Anthropic"), ("anthropic", "Anthropic"), ("gpt", "OpenAI"), ("gemini", "Google"),
+                            ("grok", "xAI"), ("kimi", "Moonshot"), ("glm", "Zhipu"), ("qwen", "Alibaba"), ("deepseek", "DeepSeek")] where id.contains(key) {
+            return name
+        }
+        return nil
+    }
+
+    /// Plain warnings about the two choices, or none when they are sound.
+    private var warnings: [String] {
+        var out: [String] = []
+        if let m = app.model, !m.readsImages { out.append("\(m.name) cannot read images, so it cannot screen tiles. Choose a model that reads images.") }
+        if app.secondModelID == nil { out.append("No second-look model is chosen, so candidates cannot get an independent second opinion.") }
+        if app.secondModelID != nil, app.secondModelID == app.model?.id { out.append("The second look uses the same model as the agent. A different model gives a truly independent opinion.") }
+        else if let a = maker(app.model?.id), let b = maker(app.secondModelID), a == b {
+            out.append("Both models come from \(a). A model from a different maker gives a more independent second opinion.")
+        }
+        return out
+    }
+
     var body: some View {
+        Text("Dighouse uses two models: one runs the search, and another, ideally from a different maker, gives each find an independent second opinion. Test sends a model one short message to make sure it answers.")
+            .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        if !warnings.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(warnings, id: \.self) { w in
+                    Label(w, systemImage: "exclamationmark.triangle").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.amber.opacity(0.08)))
+        }
         VStack(spacing: 0) {
             SettingRow(title: "Agent model", note: "Runs the search. Screening tiles needs a model that reads images.") {
                 HStack(spacing: 10) {
@@ -209,12 +262,23 @@ private struct ModelSettings: View {
             ModelTestProblem(id: app.secondModelID)
         }
         .panel()
+        HStack(spacing: 10) {
+            Button {
+                Task { @MainActor in
+                    if let id = app.model?.id { app.testModel(id, effort: app.activeEffort) }
+                    while app.testingModel != nil { try? await Task.sleep(for: .milliseconds(300)) }
+                    if let second = app.secondModelID, second != app.model?.id { app.testModel(second, effort: nil) }
+                }
+            } label: { Label("Test both", systemImage: "checkmark.circle") }
+            .buttonStyle(SecondaryButton()).disabled(app.testingModel != nil || app.model == nil)
+            Text("Each test is one short message, so it costs very little.").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+        }
         Text(setup.ocxRunning
              ? "\(engine.models.count) models are listed. The OpenCodex router is running on this Mac, so the list holds every model in its roster, and the start of each name says which provider or account it runs through."
              : "\(engine.models.count) models are listed, from the Codex sign-in on this Mac. Running the OpenCodex router adds models from other providers.")
-            .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
         Text("The same choices are in the message box of every chat.")
-            .font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
     }
 
     /// Says only what was tested: the list offers a step, a test shows whether the provider accepts it.
@@ -230,17 +294,17 @@ private struct ModelSettings: View {
     /// How long the model thinks. The steps on offer belong to the model, so they change when the model does.
     @ViewBuilder private var effortRow: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Thinking effort").font(.system(size: 13.5, weight: .medium))
+            Text("Thinking effort").font(.system(size: 13.5 * Theme.scale, weight: .medium))
             if let model = app.model, let effort = app.activeEffort {
                 Text("\(Effort.label(effort)). \(Effort.note(effort))")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
                     .frame(maxWidth: 420)
                 Text("Your model list gives \(model.name) \(model.efforts.count) steps: \(model.efforts.map(Effort.label).joined(separator: ", ")). \(testNote(model, effort)) If a provider refuses a step, the chat shows the provider's message.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("\(app.modelName) has no effort setting. It always thinks the same amount.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -268,7 +332,7 @@ private struct ModelTest: View {
                     .buttonStyle(SecondaryButton()).disabled(app.testingModel != nil)
                     .help("Sends the model one short message\(effort.map { " at \(Effort.label($0))" } ?? "") and shows whether it answered.")
             }
-            .font(.system(size: 12.5))
+            .font(.system(size: 12.5 * Theme.scale))
         }
     }
 }
@@ -280,7 +344,7 @@ private struct ModelTestProblem: View {
 
     var body: some View {
         if let id, let check = app.modelChecks[id], !check.ok, app.testingModel != id {
-            Text(check.message).font(.system(size: 12)).foregroundStyle(Theme.amber)
+            Text(check.message).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 14).padding(.bottom, 12).frame(maxWidth: .infinity, alignment: .trailing)
         }
@@ -296,16 +360,16 @@ private struct PartRow<Action: View>: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon).font(.system(size: 15)).foregroundStyle(Theme.tan).frame(width: 22).padding(.top, 1)
+            Image(systemName: icon).font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 22).padding(.top, 1)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 13.5, weight: .semibold))
-                Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 action().padding(.top, 4)
             }
             Spacer(minLength: 12)
             HStack(spacing: 6) {
                 Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
-                Text(status).font(.system(size: 12.5)).foregroundStyle(ok == false ? Theme.amber : Theme.text).lineLimit(2)
+                Text(status).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(ok == false ? Theme.amber : Theme.text).lineLimit(2)
                     .multilineTextAlignment(.trailing)
             }
             .frame(maxWidth: 210, alignment: .trailing)
@@ -328,22 +392,22 @@ private struct LoopDiagram: View {
             HStack(alignment: .top, spacing: 0) {
                 ForEach(Array(stops.enumerated()), id: \.offset) { index, stop in
                     if index > 0 {
-                        Image(systemName: "arrow.right").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.faint).padding(.top, 14)
+                        Image(systemName: "arrow.right").font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint).padding(.top, 14)
                     }
                     VStack(spacing: 6) {
-                        Image(systemName: stop.0).font(.system(size: 16)).foregroundStyle(index == 0 ? Theme.accent : Theme.tan)
+                        Image(systemName: stop.0).font(.system(size: 16 * Theme.scale)).foregroundStyle(index == 0 ? Theme.accent : Theme.tan)
                             .frame(width: 40, height: 40).background(Circle().fill(Theme.ink.opacity(0.07)))
-                        Text(stop.1).font(.system(size: 12.5, weight: .semibold)).multilineTextAlignment(.center)
-                        Text(stop.2).font(.system(size: 11.5)).foregroundStyle(Theme.faint).multilineTextAlignment(.center)
+                        Text(stop.1).font(.system(size: 12.5 * Theme.scale, weight: .semibold)).multilineTextAlignment(.center)
+                        Text(stop.2).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
             HStack(spacing: 7) {
-                Image(systemName: "arrow.uturn.backward").font(.system(size: 10, weight: .bold))
+                Image(systemName: "arrow.uturn.backward").font(.system(size: 10 * Theme.scale, weight: .bold))
                 Text("The result goes back to the model, and the loop repeats until the job is done.")
             }
-            .font(.system(size: 12)).foregroundStyle(Theme.dim)
+            .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
         }
         .padding(16).frame(maxWidth: .infinity).panel()
     }
@@ -370,7 +434,7 @@ private struct EngineSettings: View {
 
     var body: some View {
         Text("Dighouse is made of three parts that work together. You can change the first one; the other two come with it.")
-            .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
         LoopDiagram()
         VStack(spacing: 0) {
             PartRow(icon: "cpu", title: "1. The AI model: the thinker",
@@ -391,7 +455,7 @@ private struct EngineSettings: View {
                     status: setup.codex == nil ? "Codex not found" : engine.ready ? setup.codexVersion : app.starting ? "Starting" : (engine.problem ?? "Not running")) {
                 HStack(spacing: 8) {
                     if setup.codex == nil, let url = URL(string: "https://github.com/openai/codex") {
-                        Link("Get Codex", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
+                        Link("Get Codex", destination: url).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.accent)
                     }
                     Button { Task { await app.boot() } } label: { Label("Restart", systemImage: "arrow.clockwise") }
                         .buttonStyle(SecondaryButton()).disabled(app.starting)
@@ -411,7 +475,7 @@ private struct EngineSettings: View {
                         Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }.buttonStyle(PrimaryButton())
                     }
                     if setup.uv == nil, let url = URL(string: "https://docs.astral.sh/uv/getting-started/installation/") {
-                        Link("Get uv", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
+                        Link("Get uv", destination: url).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.accent)
                     }
                 }
             }
@@ -419,17 +483,17 @@ private struct EngineSettings: View {
         .panel()
 
         VStack(alignment: .leading, spacing: 10) {
-            Text("Which models you can use").font(.system(size: 15, weight: .semibold))
+            Text("Which models you can use").font(.system(size: 15 * Theme.scale, weight: .semibold))
             Text(setup.ocxRunning
                  ? "Your Codex sign-in gives you OpenAI's models. The OpenCodex router is running on this Mac, so models from other makers, Claude among them, are listed too, each through its own account or key. The short code at the start of a model's name (Cl, AG, xAI…) is the account it runs through."
                  : "Your Codex sign-in gives you OpenAI's models. To use Claude, Gemini or others, run the free OpenCodex router: it adds them to Codex, and Dighouse lists them here.")
-                .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             if engine.ready {
                 Flow(spacing: 8) {
                     ForEach(makers, id: \.maker) { m in
                         HStack(spacing: 6) {
-                            Text(m.family.isEmpty ? m.maker : "\(m.family)").font(.system(size: 12.5, weight: .semibold))
-                            Text(m.family.isEmpty ? "\(m.count)" : "\(m.maker) · \(m.count)").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                            Text(m.family.isEmpty ? m.maker : "\(m.family)").font(.system(size: 12.5 * Theme.scale, weight: .semibold))
+                            Text(m.family.isEmpty ? "\(m.count)" : "\(m.maker) · \(m.count)").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                         }
                         .padding(.horizontal, 10).frame(height: 28)
                         .background(RoundedRectangle(cornerRadius: 7).fill(Theme.ink.opacity(0.06)))
@@ -439,14 +503,14 @@ private struct EngineSettings: View {
             HStack(spacing: 10) {
                 HStack(spacing: 6) {
                     Circle().fill(setup.ocxRunning ? Theme.green : Theme.faint).frame(width: 7, height: 7)
-                    Text(setup.ocxRunning ? "OpenCodex router running" : "OpenCodex router not running").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                    Text(setup.ocxRunning ? "OpenCodex router running" : "OpenCodex router not running").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                 }
                 if let url = URL(string: "https://github.com/lidge-jun/opencodex") {
-                    Link(destination: url) { Label("About OpenCodex", systemImage: "arrow.up.right") }.font(.system(size: 12.5)).foregroundStyle(Theme.accent)
+                    Link(destination: url) { Label("About OpenCodex", systemImage: "arrow.up.right") }.font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.accent)
                 }
             }
             Text("Claude Code, Anthropic's own engine, cannot stand in for Codex yet: Dighouse speaks to the engine through Codex's app-server. Claude the model works fully.")
-                .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).panel()
 
@@ -469,7 +533,7 @@ private struct ToolsSettings: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("Every tool the agent has, by stage. The agent picks them itself; you never call them by hand.")
-                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 12)
             Button { app.show(.toolbox) } label: { Label("Guided tour", systemImage: "map") }.buttonStyle(SecondaryButton())
                 .help("The Toolbox walks through a real search, stage by stage.")
@@ -478,16 +542,16 @@ private struct ToolsSettings: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 10) {
                     IconTile(name: pack.icon, size: 28)
-                    Text(pack.title).font(.system(size: 14, weight: .semibold))
+                    Text(pack.title).font(.system(size: 14 * Theme.scale, weight: .semibold))
                     Spacer()
-                    Text("\(pack.tools.count) tool\(pack.tools.count == 1 ? "" : "s")").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                    Text("\(pack.tools.count) tool\(pack.tools.count == 1 ? "" : "s")").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 ForEach(pack.tools) { tool in
                     Hairline()
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(tool.title).font(.system(size: 13, weight: .medium)).frame(width: 190, alignment: .leading)
-                        Text(tool.does).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Text(tool.title).font(.system(size: 13 * Theme.scale, weight: .medium)).frame(width: 190, alignment: .leading)
+                        Text(tool.does).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 8)
@@ -497,9 +561,9 @@ private struct ToolsSettings: View {
             .panel()
         }
         VStack(alignment: .leading, spacing: 8) {
-            Text("More tools").font(.system(size: 15, weight: .semibold))
+            Text("More tools").font(.system(size: 15 * Theme.scale, weight: .semibold))
             Text("Tools from your Codex setup work here too, and you can add a tool server of your own (a small program that speaks MCP).")
-                .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             Button { UserDefaults.standard.set("More tools", forKey: "toolboxTab"); app.show(.toolbox) } label: { Label("Manage tool servers", systemImage: "puzzlepiece.extension") }
                 .buttonStyle(SecondaryButton())
         }
@@ -544,20 +608,20 @@ private struct AboutSettings: View {
         HStack(spacing: 16) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Dighouse").font(.system(size: 20, weight: .bold))
+                Text("Dighouse").font(.system(size: 20 * Theme.scale, weight: .bold))
                 Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")")
-                    .font(.system(size: 13)).foregroundStyle(Theme.dim)
+                    .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         }
         Text("An agent harness with archaeology tools built in. It runs the Codex engine with any model you have, and adds tools that find, fetch and read open lidar, records that carry their own evidence, and workflows that stop for your decision.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         VStack(spacing: 0) {
             SettingRow(title: "About the word lidar",
                        note: "Lidar maps the ground with laser pulses from an aircraft. The word began as a blend of light and radar, and Dighouse writes it in lowercase, as the US Geological Survey and NOAA do.") { EmptyView() }
             Hairline()
             SettingRow(title: "Source code", note: "Open source under the Apache 2.0 licence.") {
                 if let url = URL(string: "https://github.com/chrissotraidis/dighouse") {
-                    Link("GitHub", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
+                    Link("GitHub", destination: url).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.accent)
                 }
             }
             Hairline()

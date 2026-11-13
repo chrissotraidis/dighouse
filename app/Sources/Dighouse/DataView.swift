@@ -16,7 +16,7 @@ struct DataView: View {
             VStack(alignment: .leading, spacing: 22) {
                 section("Terrain in this project") {
                     if store.terrains.isEmpty {
-                        Text("None yet. Get the terrain, or add a file of your own below.").font(.system(size: 13)).foregroundStyle(Theme.dim)
+                        Text("None yet. Get the terrain, or add a file of your own below.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                     }
                     ForEach(store.terrains) { t in terrainRow(t) }
                     HStack(spacing: 8) {
@@ -39,9 +39,9 @@ struct DataView: View {
 
                 section("Your own data") {
                     Text("Drop a ground model (GeoTIFF) or a point cloud (LAS or LAZ) here, or choose one. It needs a coordinate system in metres, such as UTM or a national grid. The file stays where it is; Dighouse reads it into the project.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 10) {
-                        Image(systemName: "tray.and.arrow.down").font(.system(size: 18)).foregroundStyle(dropping ? Theme.accent : Theme.faint)
+                        Image(systemName: "tray.and.arrow.down").font(.system(size: 18 * Theme.scale)).foregroundStyle(dropping ? Theme.accent : Theme.faint)
                         Text(busy == "import" ? "Reading the file…" : "Drop a file here").foregroundStyle(Theme.dim)
                         Spacer()
                         Button("Choose a file…", action: choose).buttonStyle(SecondaryButton()).disabled(busy != nil)
@@ -68,7 +68,7 @@ struct DataView: View {
                 }
 
                 if let message {
-                    Text(message).font(.system(size: 12.5)).foregroundStyle(Theme.dim).textSelection(.enabled)
+                    Text(message).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).textSelection(.enabled)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.05)))
                 }
@@ -82,7 +82,7 @@ struct DataView: View {
 
     private func section<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.system(size: 15, weight: .semibold))
+            Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
             content()
         }
     }
@@ -96,11 +96,11 @@ struct DataView: View {
         facts.append(size(of: t))
         return HStack(alignment: .top, spacing: 12) {
             Image(systemName: t.isOwn ? "doc" : t.points == nil ? "square.stack.3d.up" : "circle.grid.3x3")
-                .font(.system(size: 14)).foregroundStyle(Theme.tan).frame(width: 20).padding(.top, 2)
+                .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 20).padding(.top, 2)
             VStack(alignment: .leading, spacing: 3) {
-                Text(t.name).font(.system(size: 13.5, weight: .medium))
-                Text(facts.joined(separator: " · ")).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
-                if !t.source.isEmpty { Text(t.source).font(.system(size: 12)).foregroundStyle(Theme.faint) }
+                Text(t.name).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                Text(facts.joined(separator: " · ")).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                if !t.source.isEmpty { Text(t.source).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint) }
             }
             Spacer()
             if tiles.isEmpty {
@@ -117,8 +117,8 @@ struct DataView: View {
     private func exportRow(_ title: String, _ text: String, _ button: String, id: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13.5, weight: .medium))
-                Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
             if busy == id { ProgressView().controlSize(.small) }

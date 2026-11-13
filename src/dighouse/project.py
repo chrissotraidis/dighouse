@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 DIRS = (
@@ -41,6 +43,60 @@ PROJECT_MD = """# {name}
 """
 
 
+METHODOLOGY_MD = """# Method
+
+How searches in this project are done. The agent reads this before every run and follows it.
+Edit it to change how the work is done; the agent adds to "Lessons" when a run teaches something.
+
+## The order of work
+
+1. **Read first.** PROJECT.md, this file, notes/INDEX.md and the newest run summary in notes/.
+2. **Terrain.** Fetch open lidar for the project's area and build the bare ground. Record the survey,
+   when it was flown and how dense the ground returns are.
+3. **Screen every tile** in at least two views (local relief or sky view, plus hillshade). A tile with too
+   little ground data is unreadable, not empty.
+4. **Flag** only shapes that look built: straight edges, right angles, regular mounds, platforms, banks.
+5. **Check each flag:** a section through the raw points, a check of open maps for modern features,
+   and a second look by a model from a different maker.
+6. **Search what is published** about each flag, starting with studies of the same place and survey.
+   Log every source as read, could not open, or not relevant.
+7. **Suggest a decision** for each flag with its reason, then stop: a person decides.
+8. **Write the run summary** in notes/, and add a line to notes/INDEX.md.
+
+## Rules
+
+- Never call a site new. Say how many sources were read and that none matched.
+- No coordinates in any Markdown. Locations live only under private/.
+- Known sites in the area are controls: finding them again shows the method works here.
+
+## Lessons
+
+Things learned in this project that the next run should know. Add a dated line for each.
+"""
+
+INDEX_MD = """# Notes
+
+The project's history, newest first. Each run summary is its own file; the dated files are the running log.
+
+"""
+
+
+def _git(root: Path, *args: str) -> bool:
+    """Run git in the project folder. A project works without git; this only keeps a history when git is there."""
+    if not shutil.which("git"):
+        return False
+    r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+    return r.returncode == 0
+
+
+def commit(root: Path, message: str) -> bool:
+    """Save the project's records, notes and sources in its history. data/ and private/ are never included."""
+    if not (root / ".git").exists() and not _git(root, "init", "-q"):
+        return False
+    _git(root, "add", "-A", "--", ".", ":(exclude)data", ":(exclude)private")
+    return _git(root, "-c", "user.name=Dighouse", "-c", "user.email=dighouse@localhost", "commit", "-q", "-m", message)
+
+
 class Project:
     def __init__(self, root: str | Path):
         self.root = Path(root).expanduser().resolve()
@@ -54,7 +110,12 @@ class Project:
             p.path("PROJECT.md").write_text(PROJECT_MD.format(name=name, question=question))
         if not p.path(".gitignore").exists():
             p.path(".gitignore").write_text("data/\nprivate/\n")
+        if not p.path("METHODOLOGY.md").exists():
+            p.path("METHODOLOGY.md").write_text(METHODOLOGY_MD)
+        if not p.path("notes", "INDEX.md").exists():
+            p.path("notes", "INDEX.md").write_text(INDEX_MD)
         p.save("project", {"name": name, "question": question, "bbox": bbox, "created": today()})
+        commit(p.root, f"Start the project: {name}")
         return p
 
     def check(self) -> Project:
@@ -93,6 +154,14 @@ class Project:
             body = body.split("\n", 1)[1].strip() if "\n" in body else ""
         f.write_text(f"# Run summary, {today()} {dt.datetime.now():%H:%M}\n\n{body}\n")
         self.note(f"Wrote the run summary {f.name}")
+        # One line in the index, newest first: the first sentence of the summary.
+        index = self.path("notes", "INDEX.md")
+        head = index.read_text() if index.exists() else INDEX_MD
+        first = next((l.strip("-* ").strip() for l in body.splitlines() if l.strip() and not l.startswith("#")), "")
+        line = f"- [{today()} {dt.datetime.now():%H:%M}]({f.name}) {first[:200]}\n"
+        parts = head.split("\n\n", 2)
+        index.write_text(head.rstrip("\n") + "\n\n" + line if len(parts) < 3 else "\n\n".join(parts[:2]) + "\n\n" + line + parts[2])
+        commit(self.root, f"Run summary {today()} {dt.datetime.now():%H:%M}: {first[:60]}")
         return f.name
 
 

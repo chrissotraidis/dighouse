@@ -116,7 +116,7 @@ struct NewProjectView: View {
         }
         .overlay(alignment: .top) {
             Text(numbers == nil ? "Click the map to place the search area" : "Click the map to move the search area")
-                .font(.system(size: 12.5, weight: .medium))
+                .font(.system(size: 12.5 * Theme.scale, weight: .medium))
                 .padding(.horizontal, 12).frame(height: 28)
                 .background(Capsule().fill(.black.opacity(0.7))).padding(12)
                 .allowsHitTesting(false)
@@ -133,10 +133,10 @@ struct NewProjectView: View {
     private var form: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("New project").font(.system(size: 22, weight: .bold))
+                Text("New project").font(.system(size: 22 * Theme.scale, weight: .bold))
                 Text(point.kind == .own ? "A project is one question about one area."
                      : "Starting from \(point.title). You can change anything below.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
 
             labeled("Name") { TextField("Project name", text: $name).field() }
@@ -151,7 +151,7 @@ struct NewProjectView: View {
                         .disabled(searching || query.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 if searching { ProgressView().controlSize(.small) }
-                if let searchProblem { Text(searchProblem).font(.system(size: 12.5)).foregroundStyle(Theme.amber) }
+                if let searchProblem { Text(searchProblem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
                 if !places.isEmpty {
                     VStack(spacing: 0) {
                         ForEach(places) { place in
@@ -160,7 +160,7 @@ struct NewProjectView: View {
                                 setCentre(lat: place.lat, lon: place.lon)
                                 places = []
                             } label: {
-                                Text(place.name).font(.system(size: 12.5)).lineLimit(2).multilineTextAlignment(.leading).padding(.vertical, 4)
+                                Text(place.name).font(.system(size: 12.5 * Theme.scale)).lineLimit(2).multilineTextAlignment(.leading).padding(.vertical, 4)
                             }
                             .buttonStyle(RowButton())
                         }
@@ -168,13 +168,13 @@ struct NewProjectView: View {
                     .padding(4).panel(radius: 10)
                 }
                 HStack(spacing: 8) {
-                    Text("Size").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                    Text("Size").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                     ForEach(Self.sizes, id: \.self) { km in
                         Button {
                             size = km
                             if let n = numbers { setCentre(lat: (n[1] + n[3]) / 2, lon: (n[0] + n[2]) / 2) }
                         } label: {
-                            Text(km < 1 ? "\(Int(km * 1000)) m" : "\(km.formatted()) km").font(.system(size: 12))
+                            Text(km < 1 ? "\(Int(km * 1000)) m" : "\(km.formatted()) km").font(.system(size: 12 * Theme.scale))
                                 .foregroundStyle(size == km ? Theme.text : Theme.dim)
                                 .padding(.horizontal, 9).frame(height: 24)
                                 .background(Capsule().fill(size == km ? Theme.ink.opacity(0.12) : .clear))
@@ -185,31 +185,31 @@ struct NewProjectView: View {
                 }
                 Button { showEdges.toggle() } label: {
                     HStack(spacing: 5) {
-                        Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold)).rotationEffect(.degrees(showEdges ? 90 : 0))
+                        Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).rotationEffect(.degrees(showEdges ? 90 : 0))
                         Text("Edges in degrees")
                         if let km = areaKm2 { Text("· \(km.formatted(.number.precision(.fractionLength(2)))) square km").foregroundStyle(Theme.faint) }
                     }
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).contentShape(Rectangle())
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 if showEdges {
                     HStack(spacing: 6) {
                         ForEach(Array(["West", "South", "East", "North"].enumerated()), id: \.offset) { i, label in
-                            TextField(label, text: $box[i]).field().font(.system(size: 12))
+                            TextField(label, text: $box[i]).field().font(.system(size: 12 * Theme.scale))
                         }
                     }
                 }
                 if let km = areaKm2, km > 6 {
                     Text("This is a large area. Terrain is fetched in pieces under 6 square km, so a first project is quicker when it is small.")
-                        .font(.system(size: 12)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
                 }
                 Text("The area is stored privately in the project and stays on this Mac.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
             }
 
             labeled("Open lidar here") { coverageList }
 
-            if let problem { Text(problem).foregroundStyle(Theme.amber).font(.system(size: 12.5)).fixedSize(horizontal: false, vertical: true) }
+            if let problem { Text(problem).foregroundStyle(Theme.amber).font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true) }
             HStack(spacing: 8) {
                 Button("Cancel") { app.goHome() }.buttonStyle(SecondaryButton())
                 Spacer()
@@ -218,35 +218,35 @@ struct NewProjectView: View {
                     .help("Creates the project and starts fetching its open lidar straight away.")
             }
         }
-        .font(.system(size: 13))
+        .font(.system(size: 13 * Theme.scale))
     }
 
     private func labeled(_ label: String, @ViewBuilder _ content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(label).font(.system(size: 12.5, weight: .semibold))
+            Text(label).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
             content()
         }
     }
 
     @ViewBuilder private var coverageList: some View {
         if numbers == nil {
-            Text("Place the area to see which open surveys cover it.").font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+            Text("Place the area to see which open surveys cover it.").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
         } else if let coverageProblem {
-            Text(coverageProblem).font(.system(size: 12.5)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+            Text(coverageProblem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
         } else if let coverage {
             if coverage.isEmpty {
                 Text("None of the open catalogs Dighouse reads (OpenTopography and USGS 3DEP) cover this area. Try another place, or ask the agent about other sources.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(coverage.enumerated()), id: \.element.id) { index, item in
                         if index > 0 { Hairline() }
                         HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.green).font(.system(size: 13)).padding(.top, 1)
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.green).font(.system(size: 13 * Theme.scale)).padding(.top, 1)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.title).font(.system(size: 12.5)).fixedSize(horizontal: false, vertical: true)
+                                Text(item.title).font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
                                 Text([item.source, item.collected].filter { !$0.isEmpty }.joined(separator: " · "))
-                                    .font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+                                    .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                             }
                             Spacer(minLength: 0)
                         }
@@ -258,7 +258,7 @@ struct NewProjectView: View {
         } else {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Checking the open catalogs").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                Text("Checking the open catalogs").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         }
     }

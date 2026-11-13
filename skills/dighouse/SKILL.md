@@ -5,7 +5,7 @@ description: Run an archaeological search over open lidar with the Dighouse tool
 
 # Running a Dighouse search
 
-Work inside one project folder and pass its absolute path to every tool. Read `PROJECT.md` and the latest file in `notes/` before doing anything, so a run continues where the last one stopped.
+Work inside one project folder and pass its absolute path to every tool. Read `PROJECT.md`, `METHODOLOGY.md` (the project's method: follow it), `notes/INDEX.md` and the newest run summary before doing anything, so a run continues where the last one stopped. When a run teaches something the next run should know, such as a survey that builds badly or a kind of false flag common here, add a dated line under Lessons in `METHODOLOGY.md`.
 
 ## Choosing where to look
 

@@ -80,17 +80,17 @@ struct ProjectOverview: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(store.current?.name ?? "").font(.system(size: 26, weight: .bold))
+                    Text(store.current?.name ?? "").font(.system(size: 26 * Theme.scale, weight: .bold))
                     if !question.isEmpty {
-                        Text(question).font(.system(size: 15)).foregroundStyle(Theme.text.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
+                        Text(question).font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if let next {
                     HStack(alignment: .center, spacing: 14) {
                         IconTile(name: "arrow.right.circle", size: 38)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Next: \(next.title)").font(.system(size: 15, weight: .semibold))
-                            Text(next.why).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                            Text("Next: \(next.title)").font(.system(size: 15 * Theme.scale, weight: .semibold))
+                            Text(next.why).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 12)
                         Button(next.label, action: next.action).buttonStyle(PrimaryButton())
@@ -100,19 +100,19 @@ struct ProjectOverview: View {
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.tan.opacity(0.3)))
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("How far the search has got").font(.system(size: 14, weight: .semibold))
+                    Text("How far the search has got").font(.system(size: 14 * Theme.scale, weight: .semibold))
                     VStack(spacing: 0) {
                         ForEach(Array(stages.enumerated()), id: \.element.id) { i, stage in
                             if i > 0 { Hairline() }
                             HStack(spacing: 12) {
                                 Image(systemName: stage.done ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 15)).foregroundStyle(stage.done ? Theme.green : Theme.faint)
+                                    .font(.system(size: 15 * Theme.scale)).foregroundStyle(stage.done ? Theme.green : Theme.faint)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(stage.title).font(.system(size: 13.5, weight: .medium))
-                                    Text(stage.plain).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                                    Text(stage.title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                                    Text(stage.plain).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                                 }
                                 Spacer(minLength: 8)
-                                Text(stage.detail).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                                Text(stage.detail).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 9)
                         }
@@ -121,13 +121,13 @@ struct ProjectOverview: View {
                 }
                 if let lastRun {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("The last run, \(lastRun.date)").font(.system(size: 14, weight: .semibold))
-                        Text(lastRun.text).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        Text("The last run, \(lastRun.date)").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                        Text(lastRun.text).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         Button("Read the notes") { app.tab = .notes; if app.layout == .chat { app.layout = .split } }.buttonStyle(SecondaryButton())
                     }
                 }
                 Text("Or type below to ask the agent anything about this project. Type / for commands.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             .padding(24).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
         }

@@ -20,7 +20,7 @@ struct FindChatSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.faint)
-                TextField("Find a chat by what was said in it", text: $term).textFieldStyle(.plain).font(.system(size: 15))
+                TextField("Find a chat by what was said in it", text: $term).textFieldStyle(.plain).font(.system(size: 15 * Theme.scale))
                     .focused($focused)
                 if searching { ProgressView().controlSize(.small) }
             }
@@ -42,18 +42,18 @@ struct FindChatSheet: View {
                     let rows = showArchive ? archive : results
                     if rows.isEmpty {
                         Text(showArchive ? "No archived chats." : term.isEmpty ? "Type to search chats in every project." : searching ? "" : "No chat says that.")
-                            .font(.system(size: 13)).foregroundStyle(Theme.faint).padding(.vertical, 20)
+                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(.vertical, 20)
                     }
                     ForEach(rows) { row in
                         HStack(alignment: .top, spacing: 10) {
                             Button { open(row) } label: {
                                 VStack(alignment: .leading, spacing: 3) {
                                     HStack(spacing: 6) {
-                                        Text(row.thread.title).font(.system(size: 13.5, weight: .medium)).lineLimit(1)
-                                        Text(place(row)).font(.system(size: 12)).foregroundStyle(Theme.faint).lineLimit(1)
+                                        Text(row.thread.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).lineLimit(1)
+                                        Text(place(row)).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
                                     }
                                     if !row.snippet.isEmpty {
-                                        Text(row.snippet).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(2)
+                                        Text(row.snippet).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(2)
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())

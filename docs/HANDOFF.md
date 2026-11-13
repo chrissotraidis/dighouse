@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Rewritten 2026-11-13, after the second loop (N1 to N10) and the README; updated after the third loop's first run (U1 to U7). This file is the prompt for whoever continues the work. Read it, then [USABILITY_LOOP.md](USABILITY_LOOP.md), whose Log says where the last run stopped, then start.
+Rewritten 2026-11-13, after the second loop (N1 to N10) and the README; updated when Chris paused the third loop, after U1 to U8 and most of his review (F1 to F11). This file is the prompt for whoever continues the work. Read it, then [USABILITY_LOOP.md](USABILITY_LOOP.md), whose Log ends with "where this run stopped", then start.
 
 ## Your brief
 
@@ -8,7 +8,7 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. His standing complaint is that it is "not there yet": he wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-Register the next loop as your goal. Suggested objective: "Finish the Dighouse loop in docs/NEXT_LOOP.md: every goal N1 to N10 is met, with its check verified in the running macOS app, logged, committed and pushed."
+The third loop is paused. To resume it, register it as your goal. Suggested objective: "Finish the Dighouse loop in docs/USABILITY_LOOP.md: the remaining F goals (F2, F5, F6) and U10 to U12 are met, each check verified in the running macOS app, logged, committed and merged."
 
 ## Rules
 
@@ -25,9 +25,9 @@ Register the next loop as your goal. Suggested objective: "Finish the Dighouse l
 Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) for what was checked and how. In short:
 
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes and Sources tabs. Three looks; Earth is the default. The mark beside "Dighouse" animates.
-- **Tools** (`src/dighouse`, Python, MCP): 28 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain (USGS, OpenTopography, and national ground models for England, the Netherlands and France), `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
+- **Tools** (`src/dighouse`, Python, MCP): 31 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain (USGS, OpenTopography, and national ground models for England, the Netherlands and France), `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Engine**: `codex app-server` (0.146.0) as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse opts into the experimental API, because newer chats are stored page by page and only `thread/turns/list` returns them.
-- **Tests**: 4 offline, 8 live; 29 tools now (import_terrain added) (`uv run pytest`, `uv run pytest -m live`).
+- **Tests**: 4 offline, 8 live (`uv run pytest`, `uv run pytest -m live`).
 - **README** has screenshots in `docs/images`, taken from the running app at 1440 × 900 with real projects. Retake them when the app changes in a way they show.
 
 ## What the third loop added (U1 to U7)
@@ -38,6 +38,12 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 - A status line (chat fullness, usage left), download progress in the strip with a Cancel that stops the tool through `private/state/stop-download`.
 - Typing a place on Home starts a project there; creating a project fetches its terrain; the strip names the next step.
 - A Data tab: terrain details, your own GeoTIFF/LAS/LAZ through the new `import_terrain` tool, exports, and a map that draws nearby terrains as one mosaic.
+
+## What has been added since U7
+
+- **U8:** a map with views (Composite, Hillshade, Local relief, Sky view, through the `render_tiles` tool), toggles, zoom, click and double-click, and drawing a line to cut a section.
+- **Chris's review (F1 to F11):** the review comes prepared (the `suggest_decision` tool and "Prepare my review"), one button style, /review, a bigger and animated Home, How it runs rewritten around model, engine and tools, Settings › Tools, Open data grouped by region, a project overview, readable section labels, a text size setting, Models warnings and Test both, and each project kept as its own git repository with METHODOLOGY.md and a Notes tab in three parts.
+- **Still open:** the F2 and F5 checks, F6 for General, Data and privacy and About, and U10 to U12. The Log in USABILITY_LOOP.md lists them, with the known problems and the test leftovers on this Mac.
 
 ## Waiting on Chris
 

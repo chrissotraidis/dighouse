@@ -280,3 +280,28 @@ Not verified: pinch zoom and two-finger panning with a real trackpad, since the 
 
 Left for the next turn: F3 (each slash command run once), F6 for Personalize, Models, Data and privacy and About, and F10 (a project as a repository with a method).
 
+
+### 2026-11-13, F3, F6 (Personalize, Models), F10, and two fixes
+
+- **F3, slash commands.** Each command was run in the app. Worked: /help, /status, /effort, /model (the list opened), /rename (the engine had the new name), /fork, /undo, /archive, /compact, /goal, /new and /new-project. A new command, **/review**, opens the review. /decide now reads "Have the agent suggest a decision for each find". Of the workflow commands, /screen and /decide were run and worked. /research, /run, /terrain, /check, /second-look, /sources and /report share their code path. Each shows in the list as ready or greyed with the reason, but none was run on its own.
+- **F6 in part.** Personalize has a **Text size** switch (Standard, Large, Larger) that scales every font in the app. Models has a plain introduction, warnings for a model that cannot read images, a missing second model or two models from the same maker, and **Test both**. General, Data and privacy and About are not reviewed yet.
+- **F10, a project is a repository.** A new project gets METHODOLOGY.md (the method the agent follows and adds Lessons to), notes/INDEX.md and a git history with a first commit; data/ and private/ stay out of git. Each run summary adds a line to the index and a commit, and so does each decision a person records. The skill tells the agent to read the method first. Checked on a scratch project: the files were there, there were two commits after a summary, and data/ and private/ were not tracked. The **Notes** tab now has three parts, Runs, Method and Log, with "Ask the agent to write it" when a project made before this has no method file. Seen on the Mound City test copy.
+- **Sidebar.** Clicking a project's name opens its overview; only the arrow folds its chats away. Before, the click hid the chats.
+- **Next step.** Once every find is decided, the strip and the overview no longer name a next step, and the decide stage reads "N to prepare", "Prepared" or "All decided".
+
+
+### 2026-11-13, where this run stopped (paused by Chris)
+
+Chris paused the loop here. Everything above is merged. Left to do, in order:
+
+- **F2:** screenshots of Review, Records, Data, Toolbox and Settings to confirm the same buttons and short labels everywhere.
+- **F5:** a full click-through of Home, Toolbox and Settings, confirming every control gives a visible result.
+- **F6:** General, Data and privacy and About.
+- **U10:** the ⌘K palette.
+- **U11:** Retry and Choose another model on errors, and a plain message with Restart when the engine stops.
+- **U12:** the consistency pass at every size and look, new README screenshots, and docs brought into line.
+
+Known problems: the Overpass map servers were down during this run, so the modern-feature check failed (it now gives up within about a minute). A cancelled download can take up to two minutes to stop. Pinch zoom and two-finger panning were never tried with a real trackpad.
+
+Test leftovers in ~/Documents/Dighouse: mound-city-review-test (a copy of Mound City whose five decisions were recorded in Chris's name for testing only), serpent-mound-goal-run, fort-ancient-ohio and a second cahokia-control-run that is not in the sidebar; archived test chats; five "Environment Agency terrain fetch" chats in Maiden Castle. A backup of Chris's settings is at ~/.codex/worktrees/dighouse-u1/defaults-backup.plist, and a scratch project at /tmp/dh-repo-test.
+

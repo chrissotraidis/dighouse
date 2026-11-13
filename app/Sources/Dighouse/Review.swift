@@ -50,9 +50,9 @@ struct ReviewSheet: View {
                 footer(c).padding(.horizontal, 22).padding(.vertical, 14)
             } else {
                 VStack(spacing: 10) {
-                    Image(systemName: "checkmark.seal").font(.system(size: 34)).foregroundStyle(Theme.green)
+                    Image(systemName: "checkmark.seal").font(.system(size: 34 * Theme.scale)).foregroundStyle(Theme.green)
                     Text(decided > 0 ? "Reviewed. \(decided) decision\(decided == 1 ? "" : "s") written into the records." : "Nothing left to review.")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 16 * Theme.scale, weight: .semibold))
                     Button("Close") { dismiss() }.buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -71,9 +71,9 @@ struct ReviewSheet: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Text("Review").font(.system(size: 17, weight: .semibold))
+            Text("Review").font(.system(size: 17 * Theme.scale, weight: .semibold))
             if !queue.isEmpty, current != nil {
-                Text("\(index + 1) of \(queue.count)").font(.system(size: 13)).foregroundStyle(Theme.dim)
+                Text("\(index + 1) of \(queue.count)").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
             }
             Spacer()
             if store.candidates.contains(where: { $0.suggestion == nil && ($0.status == "flagged" || $0.status == "ground_confirmed") }),
@@ -99,17 +99,17 @@ struct ReviewSheet: View {
     @ViewBuilder private func content(_ c: Candidate) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
-                Text("\(c.id) \(c.name)").font(.system(size: 22, weight: .bold)).lineLimit(2)
+                Text("\(c.id) \(c.name)").font(.system(size: 22 * Theme.scale, weight: .bold)).lineLimit(2)
                 Badge(text: c.statusLabel, color: c.statusColor)
             }
             if let sug = Self.suggestion(for: c), let d = Self.decisions.first(where: { $0.status == sug.status }) {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "lightbulb").foregroundStyle(Theme.tan).padding(.top, 1)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Suggested: \(d.title.lowercased())").font(.system(size: 13.5, weight: .semibold))
-                        Text(sug.reason).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Text("Suggested: \(d.title.lowercased())").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                        Text(sug.reason).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         Text("From \(sug.by). Check it against the pictures and sources; the decision is yours.")
-                            .font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+                            .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                     }
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -122,28 +122,28 @@ struct ReviewSheet: View {
             }
             HStack(alignment: .top, spacing: 18) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Checks").font(.system(size: 13.5, weight: .semibold))
+                    Text("Checks").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                     checks(c)
                 }
                 .frame(width: 330, alignment: .leading)
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("What the agent saw").font(.system(size: 13.5, weight: .semibold))
+                    Text("What the agent saw").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                     ForEach(c.evidence.prefix(3), id: \.self) { line in
-                        Text(line).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Text(line).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     }
                     let read = c.sources.filter { $0.status == "read" }
                     Text("Sources: \(read.count) read, \(c.sources.filter { $0.status == "could_not_open" }.count) could not be opened")
-                        .font(.system(size: 13.5, weight: .semibold)).padding(.top, 4)
+                        .font(.system(size: 13.5 * Theme.scale, weight: .semibold)).padding(.top, 4)
                     ForEach(read.prefix(3)) { s in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(s.title).font(.system(size: 12.5, weight: .medium)).lineLimit(2)
-                            Text(s.finding).font(.system(size: 12)).foregroundStyle(Theme.dim).lineLimit(4)
+                            Text(s.title).font(.system(size: 12.5 * Theme.scale, weight: .medium)).lineLimit(2)
+                            Text(s.finding).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(4)
                         }
                     }
                 }
             }
             if !c.decisions.isEmpty {
-                Text("Decided before: " + c.decisions.joined(separator: "; ")).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                Text("Decided before: " + c.decisions.joined(separator: "; ")).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
             }
         }
         .textSelection(.enabled)
@@ -164,7 +164,7 @@ struct ReviewSheet: View {
                     let done = rows[i].0
                     Image(systemName: done == true ? "checkmark.circle.fill" : done == false ? "exclamationmark.circle.fill" : "circle")
                         .foregroundStyle(done == true ? Theme.green : done == false ? Theme.amber : Theme.faint)
-                    Text(rows[i].1).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(2)
+                    Text(rows[i].1).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(2)
                 }
             }
         }
@@ -177,9 +177,9 @@ struct ReviewSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 RoundedRectangle(cornerRadius: 8).fill(Theme.side).frame(height: 160)
-                    .overlay(Text("None yet").font(.system(size: 12)).foregroundStyle(Theme.faint))
+                    .overlay(Text("None yet").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint))
             }
-            Text(caption).font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+            Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
         }
         .frame(maxWidth: .infinity)
     }
@@ -189,7 +189,7 @@ struct ReviewSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(Self.suggestion(for: c)?.status == d.status && reason == Self.suggestion(for: c)?.reason
                      ? "\(d.title), as suggested. Edit the reason if you need to." : "\(d.title): \(d.prompt)")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13 * Theme.scale, weight: .medium))
                 HStack(spacing: 8) {
                     TextField(d.prompt, text: $reason).field().focused($typing).onSubmit { record(c) }
                     Button("Other decision") { self.choice = nil; reason = "" }.buttonStyle(SecondaryButton())
@@ -197,8 +197,8 @@ struct ReviewSheet: View {
                         .disabled(busy || reason.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 Text("Recorded as decided by \(app.userName). Return records it and moves to the next; Escape picks another decision.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.faint)
-                if let problem { Text(problem).font(.system(size: 12.5)).foregroundStyle(Theme.amber) }
+                    .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                if let problem { Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
             }
             .onAppear { typing = true }
             .background(Button("") { self.choice = nil; reason = "" }.keyboardShortcut(.cancelAction).hidden())
@@ -209,7 +209,7 @@ struct ReviewSheet: View {
                         choice = d.status
                     } label: {
                         HStack(spacing: 6) {
-                            Text(d.key).font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(Theme.faint)
+                            Text(d.key).font(.system(size: 11 * Theme.scale, weight: .bold, design: .monospaced)).foregroundStyle(Theme.faint)
                                 .frame(width: 18, height: 18).background(RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.line))
                             Text(d.title)
                         }

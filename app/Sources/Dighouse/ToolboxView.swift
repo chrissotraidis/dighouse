@@ -16,15 +16,15 @@ struct ToolboxView: View {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 14) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Toolbox").font(.system(size: 26, weight: .bold))
+                        Text("Toolbox").font(.system(size: 26 * Theme.scale, weight: .bold))
                         Text("\(ToolGuide.toolCount) archaeology tools come built in. Here is what they do, how to run them, and where the data comes from.")
-                            .font(.system(size: 14)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                            .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 4) {
                             ForEach(Tab.allCases, id: \.self) { item in
                                 Button { tab = item } label: {
-                                    Text(item.rawValue).font(.system(size: 13, weight: .medium))
+                                    Text(item.rawValue).font(.system(size: 13 * Theme.scale, weight: .medium))
                                         .foregroundStyle(tab == item ? Theme.text : Theme.dim)
                                         .padding(.horizontal, 12).frame(height: 30)
                                         .background(Capsule().fill(tab == item ? Theme.ink.opacity(0.1) : .clear))
@@ -64,7 +64,7 @@ private struct HowTab: View {
         let at = min(max(stage, 0), packs.count - 1)
         if !setup.toolsReady { SetupChecklist() }
         Text("Follow one real search from start to finish. This is a test run at Cahokia, Illinois, on a mound everyone knows, so you can see what the agents did and what they wrote down. Step through the six stages.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
 
         StageRail(stage: at) { stage = $0 }
 
@@ -83,7 +83,7 @@ private struct HowTab: View {
             Hairline()
             HStack(spacing: 10) {
                 Button("Back") { stage = at - 1 }.buttonStyle(SecondaryButton()).disabled(at == 0)
-                Text("Stage \(at + 1) of \(packs.count)").font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+                Text("Stage \(at + 1) of \(packs.count)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
                 Spacer()
                 if at < packs.count - 1 {
                     Button("Next: \(packs[at + 1].title)") { stage = at + 1 }.buttonStyle(PrimaryButton())
@@ -99,8 +99,8 @@ private struct HowTab: View {
             VStack(alignment: .leading, spacing: 9) {
                 ForEach(ToolGuide.rules, id: \.self) { rule in
                     HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Image(systemName: "lock").font(.system(size: 11)).foregroundStyle(Theme.tan)
-                        Text(rule).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Image(systemName: "lock").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.tan)
+                        Text(rule).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -129,14 +129,14 @@ private struct StageRail: View {
                                 Circle().fill(index == stage ? Theme.tan : index < stage ? Theme.raised : Theme.bg)
                                 Circle().strokeBorder(index <= stage ? Theme.tan : Theme.line, lineWidth: 1.5)
                                 if index < stage {
-                                    Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.tan)
+                                    Image(systemName: "checkmark").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.tan)
                                 } else {
-                                    Text("\(index + 1)").font(.system(size: 12.5, weight: .bold)).foregroundStyle(index == stage ? .black : Theme.dim)
+                                    Text("\(index + 1)").font(.system(size: 12.5 * Theme.scale, weight: .bold)).foregroundStyle(index == stage ? .black : Theme.dim)
                                 }
                             }
                             .frame(width: 28, height: 28)
                         }
-                        Text(pack.short).font(.system(size: 12, weight: index == stage ? .semibold : .regular))
+                        Text(pack.short).font(.system(size: 12 * Theme.scale, weight: index == stage ? .semibold : .regular))
                             .foregroundStyle(index == stage ? Theme.text : Theme.dim).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity).contentShape(Rectangle())
@@ -157,21 +157,21 @@ private struct StageWords: View {
         let flow = ToolGuide.workflows.first { $0.id == pack.flow }
         let state = flow.map { app.state(of: $0) }
         VStack(alignment: .leading, spacing: 12) {
-            Text(pack.title).font(.system(size: 20, weight: .bold))
-            Text(pack.summary).font(.system(size: 13.5)).foregroundStyle(Theme.text.opacity(0.88)).lineSpacing(3)
+            Text(pack.title).font(.system(size: 20 * Theme.scale, weight: .bold))
+            Text(pack.summary).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.88)).lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Image(systemName: "lightbulb").font(.system(size: 11)).foregroundStyle(Theme.tan)
-                Text(pack.why).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                Image(systemName: "lightbulb").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.tan)
+                Text(pack.why).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             VStack(alignment: .leading, spacing: 0) {
-                Text("The tools for this stage").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint).padding(.bottom, 6)
+                Text("The tools for this stage").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint).padding(.bottom, 6)
                 ForEach(pack.tools) { tool in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: "wrench.adjustable").font(.system(size: 10)).foregroundStyle(Theme.tan)
+                        Image(systemName: "wrench.adjustable").font(.system(size: 10 * Theme.scale)).foregroundStyle(Theme.tan)
                         (Text(tool.title).fontWeight(.medium).foregroundColor(Theme.text) + Text("  " + tool.does).foregroundColor(Theme.dim))
-                            .font(.system(size: 12.5)).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                            .font(.system(size: 12.5 * Theme.scale)).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, 3).help("The agent calls this tool \(tool.name)")
                 }
@@ -181,7 +181,7 @@ private struct StageWords: View {
                     Button("Run this stage") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(state?.ready != true)
                     Text(state?.ready == true ? (flow.scope == .project ? "Runs on the open project." : "Starts a chat.")
                          : (state?.note ?? "") == "Needs a project" ? "Open a project from the sidebar first." : (state?.note ?? ""))
-                        .font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .padding(.top, 2)
             }
@@ -200,7 +200,7 @@ private struct StageArt: View {
             VStack(alignment: .leading, spacing: 6) {
                 ForestReveal(animateIn: false)
                 Text("Drag the handle. Serpent Mound, Ohio: the same laser points, first the highest returns, then only the ground.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
         case 2: TileBoard()
         case 3: ChecksArt()
@@ -215,7 +215,7 @@ private struct StageArt: View {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
             }
-            Text(caption).font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -267,14 +267,14 @@ private struct TileBoard: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
-                    Text("Tile \(spot.id)").font(.system(size: 12.5, weight: .semibold))
+                    Text("Tile \(spot.id)").font(.system(size: 12.5 * Theme.scale, weight: .semibold))
                     Badge(text: spot.verdict.capitalized, color: color(spot.verdict))
                 }
-                Text(spot.note).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                Text(spot.note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
-            Text("Click a tile. These are the agent's own notes from the run.").font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+            Text("Click a tile. These are the agent's own notes from the run.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
         }
     }
 }
@@ -289,7 +289,7 @@ private struct ChecksArt: View {
             HStack(spacing: 4) {
                 ForEach(names.indices, id: \.self) { i in
                     Button { check = i } label: {
-                        Text(names[i]).font(.system(size: 12.5, weight: .medium))
+                        Text(names[i]).font(.system(size: 12.5 * Theme.scale, weight: .medium))
                             .foregroundStyle(check == i ? .black : Theme.dim)
                             .padding(.horizontal, 11).frame(height: 27)
                             .background(Capsule().fill(check == i ? Theme.tan : Theme.ink.opacity(0.06)))
@@ -308,7 +308,7 @@ private struct ChecksArt: View {
                         Image(nsImage: tile).resizable().aspectRatio(contentMode: .fit).frame(width: 130).clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     Text("“The feature exhibits distinct rectilinear terraces, sharp artificial slope breaks, and flat platforms characteristic of a monumental earthen mound.”")
-                        .font(.system(size: 13)).italic().foregroundStyle(Theme.text.opacity(0.9)).lineSpacing(3)
+                        .font(.system(size: 13 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.9)).lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 result("A different model agrees", "Gemini 3.8 Flash was shown the tile, without the first model's note. The tools refuse a second look from the model that raised the flag.")
@@ -328,10 +328,10 @@ private struct ChecksArt: View {
 
     private func result(_ title: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 9) {
-            Image(systemName: "checkmark.circle.fill").font(.system(size: 14)).foregroundStyle(Theme.green).padding(.top, 1)
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.green).padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13, weight: .semibold))
-                Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold))
+                Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -354,13 +354,13 @@ struct PapersArt: View {
                 ForEach(Array(papers.enumerated()), id: \.offset) { index, paper in
                     if index > 0 { Hairline() }
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "doc.text").font(.system(size: 13)).foregroundStyle(Theme.tan).padding(.top, 2)
+                        Image(systemName: "doc.text").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.tan).padding(.top, 2)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(paper.0).font(.system(size: 12.5, weight: .medium)).fixedSize(horizontal: false, vertical: true)
-                            Text(paper.1).font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+                            Text(paper.0).font(.system(size: 12.5 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                            Text(paper.1).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                         }
                         Spacer(minLength: 6)
-                        Text(paper.2 ? yes : no).font(.system(size: 11, weight: .medium))
+                        Text(paper.2 ? yes : no).font(.system(size: 11 * Theme.scale, weight: .medium))
                             .foregroundStyle(paper.2 ? Theme.green : Theme.faint).fixedSize()
                     }
                     .padding(.horizontal, 12).padding(.vertical, 9)
@@ -369,7 +369,7 @@ struct PapersArt: View {
             .background(RoundedRectangle(cornerRadius: 12).fill(Theme.side))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
             if !caption.isEmpty {
-                Text(caption).font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -387,22 +387,22 @@ private struct RecordArt: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("candidates/C-001.md").font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.faint)
+                Text("candidates/C-001.md").font(.system(size: 11 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.faint)
                 HStack(alignment: .top, spacing: 12) {
                     if let relief = Tour.image("record-relief") {
                         Image(nsImage: relief).resizable().aspectRatio(contentMode: .fit).frame(width: 110).clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("C-001 Large terraced platform mound").font(.system(size: 14.5, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                        Text("C-001 Large terraced platform mound").font(.system(size: 14.5 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
                         Badge(text: "Already published", color: Theme.tan)
                     }
                 }
                 ForEach(lines, id: \.0) { line in
                     HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill").font(.system(size: 13)).foregroundStyle(Theme.green).padding(.top, 1)
+                        Image(systemName: "checkmark.circle.fill").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.green).padding(.top, 1)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(line.0).font(.system(size: 12.5, weight: .medium))
-                            Text(line.1).font(.system(size: 12)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                            Text(line.0).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                            Text(line.1).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -411,7 +411,7 @@ private struct RecordArt: View {
             .background(RoundedRectangle(cornerRadius: 12).fill(Theme.side))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
             Text("Finding a known site again is the right answer for a test. The same page is written for every find.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -431,14 +431,14 @@ private struct WorkflowsTab: View {
 
     var body: some View {
         Text("A workflow is a ready-made request. Press Run and the agent carries it out with the tools, in a chat you can watch and steer. Each one shows who does which part.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
             ForEach(roles, id: \.1) { role in
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: role.0).font(.system(size: 14)).foregroundStyle(role.1 == "You" ? Theme.accent : Theme.tan).frame(width: 20)
+                    Image(systemName: role.0).font(.system(size: 14 * Theme.scale)).foregroundStyle(role.1 == "You" ? Theme.accent : Theme.tan).frame(width: 20)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(role.1).font(.system(size: 13, weight: .semibold))
-                        Text(role.2).font(.system(size: 12)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        Text(role.1).font(.system(size: 13 * Theme.scale, weight: .semibold))
+                        Text(role.2).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
@@ -476,23 +476,23 @@ private struct WorkflowLine: View {
         HStack(alignment: .top, spacing: 14) {
             Group {
                 if done {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(Theme.green)
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 20 * Theme.scale)).foregroundStyle(Theme.green)
                 } else {
                     IconTile(name: flow.icon).opacity(state.ready ? 1 : 0.55)
                 }
             }
             .frame(width: 34, height: 34)
             VStack(alignment: .leading, spacing: 7) {
-                Text(flow.title).font(.system(size: 14, weight: .semibold))
-                Text(flow.summary).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                Text(flow.title).font(.system(size: 14 * Theme.scale, weight: .semibold))
+                Text(flow.summary).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Flow(spacing: 5) {
                     ForEach(Array(flow.steps.enumerated()), id: \.offset) { index, step in
                         HStack(spacing: 5) {
-                            if index > 0 { Image(systemName: "arrow.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.faint) }
+                            if index > 0 { Image(systemName: "arrow.right").font(.system(size: 8 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint) }
                             (Text(step.who).fontWeight(.semibold).foregroundColor(step.who == "You" ? Theme.accent : Theme.tan)
                              + Text("  " + step.does).foregroundColor(Theme.dim))
-                                .font(.system(size: 11.5)).lineLimit(1)
+                                .font(.system(size: 11.5 * Theme.scale)).lineLimit(1)
                         }
                     }
                 }
@@ -501,7 +501,7 @@ private struct WorkflowLine: View {
             VStack(alignment: .trailing, spacing: 6) {
                 Button(done ? "Run again" : "Run") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(!state.ready)
                 if !state.note.isEmpty {
-                    Text(state.note).font(.system(size: 11.5, weight: .medium))
+                    Text(state.note).font(.system(size: 11.5 * Theme.scale, weight: .medium))
                         .foregroundStyle(done ? Theme.green : state.ready ? Theme.tan : Theme.faint).lineLimit(1).fixedSize()
                 }
             }
@@ -532,7 +532,7 @@ private struct DataTab: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("Everything Dighouse searches is public, and none of it needs an account or a key. Click a service to see what it gives and a picture made from its data.")
-                .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 4) {
                 Button { Task { await probe() } } label: { Label(checking ? "Checking…" : "Check status", systemImage: "arrow.clockwise") }
@@ -541,15 +541,15 @@ private struct DataTab: View {
                 if let checked {
                     let up = online.values.filter { $0 }.count
                     Text("\(up) of \(ToolGuide.allSources.count) online at \(checked.formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 11.5)).foregroundStyle(up == ToolGuide.allSources.count ? Theme.faint : Theme.amber)
+                        .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(up == ToolGuide.allSources.count ? Theme.faint : Theme.amber)
                 }
             }
         }
         ForEach(Self.regions, id: \.title) { region in
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(region.title).font(.system(size: 15, weight: .semibold))
-                    Text(region.note).font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+                    Text(region.title).font(.system(size: 15 * Theme.scale, weight: .semibold))
+                    Text(region.note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 VStack(spacing: 0) {
                     let sources = region.names.compactMap { name in ToolGuide.allSources.first { $0.name == name } }
@@ -578,12 +578,12 @@ private struct DataTab: View {
                 HStack(spacing: 12) {
                     thumb(source).frame(width: 64, height: 44).clipShape(RoundedRectangle(cornerRadius: 6))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(source.name).font(.system(size: 13.5, weight: .semibold))
-                        Text(source.what).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(1)
+                        Text(source.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                        Text(source.what).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
                     }
                     Spacer(minLength: 8)
                     status(source)
-                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint)
+                    Image(systemName: "chevron.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                         .rotationEffect(.degrees(expanded ? 90 : 0))
                 }
                 .contentShape(Rectangle())
@@ -593,10 +593,10 @@ private struct DataTab: View {
                 HStack(alignment: .top, spacing: 16) {
                     art(source).frame(width: 260)
                     VStack(alignment: .leading, spacing: 9) {
-                        Text(source.what).font(.system(size: 13)).foregroundStyle(Theme.text.opacity(0.9)).fixedSize(horizontal: false, vertical: true)
+                        Text(source.what).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.9)).fixedSize(horizontal: false, vertical: true)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("What Dighouse takes from it").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
-                            Text(source.gives).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                            Text("What Dighouse takes from it").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                            Text(source.gives).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
                         Flow(spacing: 6) {
                             ForEach(source.usedFor.components(separatedBy: " · "), id: \.self) { Badge(text: $0, color: Theme.tan) }
@@ -607,7 +607,7 @@ private struct DataTab: View {
                                 .help("Starts a chat in which the agent uses this service. It asks you first.")
                             if let url = URL(string: source.url) {
                                 Link(destination: url) { Label(url.host ?? source.url, systemImage: "arrow.up.right") }
-                                    .font(.system(size: 12.5)).foregroundStyle(Theme.accent)
+                                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.accent)
                             }
                         }
                     }
@@ -623,7 +623,7 @@ private struct DataTab: View {
         return HStack(spacing: 6) {
             Circle().fill(state == true ? Theme.green : state == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
             Text(state == true ? "Online" : state == false ? "Not answering" : "Checking")
-                .font(.system(size: 12)).foregroundStyle(state == false ? Theme.amber : Theme.dim)
+                .font(.system(size: 12 * Theme.scale)).foregroundStyle(state == false ? Theme.amber : Theme.dim)
         }
         .help(state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
               : "This service replied to a test request from this Mac.")
@@ -636,7 +636,7 @@ private struct DataTab: View {
         } else {
             Rectangle().fill(Theme.side).overlay(
                 Image(systemName: source.image == "papers" ? "books.vertical" : source.image == "records" ? "doc.text" : "building.columns")
-                    .font(.system(size: 16)).foregroundStyle(Theme.tan.opacity(0.85)))
+                    .font(.system(size: 16 * Theme.scale)).foregroundStyle(Theme.tan.opacity(0.85)))
         }
     }
 
@@ -650,13 +650,13 @@ private struct DataTab: View {
                           yes: "Open record", no: "")
             } else if source.image.isEmpty {
                 RoundedRectangle(cornerRadius: 10).fill(Theme.side).frame(height: 120)
-                    .overlay(Image(systemName: "building.columns").font(.system(size: 36, weight: .light)).foregroundStyle(Theme.tan.opacity(0.8)))
+                    .overlay(Image(systemName: "building.columns").font(.system(size: 36 * Theme.scale, weight: .light)).foregroundStyle(Theme.tan.opacity(0.8)))
             } else if let image = source.image.hasPrefix("start:")
                         ? StartingPoints.image(named: String(source.image.dropFirst(6))) : Tour.image(source.image) {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
             }
-            Text(source.caption).font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2)
+            Text(source.caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -699,12 +699,12 @@ private struct MoreTab: View {
 
     var body: some View {
         Text("The archaeology tools are built in. The agent can also use other tools, in two ways: the ones your Codex app already has, and ones you add here.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
 
         PageSection(title: "Already on this Mac",
                     caption: "Dighouse runs on the same engine as the Codex app, so whatever you connected there works here too. Ask for it in plain words, for example \"copy these records into Notion\". These come from your Codex setup, and Dighouse has not tested each one.") {
             if engine.plugins.isEmpty && engine.connections.isEmpty {
-                Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13)).foregroundStyle(Theme.faint)
+                Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             if !known.isEmpty {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
@@ -712,8 +712,8 @@ private struct MoreTab: View {
                         HStack(alignment: .top, spacing: 12) {
                             IconTile(name: addon.icon, size: 32)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(addon.title).font(.system(size: 13.5, weight: .semibold))
-                                Text(addon.use).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                                Text(addon.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                                Text(addon.use).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer(minLength: 0)
@@ -724,14 +724,14 @@ private struct MoreTab: View {
                 }
             }
             if !others.isEmpty {
-                Text("Also connected").font(.system(size: 12.5, weight: .semibold)).padding(.top, 4)
+                Text("Also connected").font(.system(size: 12.5 * Theme.scale, weight: .semibold)).padding(.top, 4)
                 Flow(spacing: 6) { ForEach(others, id: \.self) { Badge(text: $0) } }
             }
             if !engine.connections.isEmpty {
                 Button { showServers.toggle() } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold)).rotationEffect(.degrees(showServers ? 90 : 0))
-                        Text("Technical details: \(engine.connections.count) tool servers").font(.system(size: 12.5))
+                        Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).rotationEffect(.degrees(showServers ? 90 : 0))
+                        Text("Technical details: \(engine.connections.count) tool servers").font(.system(size: 12.5 * Theme.scale))
                     }
                     .foregroundStyle(Theme.dim).contentShape(Rectangle())
                 }
@@ -741,9 +741,9 @@ private struct MoreTab: View {
                         ForEach(Array(engine.connections.enumerated()), id: \.element.id) { index, server in
                             if index > 0 { Hairline() }
                             HStack(spacing: 12) {
-                                Text(server.name).font(.system(size: 12.5, design: .monospaced))
+                                Text(server.name).font(.system(size: 12.5 * Theme.scale, design: .monospaced))
                                 Spacer()
-                                Text(server.tools == 0 ? "Starts when used" : "\(server.tools) tools").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                                Text(server.tools == 0 ? "Starts when used" : "\(server.tools) tools").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 9)
                         }
@@ -758,8 +758,8 @@ private struct MoreTab: View {
             ForEach(app.toolServers) { server in
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(server.name).font(.system(size: 13, weight: .medium))
-                        Text(server.command).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.dim).lineLimit(1)
+                        Text(server.name).font(.system(size: 13 * Theme.scale, weight: .medium))
+                        Text(server.command).font(.system(size: 12 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.dim).lineLimit(1)
                     }
                     Spacer()
                     if let found = engine.connections.first(where: { $0.name == server.key }) {
@@ -777,7 +777,7 @@ private struct MoreTab: View {
                 HStack(spacing: 8) { fields }
                 VStack(alignment: .leading, spacing: 8) { fields }
             }
-            .font(.system(size: 13))
+            .font(.system(size: 13 * Theme.scale))
         }
     }
 

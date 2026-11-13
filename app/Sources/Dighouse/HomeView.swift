@@ -123,12 +123,12 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 MoundMark(lively: true).frame(width: 46, height: 20)
-                Text("OPEN ARCHAEOLOGY").font(.system(size: 12.5, weight: .bold)).kerning(1.5).foregroundStyle(Theme.tan)
+                Text("OPEN ARCHAEOLOGY").font(.system(size: 12.5 * Theme.scale, weight: .bold)).kerning(1.5).foregroundStyle(Theme.tan)
             }
-            Text("Help find what the forest is hiding.").font(.system(size: 36, weight: .bold))
+            Text("Help find what the forest is hiding.").font(.system(size: 36 * Theme.scale, weight: .bold))
                 .fixedSize(horizontal: false, vertical: true)
             Text("Dighouse is a free, open tool for searching public lidar, the laser scans that map the ground under the trees, for places people built. AI agents do the patient work and check every find. You decide what each one is.")
-                .font(.system(size: 17)).foregroundStyle(Theme.text.opacity(0.78)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.78)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
             Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton()).padding(.top, 2)
         }
     }
@@ -137,7 +137,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 6) {
             ForestReveal()
             Text("Serpent Mound, Ohio, from open USGS lidar. Drag the handle to take the trees away.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -154,16 +154,16 @@ struct HomeView: View {
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
                 Spacer()
                 Button("Open a shared project folder…") { app.chooseProjectFolder() }.buttonStyle(.plain)
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                     .help("A project is a folder of Markdown records, so it can be shared like any folder.")
             }
             if startKind == 0 {
                 Text("Lidar flown for archaeology and published openly, read from OpenTopography's live catalog. Each one listed was fetched and built into terrain by Dighouse first.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 surveys
             } else {
                 Text("Seven published sites and one strip of Yucatán forest, each with terrain ready to fetch. A run on a known site shows what real earthworks look like, and whether the agents find them again.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 LazyVGrid(columns: cards, alignment: .leading, spacing: 12) {
                     ForEach(StartingPoints.all) { point in StartCard(point: point) { app.startProject(from: point) } }
                 }
@@ -174,7 +174,7 @@ struct HomeView: View {
     private func startTab(_ kind: Int, _ title: String) -> some View {
         // Two sides of one switch: the chosen side is raised, the other is plain text that changes on hover.
         Button { withAnimation(.easeOut(duration: 0.15)) { startKind = kind } } label: {
-            Text(title).font(.system(size: 13, weight: startKind == kind ? .semibold : .medium))
+            Text(title).font(.system(size: 13 * Theme.scale, weight: startKind == kind ? .semibold : .medium))
                 .foregroundStyle(startKind == kind ? Theme.text : Theme.dim)
                 .padding(.horizontal, 14).frame(height: 28)
                 .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(startKind == kind ? Theme.raised : .clear)
@@ -189,11 +189,11 @@ struct HomeView: View {
         if app.surveysLoading {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Reading the catalog").font(.system(size: 13)).foregroundStyle(Theme.dim)
+                Text("Reading the catalog").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         } else if let problem = app.surveysProblem {
             HStack(spacing: 10) {
-                Text("The catalog did not answer. \(problem)").font(.system(size: 13)).foregroundStyle(Theme.amber)
+                Text("The catalog did not answer. \(problem)").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.amber)
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Try again") { Task { await app.loadSurveys() } }.buttonStyle(SecondaryButton())
             }
@@ -203,9 +203,9 @@ struct HomeView: View {
                     HStack(alignment: .center, spacing: 12) {
                         IconTile(name: "airplane", size: 30)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(survey.title).font(.system(size: 13.5, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                            Text(survey.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                             Text((survey.collected.isEmpty ? "" : "Flown \(survey.collected) · ") + "OpenTopography")
-                                .font(.system(size: 12)).foregroundStyle(Theme.faint)
+                                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                         }
                         Spacer(minLength: 8)
                         Button("Ask about it") {
@@ -221,9 +221,9 @@ struct HomeView: View {
                     if let flow = ToolGuide.workflows.first(where: { $0.id == "surveys" }) { app.run(flow) }
                 } label: {
                     HStack {
-                        Text("Ask the agent for every survey in the catalog").font(.system(size: 13))
+                        Text("Ask the agent for every survey in the catalog").font(.system(size: 13 * Theme.scale))
                         Spacer()
-                        Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint)
+                        Image(systemName: "arrow.up.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                     }
                     .padding(.vertical, 5)
                 }
@@ -263,7 +263,7 @@ private struct CompareBoard: View {
                 Flow(spacing: 6) {
                     ForEach(rows.indices, id: \.self) { i in
                         Button { withAnimation(.easeOut(duration: 0.15)) { picked = i } } label: {
-                            Label(rows[i].topic, systemImage: rows[i].icon).font(.system(size: 12.5, weight: .medium))
+                            Label(rows[i].topic, systemImage: rows[i].icon).font(.system(size: 12.5 * Theme.scale, weight: .medium))
                                 .foregroundStyle(picked == i ? .black : Theme.dim)
                                 .padding(.horizontal, 12).frame(height: 30)
                                 .background(Capsule().fill(picked == i ? Theme.tan : Theme.ink.opacity(0.06)))
@@ -294,17 +294,17 @@ private struct CompareBoard: View {
     private func answers(_ row: Row) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "bubble.left").font(.system(size: 14)).foregroundStyle(Theme.faint).frame(width: 22).padding(.top, 2)
+                Image(systemName: "bubble.left").font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.faint).frame(width: 22).padding(.top, 2)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("A chat app").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
-                    Text(row.chat).font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    Text("A chat app").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                    Text(row.chat).font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 }
             }
             HStack(alignment: .top, spacing: 12) {
                 MoundMark().frame(width: 22, height: 12).padding(.top, 5)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Dighouse").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.tan)
-                    Text(row.dig).font(.system(size: 15, weight: .medium)).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                    Text("Dighouse").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
+                    Text(row.dig).font(.system(size: 15 * Theme.scale, weight: .medium)).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -331,12 +331,12 @@ private struct PathCard: View {
             HStack(alignment: .top, spacing: 14) {
                 IconTile(name: icon, size: 38)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 15, weight: .semibold))
-                    Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                    Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
+                    Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                         .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(hover ? Theme.text : Theme.faint)
+                Image(systemName: "arrow.right").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(hover ? Theme.text : Theme.faint)
             }
             .padding(16).frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
@@ -367,15 +367,15 @@ struct StartCard: View {
                         }
                         .clipped()
                     if !point.source.isEmpty {
-                        Text(point.source).font(.system(size: 11, weight: .medium)).foregroundStyle(.white)
+                        Text(point.source).font(.system(size: 11 * Theme.scale, weight: .medium)).foregroundStyle(.white)
                             .padding(.horizontal, 7).frame(height: 20)
                             .background(Capsule().fill(.black.opacity(0.62))).padding(8)
                     }
                 }
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(point.title).font(.system(size: 14.5, weight: .semibold))
-                    Text(point.place).font(.system(size: 12)).foregroundStyle(Theme.faint)
-                    Text(point.about).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2)
+                    Text(point.title).font(.system(size: 14.5 * Theme.scale, weight: .semibold))
+                    Text(point.place).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                    Text(point.about).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                         .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
                 }
                 .padding(14)

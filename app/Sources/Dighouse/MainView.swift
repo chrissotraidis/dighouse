@@ -41,12 +41,12 @@ struct MainView: View {
         if !engine.ready {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(app.starting ? "Starting Dighouse" : "Dighouse needs a few things").font(.system(size: 22, weight: .semibold))
+                    Text(app.starting ? "Starting Dighouse" : "Dighouse needs a few things").font(.system(size: 22 * Theme.scale, weight: .semibold))
                     if app.starting {
                         ProgressView().controlSize(.small)
                         if setup.toolsBusy {
                             Text("Preparing the archaeology tools. This takes about a minute the first time and after an update.")
-                                .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
                     } else { SetupChecklist() }
                 }
@@ -108,7 +108,7 @@ struct TopBar: View {
                 if narrow { app.sidebarPeek.toggle() } else { app.sidebarVisible.toggle() }
             } label: { Image(systemName: "sidebar.left") }
                 .buttonStyle(IconButton()).help("Show or hide the sidebar")
-            Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+            Text(title).font(.system(size: 14 * Theme.scale, weight: .semibold)).lineLimit(1)
             if inProject, width > 640 { stats(s) }
             Spacer(minLength: 8)
             if let problem = engine.problem {
@@ -153,7 +153,7 @@ struct TopBar: View {
                     }
                     Task { await chat.stopAll() }
                 }
-                    .buttonStyle(.plain).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.accent)
+                    .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.accent)
                     .help("Stop the download and the agent. Nothing half-downloaded is added to the project.")
             } else if s.tiles == 0 {
                 piece(store.terrains.isEmpty ? "No terrain yet" : "Terrain ready, not cut into tiles")
@@ -165,13 +165,13 @@ struct TopBar: View {
             piece("\(s.candidates) candidate\(s.candidates == 1 ? "" : "s")")
             if let next = app.nextStep, store.download == nil {
                 Button { app.run(next) } label: {
-                    Label("Next: \(next.title)", systemImage: next.icon).font(.system(size: 12.5, weight: .medium))
+                    Label("Next: \(next.title)", systemImage: next.icon).font(.system(size: 12.5 * Theme.scale, weight: .medium))
                 }
                 .buttonStyle(.plain).foregroundStyle(Theme.accent).padding(.leading, 6)
                 .help(next.summary)
             }
         }
-        .font(.system(size: 12.5)).lineLimit(1)
+        .font(.system(size: 12.5 * Theme.scale)).lineLimit(1)
     }
 
     private func piece(_ text: String) -> some View {
@@ -217,7 +217,7 @@ struct Sidebar: View {
             HStack(spacing: 9) {
                 MoundMark(working: !chat.live.isEmpty || app.secondLookBusy != nil || app.starting, lively: true).frame(width: 34, height: 15)
                     .help(chat.live.isEmpty && app.secondLookBusy == nil ? "Dighouse" : "The agent is working")
-                Text("Dighouse").font(.system(size: 15, weight: .bold))
+                Text("Dighouse").font(.system(size: 15 * Theme.scale, weight: .bold))
                 Spacer()
             }
             .padding(.horizontal, 10).padding(.bottom, 8)
@@ -241,7 +241,7 @@ struct Sidebar: View {
                     ForEach(store.projects) { project in projectRows(project) }
                     if store.projects.isEmpty {
                         Text("No projects yet. Start one from Home.")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.faint).padding(.horizontal, 10).padding(.vertical, 6)
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).padding(.horizontal, 10).padding(.vertical, 6)
                     }
                 }
             }
@@ -250,7 +250,7 @@ struct Sidebar: View {
             Hairline().padding(.vertical, 6)
             if !engine.ready {
                 Button { app.settingsSection = .engine; app.show(.settings) } label: {
-                    Label("Engine not running", systemImage: "exclamationmark.triangle").font(.system(size: 13)).foregroundStyle(Theme.amber)
+                    Label("Engine not running", systemImage: "exclamationmark.triangle").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.amber)
                 }
                 .buttonStyle(RowButton())
             }
@@ -276,13 +276,13 @@ struct Sidebar: View {
     }
 
     private func header(_ title: String) -> some View {
-        Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.faint)
+        Text(title).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.faint)
             .padding(.leading, 10).padding(.top, 12).padding(.bottom, 2)
     }
 
     private func nav(_ icon: String, _ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: icon).font(.system(size: 13.5))
+            Label(title, systemImage: icon).font(.system(size: 13.5 * Theme.scale))
         }
         .buttonStyle(RowButton(selected: selected))
     }
@@ -291,7 +291,7 @@ struct Sidebar: View {
         let selected = app.route == .chat && chat.active == thread.id
         return Button { app.openChat(thread, in: project) } label: {
             HStack(spacing: 6) {
-                Text(thread.title).font(.system(size: 13)).lineLimit(1).foregroundStyle(selected ? Theme.text : Theme.dim)
+                Text(thread.title).font(.system(size: 13 * Theme.scale)).lineLimit(1).foregroundStyle(selected ? Theme.text : Theme.dim)
                 Spacer(minLength: 0)
                 if chat.live[thread.id] != nil { ProgressView().controlSize(.mini) }
             }
@@ -310,18 +310,20 @@ struct Sidebar: View {
     @ViewBuilder private func projectRows(_ project: ProjectRef) -> some View {
         let current = project == store.current
         let open = current && !collapsed.contains(project.path)
+        // The name opens the project's overview; only the arrow folds its chats away.
         Button {
-            if current && app.route == .chat && chat.active == nil {
-                if open { collapsed.insert(project.path) } else { collapsed.remove(project.path) }
-            } else {
-                collapsed.remove(project.path)
-                if current { app.newChat() } else { app.open(project) }
-            }
+            collapsed.remove(project.path)
+            if current { app.newChat() } else { app.open(project) }
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.faint)
-                    .rotationEffect(.degrees(open ? 90 : 0)).frame(width: 10)
-                Text(project.name).font(.system(size: 13.5)).lineLimit(1)
+                Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
+                    .rotationEffect(.degrees(open ? 90 : 0)).frame(width: 16, height: 20).contentShape(Rectangle())
+                    .onTapGesture {
+                        guard current else { app.open(project); return }
+                        if open { collapsed.insert(project.path) } else { collapsed.remove(project.path) }
+                    }
+                    .help(open ? "Hide this project's chats" : "Show this project's chats")
+                Text(project.name).font(.system(size: 13.5 * Theme.scale)).lineLimit(1)
             }
         }
         .buttonStyle(RowButton(selected: current && app.route == .chat && chat.active == nil))

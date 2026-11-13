@@ -49,6 +49,15 @@ enum Look: String, CaseIterable {
 }
 
 enum Theme {
+    /// How large text is drawn, from Settings › Personalize. Every font size is multiplied by it.
+    static var scale: CGFloat {
+        switch UserDefaults.standard.string(forKey: "textSize") ?? "standard" {
+        case "large": return 1.1
+        case "larger": return 1.2
+        default: return 1
+        }
+    }
+
     static var palette = (Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth).palette
 
     static var bg: Color { palette.bg }
