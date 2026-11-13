@@ -25,10 +25,33 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14)
                 .frame(maxWidth: 760).padding(.horizontal, 16).padding(.bottom, 8)
             }
-            Composer().frame(maxWidth: 760).padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 14)
+            Composer().frame(maxWidth: 760).padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 4)
+            StatusLine().frame(maxWidth: 760).padding(.horizontal, 28).padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
+    }
+}
+
+/// A quiet line under the message box: how full this chat is and how much of the account's usage is left.
+private struct StatusLine: View {
+    @EnvironmentObject var chat: ChatModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if let id = chat.active, let use = chat.usage[id], let window = use.window, window > 0 {
+                let share = Double(use.used) / Double(window)
+                Text("Chat \(Int((share * 100).rounded()))% full")
+                    .foregroundStyle(share > 0.8 ? Theme.amber : Theme.faint)
+                    .help("How much of the model's memory this chat uses. Near full, /compact shortens it.")
+            }
+            Spacer()
+            if let left = chat.usageLeft {
+                Text("\(left)% of usage left").foregroundStyle(left < 15 ? Theme.amber : Theme.faint)
+                    .help("From your account's limits, as the engine reports them. /status gives the details.")
+            }
+        }
+        .font(.system(size: 11.5))
     }
 }
 
@@ -117,7 +140,22 @@ private struct Messages: View {
 
 private struct ChatRow: View {
     let item: ChatItem
+    @EnvironmentObject var chat: ChatModel
     @State private var showInstructions = false
+    @State private var hovering = false
+
+    /// The last message the person sent, which can be edited and sent again.
+    private var isLastUser: Bool { chat.items.last { $0.kind == .user }?.id == item.id }
+    /// The last answer of a turn, where Retry and "Copy chat from here" make sense. Answers read back from the engine
+    /// carry their turn; one that does not is treated as ending its turn when no answer follows it before the next message.
+    private var endsTurn: Bool {
+        guard let i = chat.items.firstIndex(where: { $0.id == item.id }) else { return false }
+        for next in chat.items[(i + 1)...] {
+            if next.kind == .user { return true }
+            if next.kind == .agent { return item.turn != nil && next.turn != item.turn }
+        }
+        return true
+    }
 
     var body: some View {
         switch item.kind {
@@ -158,11 +196,18 @@ private struct ChatRow: View {
                             .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
                     }
                 }
+                actions(user: true)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.vertical, 4)
+            .onHover { hovering = $0 }
         case .agent:
-            MarkdownText(text: item.text).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                MarkdownText(text: item.text).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 2)
+                if endsTurn { actions(user: false) }
+            }
+            .contentShape(Rectangle())
+            .onHover { hovering = $0 }
         case .plan:
             PlanCard(item: item)
         case .note:
@@ -181,6 +226,46 @@ private struct ChatRow: View {
                 StepRow(item: item)
             }
         }
+    }
+
+    /// Copy, edit, retry and copying the chat. Always shown under an answer, as in Codex; under the person's own message,
+    /// shown for the last one and while the pointer is over the others.
+    private func actions(user: Bool) -> some View {
+        let canChange = !chat.running
+        return HStack(spacing: 2) {
+            action("doc.on.doc", "Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(item.result ?? item.text, forType: .string)
+            }
+            if user, isLastUser, canChange, item.result == nil {
+                action("pencil", "Edit and send again") {
+                    Task { @MainActor in
+                        if let text = await chat.undo() { chat.draft = text }
+                    }
+                }
+            }
+            if !user, canChange, let last = chat.items.last(where: { $0.kind == .agent }), last.id == item.id,
+               let question = chat.items.last(where: { $0.kind == .user }) {
+                action("arrow.clockwise", "Ask again") {
+                    Task { @MainActor in await chat.resend(question.result ?? question.text) }
+                }
+            }
+            if !user, canChange, let turn = item.turn {
+                action("arrow.triangle.branch", "Copy the chat up to here, to try something else") {
+                    Task { @MainActor in await chat.fork(through: turn) }
+                }
+            }
+        }
+        .opacity(!user || hovering || isLastUser ? 1 : 0)
+        .animation(.easeOut(duration: 0.12), value: hovering)
+    }
+
+    private func action(_ icon: String, _ help: String, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Image(systemName: icon).font(.system(size: 11.5)).foregroundStyle(Theme.faint)
+                .frame(width: 26, height: 22).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).help(help).accessibilityLabel(help)
     }
 }
 

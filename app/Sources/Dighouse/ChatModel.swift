@@ -56,6 +56,8 @@ final class ChatModel: ObservableObject {
     @Published private(set) var usage: [String: (used: Int, window: Int?)] = [:]
     /// Chats whose goal is still being worked on.
     @Published private(set) var goals: Set<String> = []
+    /// The share of the account's usage left, as the engine last reported it.
+    @Published var usageLeft: Int?
 
     var engine: Engine?
     var instructions: () -> String = { "" }
@@ -155,7 +157,13 @@ final class ChatModel: ObservableObject {
         do {
             let turns = try await readTurns(thread.id, engine)
             guard active == thread.id else { return }
-            items = turns.flatMap { $0["items"] as? [JSON] ?? [] }.compactMap { item(from: $0, finished: true) }
+            items = Self.items(of: turns) { self.item(from: $0, finished: true) }
+            // A goal starts its turns without a message from the person, so show it at the top.
+            if let goal = (try? await engine.request("thread/goal/get", ["threadId": thread.id]))?["goal"] as? JSON,
+               let objective = goal["objective"] as? String, active == thread.id {
+                items.insert(ChatItem(id: "goal-" + thread.id, kind: .note, text: Self.goalNote(objective)), at: 0)
+                if goal["status"] as? String == "active" { goals.insert(thread.id) }
+            }
             loading = false
         } catch {
             items = [problem(error.localizedDescription)]
@@ -211,11 +219,31 @@ final class ChatModel: ObservableObject {
         items.append(ChatItem(id: UUID().uuidString, kind: .note, text: text))
     }
 
-    /// Copy the open chat into a new one and open it.
-    func fork() async {
+    /// The usage left in the tighter of the account's two windows.
+    static func left(_ limits: JSON) -> Int? {
+        let used = ["primary", "secondary"].compactMap { (limits[$0] as? JSON)?["usedPercent"] as? Int }
+        return used.max().map { max(0, 100 - $0) }
+    }
+
+    /// Every item of the turns read from the engine, each marked with its turn.
+    static func items(of turns: [JSON], _ make: (JSON) -> ChatItem?) -> [ChatItem] {
+        turns.flatMap { turn -> [ChatItem] in
+            let id = turn["id"] as? String
+            return (turn["items"] as? [JSON] ?? []).compactMap { raw in
+                var item = make(raw)
+                item?.turn = id
+                return item
+            }
+        }
+    }
+
+    /// Copy the open chat into a new one and open it, whole or up to and including one turn.
+    func fork(through turn: String? = nil) async {
         guard let engine, let active else { return }
         do {
-            let forked = try await engine.request("thread/fork", threadSettings(["threadId": active]))
+            var params: JSON = ["threadId": active]
+            if let turn { params["lastTurnId"] = turn }
+            let forked = try await engine.request("thread/fork", threadSettings(params))
             guard let id = (forked["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No copy was made.") }
             let title = "Copy of " + ((threads + generalThreads).first { $0.id == active }?.title ?? "chat")
             let copy = ChatThread(id: id, title: String(title.prefix(80)), named: true)
@@ -225,21 +253,34 @@ final class ChatModel: ObservableObject {
             remember()
             _ = try? await engine.request("thread/name/set", ["threadId": id, "name": copy.title])
             await select(copy)
-            note("This is a copy of the chat. What you do here leaves the original as it was.")
+            note(turn == nil ? "This is a copy of the chat. What you do here leaves the original as it was."
+                             : "This is a copy of the chat up to that message. What you do here leaves the original as it was.")
         } catch {
             note("Could not copy the chat: \(error.localizedDescription)")
         }
     }
 
+    /// Take back the last message and send it again, edited or as it was.
+    func resend(_ text: String) async {
+        guard await undo() != nil else { return }
+        await send(text)
+    }
+
     /// Take back the last message and its answer. Returns the message, so it can be edited and sent again.
     func undo() async -> String? {
         guard let engine, let active, !running else { return nil }
-        let last = items.last { $0.kind == .user }?.text
+        let lastMessage = items.last { $0.kind == .user }
+        let last = lastMessage.map { $0.result ?? $0.text }
         do {
             try await resume(active)
-            _ = try await engine.request("thread/rollback", ["threadId": active, "numTurns": 1])
+            // Roll back to just before the last message the person sent. Turns after it without a message of their own,
+            // such as a summary made by /compact, go with it.
+            let before = try await readTurns(active, engine)
+            let mine = before.lastIndex { turn in (turn["items"] as? [JSON] ?? []).contains { $0["type"] as? String == "userMessage" } }
+            let count = mine.map { before.count - $0 } ?? 1
+            _ = try await engine.request("thread/rollback", ["threadId": active, "numTurns": max(1, count)])
             let turns = try await readTurns(active, engine)
-            items = turns.flatMap { $0["items"] as? [JSON] ?? [] }.compactMap { item(from: $0, finished: true) }
+            items = Self.items(of: turns) { self.item(from: $0, finished: true) }
             return last
         } catch {
             note("Could not take the message back: \(error.localizedDescription)")
@@ -260,7 +301,8 @@ final class ChatModel: ObservableObject {
     }
 
     /// Give the chat a goal. The engine keeps taking turns until the goal is met or it needs the person.
-    func setGoal(_ objective: String) async {
+    /// A workflow sets its name as the title, so the chat and its note show the name rather than the instructions.
+    func setGoal(_ objective: String, title: String? = nil) async {
         let objective = objective.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let engine, !objective.isEmpty else { return }
         do {
@@ -270,21 +312,125 @@ final class ChatModel: ObservableObject {
                 active = id
                 resumed.insert(id)
                 startedHere.insert(id)
-                let new = ChatThread(id: id, title: String(objective.prefix(80)), named: false)
+                let new = ChatThread(id: id, title: String((title ?? objective).prefix(80)), named: title != nil)
                 if project == nil { generalThreads.insert(new, at: 0) } else { threads.insert(new, at: 0) }
                 remember()
-                onUntitled?(id, objective)
+                if let title { _ = try? await engine.request("thread/name/set", ["threadId": id, "name": title]) }
+                else { onUntitled?(id, objective) }
             } else if let active {
                 try await resume(active)
             }
             guard let active else { return }
-            note("**Goal:** \(objective)\n\nThe agent keeps working, turn after turn, until this is done or it needs you. Stop ends it.")
+            note(Self.goalNote(objective))
             running = true
             _ = try await engine.request("thread/goal/set", ["threadId": active, "objective": objective, "status": "active"])
         } catch {
             running = false
             note("Could not set the goal: \(error.localizedDescription)")
         }
+    }
+
+    static func goalNote(_ objective: String) -> String {
+        let name = ToolGuide.workflow(sentAs: objective)?.title ?? objective
+        return "**Goal:** \(name)\n\nThe agent keeps working, turn after turn, until this is done or it needs you. Stop ends it."
+    }
+
+    /// A chat found by search or in the archive, with the folder it belongs to.
+    struct Found: Identifiable {
+        let thread: ChatThread
+        let folder: String
+        let snippet: String
+        var id: String { thread.id }
+    }
+
+    /// Every Dighouse chat with the file the engine keeps it in, listed once and kept for the next search.
+    private var library: [(found: Found, path: String)] = []
+
+    /// Dighouse's chats whose messages contain every word typed. The engine's own search reads every Codex chat on the Mac
+    /// and took over a minute here, so this lists Dighouse's folders and reads only their chat files.
+    func search(_ term: String, folders: Set<String>) async -> [Found] {
+        let words = term.lowercased().split(separator: " ").map(String.init).filter { !$0.isEmpty }
+        guard let engine, !words.isEmpty else { return [] }
+        if library.isEmpty {
+            library = await withTaskGroup(of: [(found: Found, path: String)].self) { group in
+                for folder in folders {
+                    group.addTask { @MainActor in
+                        guard let listed = try? await engine.request("thread/list", ["cwd": folder, "limit": 100]) else { return [] }
+                        return (listed["data"] as? [JSON] ?? []).compactMap { t in
+                            guard let path = t["path"] as? String, let f = self.makeFound(t, snippet: "", folders: folders) else { return nil }
+                            return (f, path)
+                        }
+                    }
+                }
+                var all: [(found: Found, path: String)] = []
+                for await part in group { all += part }
+                return all
+            }
+        }
+        let shelf = library
+        return await Task.detached {
+            shelf.compactMap { entry -> Found? in
+                guard let snippet = Self.match(words, in: entry.path) else { return nil }
+                return Found(thread: entry.found.thread, folder: entry.found.folder, snippet: snippet)
+            }
+        }.value
+    }
+
+    /// The first message in a chat file that holds every word, cut down to a line around the first word, or nil.
+    nonisolated static func match(_ words: [String], in path: String) -> String? {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+        var messages: [String] = []
+        // Chats are written in two formats: newer ones log user_message and agent_message events, older ones item_completed events.
+        for line in text.split(separator: "\n")
+        where line.contains("\"user_message\"") || line.contains("\"agent_message\"") || line.contains("\"UserMessage\"") || line.contains("\"AgentMessage\"") {
+            guard let data = line.data(using: .utf8), let o = try? JSONSerialization.jsonObject(with: data) as? JSON,
+                  let payload = o["payload"] as? JSON else { continue }
+            if let message = payload["message"] as? String, ["user_message", "agent_message"].contains(payload["type"] as? String ?? "") {
+                messages.append(Mentions.visible(message))
+            } else if let item = payload["item"] as? JSON, ["UserMessage", "AgentMessage"].contains(item["type"] as? String ?? "") {
+                let parts = (item["content"] as? [JSON] ?? []).compactMap { $0["text"] as? String }
+                if !parts.isEmpty { messages.append(Mentions.visible(parts.joined(separator: "\n"))) }
+            }
+        }
+        let all = messages.joined(separator: "\n").lowercased()
+        guard words.allSatisfy({ all.contains($0) }) else { return nil }
+        let hit = messages.first { m in words.contains { m.lowercased().contains($0) } } ?? ""
+        guard let r = hit.lowercased().range(of: words[0]) else { return String(hit.prefix(160)) }
+        let start = hit.index(r.lowerBound, offsetBy: -60, limitedBy: hit.startIndex) ?? hit.startIndex
+        let end = hit.index(r.upperBound, offsetBy: 100, limitedBy: hit.endIndex) ?? hit.endIndex
+        return (start > hit.startIndex ? "…" : "") + hit[start..<end].replacingOccurrences(of: "\n", with: " ") + (end < hit.endIndex ? "…" : "")
+    }
+
+    /// Dighouse's archived chats, newest first.
+    func archived(folders: Set<String>) async -> [Found] {
+        guard let engine else { return [] }
+        var out: [Found] = []
+        for folder in folders {
+            guard let listed = try? await engine.request("thread/list", ["cwd": folder, "archived": true, "limit": 40]) else { continue }
+            out += (listed["data"] as? [JSON] ?? []).compactMap { makeFound($0, snippet: "", folders: folders) }
+        }
+        return out
+    }
+
+    private func makeFound(_ t: JSON, snippet: String, folders: Set<String>) -> Found? {
+        guard let id = t["id"] as? String, let cwd = t["cwd"] as? String, folders.contains(cwd) else { return nil }
+        let name = (t["name"] as? String) ?? ""
+        let title = name.isEmpty ? Mentions.visible((t["preview"] as? String) ?? "Chat") : name
+        let shown = ToolGuide.workflow(sentAs: title)?.title ?? title
+        return Found(thread: ChatThread(id: id, title: String(shown.prefix(80)), named: !name.isEmpty), folder: cwd,
+                     snippet: snippet.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// Bring an archived chat back to the sidebar.
+    func unarchive(_ found: Found) async -> Bool {
+        guard let engine, (try? await engine.request("thread/unarchive", ["threadId": found.thread.id])) != nil else { return false }
+        if found.folder == scope {
+            if project == nil { generalThreads.insert(found.thread, at: 0) } else { threads.insert(found.thread, at: 0) }
+        } else {
+            known[found.folder, default: []].insert(found.thread, at: 0)
+        }
+        remember()
+        return true
     }
 
     func archive(_ thread: ChatThread) async {
@@ -372,6 +518,15 @@ final class ChatModel: ObservableObject {
         _ = try? await engine.request("turn/interrupt", ["threadId": active, "turnId": turn])
     }
 
+    /// Stop every run, in whichever chat it is, such as a download started from another chat.
+    func stopAll() async {
+        guard let engine else { return }
+        for (thread, turn) in live where !turn.isEmpty {
+            if goals.contains(thread) { _ = try? await engine.request("thread/goal/set", ["threadId": thread, "status": "paused"]) }
+            _ = try? await engine.request("turn/interrupt", ["threadId": thread, "turnId": turn])
+        }
+    }
+
     func answer(_ allow: Bool) {
         guard let approval else { return }
         engine?.respond(to: approval.id, result: ["action": allow ? "accept" : "decline", "content": [:] as JSON])
@@ -397,6 +552,9 @@ final class ChatModel: ObservableObject {
     // MARK: what the engine tells us
 
     func handle(_ method: String, _ params: JSON) {
+        if method == "account/rateLimits/updated", let limits = params["rateLimits"] as? JSON {
+            usageLeft = Self.left(limits)
+        }
         guard let thread = params["threadId"] as? String else { return }
         // Runs carry on while another chat is on screen, so keep track of every chat's turn.
         if method == "turn/started" { live[thread] = (params["turn"] as? JSON)?["id"] as? String ?? "" }
@@ -420,17 +578,19 @@ final class ChatModel: ObservableObject {
             if let i = items.firstIndex(where: { $0.id == card.id }) { items[i] = card } else { items.append(card) }
         case "item/started":
             guard let raw = params["item"] as? JSON, raw["type"] as? String != "userMessage",
-                  let new = item(from: raw, finished: false) else { return }
+                  var new = item(from: raw, finished: false) else { return }
+            new.turn = params["turnId"] as? String
             items.append(new)
         case "item/agentMessage/delta":
             guard let id = params["itemId"] as? String, let i = items.firstIndex(where: { $0.id == id }) else { return }
             items[i].text += params["delta"] as? String ?? ""
         case "item/completed":
             guard let raw = params["item"] as? JSON, raw["type"] as? String != "userMessage" else { return }
-            guard let done = item(from: raw, finished: true) else {
+            guard var done = item(from: raw, finished: true) else {
                 items.removeAll { $0.id == raw["id"] as? String }
                 return
             }
+            done.turn = params["turnId"] as? String
             if let i = items.firstIndex(where: { $0.id == done.id }) { items[i] = done } else { items.append(done) }
             if raw["type"] as? String == "mcpToolCall", raw["server"] as? String == "dighouse", done.state != .failed {
                 onToolFinished?(raw["tool"] as? String ?? "", raw["arguments"] as? JSON ?? [:])

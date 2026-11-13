@@ -21,6 +21,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import httpx
 import laspy
@@ -179,6 +180,28 @@ def _find_usgs(bbox: list[float]) -> list[dict]:
 # --------------------------------------------------------------- fetching data
 
 
+# A long download reports each finished part here, so the app can show progress and a time left.
+# fetch_terrain sets it for the length of one fetch; it is a no-op otherwise.
+progress: Callable[[int, int], None] = lambda done, total: None
+# True once the person has cancelled the fetch; long waits between retries check it so a cancel does not wait them out.
+cancelled: Callable[[], bool] = lambda: False
+
+
+def _counted(fn, total: int):
+    """Wrap fn so each call that finishes reports progress as done of total."""
+    import threading
+    lock, done = threading.Lock(), [0]
+
+    def run(*args):
+        progress(done[0], total)  # before each part too, so a cancelled fetch skips the parts still waiting
+        out = fn(*args)
+        with lock:
+            done[0] += 1
+            progress(done[0], total)
+        return out
+    return run
+
+
 def fetch_points(dataset: str, bbox: list[float], spacing: float = 0.35) -> tuple[Points, dict]:
     """Download the points of one dataset inside a lon/lat box."""
     kind, _, name = dataset.partition(":")
@@ -218,7 +241,8 @@ def _fetch_opentopography(name: str, bbox: list[float]) -> tuple[Points, dict]:
         bx0, by0, bx1, by1 = sr.shape.bbox
         if bx0 <= x1 and bx1 >= x0 and by0 <= y1 and by1 >= y0:
             urls.append(sr.record.as_dict()["URL"])
-    parts = [_read_las(_download(u), (x0, y0, x1, y1)) for u in urls]
+    progress(0, len(urls))
+    parts = [_counted(lambda u: _read_las(_download(u), (x0, y0, x1, y1)), len(urls))(u) for u in urls]
     return _join(parts, epsg), {"files": [u.rsplit("/", 1)[-1] for u in urls]}
 
 
@@ -292,8 +316,9 @@ def _fetch_ept(url: str, bbox: list[float], spacing: float) -> tuple[Points, dic
         m = (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
         return [(x[m], y[m], np.asarray(las.z)[m].astype(np.float32), np.asarray(las.classification)[m].astype(np.uint8))]
 
+    progress(0, len(nodes))
     with ThreadPoolExecutor(8) as pool:
-        parts = list(pool.map(read, nodes))
+        parts = list(pool.map(_counted(read, len(nodes)), nodes))
     pts = _join(parts, src_epsg)
     w, s, e, n = bbox
     dst_epsg = utm_epsg((w + e) / 2, (s + n) / 2)

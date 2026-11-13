@@ -129,3 +129,45 @@ Two small fixes from the same run: a step still open when a turn ends normally i
 
 Not done: recent places in the list (the plan said "recent places"); Home's starting places are one click away and a project's own area is already known to the agent.
 
+
+### 2026-11-13, U4: the chat works like Codex
+
+- **Message actions.** Under each answer: Copy, Ask again (on the last answer) and "Copy the chat up to here". Under the person's last message: Copy and "Edit and send again"; earlier messages show Copy on hover. They are always visible under answers because hover does not register over selectable text; Codex shows them the same way.
+- **Edit and Ask again roll back properly.** Both take the chat back to just before the person's last message, including turns after it that had no message of their own (a /compact summary). The first try rolled back one turn, which removed only the summary and left two copies of the question.
+- **Copy the chat up to here** forks the chat through that answer's turn (`thread/fork` with `lastTurnId`), so a person can try something else from a point in a run.
+- **Find a chat** (sidebar, ⇧⌘F) searches every Dighouse chat by what was said in it and shows the line it matched, with its project; it opens the chat there. The engine's own `thread/search` reads every Codex chat on this Mac and took 72 seconds, so the app lists Dighouse's own folders and reads only their chat files, in both of the engine's file formats. **Archived chats** lists them with their projects, and Restore puts one back in its project's list.
+- **Long runs as goals.** "Run the whole search" now starts as a Codex goal: the chat opens with a "Goal: Run the whole search" note, the engine keeps taking turns until the goal is met or it needs the person, and Stop pauses the goal before interrupting. A goal chat reopened later shows its goal note at the top.
+
+Checked in the app:
+
+| Action | Seen |
+|---|---|
+| Copy under an answer | The clipboard held the answer's text. |
+| Ask again | Before the fix: a second question and answer were added. After: the last answer was replaced and the chat kept two turns, as before. |
+| Copy the chat up to here, on the first answer | "Copy of Hillfort test" with only the first question and answer, and a note. |
+| Edit and send again, in the copy | The message went back into the box and left the chat. |
+| Find a chat: "Monks Mound" | Three chats from Angel Mounds and the Cahokia control run, each with the matching line. The first version found nothing: older chat files store messages differently. |
+| Archived chats, Restore "Hillfort test" | It left the list and came back under Maiden Castle in the sidebar. |
+| Run the whole search on a fresh Serpent Mound project | Started as a goal with no message from the person. It finished on its own: the goal ended as complete after 3 turns and 17 minutes, with no message from the person. Terrain (about 7 ground returns per square metre), 9 tiles, 3 candidates (the serpent embankment, the published conical mound, a doubtful knob), a section, modern check and sources on each (5 read, 15 could not open), and a run summary. Passed. |
+
+Test chats were archived again afterwards.
+
+
+### 2026-11-13, U5: know what is happening and what it costs
+
+- **Status line** under the message box: "Chat 4% full" from the engine's token reports for that chat (amber over 80%, with a hint that /compact shortens it), and "76% of usage left" from the account's rate limits, read at launch and updated whenever the engine reports them. /status gives the details; the same figure (76–77% over the afternoon) came from both.
+- **Downloads show progress.** While `fetch_terrain` runs, the tools write `private/state/progress.json` (dataset, parts done of total, start time, no coordinates) and remove it when the fetch ends. The project strip shows "Downloading ea-dtm-1m: 5 of 20 parts, under a minute left" with a Cancel beside it. It works for USGS point clouds, OpenTopography files and the national ground models.
+- **Cancel stops the download, not only the agent.** Stopping a turn does not stop a tool call already running on the tool server: the first test kept downloading after the chat said "(stopped)". Cancel now also writes a stop file that the fetch checks before each part and during waits between retries, so it ends at the next part and adds nothing to the project.
+- **The modern-feature check gives up sooner.** In two runs today it hung for minutes while every Overpass server was down (overpass-api.de answered 406 to every request; the others timed out). It now allows 20 seconds per server, tries each once and the first again, and says plainly that the map services are down and the run should carry on.
+- **The map shows a terrain with tiles.** After a new terrain was fetched the map went blank, because it showed the newest terrain, which had no tiles. It now shows one with tiles unless the person picks another. The terrain menu says each one's size and whether it is cut, and an uncut one offers "Cut into tiles".
+
+Checked in the app on Maiden Castle:
+
+| Check | Seen |
+|---|---|
+| 1 sq km England fetch | Finished in about a minute, faster than expected; the strip showed "Downloading ea-dtm-1m: 0 of 6 parts" with Cancel, then went back to the tile count. The map stayed on the tiled terrain. |
+| 4 sq km fetch, Cancel at 5 of 24 parts | The part in flight finished and the fetch ended about 1 min 45 s after the press (the Environment Agency answers slowly). progress.json and the stop file were gone, the terrains list was unchanged (still two), and the steps showed "(stopped)". Passed. |
+| Usage | 76% in the status line and 76–77% from /status, both from the engine's rate limits. |
+
+Left over: a fetch can still take up to two minutes to stop while one request is in flight to a slow service. The cancelled test chats in Maiden Castle are named "Environment Agency terrain fetch".
+

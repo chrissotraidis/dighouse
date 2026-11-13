@@ -142,7 +142,19 @@ struct TopBar: View {
 
     @ViewBuilder private func stats(_ s: RunStatus) -> some View {
         HStack(spacing: 8) {
-            if s.tiles == 0 {
+            if let d = store.download {
+                let name = d.dataset.split(separator: ":").last.map(String.init) ?? d.dataset
+                piece(d.total > 0 ? "Downloading \(name): \(d.done) of \(d.total) parts" + (d.left.map { ", \($0)" } ?? "") : "Downloading \(name)")
+                Button("Cancel") {
+                    // The tools check for this file between parts, since stopping the agent does not stop a tool already running.
+                    if let root = store.current?.path {
+                        FileManager.default.createFile(atPath: root + "/private/state/stop-download", contents: Data())
+                    }
+                    Task { await chat.stopAll() }
+                }
+                    .buttonStyle(.plain).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.accent)
+                    .help("Stop the download and the agent. Nothing half-downloaded is added to the project.")
+            } else if s.tiles == 0 {
                 piece(store.terrains.isEmpty ? "No terrain yet" : "Terrain ready, not cut into tiles")
             } else {
                 piece("Screened \(s.screened) of \(s.readable) tiles")
@@ -204,6 +216,7 @@ struct Sidebar: View {
             nav("square.and.pencil", "New chat", selected: app.route == .chat && store.current == nil && chat.active == nil) { app.newChat() }
             nav("house", "Home", selected: app.route == .home) { app.goHome() }
             nav("wrench.and.screwdriver", "Toolbox", selected: app.route == .toolbox) { app.show(.toolbox) }
+            nav("magnifyingglass", "Find a chat", selected: false) { app.findingChat = true }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -238,6 +251,7 @@ struct Sidebar: View {
         .padding(.horizontal, 8).padding(.bottom, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.side)
+        .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
         .onChange(of: app.renameRequest) { _, thread in
             guard let thread else { return }
             newName = thread.title

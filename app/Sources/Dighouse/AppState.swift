@@ -31,6 +31,8 @@ final class AppState: ObservableObject {
     @Published var pickerRequest: PickerRequest?
     /// A slash command asking the sidebar to rename a chat.
     @Published var renameRequest: ChatThread?
+    /// Whether the "Find a chat" sheet is open.
+    @Published var findingChat = false
     @Published var starting = true
     @Published var sidebarVisible = true
     @Published var sidebarPeek = false
@@ -202,6 +204,9 @@ final class AppState: ObservableObject {
         if let codex = setup.codex, setup.toolsReady {
             await engine.start(codex: codex, toolsBinary: setup.toolsBinary, path: setup.path, extraServers: toolServers)
             if engine.ready {
+                if let read = try? await engine.request("account/rateLimits/read"), let limits = read["rateLimits"] as? JSON {
+                    chat.usageLeft = ChatModel.left(limits)
+                }
                 await chat.open(project: store.current?.path)
                 if let project = store.current { store.open(project) }
             }
@@ -381,6 +386,12 @@ final class AppState: ObservableObject {
                 await chat.open(project: nil)
                 await chat.send(flow.prompt, title: flow.title)
             }
+        } else if flow.id == "full" {
+            // A whole search runs as a goal, so the engine keeps taking turns until it is done or needs the person.
+            route = .chat
+            if layout == .workspace { layout = .split }
+            chat.newChat()
+            Task { @MainActor in await chat.setGoal(flow.prompt, title: flow.title) }
         } else {
             ask(flow.prompt, title: flow.title)
         }
@@ -573,6 +584,7 @@ struct DighouseApp: App {
             CommandGroup(after: .sidebar) {
                 Button("Home") { app.goHome() }.keyboardShortcut("0")
                 Button("Toolbox") { app.show(.toolbox) }.keyboardShortcut("t")
+                Button("Find a Chat…") { app.findingChat = true }.keyboardShortcut("f", modifiers: [.command, .shift])
                 Divider()
                 Button(app.sidebarVisible ? "Hide Sidebar" : "Show Sidebar") { app.sidebarVisible.toggle() }
                     .keyboardShortcut("s", modifiers: [.command, .control])

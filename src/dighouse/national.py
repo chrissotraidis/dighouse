@@ -93,7 +93,10 @@ def _chunk(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.ndar
         except httpx.TimeoutException:
             if attempt == tries - 1:
                 raise
-        time.sleep(min(wait, 90))
+        for _ in range(int(min(wait, 90))):  # wait in short steps, so a cancelled fetch ends promptly
+            if sources.cancelled():
+                raise RuntimeError("Stopped by the person before the download finished.")
+            time.sleep(1)
     raise RuntimeError("unreachable")
 
 
@@ -131,8 +134,9 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
     step = d.get("chunk_px", CHUNK_PX) * d["res"]
     parts = [(cx, cy, min(cx + step, x1), min(cy + step, y1))
              for cx in np.arange(x0, x1, step) for cy in np.arange(y0, y1, step)]
+    sources.progress(0, len(parts))
     with ThreadPoolExecutor(d.get("parallel", 4)) as pool:
-        got = list(pool.map(lambda b: (b, _chunk(d, *b)), parts))
+        got = list(pool.map(sources._counted(lambda b: (b, _chunk(d, *b)), len(parts)), parts))
     for _, (a, left, top, cell, nodata) in got:
         if nodata is not None:
             a[a == nodata] = np.nan

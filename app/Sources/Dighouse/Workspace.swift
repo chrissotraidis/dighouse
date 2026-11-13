@@ -70,9 +70,18 @@ struct MapView: View {
     @State private var terrain: String?
     @State private var zoom = 1.0
 
-    private var shown: [Tile] {
-        let id = terrain ?? store.terrains.first?.id
-        return store.tiles.filter { $0.terrain == id }
+    /// The terrain on the map. Unless the person picked one, a terrain that has tiles: one just fetched has none until it is cut.
+    private var current: String? {
+        terrain ?? store.terrains.first { t in store.tiles.contains { $0.terrain == t.id } }?.id ?? store.terrains.first?.id
+    }
+
+    private var shown: [Tile] { store.tiles.filter { $0.terrain == current } }
+
+    /// A terrain's name in the menu: its survey, its size, and whether it has been cut into tiles yet.
+    private func label(_ t: Terrain) -> String {
+        let name = t.dataset.split(separator: ":").last.map(String.init) ?? t.id
+        let cut = store.tiles.contains { $0.terrain == t.id }
+        return "\(name), \(String(format: "%.1f", t.areaKm2)) sq km" + (cut ? "" : ", not cut into tiles")
     }
 
     var body: some View {
@@ -97,6 +106,17 @@ struct MapView: View {
         } else {
             GeometryReader { geo in
                 let tiles = shown
+                if tiles.isEmpty, let id = current {
+                    // A terrain picked from the menu that has not been cut yet.
+                    EmptyPane(icon: "square.grid.3x3", title: "Not cut into tiles yet",
+                              text: "This terrain is built but has no tiles, so there is nothing to show here yet.") {
+                        Button("Cut into tiles") {
+                            app.ask("Cut the terrain \(id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
+                        }
+                        .buttonStyle(PrimaryButton())
+                    }
+                    .frame(width: geo.size.width, height: geo.size.height)
+                }
                 let width = Double(tiles.map { $0.col + $0.cols }.max() ?? 1)
                 let height = Double(tiles.map { $0.row + $0.rows }.max() ?? 1)
                 let scale = min((geo.size.width - 32) / width, (geo.size.height - 72) / height) * zoom
@@ -142,10 +162,10 @@ struct MapView: View {
             Button { zoom = min(8, zoom * 1.5) } label: { Image(systemName: "plus") }
                 .buttonStyle(IconButton(size: 28)).help("Zoom in")
             if store.terrains.count > 1 {
-                PillMenu(title: store.terrains.first { $0.id == (terrain ?? store.terrains.first?.id) }?.dataset
+                PillMenu(title: store.terrains.first { $0.id == current }?.dataset
                     .split(separator: ":").last.map(String.init) ?? "Terrain", quiet: true) {
                     ForEach(store.terrains) { t in
-                        Button(t.dataset.split(separator: ":").last.map(String.init) ?? t.id) { terrain = t.id }
+                        Button(label(t)) { terrain = t.id }
                     }
                 }
             }

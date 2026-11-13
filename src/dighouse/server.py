@@ -6,6 +6,7 @@ import functools
 import hashlib
 import json
 import re
+import time
 
 import numpy as np
 
@@ -169,6 +170,33 @@ def fetch_terrain(project: str, dataset: str, west: float, south: float, east: f
         raise ValueError(f"The box covers {km2:.1f} square km. Fetch at most {MAX_KM2} at a time.")
     tid = re.sub(r"[^a-z0-9]+", "-", dataset.split(":")[-1].lower()).strip("-")[:28] + "-" + \
         hashlib.sha1(json.dumps(bbox).encode()).hexdigest()[:4]
+    started = time.time()
+
+    stop = p.path("private", "state", "stop-download")
+    stop.unlink(missing_ok=True)
+    stopped: list[bool] = []
+
+    def report(done: int, total: int) -> None:
+        # The app reads this to show what is downloading and roughly how long is left. No coordinates go in it.
+        # It writes stop-download when the person presses Cancel; the fetch ends at the next part.
+        if stopped or stop.exists():
+            stopped.append(True)
+            stop.unlink(missing_ok=True)
+            raise RuntimeError("Stopped by the person before the download finished. Nothing was added to the project.")
+        p.save("progress", {"dataset": dataset, "done": done, "total": total, "started": started, "updated": time.time()})
+
+    sources.progress = report
+    sources.cancelled = lambda: bool(stopped) or stop.exists()
+    try:
+        return _fetch(p, dataset, bbox, km2, tid, resolution_m)
+    finally:
+        sources.progress = lambda done, total: None
+        sources.cancelled = lambda: False
+        p.path("private", "state", "progress.json").unlink(missing_ok=True)
+
+
+def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_m: float) -> dict:
+    west, south, east, north = bbox
     if dataset in national.NATIONAL:  # a ready-made ground model, not points
         dtm, outside, x0, y1, resolution_m, epsg, how = national.fetch_dtm(dataset, bbox, resolution_m)
         gap = np.zeros_like(dtm)

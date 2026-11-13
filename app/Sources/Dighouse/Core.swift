@@ -245,6 +245,8 @@ struct ChatItem: Identifiable {
     var plan: [PlanStep] = []
     var projectPath: String?
     var files: [String] = []
+    /// The engine's turn this belongs to, so a chat can be copied up to here.
+    var turn: String?
 }
 
 /// Something attached to a message: an image, a sound, a video, or any other file.

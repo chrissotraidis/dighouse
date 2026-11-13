@@ -22,22 +22,24 @@ _READER = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebK
 def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
     """What OpenStreetMap has mapped around a point: roads, buildings, land use, and known sites."""
     around = f"(around:{radius_m},{lat},{lon})"
-    query = f"""[out:json][timeout:40];
+    query = f"""[out:json][timeout:18];
 (way{around}[highway]; way{around}[building]; way{around}[landuse]; nwr{around}[man_made];
  nwr(around:2000,{lat},{lon})[historic];);
 out tags 200;"""
     r = None
-    # the public map services refuse requests that arrive too close together, so alternate between two and wait
-    for wait, host in ((0, OVERPASS[0]), (0, OVERPASS[1]), (6, OVERPASS[0]), (6, OVERPASS[1])):
+    # The public map services refuse requests that arrive too close together, and are sometimes down for an hour.
+    # Try each once, then the first again after a pause, with a short limit each time, so a check gives up in about a minute.
+    for wait, host in ((0, OVERPASS[0]), (0, OVERPASS[1]), (5, OVERPASS[0])):
         time.sleep(wait)
         try:
-            r = _client.post(host, data={"data": query})
+            r = _client.post(host, data={"data": query}, timeout=20)
         except httpx.HTTPError:
             continue
         if r.status_code == 200:
             break
     if r is None or r.status_code != 200:
-        raise RuntimeError("The open map service is busy and did not answer. Wait a minute, then run this check again.")
+        raise RuntimeError("The open map services (OpenStreetMap's Overpass servers) did not answer within a minute; they are busy "
+                           "or down. Leave this check for now and carry on; run it again later.")
     kinds = {"roads": [], "buildings": [], "land_use": [], "structures": [], "historic_within_2km": []}
     for el in r.json().get("elements", []):
         tags = el.get("tags", {})

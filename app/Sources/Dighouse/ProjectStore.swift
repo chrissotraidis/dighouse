@@ -11,6 +11,24 @@ final class ProjectStore: ObservableObject {
     @Published var status = RunStatus()
     @Published var selectedTile: String?
     @Published var selectedCandidate: String?
+    /// A download in progress, from the file the tools write while they fetch terrain.
+    @Published var download: Download?
+
+    struct Download: Equatable {
+        let dataset: String
+        let done: Int, total: Int
+        let started: Date
+
+        /// "about 3 minutes left", once a few parts have come in to judge by.
+        var left: String? {
+            guard done >= 2, total > done else { return nil }
+            let each = Date().timeIntervalSince(started) / Double(done)
+            let seconds = each * Double(total - done)
+            if seconds < 60 { return "under a minute left" }
+            let minutes = Int((seconds / 60).rounded())
+            return "about \(minutes) minute\(minutes == 1 ? "" : "s") left"
+        }
+    }
 
     var fetchStatus: ((String) async -> RunStatus?)?
     private var signature = ""
@@ -65,9 +83,10 @@ final class ProjectStore: ObservableObject {
 
     func reloadIfChanged() {
         guard let root = current?.path else {
-            terrains = []; tiles = []; candidates = []; status = RunStatus()
+            terrains = []; tiles = []; candidates = []; status = RunStatus(); download = nil
             return
         }
+        readDownload(root)
         let fm = FileManager.default
         let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
         let watched = ["terrains", "tiles", "locations", "controls"].map { root + "/private/state/\($0).json" }
@@ -134,6 +153,19 @@ final class ProjectStore: ObservableObject {
     private func json(_ path: String) -> Any? {
         guard let data = FileManager.default.contents(atPath: path) else { return nil }
         return try? JSONSerialization.jsonObject(with: data)
+    }
+
+    /// The tools write private/state/progress.json while a fetch runs and remove it when it ends.
+    /// A file not touched for ten minutes is left over from a fetch that was cut off, so it is ignored.
+    private func readDownload(_ root: String) {
+        guard let p = json(root + "/private/state/progress.json") as? JSON,
+              let updated = p["updated"] as? Double, Date().timeIntervalSince1970 - updated < 600 else {
+            if download != nil { download = nil }
+            return
+        }
+        let next = Download(dataset: p["dataset"] as? String ?? "lidar", done: p["done"] as? Int ?? 0, total: p["total"] as? Int ?? 0,
+                            started: Date(timeIntervalSince1970: p["started"] as? Double ?? updated))
+        if next != download { download = next }
     }
 
     static func status(from text: String) -> RunStatus? {
