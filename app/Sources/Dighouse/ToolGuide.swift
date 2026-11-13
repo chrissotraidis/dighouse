@@ -113,6 +113,11 @@ enum ToolGuide {
         "visualize": Addon(title: "Visualize", icon: "chart.xyaxis.line", use: "Draw charts and diagrams from a project's numbers."),
     ]
 
+    /// The workflow a message was sent by, so the chat can show its name rather than its full instructions.
+    static func workflow(sentAs text: String) -> Workflow? {
+        workflows.filter { !$0.prompt.isEmpty && text.hasPrefix($0.prompt) }.max { $0.prompt.count < $1.prompt.count }
+    }
+
     static let workflows: [Workflow] = [
         Workflow(id: "research", title: "What should I research?", icon: "sparkle.magnifyingglass",
                  summary: "The agent reads the open archives, weighs where lidar is open against what is already on record, and proposes three searches worth doing.",

@@ -32,8 +32,10 @@ struct WelcomeView: View {
             HStack(spacing: 10) {
                 if page > 0 { Button("Back") { page -= 1 }.buttonStyle(SecondaryButton()) }
                 Spacer()
-                if app.onboarded { Button("Close guide") { app.showWelcome = false }.buttonStyle(SecondaryButton()) }
-                if page < 3 {
+                if app.onboarded && page < 3 { Button("Close guide") { app.showWelcome = false }.buttonStyle(SecondaryButton()) }
+                if page == 3 {
+                    firstActions
+                } else {
                     Button(page == 0 ? "Get started" : "Continue") { page += 1 }
                         .buttonStyle(PrimaryButton()).disabled(page == 2 && !engine.ready)
                         .keyboardShortcut(.defaultAction)
@@ -146,6 +148,8 @@ struct WelcomeView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(option.title).font(.system(size: 13.5, weight: .semibold))
                                 Text(option.place).font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                                Text(option.about).font(.system(size: 12)).foregroundStyle(Theme.faint).lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer()
                             if !option.source.isEmpty { Badge(text: option.source) }
@@ -159,19 +163,22 @@ struct WelcomeView: View {
                 }
             }
             if let problem { Text(problem).font(.system(size: 12.5)).foregroundStyle(Theme.amber) }
-            HStack(spacing: 10) {
-                if !app.onboarded { Button("Skip for now") { app.finishOnboarding() }.buttonStyle(SecondaryButton()) }
-                Button("Help me choose a place") {
-                    app.finishOnboarding()
-                    if let flow = ToolGuide.workflows.first(where: { $0.id == "choose" }) { app.run(flow) }
-                }
-                .buttonStyle(SecondaryButton()).disabled(!engine.ready)
-                Spacer()
-                if busy { ProgressView().controlSize(.small) }
-                Button(choice.kind == .own ? "Pick an area" : "Create project", action: begin)
-                    .buttonStyle(PrimaryButton()).disabled(busy || !engine.ready)
-            }
         }
+    }
+
+    /// The first-project choices, kept in the footer so they show without scrolling.
+    @ViewBuilder private var firstActions: some View {
+        if app.onboarded { Button("Close guide") { app.showWelcome = false }.buttonStyle(SecondaryButton()) }
+        else { Button("Skip for now") { app.finishOnboarding() }.buttonStyle(SecondaryButton()) }
+        Button("Help me choose a place") {
+            app.finishOnboarding()
+            if let flow = ToolGuide.workflows.first(where: { $0.id == "choose" }) { app.run(flow) }
+        }
+        .buttonStyle(SecondaryButton()).disabled(!engine.ready)
+        if busy { ProgressView().controlSize(.small) }
+        Button(choice.kind == .own ? "Pick an area" : "Create project", action: begin)
+            .buttonStyle(PrimaryButton()).disabled(busy || !engine.ready)
+            .keyboardShortcut(.defaultAction)
     }
 
     /// Create the project for a listed place, or go to the map for an area of the person's own.

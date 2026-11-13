@@ -216,6 +216,7 @@ final class ChatModel: ObservableObject {
         let sending = attachments
         attachments = []
         var shown = ChatItem(id: UUID().uuidString, kind: .user, text: text)
+        if let flow = ToolGuide.workflow(sentAs: text) { shown.text = flow.title; shown.result = text }
         shown.images = sending.filter { $0.kind == .image }.map(\.path)
         shown.files = sending.filter { $0.kind != .image }.map(\.name)
         items.append(shown)
@@ -375,6 +376,25 @@ final class ChatModel: ObservableObject {
         }
     }
 
+
+    /// A plain name for a shell command the agent ran, from its first program and the files it names.
+    static func describe(command: String) -> String {
+        let words = command.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        guard let program = words.first.map({ URL(fileURLWithPath: $0).lastPathComponent }) else { return "Ran a command" }
+        let files = words.dropFirst().filter { !$0.hasPrefix("-") && ($0.contains(".") || $0.contains("/")) && !$0.contains("'") }
+            .map { URL(fileURLWithPath: $0).lastPathComponent }
+        let named = files.prefix(2).joined(separator: ", ")
+        switch program {
+        case "cat", "sed", "head", "tail", "less", "nl": return named.isEmpty ? "Read a file" : "Read \(named)"
+        case "ls", "find", "tree": return "Looked through the project folder"
+        case "rg", "grep": return named.isEmpty ? "Searched the files" : "Searched \(named)"
+        case "wc": return named.isEmpty ? "Counted lines" : "Counted lines in \(named)"
+        case "python", "python3", "uv": return "Ran a Python script"
+        case "curl", "wget": return "Fetched a web address"
+        default: return "Ran a command"
+        }
+    }
+
     private func item(from raw: JSON, finished: Bool) -> ChatItem? {
         guard let id = raw["id"] as? String, let type = raw["type"] as? String else { return nil }
         let status = raw["status"] as? String ?? ""
@@ -389,6 +409,7 @@ final class ChatModel: ObservableObject {
         case "userMessage":
             let content = raw["content"] as? [JSON] ?? []
             var shown = ChatItem(id: id, kind: .user, text: content.compactMap { $0["text"] as? String }.joined(separator: "\n"))
+            if let flow = ToolGuide.workflow(sentAs: shown.text) { shown.result = shown.text; shown.text = flow.title }
             shown.images = content.compactMap { $0["path"] as? String }
             return shown
         case "agentMessage":
@@ -419,7 +440,7 @@ final class ChatModel: ObservableObject {
             if let wrapped = command.range(of: " -lc ") {
                 command = String(command[wrapped.upperBound...]).trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
             }
-            var s = step("terminal", "Ran a command", tool: "shell")
+            var s = step("terminal", Self.describe(command: command), tool: "shell")
             s.details = [command]
             s.result = raw["aggregatedOutput"] as? String
             return s

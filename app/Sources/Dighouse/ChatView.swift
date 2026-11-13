@@ -76,8 +76,9 @@ private enum Block: Identifiable {
 private struct Messages: View {
     @EnvironmentObject var chat: ChatModel
 
-    /// What the agent is on now, taken from its plan when it keeps one.
+    /// What the agent is on now: the step running, or else the step its plan marks in progress.
     private var working: String {
+        if let step = chat.items.last(where: { $0.kind == .step && $0.state == .running }) { return step.text }
         guard let plan = chat.items.last(where: { $0.kind == .plan })?.plan,
               let i = plan.firstIndex(where: { $0.status.lowercased().contains("progress") }) else { return "Working" }
         return "Step \(i + 1) of \(plan.count): \(plan[i].text)"
@@ -116,6 +117,7 @@ private struct Messages: View {
 
 private struct ChatRow: View {
     let item: ChatItem
+    @State private var showInstructions = false
 
     var body: some View {
         switch item.kind {
@@ -145,6 +147,16 @@ private struct ChatRow: View {
                         .padding(.horizontal, 14).padding(.vertical, 9)
                         .background(RoundedRectangle(cornerRadius: 18).fill(Theme.raised))
                         .frame(maxWidth: 520, alignment: .trailing)
+                }
+                if let instructions = item.result {
+                    // A workflow: its name above, and the instructions it sent folded away.
+                    Button(showInstructions ? "Hide the instructions" : "Show the instructions") { showInstructions.toggle() }
+                        .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                    if showInstructions {
+                        Text(instructions).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineSpacing(2).textSelection(.enabled)
+                            .padding(12).frame(maxWidth: 520, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)

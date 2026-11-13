@@ -12,7 +12,7 @@ enum StartingPoints {
         StartingPoint(
             id: "cahokia", kind: .learn, title: "Cahokia", place: "Illinois, United States",
             about: "Monks Mound, the largest earthwork north of Mexico, with modern paths and stairs on it. A good first run.",
-            source: "USGS 3DEP", name: "Cahokia control run",
+            source: "USGS 3DEP", name: "Cahokia",
             question: "What built features show in the ground around Monks Mound, and are they already published?",
             box: ["-90.0652", "38.6585", "-90.0592", "38.6628"]),
         StartingPoint(
