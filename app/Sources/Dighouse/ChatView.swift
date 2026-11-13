@@ -627,9 +627,20 @@ struct Composer: View {
     @State private var selected = 0
     @State private var dismissed: String?
     @State private var keys: Any?
+    /// What "@" can point at in the open project, read when the list opens, and the mentions picked so far.
+    @State private var pool: [Mention] = []
+    @State private var picked: [Mention] = []
     @FocusState private var focused: Bool
 
     private var commands: [SlashCommand] { dismissed == chat.draft ? [] : SlashCommands.matches(chat.draft) }
+    private var mentions: [Mention] {
+        guard dismissed != chat.draft, let q = Mentions.query(chat.draft) else { return [] }
+        return Mentions.matches(q, in: pool)
+    }
+    /// How many rows the open list has, commands or mentions.
+    private var listCount: Int { commands.isEmpty ? mentions.count : commands.count }
+    /// The mentions picked that are still in the draft, shown as chips.
+    private var shownMentions: [Mention] { picked.filter { chat.draft.contains("@" + $0.label) } }
 
     private var canSend: Bool {
         !chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !chat.attachments.isEmpty
@@ -643,10 +654,11 @@ struct Composer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !commands.isEmpty { commandList }
-            if !chat.attachments.isEmpty { chips }
+            else if !mentions.isEmpty { mentionList }
+            if !chat.attachments.isEmpty || !shownMentions.isEmpty { chips }
             TextField(placeholder, text: $chat.draft, axis: .vertical)
                 .textFieldStyle(.plain).lineLimit(1...8).font(.system(size: 14))
-                .focused($focused).onSubmit { commands.isEmpty ? send() : runSelected() }
+                .focused($focused).onSubmit { listCount == 0 ? send() : runSelected() }
                 .padding(.horizontal, 4)
             ViewThatFits(in: .horizontal) {
                 controls(wide: true)
@@ -667,11 +679,44 @@ struct Composer: View {
         }
         .onAppear { focused = true }
         .onChange(of: chat.draft) { _, draft in
-            selected = commands.firstIndex { app.unavailable($0) == nil } ?? 0
+            if Mentions.query(draft) != nil, pool.isEmpty { pool = Mentions.pool(store: store) }
+            if Mentions.query(draft) == nil, commands.isEmpty { pool = [] }
+            selected = commands.isEmpty ? 0 : commands.firstIndex { app.unavailable($0) == nil } ?? 0
             if dismissed != draft { dismissed = nil }
+            if draft.isEmpty { picked = [] }
         }
-        .onChange(of: commands.isEmpty) { _, empty in empty ? stopKeys() : startKeys() }
+        .onChange(of: listCount == 0) { _, empty in empty ? stopKeys() : startKeys() }
         .onDisappear { stopKeys() }
+    }
+
+    // MARK: @ mentions
+
+    private var mentionList: some View {
+        let list = mentions
+        return ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(Array(list.enumerated()), id: \.element.id) { index, m in
+                        Button { selected = index; runSelected() } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: m.icon).font(.system(size: 12)).foregroundStyle(Theme.tan).frame(width: 16)
+                                Text(m.label).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.text).lineLimit(1)
+                                Text(m.detail).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text(m.kind.rawValue).font(.system(size: 12)).foregroundStyle(Theme.faint)
+                            }
+                            .padding(.horizontal, 10).frame(height: 30)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(index == selected ? Theme.ink.opacity(0.09) : .clear))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).id(m.id)
+                    }
+                }
+            }
+            .frame(maxHeight: min(CGFloat(list.count) * 31, 280))
+            .onChange(of: selected) { _, i in if list.indices.contains(i) { proxy.scrollTo(list[i].id) } }
+        }
+        .padding(.bottom, 2)
     }
 
     // MARK: slash commands
@@ -709,6 +754,14 @@ struct Composer: View {
     }
 
     private func runSelected() {
+        if commands.isEmpty {
+            let list = mentions
+            guard list.indices.contains(selected) else { return }
+            let m = list[selected]
+            chat.draft = Mentions.insert(m, into: chat.draft)
+            if !picked.contains(m) { picked.append(m) }
+            return
+        }
         let list = commands
         guard list.indices.contains(selected), let (_, argument) = SlashCommands.parse(chat.draft) else { return }
         let c = list[selected]
@@ -726,13 +779,13 @@ struct Composer: View {
     private func startKeys() {
         guard keys == nil else { return }
         keys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard focused, !commands.isEmpty else { return event }
+            guard focused, listCount > 0 else { return event }
             switch event.keyCode {
             case 126: selected = max(0, selected - 1); return nil
-            case 125: selected = min(commands.count - 1, selected + 1); return nil
+            case 125: selected = min(listCount - 1, selected + 1); return nil
             case 53: dismissed = chat.draft; return nil
             case 48:
-                if commands.indices.contains(selected) { chat.draft = commands[selected].name + " " }
+                if commands.indices.contains(selected) { chat.draft = commands[selected].name + " " } else { runSelected() }
                 return nil
             case 36, 76: runSelected(); return nil
             default: return event
@@ -748,6 +801,24 @@ struct Composer: View {
     private var chips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                ForEach(shownMentions) { m in
+                    HStack(spacing: 6) {
+                        Image(systemName: m.icon).font(.system(size: 11)).foregroundStyle(Theme.tan)
+                        Text("@" + m.label).font(.system(size: 12)).lineLimit(1).frame(maxWidth: 180, alignment: .leading)
+                        Button {
+                            chat.draft = chat.draft.replacingOccurrences(of: "@" + m.label, with: m.label)
+                            picked.removeAll { $0 == m }
+                        } label: {
+                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.dim)
+                                .frame(width: 16, height: 16).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).help("Keep the words, drop the link")
+                    }
+                    .padding(.horizontal, 9).frame(height: 30)
+                    .background(Capsule().fill(Theme.tan.opacity(0.12)))
+                    .overlay(Capsule().strokeBorder(Theme.tan.opacity(0.3)))
+                    .help(m.reference)
+                }
                 ForEach(chat.attachments) { file in
                     HStack(spacing: 7) {
                         if file.kind == .image, let image = Images.load(file.path) {
@@ -826,8 +897,9 @@ struct Composer: View {
 
     private func send() {
         guard canSend else { return }
-        let text = chat.draft
+        let text = Mentions.expand(chat.draft, with: picked)
         chat.draft = ""
+        picked = []
         app.ask(text)
     }
 

@@ -115,3 +115,17 @@ Found and fixed during the check: opening a chat that the Codex app also has ope
 
 Seen and left for later: the modern-feature check stalled again in the Maiden Castle run (the map service was slow), and the agent stopped it. That is U5 and U11.
 
+
+### 2026-11-13, U3: @ mentions
+
+Typing `@` opens a list of what the open project holds: its candidates (with their names), tiles (with their verdicts), sources on the records, and its own files, then the other projects. It filters as you type, by name or by what is written beside it, and the same keys work as for commands. Picking one writes `@C-002` into the message and adds a chip above it; the chip's tooltip says what it points at, and its × keeps the words but drops the link. On sending, a short list of references goes with the message for the agent ("@C-002: candidate C-002 (Single mound west of the enclosure); its record is candidates/C-002.md"), and the chat shows only what was typed. Downloaded data and `private/` are left out of the file list, so no locations are offered.
+
+Checked in Mound City Group:
+
+- "Cut a section through @C-0", Down, Return: the chip read @C-002. Sent with "and tell me its height in one line". The agent read C-002.md, cut a section through C-002 and answered "about 1.6 m high (1.61 m) … The earlier filed section gave 1.63 m". Passed.
+- "What does @2026": the only match was `notes/2026-11-13.md`. Picked and sent; the agent read that file and answered from its last entry. Passed.
+
+Two small fixes from the same run: a step still open when a turn ends normally is now closed quietly, and "(stopped)" is added only when the engine says the turn was interrupted (the C-002 chat had shown two finished Python steps as stopped). Shell step names drop trailing punctuation ("Read C-002.md", not "Read C-002.md;").
+
+Not done: recent places in the list (the plan said "recent places"); Home's starting places are one click away and a project's own area is already known to the agent.
+

@@ -307,7 +307,7 @@ final class ChatModel: ObservableObject {
         guard let engine, !text.isEmpty || !attachments.isEmpty else { return }
         let sending = attachments
         attachments = []
-        var shown = ChatItem(id: UUID().uuidString, kind: .user, text: text)
+        var shown = ChatItem(id: UUID().uuidString, kind: .user, text: Mentions.visible(text))
         if let flow = ToolGuide.workflow(sentAs: text) { shown.text = flow.title; shown.result = text }
         shown.images = sending.filter { $0.kind == .image }.map(\.path)
         shown.files = sending.filter { $0.kind != .image }.map(\.name)
@@ -352,7 +352,7 @@ final class ChatModel: ObservableObject {
                 if project == nil { generalThreads.insert(new, at: 0) } else { threads.insert(new, at: 0) }
                 remember()
                 if let title { _ = try? await engine.request("thread/name/set", ["threadId": id, "name": title]) }
-                else if !text.isEmpty { onUntitled?(id, text) }
+                else if !text.isEmpty { onUntitled?(id, Mentions.visible(text)) }
             }
             running = true
             var params: JSON = ["threadId": active ?? "", "input": input]
@@ -438,10 +438,11 @@ final class ChatModel: ObservableObject {
         case "turn/completed":
             running = false
             turn = nil
-            // A step the run was in the middle of when it was stopped will not finish.
+            // A step still open when the turn ends will not finish: say so if the person stopped it, otherwise just close it.
+            let stopped = ((params["turn"] as? JSON)?["status"] as? String) == "interrupted"
             for i in items.indices where items[i].state == .running {
-                items[i].state = .failed
-                items[i].text += " (stopped)"
+                items[i].state = stopped ? .failed : .done
+                if stopped { items[i].text += " (stopped)" }
             }
             if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
                 items.append(problem(failure))
@@ -484,7 +485,7 @@ final class ChatModel: ObservableObject {
         let words = command.split(whereSeparator: { $0.isWhitespace }).map(String.init)
         guard let program = words.first.map({ URL(fileURLWithPath: $0).lastPathComponent }) else { return "Ran a command" }
         let files = words.dropFirst().filter { !$0.hasPrefix("-") && ($0.contains(".") || $0.contains("/")) && !$0.contains("'") }
-            .map { URL(fileURLWithPath: $0).lastPathComponent }
+            .map { URL(fileURLWithPath: $0.trimmingCharacters(in: CharacterSet(charactersIn: ";|&)\"'"))).lastPathComponent }
         let named = files.prefix(2).joined(separator: ", ")
         switch program {
         case "cat", "sed", "head", "tail", "less", "nl": return named.isEmpty ? "Read a file" : "Read \(named)"
@@ -510,7 +511,7 @@ final class ChatModel: ObservableObject {
         switch type {
         case "userMessage":
             let content = raw["content"] as? [JSON] ?? []
-            var shown = ChatItem(id: id, kind: .user, text: content.compactMap { $0["text"] as? String }.joined(separator: "\n"))
+            var shown = ChatItem(id: id, kind: .user, text: Mentions.visible(content.compactMap { $0["text"] as? String }.joined(separator: "\n")))
             if let flow = ToolGuide.workflow(sentAs: shown.text) { shown.result = shown.text; shown.text = flow.title }
             shown.images = content.compactMap { $0["path"] as? String }
             return shown
