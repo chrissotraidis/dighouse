@@ -62,6 +62,7 @@ enum ToolGuide {
              tools: [Tool(name: "fetch_terrain", title: "Fetch terrain", does: "Downloads the points for an area and builds the ground model, or takes a national ground model ready-made, and reports how good the ground data is."),
                      Tool(name: "import_terrain", title: "Use your own data", does: "Reads a ground model (GeoTIFF) or point cloud (LAS, LAZ) from this Mac into the project as terrain."),
                      Tool(name: "view_terrain", title: "View the terrain", does: "Shows the whole terrain at reduced size."),
+                     Tool(name: "render_tiles", title: "Render the tiles", does: "Draws every tile in one view (sky view, hillshade, local relief) so the map can show them that way."),
                      Tool(name: "make_tiles", title: "Cut into tiles", does: "Cuts the terrain into overlapping tiles for screening.")]),
         Pack(title: "Look at every tile", short: "Screen", icon: "square.grid.3x3",
              summary: "The terrain is cut into tiles about 250 m across. The agent looks at each one in more than one rendering and writes down what it sees: nothing, natural, modern, possible, or built.",

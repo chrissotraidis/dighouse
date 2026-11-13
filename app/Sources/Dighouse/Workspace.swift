@@ -70,6 +70,25 @@ struct MapView: View {
     @EnvironmentObject var store: ProjectStore
     @State private var terrain: String?
     @State private var zoom = 1.0
+    @State private var pinchStart: Double?
+    /// How the tiles are drawn, and whether their outlines and the candidates show.
+    @AppStorage("mapStyle") private var style = "composite"
+    @State private var rendering = false
+    @State private var showTiles = true
+    @State private var showPins = true
+    /// Drawing a line to cut a section: the mode, the line in map points, and the result.
+    @State private var drawing = false
+    @State private var line: (CGPoint, CGPoint)?
+    @State private var cut: Cut?
+    @State private var cutting = false
+
+    private struct Cut {
+        let image: String
+        let text: String
+    }
+
+    static let styles: [(id: String, name: String)] = [("composite", "Composite"), ("hillshade", "Hillshade"),
+                                                       ("local_relief", "Local relief"), ("sky_view", "Sky view")]
 
     /// The terrain picked from the menu, or the first one with tiles. With no pick, every tiled terrain in the same
     /// coordinate system is shown together, so fetching more of an area adds its tiles beside the old ones.
@@ -155,24 +174,44 @@ struct MapView: View {
                 ScrollView([.horizontal, .vertical]) {
                     ZStack(alignment: .topLeading) {
                         ForEach(spots, id: \.tile.id) { spot in
-                            TileView(tile: spot.tile, selected: store.selectedTile == spot.tile.id)
+                            TileView(tile: spot.tile, selected: store.selectedTile == spot.tile.id, style: style, outlined: showTiles)
                                 .frame(width: spot.w * scale, height: spot.h * scale)
                                 .offset(x: spot.x * scale, y: spot.y * scale)
                                 .onTapGesture {
+                                    guard !drawing else { return }
                                     store.selectedTile = spot.tile.id
                                     store.selectedCandidate = nil
                                 }
                         }
-                        ForEach(store.candidates) { c in
-                            if let spot = spots.first(where: { $0.tile.id == c.tile }) {
-                                Pin(label: c.id, selected: store.selectedCandidate == c.id)
-                                    .offset(x: (spot.x + c.x * spot.w) * scale - 8,
-                                            y: (spot.y + c.y * spot.h) * scale - 8)
-                                    .onTapGesture {
-                                        store.selectedCandidate = c.id
-                                        store.selectedTile = c.tile
-                                    }
+                        if showPins {
+                            ForEach(store.candidates) { c in
+                                if let spot = spots.first(where: { $0.tile.id == c.tile }) {
+                                    Pin(label: c.id, selected: store.selectedCandidate == c.id)
+                                        .offset(x: (spot.x + c.x * spot.w) * scale - 8,
+                                                y: (spot.y + c.y * spot.h) * scale - 8)
+                                        .onTapGesture(count: 2) { app.showRecords(c.id) }
+                                        .onTapGesture {
+                                            store.selectedCandidate = c.id
+                                            store.selectedTile = c.tile
+                                        }
+                                        .help("Click to see it, double-click to open its record")
+                                }
                             }
+                        }
+                        if let line {
+                            Path { p in p.move(to: line.0); p.addLine(to: line.1) }
+                                .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: cutting ? [6, 4] : []))
+                            ForEach([line.0, line.1].indices, id: \.self) { i in
+                                Circle().fill(Theme.accent).frame(width: 9, height: 9)
+                                    .position(i == 0 ? line.0 : line.1)
+                            }
+                        }
+                        if drawing {
+                            // Catches the drag while drawing; the tiles underneath keep their clicks otherwise.
+                            Color.white.opacity(0.001)
+                                .gesture(DragGesture(minimumDistance: 4)
+                                    .onChanged { g in line = (g.startLocation, g.location) }
+                                    .onEnded { g in cutSection(from: g.startLocation, to: g.location, spots: spots, scale: scale) })
                         }
                     }
                     .frame(width: width * scale, height: height * scale, alignment: .topLeading)
@@ -181,9 +220,25 @@ struct MapView: View {
                     .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .top)
                 }
             }
+            .gesture(MagnifyGesture()
+                .onChanged { g in
+                    if pinchStart == nil { pinchStart = zoom }
+                    zoom = min(8, max(1, (pinchStart ?? 1) * g.magnification))
+                }
+                .onEnded { _ in pinchStart = nil })
             .overlay(alignment: .topLeading) { controls.padding(12) }
             .overlay(alignment: .topTrailing) { legend.padding(12) }
-            .overlay(alignment: .bottomLeading) { selection.padding(12) }
+            .overlay(alignment: .bottomLeading) { cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard) }
+            .overlay(alignment: .top) {
+                if drawing && line == nil && !cutting {
+                    Text(store.selectedCandidate.map { "Drag a line across the ground. The section goes on \($0)'s record." }
+                         ?? "Drag a line across the ground, starting and ending on the surrounding ground.")
+                        .font(.system(size: 12.5)).padding(.horizontal, 12).frame(height: 30)
+                        .background(Capsule().fill(Theme.raised)).overlay(Capsule().strokeBorder(Theme.line))
+                        .padding(.top, 56)
+                }
+            }
+            .task(id: style) { await render() }
         }
     }
 
@@ -193,6 +248,21 @@ struct MapView: View {
                 .buttonStyle(IconButton(size: 28)).disabled(zoom <= 1).help("Zoom out")
             Button { zoom = min(8, zoom * 1.5) } label: { Image(systemName: "plus") }
                 .buttonStyle(IconButton(size: 28)).help("Zoom in")
+            PillMenu(title: Self.styles.first { $0.id == style }?.name ?? "View", quiet: true) {
+                ForEach(Self.styles, id: \.id) { s in Button(s.name) { style = s.id } }
+            }
+            .help("How the ground is drawn: sky view shows low banks and ditches best")
+            if rendering { ProgressView().controlSize(.small).padding(.horizontal, 4) }
+            Button { showTiles.toggle() } label: { Image(systemName: "square.grid.3x3") }
+                .buttonStyle(IconButton(size: 28, active: showTiles)).help(showTiles ? "Hide the tile outlines" : "Show the tile outlines")
+            Button { showPins.toggle() } label: { Image(systemName: "mappin") }
+                .buttonStyle(IconButton(size: 28, active: showPins)).help(showPins ? "Hide the candidates" : "Show the candidates")
+            Button {
+                drawing.toggle()
+                line = nil
+                cut = nil
+            } label: { Image(systemName: "line.diagonal") }
+                .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a section through the ground")
             if store.terrains.count > 1 {
                 PillMenu(title: terrain == nil && shownTerrains.count > 1 ? "All terrain"
                          : store.terrains.first { $0.id == current }?.name ?? "Terrain", quiet: true) {
@@ -205,6 +275,81 @@ struct MapView: View {
         }
         .padding(3).background(RoundedRectangle(cornerRadius: 11).fill(Theme.bg.opacity(0.92)))
         .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Theme.line))
+    }
+
+    /// Render every tile in the chosen style, once, through the tools.
+    private func render() async {
+        guard style != "composite", let root = store.current?.path else { return }
+        rendering = true
+        _ = try? await app.engine.callTool("render_tiles", ["project": root, "style": style])
+        rendering = false
+        store.objectWillChange.send()
+    }
+
+    /// Turn a line drawn on the map into a section through the tile under its start, filed on a candidate's record
+    /// when one is selected or sits close to the line.
+    private func cutSection(from a: CGPoint, to b: CGPoint, spots: [Placed], scale: Double) {
+        guard let root = store.current?.path, hypot(b.x - a.x, b.y - a.y) > 8 else { line = nil; return }
+        let am = (x: a.x / scale, y: a.y / scale), bm = (x: b.x / scale, y: b.y / scale)
+        guard let spot = spots.first(where: { am.x >= $0.x && am.x <= $0.x + $0.w && am.y >= $0.y && am.y <= $0.y + $0.h }) else {
+            cut = Cut(image: "", text: "Start the line on a tile.")
+            return
+        }
+        func fraction(_ p: (x: Double, y: Double)) -> (Double, Double) { ((p.x - spot.x) / spot.w, (p.y - spot.y) / spot.h) }
+        let (x1, y1) = fraction(am), (x2, y2) = fraction(bm)
+        // The record it belongs to: the selected candidate, or one whose pin is within 25 m of the line's middle.
+        let mid = (x: (am.x + bm.x) / 2, y: (am.y + bm.y) / 2)
+        let near = store.candidates.first { c in
+            guard let s = spots.first(where: { $0.tile.id == c.tile }) else { return false }
+            return hypot(s.x + c.x * s.w - mid.x, s.y + c.y * s.h - mid.y) < 25
+        }
+        let candidate = store.selectedCandidate ?? near?.id
+        var args: JSON = ["project": root, "tile": spot.tile.id, "x1": x1, "y1": y1, "x2": x2, "y2": y2]
+        if let candidate { args["candidate"] = candidate }
+        cutting = true
+        cut = nil
+        Task { @MainActor in
+            defer { cutting = false; drawing = false }
+            do {
+                let reply = try await app.engine.callTool("cut_section", args)
+                let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON
+                    ?? (((try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? [Any])?.first as? JSON) ?? [:]
+                let height = info["feature_height_m"] as? Double
+                let length = info["length_m"] as? Double
+                var words = [String]()
+                if let length { words.append("\(Int(length.rounded())) m long") }
+                if let height { words.append("rises \(String(format: "%.2f", height)) m above the line between its ends") }
+                if let inGround = info["in_ground"] as? Bool { words.append(inGround ? "in the ground returns" : "not dense in the ground returns") }
+                let filed = candidate.map { "Filed on \($0)'s record." } ?? "Not filed on a record; select a candidate first to file it."
+                let image = candidate.map { "\(root)/candidates/img/\($0)-section.png" } ?? "\(root)/data/tiles/\(spot.tile.id)-section.png"
+                cut = Cut(image: image, text: (words.isEmpty ? "" : words.joined(separator: ", ").prefix(1).uppercased() + words.joined(separator: ", ").dropFirst() + ". ") + filed)
+                store.reloadIfChanged()
+            } catch {
+                cut = Cut(image: "", text: "Could not cut the section: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @ViewBuilder private var cutCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(cutting ? "Cutting the section…" : "Section").font(.system(size: 13.5, weight: .semibold))
+                if cutting { ProgressView().controlSize(.small) }
+                Spacer()
+                Button { cut = nil; line = nil } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22))
+            }
+            if let cut {
+                if !cut.image.isEmpty, let img = Images.load(cut.image) {
+                    Image(nsImage: img).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                Text(cut.text).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12).frame(width: 360, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.raised))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
+        .shadow(color: .black.opacity(0.35), radius: 14, y: 4)
+        .padding(12)
     }
 
     private var legend: some View {
@@ -275,11 +420,13 @@ private struct TileView: View {
     @EnvironmentObject var store: ProjectStore
     let tile: Tile
     let selected: Bool
+    var style = "composite"
+    var outlined = true
 
     var body: some View {
-        let path = "\(store.current?.path ?? "")/data/tiles/\(tile.id)-composite.png"
+        let base = "\(store.current?.path ?? "")/data/tiles/\(tile.id)-"
         ZStack {
-            if let image = Images.load(path) {
+            if let image = Images.load(base + style + ".png") ?? Images.load(base + "composite.png") {
                 Image(nsImage: image).resizable().interpolation(.medium)
             } else {
                 Rectangle().fill(Theme.side)
@@ -287,10 +434,12 @@ private struct TileView: View {
             if tile.status == "unreadable" {
                 Rectangle().fill(.black.opacity(0.5))
                 Image(systemName: "eye.slash").foregroundStyle(Theme.dim)
-            } else if tile.status == "unscreened" {
+            } else if tile.status == "unscreened", outlined {
                 Rectangle().fill(.black.opacity(0.3))
             }
-            Rectangle().strokeBorder(outline, lineWidth: selected ? 2 : (tile.verdict == "built" || tile.verdict == "possible" ? 1.5 : 0.5))
+            if outlined || selected {
+                Rectangle().strokeBorder(outline, lineWidth: selected ? 2 : (tile.verdict == "built" || tile.verdict == "possible" ? 1.5 : 0.5))
+            }
         }
         .contentShape(Rectangle())
     }

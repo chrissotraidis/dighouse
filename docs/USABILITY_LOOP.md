@@ -223,3 +223,26 @@ Seen during this run and not fixed: the Overpass servers were down all afternoon
 
 Test leftovers: projects "Cahokia control run" (a second one, at `~/Documents/Dighouse/cahokia-control-run`, not in the sidebar), "Serpent Mound goal run" and "Fort Ancient Ohio" in `~/Documents/Dighouse`; several archived test chats; five "Environment Agency terrain fetch" chats in Maiden Castle, three of them cancelled downloads.
 
+
+### 2026-11-13, U8: a map you can work on
+
+- **View switcher** on the map: Composite, Hillshade, Local relief and Sky view. The first time a view is chosen, a new tool, `render_tiles`, renders every tile that way (9 tiles in 0.3 s), and the choice is kept between tabs and launches.
+- **Toggles** for the tile outlines (and the darkening of unscreened tiles) and for the candidates.
+- **Zoom** with the buttons as before, and with a pinch on the trackpad; the map scrolls to pan once zoomed.
+- **Click a tile** for its verdict and note; **click a pin** to see the candidate, **double-click** to open its record.
+- **Draw a section.** The line button turns on drawing; drag across the ground and the tools cut a section along the line through the raw points. It is filed on the selected candidate, or on one within 25 m of the line's middle, and the card shows the picture, length, height and whether it is in the ground returns.
+
+Checked on Mound City Group:
+
+| Check | Seen |
+|---|---|
+| Sky view | Every tile of both terrains redrawn; the enclosure bank, the mounds inside and the hollows outside stand out more than in Composite. |
+| Hillshade, then Records and back to Map | Still Hillshade. |
+| Hide tile outlines, hide candidates | The picture alone, then back. |
+| Click a tile | "Tile r000c000, Possible" with the screening note and "Ask the agent to look here". |
+| Select C-002, draw a line across it | "76 m long, rises 1.49 m above the line between its ends, in the ground returns. Filed on C-002's record." The record's section check now reads 1.49 m and its picture was replaced. Passed. |
+| Double-click the C-003 pin | Records opened on C-003. |
+| Zoom in twice | Map enlarged with a scrollbar to pan. |
+
+Not verified: pinch zoom and two-finger panning with a real trackpad, since the test tooling sends neither.
+

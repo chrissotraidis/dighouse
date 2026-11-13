@@ -319,6 +319,24 @@ def view_terrain(project: str, terrain: str, style: str = "composite") -> list:
 
 
 @tool
+def render_tiles(project: str, style: str = "sky_view") -> dict:
+    """Render every tile of the project in one style, so the map can show them all that way.
+
+    Styles: composite, hillshade, slope, local_relief, sky_view. Tiles already rendered are kept.
+    """
+    p = Project(project).check()
+    if style not in T.STYLES:
+        raise ValueError(f"style must be one of {', '.join(T.STYLES)}")
+    made = 0
+    for tid in p.load("tiles", {}):
+        f = p.path("data", "tiles", f"{tid}-{style}.png")
+        if not f.exists():
+            tiles.cached_tile(p, tid, style)
+            made += 1
+    return {"style": style, "rendered": made}
+
+
+@tool
 def make_tiles(project: str, terrain: str, tile_m: float = 250) -> dict:
     """Cut a terrain into overlapping tiles for screening. Tiles with too little ground data are marked unreadable."""
     p = Project(project).check()
