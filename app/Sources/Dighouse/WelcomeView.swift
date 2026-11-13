@@ -176,7 +176,7 @@ struct WelcomeView: View {
         }
         .buttonStyle(SecondaryButton()).disabled(!engine.ready)
         if busy { ProgressView().controlSize(.small) }
-        Button(choice.kind == .own ? "Pick an area" : "Create project", action: begin)
+        Button(choice.kind == .own ? "Pick an area" : "Create and get the terrain", action: begin)
             .buttonStyle(PrimaryButton()).disabled(busy || !engine.ready)
             .keyboardShortcut(.defaultAction)
     }

@@ -162,6 +162,13 @@ struct TopBar: View {
                 if s.controls > 0, width > 900 { piece("\(s.controlsFound) of \(s.controls) known sites found again") }
             }
             piece("\(s.candidates) candidate\(s.candidates == 1 ? "" : "s")")
+            if let next = app.nextStep, store.download == nil {
+                Button { app.run(next) } label: {
+                    Label("Next: \(next.title)", systemImage: next.icon).font(.system(size: 12.5, weight: .medium))
+                }
+                .buttonStyle(.plain).foregroundStyle(Theme.accent).padding(.leading, 6)
+                .help(next.summary)
+            }
         }
         .font(.system(size: 12.5)).lineLimit(1)
     }

@@ -171,3 +171,15 @@ Checked in the app on Maiden Castle:
 
 Left over: a fetch can still take up to two minutes to stop while one request is in flight to a slow service. The cancelled test chats in Maiden Castle are named "Environment Agency terrain fetch".
 
+
+### 2026-11-13, U6: a shorter road to a first project
+
+- **Type a place on Home.** Short text on Home that reads like a place (one to five words, no question) shows "Start a project at …" above the message box; Return still asks the agent. The New project page opens with the place looked up, the search area placed on the best match, the open lidar found, and the other matches listed to pick from.
+- **Creating a project gets its terrain.** "Create and get the terrain" (the New project page and the guide's first project) creates the project and starts "Get the terrain" at once, so a new project is never left empty.
+- **The strip names the next step.** In a project, the run strip ends with "Next: Screen the tiles" (or Check the flags, Second look, Prior-art sweep, What needs my decision?), the first one that is ready, and pressing it runs it. It hides while a run or download is going.
+- **Empty Records** offers that next step as its button.
+
+Checked from Home: typed "Fort Ancient Ohio" and clicked **Start a project at Fort Ancient Ohio** (1). The page had found Fort Ancient State Memorial, placed the area on the earthworks and listed OH_StatewideP3_6_B21. Clicked **Create and get the terrain** (2): the project opened and the terrain came in on its own, 17.4 ground returns per square metre, 9 tiles, on the map in under a minute. Clicked **Next: Screen the tiles** in the strip (3): all 9 tiles screened, 3 candidates flagged (the embankment wall along the ravine rims and two round mounds), and a run summary. Home to terrain on screen in two clicks, and to a screened project with one more. Passed.
+
+Not done here: the map does not show where the area is before terrain arrives. The terrain now comes in within a minute of creating the project, so the blank map is brief.
+

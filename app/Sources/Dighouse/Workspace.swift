@@ -310,7 +310,9 @@ struct RecordsView: View {
         if store.candidates.isEmpty {
             EmptyPane(icon: "doc.text", title: "No candidates yet",
                       text: "When the agent flags something that looks built, its record appears here with its evidence and checks.") {
-                EmptyView()
+                if let next = app.nextStep {
+                    Button(next.title) { app.run(next) }.buttonStyle(PrimaryButton())
+                }
             }
         } else {
             GeometryReader { geo in

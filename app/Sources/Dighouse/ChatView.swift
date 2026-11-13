@@ -726,6 +726,15 @@ struct Composer: View {
     private var listCount: Int { commands.isEmpty ? mentions.count : commands.count }
     /// The mentions picked that are still in the draft, shown as chips.
     private var shownMentions: [Mention] { picked.filter { chat.draft.contains("@" + $0.label) } }
+    /// Text typed on Home that reads like a place name: short, no question, not a command.
+    private var typedPlace: String? {
+        guard app.route == .home else { return nil }
+        let text = chat.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let words = text.split(separator: " ")
+        guard (1...5).contains(words.count), text.count >= 3, !text.contains("?"), !text.hasPrefix("/"), !text.hasPrefix("@") else { return nil }
+        let asks = ["what", "how", "why", "which", "where", "who", "can", "should", "show", "find", "tell", "help", "is", "are", "do", "list"]
+        return asks.contains(words[0].lowercased()) ? nil : text
+    }
 
     private var canSend: Bool {
         !chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !chat.attachments.isEmpty
@@ -740,6 +749,21 @@ struct Composer: View {
         VStack(alignment: .leading, spacing: 10) {
             if !commands.isEmpty { commandList }
             else if !mentions.isEmpty { mentionList }
+            else if let place = typedPlace {
+                // On Home, short text that looks like a place can start a project there.
+                Button { chat.draft = ""; app.startProject(at: place) } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "mappin.and.ellipse").font(.system(size: 12)).foregroundStyle(Theme.tan)
+                        Text("Start a project at \(place)").font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Text("or press Return to ask the agent").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                    }
+                    .padding(.horizontal, 10).frame(height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
             if !chat.attachments.isEmpty || !shownMentions.isEmpty { chips }
             TextField(placeholder, text: $chat.draft, axis: .vertical)
                 .textFieldStyle(.plain).lineLimit(1...8).font(.system(size: 14))

@@ -87,6 +87,12 @@ struct NewProjectView: View {
         }
         .background(Theme.bg)
         .task(id: box.joined(separator: ",")) { await checkCoverage() }
+        .task {
+            // Started from a typed place name: look it up and take the best match.
+            guard let place = point.search, numbers == nil else { return }
+            query = place
+            search(pickFirst: true)
+        }
     }
 
     // MARK: map
@@ -208,7 +214,8 @@ struct NewProjectView: View {
                 Button("Cancel") { app.goHome() }.buttonStyle(SecondaryButton())
                 Spacer()
                 if busy { ProgressView().controlSize(.small) }
-                Button("Create project", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
+                Button("Create and get the terrain", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
+                    .help("Creates the project and starts fetching its open lidar straight away.")
             }
         }
         .font(.system(size: 13))
@@ -258,7 +265,9 @@ struct NewProjectView: View {
 
     // MARK: actions
 
-    private func search() {
+    private func search() { search(pickFirst: false) }
+
+    private func search(pickFirst: Bool) {
         let text = query.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty, !searching else { return }
         searching = true
@@ -272,6 +281,11 @@ struct NewProjectView: View {
                     return Place(name: name, lat: lat, lon: lon, span: min(span, 20))
                 }
                 if places.isEmpty { searchProblem = "No place by that name was found." }
+                else if pickFirst, let place = places.first {
+                    camera = Self.region(lat: place.lat, lon: place.lon, span: place.span)
+                    setCentre(lat: place.lat, lon: place.lon)
+                    if places.count == 1 { places = [] }   // more than one: leave the others to choose from
+                }
             } catch {
                 searchProblem = error.localizedDescription
             }

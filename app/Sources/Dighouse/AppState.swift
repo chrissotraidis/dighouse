@@ -296,7 +296,8 @@ final class AppState: ObservableObject {
     }
 
     /// Create a project folder through the tools, so its layout always matches what they expect.
-    func createProject(name: String, question: String, box: [Double]) async throws {
+    /// Create the project and, unless told not to, start getting its terrain straight away, so a new project is never left empty.
+    func createProject(name: String, question: String, box: [Double], fetch: Bool = true) async throws {
         let slug = name.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
             .split(separator: "-").joined(separator: "-")
         var path = Paths.projectsHome.appendingPathComponent(slug.isEmpty ? "project" : slug).path
@@ -311,6 +312,27 @@ final class AppState: ObservableObject {
         ])
         store.register(path: path)
         if let project = store.projects.first(where: { $0.path == path }) { open(project) }
+        if fetch, let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) {
+            try? await Task.sleep(for: .milliseconds(400))   // let the project's chat list open first
+            run(flow)
+        }
+    }
+
+    /// Start a project at a place typed by name: the New project page opens with the place looked up and the area set.
+    func startProject(at place: String) {
+        let name = place.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        startProject(from: StartingPoint(
+            id: "typed-" + name, kind: .own, title: name, place: "", about: "", source: "",
+            name: name, question: "What built features show in the ground at \(name), and which of them are already published?",
+            box: ["", "", "", ""], search: name))
+    }
+
+    /// The next part of the search for the open project, or nil when nothing is ready or a run is going.
+    var nextStep: ToolGuide.Workflow? {
+        guard store.current != nil, chat.live.isEmpty, secondLookBusy == nil else { return nil }
+        let order = store.status.tiles == 0 ? ["terrain"] : ["screen", "check", "second", "prior", "decide"]
+        return order.compactMap { id in ToolGuide.workflows.first { $0.id == id } }.first { state(of: $0).ready }
     }
 
     func chooseProjectFolder() {

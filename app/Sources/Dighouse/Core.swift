@@ -307,6 +307,8 @@ struct StartingPoint: Identifiable, Hashable {
     let question: String
     let box: [String]
     var dataset: String? = nil
+    /// A place name to look up when the New project page opens, for a project started from typed text.
+    var search: String? = nil
 
     var centre: (lat: Double, lon: Double)? {
         let n = box.compactMap(Double.init)
