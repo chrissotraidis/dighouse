@@ -192,6 +192,8 @@ struct Candidate: Identifiable {
     let sources: [Source]
     let decisions: [String]
     let folder: String
+    /// The agent's suggested decision and its reason, if it left one.
+    var suggestion: (status: String, reason: String, by: String)?
     var x = 0.5, y = 0.5
 
     var relief: String { "\(folder)/img/\(id)-relief.png" }

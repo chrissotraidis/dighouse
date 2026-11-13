@@ -54,7 +54,8 @@ Finish what you start. Budget the run so the prior-art step and the summary alwa
 7. **Prior art.** `search_literature`, starting with the dataset's own name and the studies its description cites, then the region and site type. Open the promising ones with `read_source`. `log_source` each one as read, could not open, or not relevant, with what it shows about this place. Log a source as soon as you know its outcome, one at a time, so a run that stops early still leaves its sources on the record. When one source bears on several candidates, pass their ids together, or "all". A source you know only from its abstract is logged as could not open, with what the abstract says.
 8. **Record.** `add_evidence` for measurements. `set_status` only as far as the checks support.
 9. **Summarise.** End every run, finished or not, with `write_summary`: what was done, what each candidate's checks show, the sources read and not opened, what is left, and what waits for the person.
-10. **Stop for the person** when `run_status` lists anything under `needs_a_person`, when controls are being missed, or when data needs an account.
+10. **Suggest each decision.** For every open candidate, call `suggest_decision` with the decision the evidence points to and a reason the person can check in one read: for already published, where (author, year, title or record id); for modern or natural, what shows it. Suggest "no match in sources read" only when the checks and sources support it. The person's review opens with these filled in.
+11. **Stop for the person** when `run_status` lists anything under `needs_a_person`, when controls are being missed, or when data needs an account.
 
 ## What built ground looks like
 

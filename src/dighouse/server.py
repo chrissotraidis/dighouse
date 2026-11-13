@@ -505,6 +505,20 @@ def add_evidence(project: str, candidate: str, text: str) -> dict:
 
 
 @tool
+def suggest_decision(project: str, candidate: str, status: str, reason: str, model: str) -> dict:
+    """Suggest the decision the person should make on a candidate, and why, so their review starts prepared.
+
+    status is already_published, modern, natural or no_match_in_sources_read. The reason is what the person
+    will read: for already_published, name where it is published (author, year, title, or the record); for
+    modern or natural, what shows it. Suggest no_match_in_sources_read only when the record's checks support it.
+    This changes nothing else on the record; the person makes the decision.
+    """
+    p = Project(project).check()
+    meta = ledger.suggest(p, candidate, status, reason, model)
+    return {"candidate": candidate, "suggestion": meta["suggestion"]}
+
+
+@tool
 def set_status(project: str, candidate: str, status: str, decided_by: str = "", reason: str = "") -> dict:
     """Move a candidate to a status: ground_confirmed, modern, natural, already_published,
     no_match_in_sources_read or reported.

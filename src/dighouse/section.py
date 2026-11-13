@@ -3,13 +3,24 @@
 from __future__ import annotations
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from . import terrain as T
 from .project import Project
 from .sources import Points
 
-W, H, MARGIN = 1200, 380, 28
+W, H, MARGIN = 1200, 380, 48
+
+
+def _font(size: int):
+    """A clear font for the scale labels, so they read at the size the picture is shown."""
+    for path in ("/System/Library/Fonts/SFNS.ttf", "/System/Library/Fonts/Helvetica.ttc",
+                 "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "C:/Windows/Fonts/arial.ttf"):
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default(size=size)
 GROUND_RGB, VEG_RGB, BG_RGB = (214, 168, 110), (86, 190, 96), (14, 16, 15)
 
 
@@ -93,13 +104,17 @@ def _draw(s: np.ndarray, z: np.ndarray, ground: np.ndarray, length: float) -> Im
                     img[np.clip(py[mask] + oy, 0, H - 1), np.clip(px[mask] + ox, 0, W - 1)] = rgb
     out = Image.fromarray(img)
     d = ImageDraw.Draw(out)
+    font, small = _font(22), _font(18)
+    ink, faint = (235, 232, 225), (150, 150, 145)
     bar_m = 10 if length < 80 else 20 if length < 250 else 50
     bar_px = bar_m / length * (W - 2 * MARGIN)
-    d.line([(MARGIN, H - 12), (MARGIN + bar_px, H - 12)], fill=(230, 230, 230), width=2)
-    d.text((MARGIN + bar_px + 6, H - 18), f"{bar_m} m", fill=(230, 230, 230))
+    d.line([(MARGIN, H - 18), (MARGIN + bar_px, H - 18)], fill=ink, width=3)
+    d.text((MARGIN + bar_px + 10, H - 18), f"{bar_m} m", fill=ink, font=font, anchor="lm")
     if len(z):
         v_m = 5 if z1 - z0 < 30 else 10
         v_px = v_m / (z1 - z0) * (H - 2 * MARGIN)
-        d.line([(10, H - MARGIN), (10, H - MARGIN - v_px)], fill=(230, 230, 230), width=2)
-        d.text((14, H - MARGIN - v_px - 2), f"{v_m} m", fill=(230, 230, 230))
+        d.line([(18, H - MARGIN), (18, H - MARGIN - v_px)], fill=ink, width=3)
+        d.text((26, H - MARGIN - v_px), f"{v_m} m", fill=ink, font=font, anchor="lm")
+    d.text((W - MARGIN, 16), "ground returns", fill=GROUND_RGB, font=small, anchor="ra")
+    d.text((W - MARGIN - d.textlength("ground returns", font=small) - 24, 16), "trees and other returns", fill=VEG_RGB, font=small, anchor="ra")
     return out

@@ -148,7 +148,7 @@ struct MapView: View {
         } else if store.tiles.isEmpty {
             EmptyPane(icon: "mountain.2", title: "No terrain yet",
                       text: "Ask the agent to find open lidar for the project's area. The bare ground appears here as it is fetched.") {
-                Button("Find and fetch lidar") {
+                Button("Get the terrain") {
                     if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { app.run(flow) }
                 }
                 .buttonStyle(PrimaryButton())
@@ -402,9 +402,11 @@ struct MapView: View {
                         .font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(4)
                         .fixedSize(horizontal: false, vertical: true)
                     if tile.status != "unreadable" {
-                        Button("Ask the agent to look here") {
+                        Button {
                             app.ask("Look at tile \(tile.id) in two renderings and tell me what you see. Record your verdict.")
-                        }.buttonStyle(SecondaryButton())
+                        } label: { Label("Ask the agent", systemImage: "sparkles") }
+                        .buttonStyle(SecondaryButton())
+                        .help("Starts a chat in which the agent looks at this tile in two renderings and records a verdict.")
                     }
                 }
             }
@@ -556,6 +558,9 @@ struct RecordsView: View {
                 HStack(spacing: 8) {
                     Badge(text: c.statusLabel, color: c.statusColor)
                     Text("Flagged \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(1)
+                    Spacer(minLength: 8)
+                    Button("Review and decide") { app.reviewing = true }.buttonStyle(SecondaryButton())
+                        .help("Go through the candidates one at a time and decide each, from the keyboard")
                 }
             }
             HStack(alignment: .top, spacing: 12) {

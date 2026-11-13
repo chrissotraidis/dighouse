@@ -14,7 +14,7 @@ enum WorkTab: String, CaseIterable {
 }
 
 enum SettingsSection: String, CaseIterable {
-    case general = "General", look = "Personalize", models = "Models", engine = "How it runs", privacy = "Data and privacy", about = "About"
+    case general = "General", look = "Personalize", models = "Models", engine = "How it runs", tools = "Tools", privacy = "Data and privacy", about = "About"
 }
 
 @MainActor
@@ -33,6 +33,8 @@ final class AppState: ObservableObject {
     @Published var renameRequest: ChatThread?
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
+    /// Whether the one-at-a-time review of candidates is open.
+    @Published var reviewing = false
     @Published var starting = true
     @Published var sidebarVisible = true
     @Published var sidebarPeek = false

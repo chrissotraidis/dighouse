@@ -31,6 +31,25 @@ Each goal is done when its check passes in the running app. Record the date and 
 | U11 | **Failures say what to do.** Every error a person can see (a service down, a model that failed, a refused page, an engine that stopped) says in plain words what happened and offers the next step (Retry, Choose another model, Open the page yourself, Restart the engine). Nothing fails silently. | Turn the network off mid-fetch, pick a model that fails, and stop the engine: each shows a plain message with a working button. |
 | U12 | **One product, then docs.** A pass over every screen for consistent words, spacing, buttons and icons, at the zoomed, half-width and narrow sizes and in all three looks. Then the README screenshots are retaken, the docs match the app, and everything is merged. | The click-through passes at every size and look. README, concept, HANDOFF and this file agree with the app. `main` is pushed and clean. |
 
+## Chris's review, 2026-11-13 (after U8)
+
+Chris used the app after U1 to U8 and sent screenshots. His notes are goals F1 to F11, worked before U10 to U12; U9 is folded into F1. The audience is people with little or no archaeology: every screen has to say what it is for and what to do next.
+
+| Goal | What | Check |
+|---|---|---|
+| F1 | **The review comes prepared.** The agent suggests each decision and its reason (where a find is published, what makes it modern) as part of its work, and the review fills them in; the person accepts with Return or changes them. Asking for second looks is one short, clear button. | Reviewing the five Mound City candidates starts from a suggestion on each that came from the record, and needs only Return where the suggestion is right. |
+| F2 | **Buttons look professional.** One button style used everywhere, short labels (no sentence on a button), icons where they help, one main action per screen. | Screenshots of Review, Records, Data, Toolbox and Settings show the same buttons and no label over four words. |
+| F3 | **Every slash command works well.** | Each of the 21 commands run once in the app, with the result written in the Log. |
+| F4 | **Home reads well and moves.** The opening text is bigger; the marks on Home and on a new chat animate like the one in the sidebar. | Seen in the app. |
+| F5 | **Nothing looks clickable that is not, and everything clickable does something visible.** "Open surveys / Known sites" reads as a switch with the chosen side marked. | Click-through of Home, Toolbox and Settings: every control gives a visible result. |
+| F6 | **Settings, gone over.** Personalize, Models and testing, How it runs (what the engine is, what the model is, and how to use Claude or any other maker's model), Data and privacy, About. | Each page reviewed in the app; How it runs says plainly that the engine is Codex and the model can be Claude through OpenCodex. |
+| F7 | **The tools live in Settings too.** A Tools page in Settings lists the archaeology tools and other tool servers; "Open the Toolbox" stays as the guided tour. | Settings › Tools shows every tool and the add-a-server control. |
+| F8 | **The Toolbox's data page fits and does not surprise.** Services grouped by where they work (anywhere, United States, England, Netherlands, France, ancient Mediterranean), compact enough to see at a glance, status checked at the top, and "Try it" replaced by a button that says it starts a chat with the agent. | The page shows every service without long scrolling; pressing a service's button says first that it starts a chat. |
+| F9 | **A project opens on its story so far.** Opening a project shows its question, what has been done (terrain, tiles, screening, checks, sources, decisions), what the last run found, and the next step explained for a beginner. | Opening Mound City shows the overview with the right counts and one next step. |
+| F10 | **A project is its own little repository with a method.** A new project gets a METHODOLOGY.md that the agent follows and keeps, a notes index, and a git history of its records (data and private/ left out). The Notes tab shows the method, the run summaries and the daily log as separate parts. | A new project has the files and a first commit; a run adds a commit; the Notes tab shows the three parts. |
+| F11 | **Pictures are crisp.** Text inside the section pictures and the map pictures is drawn large enough to read. | A new section picture's labels are readable at normal size. |
+
+
 Still with Chris from loop 2: dragging the two edges and dropping a Finder file (N2), and his review of the N9 screens. Still waiting on decisions, so not goals: a notarized download, a Notion button, bulk screening through the router, the licence, and going public.
 
 ## Rules for this loop
@@ -245,4 +264,19 @@ Checked on Mound City Group:
 | Zoom in twice | Map enlarged with a scrollbar to pan. |
 
 Not verified: pinch zoom and two-finger panning with a real trackpad, since the test tooling sends neither.
+
+
+### 2026-11-13, F1, F2, F4, F5, F6 (How it runs), F7, F8, F9, F11
+
+- **F1, the review comes prepared.** A new tool, `suggest_decision`, lets the agent write the decision the evidence points to and its reason onto a record ("Suggested decision" in the Markdown), changing nothing else. "What needs my decision?" became **Prepare my review**: the agent reads each record and sources and suggests a decision for each, naming where a find is published. "Run the whole search" now ends with suggestions too. The review opens each candidate with the suggestion shown and filled in, so a right one needs only Return. "Second looks" is a short button with the count in its tooltip. Checked on the Mound City test copy: Prepare my review suggested already published for C-001 and C-003 (Benson 2012, Everhart and Ruby 2020, Seeman et al. 2026), modern for C-002 and C-005, natural for C-004; five Returns recorded all five in 11 seconds, each with Chris's name and the reason.
+- **F2, buttons.** One button shape everywhere: rounded rectangles with a soft fill, a slight shadow and a press effect, with an icon where it helps. Long labels shortened ("Get the terrain", "See how it works", "Create project", "Ask the agent", "Try it yourself").
+- **F4, Home.** The opening paragraph is 17 pt, up from 14.5; the heading is larger; the marks on Home and on a new chat animate (consecutive frames differ).
+- **F5.** "Open surveys / Known sites" is now a two-sided switch with the chosen side raised.
+- **F6 in part, How it runs.** Rewritten as three numbered parts: the model (the thinker, which can be Claude, GPT, Gemini or Grok), the engine (the hands: Codex, which runs any model), the tools. A "Which models you can use" panel lists the makers on offer from the model list (OpenAI 20, Alibaba 9, xAI 8, Moonshot 8, Zhipu 7, Anthropic 6, Google 4, …), explains the short codes in model names, and says Claude Code cannot replace Codex as the engine yet.
+- **F7.** Settings has a **Tools** page listing every tool by stage, with "Guided tour" to the Toolbox and "Manage tool servers".
+- **F8.** The Toolbox's Open data page groups services by where they work (Anywhere, United States, England/Netherlands/France, ancient Mediterranean) as compact rows that open for details; status and "Check status" are at the top ("11 of 11 online"). "Try it" became **Ask the agent…**, which first says it starts a chat and uses the model.
+- **F9.** Opening a project without a chat shows its overview: the question, the next step with why in plain words and one button, the six stages with counts, and the last run's summary.
+- **F11.** Section pictures have labels drawn in a real font at a readable size, and a colour key for ground and other returns.
+
+Left for the next turn: F3 (each slash command run once), F6 for Personalize, Models, Data and privacy and About, and F10 (a project as a repository with a method).
 

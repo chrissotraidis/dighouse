@@ -88,7 +88,7 @@ private struct HowTab: View {
                 if at < packs.count - 1 {
                     Button("Next: \(packs[at + 1].title)") { stage = at + 1 }.buttonStyle(PrimaryButton())
                 } else {
-                    Button("Run this search yourself") { app.startProject(from: StartingPoints.all[0]) }.buttonStyle(PrimaryButton())
+                    Button("Try it yourself") { app.startProject(from: StartingPoints.all[0]) }.buttonStyle(PrimaryButton())
                 }
             }
             .padding(.horizontal, 18).padding(.vertical, 12)
@@ -516,31 +516,128 @@ private struct DataTab: View {
     @EnvironmentObject var app: AppState
     @State private var online: [String: Bool] = [:]
     @State private var checked: Date?
+    @State private var checking = false
+    @State private var open: String?
+    @State private var asking: ToolGuide.DataSource?
+
+    /// Where each service's data covers, so a person can see at a glance which ones matter for their place.
+    private static let regions: [(title: String, note: String, names: [String])] = [
+        ("Anywhere", "Used for every project, wherever it is.", ["OpenTopography", "Wikidata", "OpenStreetMap", "OpenAlex", "Open Context"]),
+        ("United States", "Lidar and records for places in the US.", ["USGS 3DEP", "National Register of Historic Places"]),
+        ("England, the Netherlands and France", "Ready-made national ground models, used only for places in these countries.",
+         ["Environment Agency lidar (England)", "AHN (Netherlands)", "IGN LiDAR HD (France)"]),
+        ("The ancient Mediterranean and Near East", "Ancient places on record, used only for places in that region.", ["Pleiades"]),
+    ]
 
     var body: some View {
-        Text("Everything Dighouse searches is public. It reads \(ToolGuide.allSources.count) open services, and none needs an account or a key. Each picture below was made from that service's data. Press Try it to see the agent use it.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-        ForEach(ToolGuide.allSources) { source in
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 18) {
-                    art(source).frame(width: 300)
-                    words(source).frame(minWidth: 320, idealWidth: 320, maxWidth: .infinity, alignment: .leading)
-                }
-                VStack(alignment: .leading, spacing: 14) {
-                    art(source).frame(maxWidth: 420)
-                    words(source)
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Everything Dighouse searches is public, and none of it needs an account or a key. Click a service to see what it gives and a picture made from its data.")
+                .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 4) {
+                Button { Task { await probe() } } label: { Label(checking ? "Checking…" : "Check status", systemImage: "arrow.clockwise") }
+                    .buttonStyle(SecondaryButton()).disabled(checking)
+                    .help("Sends a small test request to each service from this Mac.")
+                if let checked {
+                    let up = online.values.filter { $0 }.count
+                    Text("\(up) of \(ToolGuide.allSources.count) online at \(checked.formatted(date: .omitted, time: .shortened))")
+                        .font(.system(size: 11.5)).foregroundStyle(up == ToolGuide.allSources.count ? Theme.faint : Theme.amber)
                 }
             }
-            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .panel()
         }
-        HStack(spacing: 10) {
-            Button("Check the services again") { Task { await probe() } }.buttonStyle(SecondaryButton())
-            if let checked {
-                Text("Checked from this Mac at \(checked.formatted(date: .omitted, time: .shortened)).").font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+        ForEach(Self.regions, id: \.title) { region in
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(region.title).font(.system(size: 15, weight: .semibold))
+                    Text(region.note).font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+                }
+                VStack(spacing: 0) {
+                    let sources = region.names.compactMap { name in ToolGuide.allSources.first { $0.name == name } }
+                    ForEach(Array(sources.enumerated()), id: \.element.id) { i, source in
+                        if i > 0 { Hairline() }
+                        row(source)
+                    }
+                }
+                .panel()
             }
         }
         .task { await probe() }
+        .confirmationDialog(asking.map { "Ask the agent about \($0.name)?" } ?? "", isPresented: Binding(get: { asking != nil }, set: { if !$0 { asking = nil } }),
+                            titleVisibility: .visible) {
+            Button("Start a chat") { if let asking { app.askGeneral(asking.ask) }; asking = nil }
+            Button("Cancel", role: .cancel) { asking = nil }
+        } message: {
+            Text(asking.map { "This starts a new chat in which the agent uses \($0.name) to answer: \"\($0.ask)\" It uses your AI model." } ?? "")
+        }
+    }
+
+    private func row(_ source: ToolGuide.DataSource) -> some View {
+        let expanded = open == source.name
+        return VStack(alignment: .leading, spacing: 12) {
+            Button { withAnimation(.easeOut(duration: 0.15)) { open = expanded ? nil : source.name } } label: {
+                HStack(spacing: 12) {
+                    thumb(source).frame(width: 64, height: 44).clipShape(RoundedRectangle(cornerRadius: 6))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(source.name).font(.system(size: 13.5, weight: .semibold))
+                        Text(source.what).font(.system(size: 12.5)).foregroundStyle(Theme.dim).lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    status(source)
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.faint)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if expanded {
+                HStack(alignment: .top, spacing: 16) {
+                    art(source).frame(width: 260)
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text(source.what).font(.system(size: 13)).foregroundStyle(Theme.text.opacity(0.9)).fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("What Dighouse takes from it").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
+                            Text(source.gives).font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        }
+                        Flow(spacing: 6) {
+                            ForEach(source.usedFor.components(separatedBy: " · "), id: \.self) { Badge(text: $0, color: Theme.tan) }
+                        }
+                        HStack(spacing: 10) {
+                            Button { asking = source } label: { Label("Ask the agent…", systemImage: "sparkles") }
+                                .buttonStyle(SecondaryButton())
+                                .help("Starts a chat in which the agent uses this service. It asks you first.")
+                            if let url = URL(string: source.url) {
+                                Link(destination: url) { Label(url.host ?? source.url, systemImage: "arrow.up.right") }
+                                    .font(.system(size: 12.5)).foregroundStyle(Theme.accent)
+                            }
+                        }
+                    }
+                }
+                .padding(.leading, 76)
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+    }
+
+    private func status(_ source: ToolGuide.DataSource) -> some View {
+        let state = online[source.name]
+        return HStack(spacing: 6) {
+            Circle().fill(state == true ? Theme.green : state == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
+            Text(state == true ? "Online" : state == false ? "Not answering" : "Checking")
+                .font(.system(size: 12)).foregroundStyle(state == false ? Theme.amber : Theme.dim)
+        }
+        .help(state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
+              : "This service replied to a test request from this Mac.")
+    }
+
+    @ViewBuilder private func thumb(_ source: ToolGuide.DataSource) -> some View {
+        if let image = source.image.hasPrefix("start:") ? StartingPoints.image(named: String(source.image.dropFirst(6)))
+                                                        : (source.image.isEmpty ? nil : Tour.image(source.image)) {
+            Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+        } else {
+            Rectangle().fill(Theme.side).overlay(
+                Image(systemName: source.image == "papers" ? "books.vertical" : source.image == "records" ? "doc.text" : "building.columns")
+                    .font(.system(size: 16)).foregroundStyle(Theme.tan.opacity(0.85)))
+        }
     }
 
     @ViewBuilder private func art(_ source: ToolGuide.DataSource) -> some View {
@@ -564,40 +661,8 @@ private struct DataTab: View {
         }
     }
 
-    private func words(_ source: ToolGuide.DataSource) -> some View {
-        let state = online[source.name]
-        return VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 10) {
-                Text(source.name).font(.system(size: 17, weight: .bold))
-                Spacer()
-                HStack(spacing: 6) {
-                    Circle().fill(state == true ? Theme.green : state == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
-                    Text(state == true ? "Online" : state == false ? "Cannot be reached" : "Checking")
-                        .font(.system(size: 12)).foregroundStyle(state == false ? Theme.amber : Theme.dim)
-                }
-                .help(state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
-                      : "This service replied to a test request from this Mac.")
-            }
-            Text(source.what).font(.system(size: 13.5)).foregroundStyle(Theme.text.opacity(0.9)).lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("What Dighouse takes from it").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
-                Text(source.gives).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-            }
-            Flow(spacing: 6) {
-                ForEach(source.usedFor.components(separatedBy: " · "), id: \.self) { Badge(text: $0, color: Theme.tan) }
-            }
-            HStack(spacing: 10) {
-                Button("Try it") { app.askGeneral(source.ask) }.buttonStyle(SecondaryButton()).help(source.ask)
-                if let url = URL(string: source.url) {
-                    Link(url.host ?? source.url, destination: url).font(.system(size: 12.5)).foregroundStyle(Theme.accent)
-                }
-            }
-            .padding(.top, 2)
-        }
-    }
-
     private func probe() async {
+        checking = true
         online = [:]
         await withTaskGroup(of: (String, Bool).self) { group in
             for source in ToolGuide.allSources {
@@ -613,8 +678,10 @@ private struct DataTab: View {
             for await (name, ok) in group { online[name] = ok }
         }
         checked = Date()
+        checking = false
     }
 }
+
 
 // MARK: - More tools
 

@@ -14,15 +14,28 @@ private struct Pressable<Label: View>: View {
 
     var body: some View {
         label
+            .labelStyle(ButtonLabelStyle())
             .font(.system(size: 13, weight: .medium))
             .lineLimit(1).fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(text.opacity(enabled ? 1 : 0.4))
-            .padding(.horizontal, 14).frame(height: 30)
-            .background(Capsule().fill(fill(hover && enabled, pressed).opacity(enabled ? 1 : 0.3)))
-            .overlay(Capsule().strokeBorder(outline))
-            .contentShape(Capsule())
+            .padding(.horizontal, 12).frame(height: 30)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(fill(hover && enabled, pressed).opacity(enabled ? 1 : 0.35)))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(outline.opacity(enabled ? 1 : 0.5)))
+            .shadow(color: .black.opacity(enabled ? 0.18 : 0), radius: 1, y: 1)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .scaleEffect(pressed ? 0.98 : 1)
             .onHover { hover = $0 }
             .animation(.easeOut(duration: 0.12), value: hover)
+    }
+}
+
+/// An icon and a word in a button: the icon a little smaller and quieter than the word.
+private struct ButtonLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 6) {
+            configuration.icon.font(.system(size: 11.5, weight: .semibold)).opacity(0.85)
+            configuration.title
+        }
     }
 }
 
@@ -35,12 +48,12 @@ struct PrimaryButton: ButtonStyle {
     }
 }
 
-/// A quiet outlined pill for everything else.
+/// A quiet filled button for everything else.
 struct SecondaryButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Pressable(label: configuration.label, pressed: configuration.isPressed,
-                  fill: { hover, pressed in Theme.ink.opacity(pressed ? 0.16 : hover ? 0.1 : 0) },
-                  text: Theme.text, outline: Theme.ink.opacity(0.16))
+                  fill: { hover, pressed in Theme.ink.opacity(pressed ? 0.16 : hover ? 0.12 : 0.07) },
+                  text: Theme.text, outline: Theme.ink.opacity(0.12))
     }
 }
 

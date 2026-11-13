@@ -502,21 +502,20 @@ private struct EmptyChat: View {
     ]
 
     var body: some View {
+        if store.current != nil { ProjectOverview() } else { generalStart }
+    }
+
+    private var generalStart: some View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 22) {
                     VStack(spacing: 8) {
-                        if store.current == nil { MoundMark().frame(width: 64, height: 28).padding(.bottom, 4) }
+                        if store.current == nil { MoundMark(lively: true).frame(width: 64, height: 28).padding(.bottom, 4) }
                         Text(heading.0).font(.system(size: 26, weight: .semibold))
                         Text(heading.1).font(.system(size: 14)).foregroundStyle(Theme.dim).multilineTextAlignment(.center).lineSpacing(2)
                             .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 520)
                     }
-                    if store.current == nil { general } else {
-                        VStack(spacing: 8) {
-                            ForEach(flows) { flow in WorkflowRow(flow: flow) { app.run(flow) } }
-                        }
-                        .frame(maxWidth: 560)
-                    }
+                    if store.current == nil { general }
                 }
                 .padding(.horizontal, 24).padding(.vertical, 24)
                 .frame(maxWidth: .infinity, minHeight: geo.size.height)

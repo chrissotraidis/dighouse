@@ -94,6 +94,7 @@ enum ToolGuide {
              image: "record-relief", flow: "decide",
              tools: [Tool(name: "init_project", title: "Create a project", does: "Creates a project folder."),
                      Tool(name: "add_evidence", title: "Add evidence", does: "Adds a line of evidence to a record."),
+                     Tool(name: "suggest_decision", title: "Suggest a decision", does: "Writes the decision the evidence points to, and why, so your review starts prepared."),
                      Tool(name: "set_status", title: "Set a status", does: "Moves a candidate to a status, if its checks support it."),
                      Tool(name: "list_candidates", title: "List candidates", does: "Lists candidates and what each still lacks."),
                      Tool(name: "run_status", title: "Report the run", does: "Reports coverage, candidates, controls, and what is waiting for you."),
@@ -143,7 +144,7 @@ enum ToolGuide {
                  scope: .general, steps: [Handoff(who: "You", does: "Name the place"), Handoff(who: "Agent", does: "Checks lidar coverage and recorded sites")]),
         Workflow(id: "full", title: "Run the whole search", icon: "play.circle",
                  summary: "Everything from fetching the terrain to the literature search, stopping for you at the second look and at each decision.",
-                 prompt: "Run the whole search for this project and finish it. Fetch the terrain if it is missing and cut it into tiles. Screen every tile in two styles, handing batches to helper agents when more than 12 are left. Flag what looks built, then cut a section and check for modern features for each flag. Search the literature with search_literature and search_records, open what you can with read_source, and log every source on its records with log_source as soon as you know its outcome. Add the section measurements as evidence. Keep a plan as you go. End with write_summary, even if something stopped you early. Do not set statuses or record a second look; tell me what is waiting for me.",
+                 prompt: "Run the whole search for this project and finish it. Fetch the terrain if it is missing and cut it into tiles. Screen every tile in two styles, handing batches to helper agents when more than 12 are left. Flag what looks built, then cut a section and check for modern features for each flag. Search the literature with search_literature and search_records, open what you can with read_source, and log every source on its records with log_source as soon as you know its outcome. Add the section measurements as evidence. For each candidate, call suggest_decision with the decision the evidence points to and the reason, naming where it is published if it is. Keep a plan as you go. End with write_summary, even if something stopped you early. Do not set statuses or record a second look; tell me what is waiting for me.",
                  scope: .project,
                  steps: [Handoff(who: "Agent", does: "Fetches lidar, builds the bare ground"), Handoff(who: "Agent and helpers", does: "Screen every tile"),
                          Handoff(who: "Agent", does: "Sections and modern-feature checks"), Handoff(who: "Second model", does: "Independent second look"),
@@ -168,9 +169,9 @@ enum ToolGuide {
                  summary: "Searches the literature for each open candidate and logs every source as read or not opened.",
                  prompt: "Search the literature for each candidate that has no sources yet, starting with studies of this dataset. Open what you find with read_source, and log each source on its record as soon as you have read it or failed to open it.",
                  scope: .project, steps: [Handoff(who: "Agent", does: "Searches, reads and logs sources")]),
-        Workflow(id: "decide", title: "What needs my decision?", icon: "person.crop.circle.badge.questionmark",
-                 summary: "A summary of each candidate, what is still missing, and what is ready for you.",
-                 prompt: "Tell me what is waiting for my decision, and what is still missing on each candidate.",
+        Workflow(id: "decide", title: "Prepare my review", icon: "person.crop.circle.badge.questionmark",
+                 summary: "The agent suggests a decision on each candidate, with where it is published or why, so your review starts prepared.",
+                 prompt: "Prepare my review. For each open candidate, read its record and sources and call suggest_decision with the decision the evidence points to and a reason I can check in one read: for already published, say where (author, year, title or record); for modern or natural, what shows it. If a candidate has no read source that names it, search the literature for it first. Then tell me in a few lines what is waiting for me and what is still missing.",
                  scope: .project, steps: [Handoff(who: "Agent", does: "Summarizes the records"), Handoff(who: "You", does: "Decide")]),
         Workflow(id: "report", title: "Draft a report", icon: "envelope",
                  summary: "Drafts a report for the heritage authority for candidates you marked as having no match. You send it.",
@@ -286,6 +287,7 @@ enum ToolGuide {
         case "init_project": return ("folder.badge.plus", "Created the project \(s("name"))")
         case "find_data": return ("magnifyingglass", "Looked for open lidar over the area")
         case "import_terrain": return ("tray.and.arrow.down", "Added your own file as terrain")
+        case "suggest_decision": return ("lightbulb", "Suggested a decision for \(s("candidate"))")
         case "fetch_terrain": return ("arrow.down.circle", "Fetched terrain from \(s("dataset").split(separator: ":").last.map(String.init) ?? "")")
         case "view_terrain": return ("mountain.2", "Looked at the whole terrain")
         case "make_tiles": return ("square.grid.3x3", "Cut the terrain into tiles")

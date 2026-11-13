@@ -110,6 +110,18 @@ def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: 
     return meta
 
 
+def suggest(p: Project, cid: str, status: str, reason: str, by: str) -> dict:
+    """The agent's suggestion for the person's decision. It changes nothing but the suggestion; the person decides."""
+    if status not in ("modern", "natural", "already_published", "no_match_in_sources_read"):
+        raise ValueError("suggest one of: already_published, modern, natural, no_match_in_sources_read")
+    if not reason.strip():
+        raise ValueError("Give the reason the person will read, such as where the feature is published.")
+    meta, notes = get(p, cid)
+    meta["suggestion"] = {"status": status, "reason": reason.strip(), "by": by, "date": today()}
+    write(p, meta, notes)
+    return meta
+
+
 def set_check(p: Project, cid: str, key: str, value: dict) -> dict:
     meta, notes = get(p, cid)
     meta["checks"][key] = value
@@ -159,6 +171,10 @@ def _body(meta: dict) -> str:
     out.append(_tick(read and not unread, "Sources searched", f"{read} read, {unread} could not be opened"))
     out += ["", "## Sources searched", ""]
     out += [f"- {x['title']} — {x['status'].replace('_', ' ')} — {x['finding']}" for x in sources] or ["None yet."]
+    sug = meta.get("suggestion")
+    if sug and meta["status"] in ("flagged", "ground_confirmed"):
+        out += ["", "## Suggested decision", "",
+                f"{sug['by']} suggests: {LABELS[sug['status']].lower()}. {sug['reason']} (A person decides.)"]
     if meta["decisions"]:
         out += ["", "## Decisions", ""]
         for d in meta["decisions"]:

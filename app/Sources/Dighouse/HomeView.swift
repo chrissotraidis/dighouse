@@ -122,14 +122,14 @@ struct HomeView: View {
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                MoundMark().frame(width: 46, height: 20)
-                Text("OPEN ARCHAEOLOGY").font(.system(size: 11.5, weight: .bold)).kerning(1.4).foregroundStyle(Theme.tan)
+                MoundMark(lively: true).frame(width: 46, height: 20)
+                Text("OPEN ARCHAEOLOGY").font(.system(size: 12.5, weight: .bold)).kerning(1.5).foregroundStyle(Theme.tan)
             }
-            Text("Help find what the forest is hiding.").font(.system(size: 33, weight: .bold))
+            Text("Help find what the forest is hiding.").font(.system(size: 36, weight: .bold))
                 .fixedSize(horizontal: false, vertical: true)
             Text("Dighouse is a free, open tool for searching public lidar, the laser scans that map the ground under the trees, for places people built. AI agents do the patient work and check every find. You decide what each one is.")
-                .font(.system(size: 14.5)).foregroundStyle(Theme.dim).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
-            Button("See how a search works") { app.show(.toolbox) }.buttonStyle(SecondaryButton()).padding(.top, 2)
+                .font(.system(size: 17)).foregroundStyle(Theme.text.opacity(0.78)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
+            Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton()).padding(.top, 2)
         }
     }
 
@@ -145,8 +145,13 @@ struct HomeView: View {
     private var starts: some View {
         PageSection(title: "Places to start") {
             HStack(spacing: 4) {
-                startTab(0, "Open surveys to search")
-                startTab(1, "Known sites to learn on")
+                HStack(spacing: 2) {
+                    startTab(0, "Open surveys to search")
+                    startTab(1, "Known sites to learn on")
+                }
+                .padding(3)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.ink.opacity(0.06)))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
                 Spacer()
                 Button("Open a shared project folder…") { app.chooseProjectFolder() }.buttonStyle(.plain)
                     .font(.system(size: 12.5)).foregroundStyle(Theme.dim)
@@ -167,12 +172,17 @@ struct HomeView: View {
     }
 
     private func startTab(_ kind: Int, _ title: String) -> some View {
-        Button { startKind = kind } label: {
-            Text(title).font(.system(size: 13, weight: .medium)).foregroundStyle(startKind == kind ? Theme.text : Theme.dim)
-                .padding(.horizontal, 12).frame(height: 30)
-                .background(Capsule().fill(startKind == kind ? Theme.ink.opacity(0.1) : .clear)).contentShape(Capsule())
+        // Two sides of one switch: the chosen side is raised, the other is plain text that changes on hover.
+        Button { withAnimation(.easeOut(duration: 0.15)) { startKind = kind } } label: {
+            Text(title).font(.system(size: 13, weight: startKind == kind ? .semibold : .medium))
+                .foregroundStyle(startKind == kind ? Theme.text : Theme.dim)
+                .padding(.horizontal, 14).frame(height: 28)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(startKind == kind ? Theme.raised : .clear)
+                    .shadow(color: .black.opacity(startKind == kind ? 0.3 : 0), radius: 2, y: 1))
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(startKind == kind ? .isSelected : [])
     }
 
     @ViewBuilder private var surveys: some View {

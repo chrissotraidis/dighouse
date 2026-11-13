@@ -34,6 +34,7 @@ struct MainView: View {
             }
         }
         .ignoresSafeArea(edges: .top)
+        .sheet(isPresented: $app.reviewing) { ReviewSheet().withApp(app) }
     }
 
     @ViewBuilder private func page(width: CGFloat) -> some View {
@@ -116,10 +117,10 @@ struct TopBar: View {
             } else if inProject {
                 if chat.running { ProgressView().controlSize(.small).padding(.trailing, 2) }
                 if !s.needsPerson.isEmpty {
-                    Button { app.showRecords(s.needsPerson.first) } label: {
+                    Button { app.reviewing = true } label: {
                         Badge(text: "\(s.needsPerson.count) need\(s.needsPerson.count == 1 ? "s" : "") you", color: Theme.accent)
                     }
-                    .buttonStyle(.plain).help("Candidates waiting for your decision")
+                    .buttonStyle(.plain).help("Review the candidates waiting for your decision, one at a time")
                 }
                 LayoutSwitch()
             }

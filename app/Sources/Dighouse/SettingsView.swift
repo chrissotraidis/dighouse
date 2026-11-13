@@ -45,6 +45,7 @@ struct SettingsPage: View {
                         case .look: LookSettings()
                         case .models: ModelSettings()
                         case .engine: EngineSettings()
+                        case .tools: ToolsSettings()
                         case .privacy: PrivacySettings()
                         case .about: AboutSettings()
                         }
@@ -62,7 +63,8 @@ struct SettingsPage: View {
         case .general: return "gearshape"
         case .look: return "paintpalette"
         case .models: return "cpu"
-        case .engine: return "gearshape.2"
+        case .engine: return "point.3.connected.trianglepath.dotted"
+        case .tools: return "wrench.and.screwdriver"
         case .privacy: return "lock"
         case .about: return "info.circle"
         }
@@ -352,41 +354,59 @@ private struct EngineSettings: View {
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var setup: Setup
 
+    /// The makers behind the models on offer, read from each model's name, with how many of theirs there are.
+    private var makers: [(maker: String, family: String, count: Int)] {
+        let known: [(String, String, String)] = [("claude", "Anthropic", "Claude"), ("gpt", "OpenAI", "GPT"), ("gemini", "Google", "Gemini"),
+                                                 ("grok", "xAI", "Grok"), ("kimi", "Moonshot", "Kimi"), ("glm", "Zhipu", "GLM"),
+                                                 ("qwen", "Alibaba", "Qwen"), ("deepseek", "DeepSeek", "DeepSeek"), ("llama", "Meta", "Llama")]
+        var counts: [String: Int] = [:]
+        for m in engine.models {
+            let text = (m.id + " " + m.name).lowercased()
+            if let hit = known.first(where: { text.contains($0.0) }) { counts[hit.1, default: 0] += 1 } else { counts["Other", default: 0] += 1 }
+        }
+        return known.compactMap { k in counts[k.1].map { (k.1, k.2, $0) } }.sorted { $0.count > $1.count }
+            + (counts["Other"].map { [("Other makers", "", $0)] } ?? [])
+    }
+
     var body: some View {
-        Text("Everything runs from this Mac. Dighouse has no account and no server of its own.")
-            .font(.system(size: 13.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        Text("Dighouse is made of three parts that work together. You can change the first one; the other two come with it.")
+            .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
         LoopDiagram()
         VStack(spacing: 0) {
-            PartRow(icon: "cpu", title: "AI model",
-                    text: "Reads your request, decides each step, and looks at the terrain pictures.",
+            PartRow(icon: "cpu", title: "1. The AI model: the thinker",
+                    text: "The model reads your request, decides each step, and looks at the terrain pictures. You choose it. It can be Claude, GPT, Gemini, Grok or any other model your setup offers; pick one that reads images.",
                     ok: engine.ready ? true : nil,
-                    status: engine.ready ? "\(engine.models.count) available" : app.starting ? "Starting" : "Waiting for the engine") {
+                    status: engine.ready ? "\(engine.models.count) to choose from" : app.starting ? "Starting" : "Waiting for the engine") {
                 if engine.ready {
-                    ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
+                    HStack(spacing: 8) {
+                        ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
+                        Button("Test and settings") { app.settingsSection = .models }.buttonStyle(SecondaryButton())
+                    }
                 }
             }
             Hairline()
-            PartRow(icon: "bolt", title: "Agent engine",
-                    text: "Codex, a free open-source program from OpenAI. It runs the tools the model asks for, keeps the plan, starts helper agents and saves each chat.",
+            PartRow(icon: "bolt", title: "2. The agent engine: the hands",
+                    text: "The engine carries out what the model decides: it calls the tools, keeps the plan, starts helper agents and saves every chat. Dighouse uses Codex, a free, open-source engine from OpenAI. The engine is not the model: Codex runs Claude or any other model just as well.",
                     ok: setup.codex == nil ? false : engine.ready,
                     status: setup.codex == nil ? "Codex not found" : engine.ready ? setup.codexVersion : app.starting ? "Starting" : (engine.problem ?? "Not running")) {
                 HStack(spacing: 8) {
                     if setup.codex == nil, let url = URL(string: "https://github.com/openai/codex") {
                         Link("Get Codex", destination: url).font(.system(size: 13)).foregroundStyle(Theme.accent)
                     }
-                    Button("Restart") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
+                    Button { Task { await app.boot() } } label: { Label("Restart", systemImage: "arrow.clockwise") }
+                        .buttonStyle(SecondaryButton()).disabled(app.starting)
                         .help("Use this after signing in to Codex or changing its settings. Running work stops.")
                     if app.starting { ProgressView().controlSize(.small) }
                 }
             }
             Hairline()
-            PartRow(icon: "wrench.and.screwdriver", title: "Archaeology tools",
-                    text: "\(ToolGuide.toolCount) tools that come with Dighouse. They fetch lidar, build the bare ground, cut sections, check maps and archives, read the literature and keep the records.",
+            PartRow(icon: "wrench.and.screwdriver", title: "3. The archaeology tools: what it can do",
+                    text: "\(ToolGuide.toolCount) tools that come with Dighouse: they fetch open lidar, build the bare ground, cut sections, check maps and archives, read the literature and keep the records.",
                     ok: setup.toolsReady ? true : setup.toolsBusy ? nil : false,
                     status: setup.toolsReady ? "Ready" : setup.toolsBusy ? "Preparing"
                         : setup.uv == nil ? "Needs uv" : (setup.toolsProblem ?? "Not prepared")) {
                 HStack(spacing: 8) {
-                    Button("Open the Toolbox") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
+                    Button("See the tools") { app.settingsSection = .tools }.buttonStyle(SecondaryButton())
                     if !setup.toolsReady, !setup.toolsBusy, setup.uv != nil {
                         Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }.buttonStyle(PrimaryButton())
                     }
@@ -395,23 +415,97 @@ private struct EngineSettings: View {
                     }
                 }
             }
-            Hairline()
-            PartRow(icon: "arrow.triangle.branch", title: "Model router (optional)",
-                    text: "OpenCodex adds models from other providers, so a different maker's model can give the second opinion.",
-                    ok: setup.ocxRunning ? true : nil, status: setup.ocxRunning ? "Running" : "Not running") { EmptyView() }
         }
         .panel()
+
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Which models you can use").font(.system(size: 15, weight: .semibold))
+            Text(setup.ocxRunning
+                 ? "Your Codex sign-in gives you OpenAI's models. The OpenCodex router is running on this Mac, so models from other makers, Claude among them, are listed too, each through its own account or key. The short code at the start of a model's name (Cl, AG, xAI…) is the account it runs through."
+                 : "Your Codex sign-in gives you OpenAI's models. To use Claude, Gemini or others, run the free OpenCodex router: it adds them to Codex, and Dighouse lists them here.")
+                .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            if engine.ready {
+                Flow(spacing: 8) {
+                    ForEach(makers, id: \.maker) { m in
+                        HStack(spacing: 6) {
+                            Text(m.family.isEmpty ? m.maker : "\(m.family)").font(.system(size: 12.5, weight: .semibold))
+                            Text(m.family.isEmpty ? "\(m.count)" : "\(m.maker) · \(m.count)").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                        }
+                        .padding(.horizontal, 10).frame(height: 28)
+                        .background(RoundedRectangle(cornerRadius: 7).fill(Theme.ink.opacity(0.06)))
+                    }
+                }
+            }
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Circle().fill(setup.ocxRunning ? Theme.green : Theme.faint).frame(width: 7, height: 7)
+                    Text(setup.ocxRunning ? "OpenCodex router running" : "OpenCodex router not running").font(.system(size: 12.5)).foregroundStyle(Theme.dim)
+                }
+                if let url = URL(string: "https://github.com/lidge-jun/opencodex") {
+                    Link(destination: url) { Label("About OpenCodex", systemImage: "arrow.up.right") }.font(.system(size: 12.5)).foregroundStyle(Theme.accent)
+                }
+            }
+            Text("Claude Code, Anthropic's own engine, cannot stand in for Codex yet: Dighouse speaks to the engine through Codex's app-server. Claude the model works fully.")
+                .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).panel()
+
         VStack(spacing: 0) {
             SettingRow(title: "Account",
-                       note: engine.account.map { _ in "Codex on this Mac is signed in\(engine.plan.map { " on a \($0) plan" } ?? ""), and the Codex models run on that account. Models added by the router use their own keys. Dighouse never sees the password or keys." }
-                        ?? "Codex is not signed in. Run codex login in Terminal, then restart the engine.") { EmptyView() }
+                       note: engine.account.map { _ in "Codex on this Mac is signed in\(engine.plan.map { " on a \($0) plan" } ?? ""). OpenAI's models run on that account; models added by the router use their own keys. Dighouse never sees a password or a key." }
+                        ?? "Codex is not signed in. Run codex login in Terminal, then press Restart above.") { EmptyView() }
             Hairline()
             SettingRow(title: "The web",
-                       note: "The agent can search the web through the engine, and open pages and PDFs with its own reader. Pages that need a sign-in or block programs cannot be read; you can open those yourself in a project's Sources tab.") { EmptyView() }
+                       note: "The agent can search the web and open pages and PDFs. Pages that need a sign-in or block programs cannot be read; open those yourself in a project's Sources tab and hand them to the agent.") { EmptyView() }
         }
         .panel()
     }
 }
+
+/// The archaeology tools and any other tool servers, in Settings.
+private struct ToolsSettings: View {
+    @EnvironmentObject var app: AppState
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("Every tool the agent has, by stage. The agent picks them itself; you never call them by hand.")
+                .font(.system(size: 14)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 12)
+            Button { app.show(.toolbox) } label: { Label("Guided tour", systemImage: "map") }.buttonStyle(SecondaryButton())
+                .help("The Toolbox walks through a real search, stage by stage.")
+        }
+        ForEach(ToolGuide.packs) { pack in
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 10) {
+                    IconTile(name: pack.icon, size: 28)
+                    Text(pack.title).font(.system(size: 14, weight: .semibold))
+                    Spacer()
+                    Text("\(pack.tools.count) tool\(pack.tools.count == 1 ? "" : "s")").font(.system(size: 12)).foregroundStyle(Theme.faint)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                ForEach(pack.tools) { tool in
+                    Hairline()
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(tool.title).font(.system(size: 13, weight: .medium)).frame(width: 190, alignment: .leading)
+                        Text(tool.does).font(.system(size: 12.5)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .help("The agent calls this tool \(tool.name)")
+                }
+            }
+            .panel()
+        }
+        VStack(alignment: .leading, spacing: 8) {
+            Text("More tools").font(.system(size: 15, weight: .semibold))
+            Text("Tools from your Codex setup work here too, and you can add a tool server of your own (a small program that speaks MCP).")
+                .font(.system(size: 13)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            Button { UserDefaults.standard.set("More tools", forKey: "toolboxTab"); app.show(.toolbox) } label: { Label("Manage tool servers", systemImage: "puzzlepiece.extension") }
+                .buttonStyle(SecondaryButton())
+        }
+    }
+}
+
 
 private struct PrivacySettings: View {
     private let rows: [(String, String)] = [

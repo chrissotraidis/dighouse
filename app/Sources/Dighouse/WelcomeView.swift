@@ -170,13 +170,13 @@ struct WelcomeView: View {
     @ViewBuilder private var firstActions: some View {
         if app.onboarded { Button("Close guide") { app.showWelcome = false }.buttonStyle(SecondaryButton()) }
         else { Button("Skip for now") { app.finishOnboarding() }.buttonStyle(SecondaryButton()) }
-        Button("Help me choose a place") {
+        Button("Help me choose") {
             app.finishOnboarding()
             if let flow = ToolGuide.workflows.first(where: { $0.id == "choose" }) { app.run(flow) }
         }
         .buttonStyle(SecondaryButton()).disabled(!engine.ready)
         if busy { ProgressView().controlSize(.small) }
-        Button(choice.kind == .own ? "Pick an area" : "Create and get the terrain", action: begin)
+        Button(choice.kind == .own ? "Pick an area" : "Create project", action: begin)
             .buttonStyle(PrimaryButton()).disabled(busy || !engine.ready)
             .keyboardShortcut(.defaultAction)
     }

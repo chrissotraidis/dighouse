@@ -13,7 +13,7 @@
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
   <img alt="Native SwiftUI app" src="https://img.shields.io/badge/app-SwiftUI-FF9F0A?logo=swift&logoColor=white">
   <img alt="Python 3.11 or later" src="https://img.shields.io/badge/tools-Python%203.11%2B-3776AB?logo=python&logoColor=white">
-  <img alt="30 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-30%20tools-8B5E3C">
+  <img alt="31 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-31%20tools-8B5E3C">
   <img alt="Runs the Codex engine" src="https://img.shields.io/badge/engine-Codex%20app--server-5E5CE6">
   <img alt="Any model through OpenCodex" src="https://img.shields.io/badge/models-any%2C%20via%20OpenCodex-5E5CE6">
   <img alt="Open lidar from four countries" src="https://img.shields.io/badge/lidar-US%20%C2%B7%20England%20%C2%B7%20NL%20%C2%B7%20France-6B8E23">
@@ -130,7 +130,7 @@ uv run pytest -m live    # the same chain against the real data services (8 test
 | Screen | `record_verdict`, `flag_candidate` |
 | Check each flag | `cut_section`, `second_look`, `check_modern`, `add_control` |
 | Prior art | `search_literature`, `read_source`, `log_source` |
-| Records and run | `add_evidence`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `export_finds` |
+| Records and run | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `export_finds` |
 
 Terrain renders in four styles: `composite`, `hillshade`, `local_relief` and `sky_view`. `export_finds` writes the candidates as GeoJSON for QGIS, ArcGIS or Google Earth, under `private/` because it holds coordinates.
 

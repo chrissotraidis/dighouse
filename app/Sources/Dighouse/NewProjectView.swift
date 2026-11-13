@@ -214,7 +214,7 @@ struct NewProjectView: View {
                 Button("Cancel") { app.goHome() }.buttonStyle(SecondaryButton())
                 Spacer()
                 if busy { ProgressView().controlSize(.small) }
-                Button("Create and get the terrain", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
+                Button("Create project", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
                     .help("Creates the project and starts fetching its open lidar straight away.")
             }
         }

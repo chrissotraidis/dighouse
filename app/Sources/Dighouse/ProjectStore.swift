@@ -145,6 +145,9 @@ final class ProjectStore: ObservableObject {
                     Source(title: $0["title"] as? String ?? "", status: $0["status"] as? String ?? "", finding: $0["finding"] as? String ?? "", link: $0["link"] as? String ?? "")
                 },
                 decisions: decisions, folder: root + "/candidates")
+            if let sug = meta["suggestion"] as? JSON, let st = sug["status"] as? String, let why = sug["reason"] as? String {
+                c.suggestion = (st, why, sug["by"] as? String ?? "the agent")
+            }
             if let place = places[id] {
                 c.x = place["x"] as? Double ?? 0.5
                 c.y = place["y"] as? Double ?? 0.5
