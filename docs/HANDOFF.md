@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Rewritten 2026-11-13, after the second loop (N1 to N10) and the README. This file is the prompt for whoever continues the work. Read it, then [NEXT_LOOP.md](NEXT_LOOP.md), then start.
+Rewritten 2026-11-13, after the second loop (N1 to N10) and the README; updated after the third loop's first run (U1 to U7). This file is the prompt for whoever continues the work. Read it, then [USABILITY_LOOP.md](USABILITY_LOOP.md), whose Log says where the last run stopped, then start.
 
 ## Your brief
 
@@ -27,8 +27,17 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes and Sources tabs. Three looks; Earth is the default. The mark beside "Dighouse" animates.
 - **Tools** (`src/dighouse`, Python, MCP): 28 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain (USGS, OpenTopography, and national ground models for England, the Netherlands and France), `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Engine**: `codex app-server` (0.146.0) as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse opts into the experimental API, because newer chats are stored page by page and only `thread/turns/list` returns them.
-- **Tests**: 4 offline, 8 live (`uv run pytest`, `uv run pytest -m live`).
+- **Tests**: 4 offline, 8 live; 29 tools now (import_terrain added) (`uv run pytest`, `uv run pytest -m live`).
 - **README** has screenshots in `docs/images`, taken from the running app at 1440 × 900 with real projects. Retake them when the app changes in a way they show.
+
+## What the third loop added (U1 to U7)
+
+- Slash commands (`/` in the message box), including Codex's /fork, /undo, /compact, /goal and /status, built on the engine's experimental API (Dighouse opts in at initialize).
+- @ mentions for candidates, tiles, sources, files and projects; the references go to the agent below the message and are hidden in the chat.
+- Message actions (Copy, Edit and send again, Ask again, Copy the chat up to here), Find a chat with archived chats and Restore, and "Run the whole search" as a Codex goal.
+- A status line (chat fullness, usage left), download progress in the strip with a Cancel that stops the tool through `private/state/stop-download`.
+- Typing a place on Home starts a project there; creating a project fetches its terrain; the strip names the next step.
+- A Data tab: terrain details, your own GeoTIFF/LAS/LAZ through the new `import_terrain` tool, exports, and a map that draws nearby terrains as one mosaic.
 
 ## Waiting on Chris
 

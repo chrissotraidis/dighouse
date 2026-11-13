@@ -206,3 +206,20 @@ Checked:
 
 Widen the area and Use another survey were not run end to end here; they hand the agent a plain request, and the map change they rely on (new tiles beside old ones) is what the Mound City mosaic shows.
 
+
+### 2026-11-13, where this run stopped
+
+U1 to U7 are done and merged (pull requests #3 to #8). U8 to U12 are not started. Nothing is half done.
+
+Next, in order:
+
+- **U8, a map you can work on.** The map now draws every nearby terrain at its real position, so a drawn section line can be turned into metres from there. Still to build: pan and zoom with the trackpad (zoom is two buttons now), the view switcher (composite, hillshade, local relief, sky view; the tools already render all four), toggles for tiles and candidates, and drawing a line to cut a section.
+- **U9, deciding is quick.** U1 found the decision buttons at the bottom of a record, below every source. A review that goes one candidate at a time, with keys for the decisions and "ask a second look for all", is the plan.
+- **U10, ⌘K palette.** Find a chat (⇧⌘F) and the @ list already gather projects, chats and candidates; the palette can reuse them.
+- **U11, failures say what to do.** Partly done along the way: the modern-feature check now gives up within a minute with a plain message, a chat open in Codex says so, and a cancelled download says nothing was added. Still to do: a Retry or "choose another model" button on errors in the chat, and a message when the engine stops.
+- **U12, one product, then docs.** README screenshots predate the Data tab, slash commands, @ mentions and the status line; retake them and bring README, concept and HANDOFF into line.
+
+Seen during this run and not fixed: the Overpass servers were down all afternoon, so modern-feature checks fail; the National Register still withholds site locations; a cancelled download can take up to two minutes to stop while one slow request finishes.
+
+Test leftovers: projects "Cahokia control run" (a second one, at `~/Documents/Dighouse/cahokia-control-run`, not in the sidebar), "Serpent Mound goal run" and "Fort Ancient Ohio" in `~/Documents/Dighouse`; several archived test chats; five "Environment Agency terrain fetch" chats in Maiden Castle, three of them cancelled downloads.
+

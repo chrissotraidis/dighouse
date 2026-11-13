@@ -60,6 +60,7 @@ enum ToolGuide {
              why: "Low walls, mounds and platforms are hidden in a photograph and plain in the bare ground.",
              image: "reveal", flow: "terrain",
              tools: [Tool(name: "fetch_terrain", title: "Fetch terrain", does: "Downloads the points for an area and builds the ground model, or takes a national ground model ready-made, and reports how good the ground data is."),
+                     Tool(name: "import_terrain", title: "Use your own data", does: "Reads a ground model (GeoTIFF) or point cloud (LAS, LAZ) from this Mac into the project as terrain."),
                      Tool(name: "view_terrain", title: "View the terrain", does: "Shows the whole terrain at reduced size."),
                      Tool(name: "make_tiles", title: "Cut into tiles", does: "Cuts the terrain into overlapping tiles for screening.")]),
         Pack(title: "Look at every tile", short: "Screen", icon: "square.grid.3x3",
@@ -283,6 +284,7 @@ enum ToolGuide {
         case "survey_area": return ("binoculars", "Sized up an area: lidar coverage and recorded sites")
         case "init_project": return ("folder.badge.plus", "Created the project \(s("name"))")
         case "find_data": return ("magnifyingglass", "Looked for open lidar over the area")
+        case "import_terrain": return ("tray.and.arrow.down", "Added your own file as terrain")
         case "fetch_terrain": return ("arrow.down.circle", "Fetched terrain from \(s("dataset").split(separator: ":").last.map(String.init) ?? "")")
         case "view_terrain": return ("mountain.2", "Looked at the whole terrain")
         case "make_tiles": return ("square.grid.3x3", "Cut the terrain into tiles")
