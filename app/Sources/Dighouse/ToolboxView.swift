@@ -518,7 +518,7 @@ private struct DataTab: View {
     @State private var checked: Date?
 
     var body: some View {
-        Text("Everything Dighouse searches is public. It reads seven open services, and none needs an account or a key. Each picture below was made from that service's data. Press Try it to see the agent use it.")
+        Text("Everything Dighouse searches is public. It reads \(ToolGuide.allSources.count) open services, and none needs an account or a key. Each picture below was made from that service's data. Press Try it to see the agent use it.")
             .font(.system(size: 13.5)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         ForEach(ToolGuide.allSources) { source in
             ViewThatFits(in: .horizontal) {

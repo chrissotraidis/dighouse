@@ -120,7 +120,9 @@ final class Engine: ObservableObject {
         process = p
         input = stdin.fileHandleForWriting
         do {
-            _ = try await request("initialize", ["clientInfo": ["name": "dighouse", "title": "Dighouse", "version": "0.2.0"]])
+            // The experimental API is needed to read chats the engine stores page by page.
+            _ = try await request("initialize", ["clientInfo": ["name": "dighouse", "title": "Dighouse", "version": "0.2.0"],
+                                                 "capabilities": ["experimentalApi": true]])
             send(["method": "initialized"])
             let who = try await request("account/read")
             if let acct = who["account"] as? JSON {

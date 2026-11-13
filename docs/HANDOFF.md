@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Written 2026-11-12, at commit `50ecc50` on `main`. This file is the prompt for whoever continues the work. Read it, then [NEXT_LOOP.md](NEXT_LOOP.md), then start.
+Rewritten 2026-11-13, after the second loop (N1 to N10) and the README. This file is the prompt for whoever continues the work. Read it, then [NEXT_LOOP.md](NEXT_LOOP.md), then start.
 
 ## Your brief
 
@@ -22,43 +22,41 @@ Register the next loop as your goal. Suggested objective: "Finish the Dighouse l
 
 ## Where things stand
 
-Read the Log in [GOAL_LOOP.md](GOAL_LOOP.md) for what was checked and how. In short:
+Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) for what was checked and how. In short:
 
-- **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes and Sources tabs. Three looks; Earth is the default.
-- **Tools** (`src/dighouse`, Python, MCP): 26 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain, `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
-- **Engine**: `codex app-server` (0.146.0) as a child process, spoken to in JSON lines by `Engine.swift`.
-- **Tests**: 2 offline, 5 live (`uv run pytest`, `uv run pytest -m live`). Offline pass at this commit.
+- **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes and Sources tabs. Three looks; Earth is the default. The mark beside "Dighouse" animates.
+- **Tools** (`src/dighouse`, Python, MCP): 28 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain (USGS, OpenTopography, and national ground models for England, the Netherlands and France), `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
+- **Engine**: `codex app-server` (0.146.0) as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse opts into the experimental API, because newer chats are stored page by page and only `thread/turns/list` returns them.
+- **Tests**: 4 offline, 8 live (`uv run pytest`, `uv run pytest -m live`).
+- **README** has screenshots in `docs/images`, taken from the running app at 1440 × 900 with real projects. Retake them when the app changes in a way they show.
 
-## What was in progress when work stopped
+## Waiting on Chris
 
-1. **Animated mark beside "Dighouse" in the sidebar.** Chris's last request: the mound mark should animate while the agent is running. Nothing is written yet. The mark is `MoundMark` in `Controls.swift`, a `Canvas` of dots; the sidebar header is in `Sidebar` in `MainView.swift`. A run is in progress when `chat.live` is not empty (also `app.starting` and `app.secondLookBusy`). One idea: a pulse that sweeps across the dots like a laser pass, drawn in a `TimelineView` that is paused when idle, and still when Reduce Motion is on.
-2. **Full pass on the current build.** At the zoomed size every page and control in a 39-step click-through passed. Half width and the narrow layout (under 860 points, where the sidebar becomes an overlay) passed on older builds but were not repeated on this one. The Canopy look was never opened.
-3. **Live tests.** They passed once, before the OpenStreetMap fallback and the published-record count in `find_gaps` were changed. A rerun was started and its result was lost. Run `uv run pytest -m live` again.
-4. **"What should I research?"** It proposed two Chaco surveys that do not build into terrain. `open_surveys` now marks those with `known_problem`, and the skill says to leave them out. The workflow was not rerun after that fix.
+- **N2:** dragging the sidebar edge and the chat divider with a real mouse, and dropping a file from Finder onto the message box. Test tooling cannot start a real drag.
+- **N9:** review of the welcome guide, How it runs, Models, Toolbox and Data and privacy for anything that "looks generated".
+- **Decisions:** a notarized download, a Notion button, bulk screening through the model router, the licence, and when the repository goes public.
 
 ## Not verified
 
-- **Dragging the edges with a real mouse.** The sidebar edge and the chat divider pass under the test tooling, but so did the earlier handle that failed in Chris's hand. He was asked to try it and has not answered.
-- **Dropping a file onto the message box.** The Attach files panel and opening a file with Dighouse both work. A real drag from Finder was never tested.
+- **N1:** the mark on hover, with Reduce Motion on, and during a run in a chat that is not on screen.
+- **N3:** stopping a run halfway to see that what was done stays logged.
 - **Codex's browser plugin inside Dighouse.** It appears in the tool list. Nobody has asked the agent to use it here.
-- **Effort steps.** The slider shows what the model list says. Tested at the top step: Opus 5.5 and Gemini 3.8 Flash answered; Kimi K3 failed with an OpenCodex sign-in error; 6.1 Sol was refused for a ChatGPT account. Most of the 91 models are untested.
+- **Effort steps.** Most of the models in the roster have not been tested; the Test button in Settings records each one that is.
+- **A provider that refuses an effort step outright** (none was found).
 
 ## Known problems
 
-- **OpenStreetMap's query service** timed out or refused through most checks. The tools say which source did not answer and carry on, so site counts are often short.
-- **Publishers refuse programs.** In the Angel Mounds sweep the agent opened 6 sources and was refused by 14. The Sources tab lets a person open those, but the agent cannot drive that browser.
-- **Two surveys do not build**: `ot:NM16_Dorshow` (its tile index has no readable projection) and `ot:NM10_Dorshow` (almost no points classed as ground).
-- **Sections show no canopy** for datasets published as ground points only (the G-LiHT ones).
-- **Old chats** made before workflow titles were added show their whole prompt as a title.
-- **The welcome guide** was only lightly updated and still reads like the first build.
+- **Publishers refuse programs.** The Sources tab lets a person open a refused page and hand it to the agent; the agent cannot drive a browser on its own.
+- **Two surveys do not build**: `ot:NM16_Dorshow` (its tile index has no readable projection) and `ot:NM10_Dorshow` (almost no points classed as ground). Both are marked `known_problem`.
+- **Sections show no canopy** for datasets published as ground points only (the G-LiHT ones), and a section through a national ground model shows the profile only.
+- **The Environment Agency service is slow and rate-limits.** England downloads one 500 m request at a time; 1.9 sq km took about 15 minutes.
+- **Pleiades has no picture** on its Open data card.
 
 ## What Chris has asked for that is not built
 
-- The agent driving a browser of its own, as Codex does, to look up records.
-- Thinking from first principles about what else archaeologists use, and adding it. Not yet read by any tool: national lidar outside the United States, Pleiades in bulk, tDAR (its interface for programs needs approval), the Archaeology Data Service, EAMENA, CORONA imagery. Sizes of the last three were never verified.
-- Settings pages, "How it runs" and the Toolbox to keep getting clearer and less generic.
-- Runs and sweeps that work well enough to find things: "I want to be able to use this to find stuff and it's just not there yet."
-- From the first plan, still open: a button that pushes records to Notion, bulk screening through the model router, a notarized download.
+- The agent driving a browser of its own to look up records.
+- From the first plan: a button that pushes records to Notion, bulk screening through the model router, a notarized download.
+- Out of reach without an account, named in `open_resources`: historic aerial photographs, CORONA imagery, Denmark's lidar. Not yet checked: the Archaeology Data Service, EAMENA, tDAR, and lidar for Slovenia, Spain and Scotland.
 
 ## How to build, run and check
 

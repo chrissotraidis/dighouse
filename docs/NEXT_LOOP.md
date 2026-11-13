@@ -1,6 +1,6 @@
 # Dighouse goal loop 2: make it find things
 
-Last updated: 2026-11-12
+Last updated: 2026-11-13
 
 This loop follows [GOAL_LOOP.md](GOAL_LOOP.md), whose goals G1 to G21 are logged there. Read [HANDOFF.md](HANDOFF.md) first. The first loop made the app understandable. This one makes it something a person can use to do real work, and finishes what was left unverified.
 
@@ -126,3 +126,13 @@ Not checked: a provider that refuses a step outright with a message (none was fo
 - **Toolbox.** The new sources, the sky view and the export are in it (see N6).
 
 Screenshots for review: `outputs/dighouse-26-welcome.jpg`, `dighouse-27-how-it-runs.jpg`, `dighouse-28-models.jpg`, `dighouse-29-toolbox.jpg`, `dighouse-30-privacy.jpg`. N9 is done when Chris has no "looks generated" notes on them.
+
+### 2026-11-13, N10 and a chat that would not open
+
+- **Old chats would not open.** Opening "Terrain Tiles and Rampart Analysis" in Maiden Castle showed "paginated threads do not support thread/read(includeTurns=true)". Codex 0.146.0 stores newer chats page by page and refuses to return their turns through `thread/read`. Dighouse now opts into the engine's experimental API and reads those chats a page at a time with `thread/turns/list`; older chats still come from `thread/read`. Checked in the app: the Maiden Castle chat opened with its whole history, an older chat in Cahokia ("Open lidar fetch and tiling") still opened through thread/read, and a new chat sent a message, got its short title, and opened again after switching away.
+- **Open data** said the tools read seven services; there are 11 since N6. The sentence now counts the list.
+- **Docs.** The README was rewritten with the icon, badges, screenshots of the current build, an animation of the treetops coming away at Serpent Mound, the tools by stage, every open data service, the rules, and what is checked and not. `concept.md` no longer describes a Notion mirror, a crew file or bulk screening as built, and lists the real tools and data. `HANDOFF.md` was rewritten for the state after this loop.
+- Two leftover test chats ("Reply with the single word OK.") were archived so they do not show in the sidebar.
+
+N10 passes. N2 and N9 still wait on Chris.
+

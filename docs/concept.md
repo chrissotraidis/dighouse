@@ -8,7 +8,7 @@ The idea comes from Pietro Miotti's November 2026 experiment, in which agents sc
 
 ## What using it looks like
 
-1. Download Dighouse and open it. It finds the Codex engine and, if OpenCodex (OCX) is running, shows every model in the OCX roster.
+1. Build Dighouse and open it (it is not a download yet). It finds the Codex engine and, if OpenCodex (OCX) is running, shows every model in the OCX roster.
 2. Start from Home. If you know the place, pick the area on a map and see which open lidar covers it. If you do not, ask the agent to help you choose: it compares open surveys with what is already recorded and suggests areas. Either way you end with a project: a region and a question.
 3. Start a run. Agents download the data, strip the forest away, screen the terrain, verify what they flag, and search the literature.
 4. Watch or leave. The map, the cross-sections and the records update as the agents work. You can steer the run at any time by typing.
@@ -19,12 +19,11 @@ The idea comes from Pietro Miotti's November 2026 experiment, in which agents sc
 ```mermaid
 flowchart LR
   subgraph Window[Dighouse window]
-    P[Projects] --- C[Chat] --- V[Tools: map, 3D, section, records, crew]
+    P[Projects] --- C[Chat] --- V[Workspace: map, records, notes, sources]
   end
   C --> H[Codex engine]
   H --> R[Model router: OCX]
   H --> T[Archaeology tool server]
-  H --> N[Notion plugin]
   T --> R
   T --> F[Project folder]
   V --> F
@@ -36,9 +35,9 @@ flowchart LR
 | Models | OCX, or whatever models the user's Codex is set up with | Inherited |
 | Harness | The Codex engine (`codex app-server`), running inside Dighouse | Inherited |
 | Archaeology tools | A tool server for the data work, plus the panes that show it | Built |
-| Projects and records | A folder per project, Markdown records, a mirror in Notion | Built |
+| Projects and records | A folder per project with Markdown records; a Notion mirror is planned | Built |
 
-The window shows one place at a time, chosen from the sidebar: Home, a chat, New project, Toolbox or Settings. Chats work with or without a project. Opening a project puts its workspace beside the chat, with a divider that drags, and the workspace has three tabs: Map, Records and Notes. The Toolbox is its own page: how a search works in six stages with the tools behind each, the workflows, the open data services, and other tools. Settings is a page in the window that explains the three parts Dighouse is made of (the AI model, the agent engine and the archaeology tools), the account the engine uses and where data goes. Home opens with a picture that drags between treetops and bare ground, and says plainly what a chat app cannot do. The default colours are the soil brown, tan and green of the icon, with other looks under Personalize. A project has a Sources tab with a browser for the pages the agent could not open. A "What should I research?" workflow ranks regions by open lidar against what is on open record and proposes searches.
+The window shows one place at a time, chosen from the sidebar: Home, a chat, New project, Toolbox or Settings. Chats work with or without a project. Opening a project puts its workspace beside the chat, with a divider that drags, and the workspace has four tabs: Map, Records, Notes and Sources. The Toolbox is its own page: how a search works in six stages with the tools behind each, the workflows, the open data services, and other tools. Settings is a page in the window that explains the three parts Dighouse is made of (the AI model, the agent engine and the archaeology tools), the account the engine uses and where data goes. Home opens with a picture that drags between treetops and bare ground, and says plainly what a chat app cannot do. The default colours are the soil brown, tan and green of the icon, with other looks under Personalize. The Sources tab lists every source on the records and has a browser: a person can open a page the agent was refused and hand its text to the agent. A "What should I research?" workflow ranks regions by open lidar against what is on open record and proposes searches.
 
 The message box follows ChatGPT: one pill for the model and its thinking effort, which opens an effort slider with the searchable model list behind the model's name. It takes images, video, audio and other files. The chat shows the agent's plan as a checklist, each step it takes, helper agents, and folds long runs into one line.
 
@@ -58,7 +57,7 @@ The Codex engine is open source under Apache 2.0, so Dighouse can include it or 
 
 The app-server is marked experimental, so its interface can change between Codex versions.
 
-OCX works by pointing Codex's model traffic at a local address and adding its model list to Codex's settings. Because Dighouse runs the same engine with the same settings, the full roster appears in its model picker with no extra setup. OCX also exposes local endpoints for direct requests (responses, chat completions, messages and a model list), which Dighouse uses for bulk image screening.
+OCX works by pointing Codex's model traffic at a local address and adding its model list to Codex's settings. Because Dighouse runs the same engine with the same settings, the full roster appears in its model picker with no extra setup. OCX also exposes local endpoints for direct requests (responses, chat completions, messages and a model list). They are meant for bulk image screening, which is not built yet.
 
 People without OCX use the models their Codex sign-in provides. OCX is optional.
 
@@ -66,22 +65,21 @@ Computer use, the built-in browser and scheduled automations belong to the Codex
 
 ## The archaeology tools
 
-| Tool | What it does |
+28 tools in one Model Context Protocol server (`src/dighouse`). The README lists them by stage.
+
+| Stage | What the tools do |
 |---|---|
-| Data finder | Lists open lidar and imagery covering an area, with licence terms |
-| Fetch | Downloads data into the project and verifies it |
-| Bare ground | Separates ground points from vegetation and builds a ground model |
-| Relief | Renders the ground several ways: hillshade from multiple light angles, slope, local relief |
-| Screen | Sends every tile to vision models with a written guide and collects verdicts |
-| Section | Cuts a slice through the raw points at a chosen line |
-| Modern check | Compares a flag against open maps and satellite imagery to rule out roads, quarries and farms |
-| Prior art | Searches the literature, starting with every paper that used the same dataset |
-| Ledger | Creates and updates candidate records |
-| Report | Drafts a report for the relevant heritage authority |
+| Choose where to look | Find a place, list open surveys and what covers an area, compare open lidar with sites already on record, list open archives and what is out of reach |
+| Fetch | Download raw points from OpenTopography or USGS 3DEP, or a national ground model for England, the Netherlands or France, and build the bare ground |
+| Look | Render the ground as a composite, hillshade, local relief or sky view; cut it into tiles and hand them out in batches |
+| Screen | Record a verdict for each tile and flag candidates |
+| Check | Cut a section through the raw points, record a second look from a different model, check open maps for modern features and mapped sites, add known sites as controls |
+| Prior art | Search OpenAlex and Open Context, read pages and PDFs (including pages a person saved), and log every source |
+| Records | Add evidence, set a status the checks support, list what each candidate lacks, report the run, write the run summary, export finds as GeoJSON |
 
-The tool server also works in the ordinary Codex app, so searches can begin before the Dighouse window exists. Its first version is built and tested against real data in the [dighouse repository](https://github.com/chrissotraidis/dighouse). In that version the agent looks at each tile itself; bulk screening through the router comes later.
+The tool server also works in the ordinary Codex app, or any harness that speaks MCP. The agent looks at each tile itself; bulk screening through the router comes later.
 
-Starting data sources are [NASA G-LiHT](https://glihtdata.gsfc.nasa.gov/), [OpenTopography](https://portal.opentopography.org/datasets) and [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/). Some OpenTopography collections are restricted for non-academic users, which the data finder reports.
+The data comes from [OpenTopography](https://portal.opentopography.org/datasets), [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/), the Environment Agency (England), AHN (the Netherlands) and IGN LiDAR HD (France) for terrain; OpenStreetMap (through QLever, with Overpass as the fallback), Wikidata, Pleiades and the US National Register for recorded sites; and Open Context and OpenAlex for the literature. None needs an account. Some OpenTopography collections are restricted for non-academic users, which the data finder reports.
 
 In November 2026 OpenTopography republished the G-LiHT Yucatán transects as [reprocessed ground points and ground models](https://doi.org/10.5069/G9TH8JX9). Its description states that these surfaces underlie a catalog of 57,181 detected Maya structures (Britton 2026). Any search of those transects starts from that catalog as prior work.
 
@@ -97,7 +95,7 @@ A run repeats these stages until the project area is covered, the budget is spen
 | Screen | Vision models review every tile | Published sites in the same area act as controls; the run reports how many it found again | When too few controls are found |
 | Second look | A different model reviews each flag with more views | Two models must agree; the section must show the feature in ground points; modern features ruled out | |
 | Prior art | Search and read the literature | Every source logged as read or could not open; the candidate stays unresolved until all are read | Always, before anything is called unrecorded |
-| Record | Write the candidate record and push it to Notion | A record cannot be completed without relief, section and source log | |
+| Record | Write the candidate record (a Notion push is planned) | A record cannot be completed without relief, section and source log | |
 | Report | Draft a report for the heritage authority | | Always; a person sends it |
 
 Two rules apply throughout. The agents never say a site is new; they say how many sources were read and that none matched. Exact locations stay on the user's computer and go only to the heritage authority, because published coordinates invite looting.
@@ -111,7 +109,6 @@ A project is a folder.
 ```
 southern-campeche/
   PROJECT.md      the question, the area, the rules agents follow
-  crew            which model does which job
   candidates/     one Markdown record per candidate
   notes/          a dated log the agents write as they work
   sources/        what was read and what could not be opened
@@ -119,7 +116,7 @@ southern-campeche/
   data/           lidar and rendered tiles
 ```
 
-Markdown is the record of truth. It works offline, can be versioned, and can be shared as a folder. Notion is a mirror pushed from the Markdown through the Notion plugin: a project page, a candidates table and the daily notes. Locations are left out of the push by default.
+Markdown is the record of truth. It works offline, can be versioned, and can be shared as a folder. A Notion mirror pushed from the Markdown (a project page, a candidates table and the daily notes, with locations left out) is planned and waits on a decision.
 
 A candidate moves through these statuses: flagged, ground feature confirmed, then one of modern, natural, already published, or no match in sources read, and finally reported.
 
@@ -135,20 +132,20 @@ Each job in a run has its own model from the roster.
 | Prior art | Tool use, long reading | Codex engine |
 | Report writer | Writing | Codex engine |
 
-Before a run starts, Dighouse tests each assigned model for image reading and tool use, because not every model in a roster can do both.
+Not every model in a roster works, or works at every thinking effort. Settings has a Test button for the agent model and the second-look model, and the pickers mark which models answered and which failed.
 
 ## Build order
 
-1. The archaeology tool server, usable in the ordinary Codex app. The first version is built.
-2. The project format, the Markdown records and the Notion push.
-3. The Dighouse window with the Codex engine inside it. Existing open-source clients for the same engine are useful references: [CodexGui](https://github.com/wieslawsoltes/CodexGui), [codex-ui](https://github.com/sseymdoc/codex-ui), [CC Pocket](https://github.com/K9i-0/ccpocket) and [Agmente](https://github.com/rebornix/Agmente).
-4. The crew, bulk screening and the unattended loop.
+1. The archaeology tool server, usable in the ordinary Codex app. Built.
+2. The project format and the Markdown records. Built; the Notion push is not.
+3. The Dighouse window with the Codex engine inside it. Built. Existing open-source clients for the same engine were useful references: [CodexGui](https://github.com/wieslawsoltes/CodexGui), [codex-ui](https://github.com/sseymdoc/codex-ui), [CC Pocket](https://github.com/K9i-0/ccpocket) and [Agmente](https://github.com/rebornix/Agmente).
+4. The crew, bulk screening and the unattended loop. A whole search now runs unattended to the second look and the decisions; bulk screening through the router is not built.
 
 ## Open decisions
 
 - **Licence.** The repository uses Apache 2.0, matching the Codex engine, while it is private. This can change before it is made public.
 - **Canopy in sections.** Datasets published as ground points only, such as the reprocessed Yucatán set, cannot show the forest above a feature. Those sections need NASA's full point clouds from the G-LiHT portal.
-- **Packaging.** The geospatial libraries are large; the app needs to ship them so users install nothing else.
+- **Packaging.** The app carries the Python tools and builds their environment with uv on first launch, so a person still needs Codex and uv installed. A notarized download waits on a decision.
 - **Bulk screening path.** OCX's direct endpoints exist on this setup, but no screening request has been sent through them yet.
 - **Controls.** Published site locations are not open for every region, so some projects will run without controls.
 - **Name.** Dighouse passed checks of domains, GitHub, package registries and the App Store. A trademark search has not been done.

@@ -147,14 +147,33 @@ final class ChatModel: ObservableObject {
         loading = true
         defer { if active == thread.id { loading = false } }
         do {
-            let read = try await engine.request("thread/read", ["threadId": thread.id, "includeTurns": true])
-            let turns = (read["thread"] as? JSON)?["turns"] as? [JSON] ?? []
+            let turns = try await readTurns(thread.id, engine)
             guard active == thread.id else { return }
             items = turns.flatMap { $0["items"] as? [JSON] ?? [] }.compactMap { item(from: $0, finished: true) }
             loading = false
             try await resume(thread.id)
         } catch {
             items = [problem(error.localizedDescription)]
+        }
+    }
+
+    /// Older chats come back whole from `thread/read`. Newer ones are stored page by page,
+    /// and the engine refuses to return their turns that way, so read those a page at a time.
+    private func readTurns(_ id: String, _ engine: Engine) async throws -> [JSON] {
+        do {
+            let read = try await engine.request("thread/read", ["threadId": id, "includeTurns": true])
+            return (read["thread"] as? JSON)?["turns"] as? [JSON] ?? []
+        } catch where error.localizedDescription.contains("paginated") {
+            var turns: [JSON] = []
+            var cursor: String?
+            repeat {
+                var params: JSON = ["threadId": id, "itemsView": "full", "sortDirection": "asc", "limit": 100]
+                if let cursor { params["cursor"] = cursor }
+                let page = try await engine.request("thread/turns/list", params)
+                turns += page["data"] as? [JSON] ?? []
+                cursor = page["nextCursor"] as? String
+            } while cursor != nil
+            return turns
         }
     }
 
