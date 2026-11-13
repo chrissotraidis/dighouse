@@ -136,3 +136,12 @@ Screenshots for review: `outputs/dighouse-26-welcome.jpg`, `dighouse-27-how-it-r
 
 N10 passes. N2 and N9 still wait on Chris.
 
+
+### 2026-11-13, N1 and N3 checks left open, and two fixes they turned up
+
+- **N1, a run off screen.** The mark's sweep was timed from screenshots of the sidebar, by where the light was brightest in each frame. Idle, one sweep took about 2.5 seconds. With "Run the whole search" going in Mound City Group and Home on screen, one sweep took about 1.2 seconds. Passed. Hover and Reduce Motion are still not checked.
+- **N3, stopping early.** A fresh Mound City Group project (from Home's starting places) ran on its own for about seven minutes: two terrain fetches, 12 tiles screened, 5 flags, a section through each, one modern-feature check, six literature searches and one source read and logged. Stop was pressed while the next modern-feature checks were running. Everything done before the stop was on the record: five candidate pages with sections, the source on both candidates it bears on (C-001 and C-003), and the notes. No run summary, since a stopped turn cannot write one; the notes hold every step for the next run. Passed. The source the agent read says Mound City has 24 mounds inside the wall; the agent's lidar count was 22.
+- **A new chat could drop out of the sidebar.** The run above vanished from its project in the sidebar after a trip to Home and came back only a minute later. When a project opens, the app asks the engine for its chats, which takes several seconds; if the person starts a chat and leaves before the answer, the old answer replaced the saved list. Chats started since launch are now kept until the engine lists them. Checked: a chat sent and left for Home within a second was still listed on return.
+- **A step cut off by Stop kept spinning.** Steps still running when a turn ends are now marked "(stopped)". Checked by stopping a modern-feature check partway.
+- **Pleiades** now has a picture on its Open data card, made from the tool's own Pleiades data around Nîmes. The National Register card stays without one: the register returned no archaeological sites around Cahokia or Moundville, because it withholds their locations.
+

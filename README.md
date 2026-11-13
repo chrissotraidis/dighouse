@@ -71,21 +71,21 @@ A dig house is the building where an excavation team lives, works and keeps its 
 <table>
   <tr>
     <td width="50%"><img src="docs/images/home.png" alt="Home: drag between treetops and bare ground at Serpent Mound, a message box, and two ways in"><br><sub><b>Home.</b> Drag between the treetops and the bare ground, ask about a place, or take one of two ways in.</sub></td>
-    <td width="50%"><img src="docs/images/record.png" alt="A candidate record at Angel Mounds with its relief, its section, and checks for ground returns, a second look and modern features"><br><sub><b>Records.</b> Each candidate with its relief, its section and every check. The decision is yours.</sub></td>
+    <td width="50%"><img src="docs/images/new-project.png" alt="New project at Mound City Group: name, question, a search area drawn on the map, and the open lidar that covers it"><br><sub><b>New project.</b> Place the search area on the map and see which open lidar covers it before you start.</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/maiden-castle.png" alt="Maiden Castle in England from Environment Agency lidar: the agent describes the ramparts and entrances beside the tiled map"><br><sub><b>A project.</b> Maiden Castle from the Environment Agency's 1 m ground model. The agent reads the ramparts and both entrances from the views.</sub></td>
-    <td width="50%"><img src="docs/images/toolbox.png" alt="The Toolbox walking through the Check stage of a real search at Cahokia, with the section through Monks Mound"><br><sub><b>Toolbox.</b> One real search at Cahokia in six stages, each with its tools and a Run button.</sub></td>
+    <td width="50%"><img src="docs/images/record.png" alt="A candidate record at Angel Mounds with its relief, its section, and checks for ground returns, a second look and modern features"><br><sub><b>Records.</b> Each candidate with its relief, its section and every check. The decision is yours.</sub></td>
   </tr>
   <tr>
+    <td width="50%"><img src="docs/images/toolbox.png" alt="The Toolbox walking through the Check stage of a real search at Cahokia, with the section through Monks Mound"><br><sub><b>Toolbox.</b> One real search at Cahokia in six stages, each with its tools and a Run button.</sub></td>
     <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: OpenTopography and USGS 3DEP cards with pictures made from their data and a live status"><br><sub><b>Open data.</b> Every service the tools read, what Dighouse takes from it, and whether it answers right now.</sub></td>
-    <td width="50%"><img src="docs/images/how-it-runs.png" alt="Settings, How it runs: you ask, the model decides, the engine runs, the tool reads open data"><br><sub><b>How it runs.</b> The model, the agent engine, the tools and the optional router, in plain words.</sub></td>
   </tr>
 </table>
 
 - **Chat** works with or without a project. It shows the agent's plan, each step it takes, helper agents, and long runs folded into one line. One control picks the model and its thinking effort, and the message box takes images, video, audio and other files.
 - **A project** puts a workspace beside the chat: the map of tiles with candidates on it, the records, the project's notes, and its sources with a browser to open them. The dividers drag.
-- **Settings** has three colour looks (Earth, the default, is the soil brown, tan and green of the icon), a Test button for each model that marks which ones answered, and a page on what data goes where.
+- **Settings** explains in plain words how the model, the agent engine, the tools and the optional router fit together. It has three colour looks (Earth, the default, is the soil brown, tan and green of the icon), a Test button for each model that marks which ones answered, and a page on what data goes where.
 
 ## Build and run
 
@@ -187,6 +187,7 @@ Finding a known site again is the right answer for a test.
 - **Cahokia, Illinois.** The control run measured Monks Mound at 27.6 m high in its section, with 79 ground returns within 5 m of its peak, and the map check found the paths and stairs on it.
 - **Angel Mounds, Indiana.** A run flagged five mounds. The largest, C-001, matches the published description of Mound A in the sources the agent read, and a second model agreed it looks built.
 - **Maiden Castle, England.** From the Environment Agency's ground model, the agent described the four lines of rampart and both entrances.
+- **Mound City Group, Ohio.** A run counted 22 mounds inside the enclosure from the lidar; the thesis it read gives 24, and it matched the hollows outside the wall to the published borrow pits.
 - **Perry Mesa, Arizona.** Proposed by "What should I research?", it built into 66 readable tiles at 4 ground returns per square metre.
 
 ## Status

@@ -252,7 +252,8 @@ enum ToolGuide {
                    gives: "Ancient places already on record near an area, in the Mediterranean, Europe and the Near East.",
                    usedFor: "Choosing a place",
                    url: "https://pleiades.stoa.org", probe: "https://pleiades.stoa.org/places/423025/json",
-                   image: "", caption: "", ask: "Which ancient places does Pleiades list within 10 km of Nîmes, and from which periods?"),
+                   image: "data-pleiades", caption: "Ancient places Pleiades lists within about 9 km of Nîmes, the Roman Nemausus: its gates, quarries and a milestone. Each dot is one place.",
+                   ask: "Which ancient places does Pleiades list within 10 km of Nîmes, and from which periods?"),
     ]
 
     static let rules = [

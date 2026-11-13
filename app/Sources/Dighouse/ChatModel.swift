@@ -65,6 +65,8 @@ final class ChatModel: ObservableObject {
     private(set) var project: String?
     private var turn: String?
     private var resumed: Set<String> = []
+    /// Chats started since launch. The engine can take a while to list a new chat, so these are kept until it does.
+    private var startedHere: Set<String> = []
 
     var scope: String { project ?? Paths.general.path }
     var title: String { (threads + generalThreads).first { $0.id == active }?.title ?? "New chat" }
@@ -88,11 +90,11 @@ final class ChatModel: ObservableObject {
         async let general = list(Paths.general.path)
         async let own = list(scope)
         let (fresh, mine) = await (general, own)
-        // A chat that was just started may not be in the engine's list yet, so keep the open one.
-        if let fresh { generalThreads = keepingOpen(fresh, from: generalThreads) }
+        // A chat that was just started may not be in the engine's list yet, so keep it.
+        if let fresh { generalThreads = keepingNew(fresh, from: generalThreads) }
         if let mine, let scope {
             // The person may have moved on while the engine was listing; the answer is still worth keeping.
-            if scope == project { threads = keepingOpen(mine, from: threads) } else { known[scope] = mine }
+            if scope == project { threads = keepingNew(mine, from: threads) } else { known[scope] = keepingNew(mine, from: known[scope] ?? []) }
         }
         remember()
     }
@@ -103,9 +105,9 @@ final class ChatModel: ObservableObject {
         UserDefaults.standard.set(try? JSONEncoder().encode(known), forKey: "chatLists")
     }
 
-    private func keepingOpen(_ fresh: [ChatThread], from old: [ChatThread]) -> [ChatThread] {
-        guard let open = old.first(where: { $0.id == active }), !fresh.contains(where: { $0.id == open.id }) else { return fresh }
-        return [open] + fresh
+    private func keepingNew(_ fresh: [ChatThread], from old: [ChatThread]) -> [ChatThread] {
+        let missing = old.filter { t in (t.id == active || startedHere.contains(t.id)) && !fresh.contains { $0.id == t.id } }
+        return missing + fresh
     }
 
     /// The chats stored for a folder, or nil when there is no folder or the engine did not answer.
@@ -252,6 +254,7 @@ final class ChatModel: ObservableObject {
                 guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
                 active = id
                 resumed.insert(id)
+                startedHere.insert(id)
                 let new = ChatThread(id: id, title: title ?? String((text.isEmpty ? sending.first?.name ?? "Chat" : text).prefix(80)), named: title != nil)
                 if project == nil { generalThreads.insert(new, at: 0) } else { threads.insert(new, at: 0) }
                 remember()
@@ -332,6 +335,11 @@ final class ChatModel: ObservableObject {
         case "turn/completed":
             running = false
             turn = nil
+            // A step the run was in the middle of when it was stopped will not finish.
+            for i in items.indices where items[i].state == .running {
+                items[i].state = .failed
+                items[i].text += " (stopped)"
+            }
             if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
                 items.append(problem(failure))
             }

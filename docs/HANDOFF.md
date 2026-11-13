@@ -38,8 +38,7 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 
 ## Not verified
 
-- **N1:** the mark on hover, with Reduce Motion on, and during a run in a chat that is not on screen.
-- **N3:** stopping a run halfway to see that what was done stays logged.
+- **N1:** the mark on hover and with Reduce Motion on.
 - **Codex's browser plugin inside Dighouse.** It appears in the tool list. Nobody has asked the agent to use it here.
 - **Effort steps.** Most of the models in the roster have not been tested; the Test button in Settings records each one that is.
 - **A provider that refuses an effort step outright** (none was found).
@@ -50,7 +49,8 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 - **Two surveys do not build**: `ot:NM16_Dorshow` (its tile index has no readable projection) and `ot:NM10_Dorshow` (almost no points classed as ground). Both are marked `known_problem`.
 - **Sections show no canopy** for datasets published as ground points only (the G-LiHT ones), and a section through a national ground model shows the profile only.
 - **The Environment Agency service is slow and rate-limits.** England downloads one 500 m request at a time; 1.9 sq km took about 15 minutes.
-- **Pleiades has no picture** on its Open data card.
+- **The National Register** withholds archaeological site locations, so it adds almost nothing near mound sites (none around Cahokia or Moundville). Its card has no picture for that reason.
+- **A stopped run leaves no run summary.** Everything it did is in the notes and records, but the summary is written only when a run ends by itself.
 
 ## What Chris has asked for that is not built
 
@@ -70,5 +70,5 @@ open -n build/Dighouse.app --args -ApplePersistenceIgnoreState YES
 - Drags made by accessibility tooling are not proof that a real mouse works. Ask Chris, or say it is unverified.
 - The engine takes about four seconds to list one folder's chats on this Mac (2,300 Codex sessions). Chat lists are cached in defaults under `chatLists`.
 - Defaults keys the app uses: `look`, `chatWidth`, `sidebarWidth`, `layout`, `model`, `secondModel`, `effort`, `toolboxTab`, `tourStage`, `startKind`, `toolServers`, `projects`, `currentProject`.
-- Test projects on Chris's Mac: `~/Documents/Dighouse/angel-mounds-east-plaza` (9 tiles, 5 candidates, sections, second looks, 20 sources) and `~/Documents/Dighouse/middle-usumacinta-settlement` (4 tiles screened by two helper agents). The Cahokia control run, which the Toolbox tour pictures come from, is in `~/Documents/Codex/2026-11-12/vb/work/dighouse-projects/cahokia-control-run`.
+- Test projects on Chris's Mac: `~/Documents/Dighouse/mound-city-group` (a stopped whole run: 12 tiles, 5 candidates, 1 source), `~/Documents/Dighouse/angel-mounds-east-plaza` (9 tiles, 5 candidates, sections, second looks, 20 sources) and `~/Documents/Dighouse/middle-usumacinta-settlement` (4 tiles screened by two helper agents). The Cahokia control run, which the Toolbox tour pictures come from, is in `~/Documents/Codex/2026-11-12/vb/work/dighouse-projects/cahokia-control-run`.
 - Pictures in `app/Resources/tour` and `app/Resources/starts` were made with the tools from open data. Keep it that way, and say in the caption where each comes from.
