@@ -52,6 +52,10 @@ final class ChatModel: ObservableObject {
     @Published var attachments: [Attachment] = []
     /// The chats with a run in progress, and the turn each is on.
     @Published private(set) var live: [String: String] = [:]
+    /// How much of each chat's context the model has used, from the engine's reports.
+    @Published private(set) var usage: [String: (used: Int, window: Int?)] = [:]
+    /// Chats whose goal is still being worked on.
+    @Published private(set) var goals: Set<String> = []
 
     var engine: Engine?
     var instructions: () -> String = { "" }
@@ -153,9 +157,16 @@ final class ChatModel: ObservableObject {
             guard active == thread.id else { return }
             items = turns.flatMap { $0["items"] as? [JSON] ?? [] }.compactMap { item(from: $0, finished: true) }
             loading = false
-            try await resume(thread.id)
         } catch {
             items = [problem(error.localizedDescription)]
+            return
+        }
+        do {
+            try await resume(thread.id)
+        } catch where error.localizedDescription.contains("active writer") {
+            note("This chat is open in another app, such as Codex, so it can be read here but not continued. Close it there, then open it again here.")
+        } catch {
+            items.append(problem(error.localizedDescription))
         }
     }
 
@@ -193,6 +204,87 @@ final class ChatModel: ObservableObject {
         if let i = threads.firstIndex(of: thread) { threads[i].title = name }
         if let i = generalThreads.firstIndex(of: thread) { generalThreads[i].title = name }
         remember()
+    }
+
+    /// A line from Dighouse itself in the chat, such as the command list. It is not sent to the model.
+    func note(_ text: String) {
+        items.append(ChatItem(id: UUID().uuidString, kind: .note, text: text))
+    }
+
+    /// Copy the open chat into a new one and open it.
+    func fork() async {
+        guard let engine, let active else { return }
+        do {
+            let forked = try await engine.request("thread/fork", threadSettings(["threadId": active]))
+            guard let id = (forked["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No copy was made.") }
+            let title = "Copy of " + ((threads + generalThreads).first { $0.id == active }?.title ?? "chat")
+            let copy = ChatThread(id: id, title: String(title.prefix(80)), named: true)
+            startedHere.insert(id)
+            resumed.insert(id)
+            if project == nil { generalThreads.insert(copy, at: 0) } else { threads.insert(copy, at: 0) }
+            remember()
+            _ = try? await engine.request("thread/name/set", ["threadId": id, "name": copy.title])
+            await select(copy)
+            note("This is a copy of the chat. What you do here leaves the original as it was.")
+        } catch {
+            note("Could not copy the chat: \(error.localizedDescription)")
+        }
+    }
+
+    /// Take back the last message and its answer. Returns the message, so it can be edited and sent again.
+    func undo() async -> String? {
+        guard let engine, let active, !running else { return nil }
+        let last = items.last { $0.kind == .user }?.text
+        do {
+            try await resume(active)
+            _ = try await engine.request("thread/rollback", ["threadId": active, "numTurns": 1])
+            let turns = try await readTurns(active, engine)
+            items = turns.flatMap { $0["items"] as? [JSON] ?? [] }.compactMap { item(from: $0, finished: true) }
+            return last
+        } catch {
+            note("Could not take the message back: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Ask the engine to summarise the chat so far, so a long run has room to keep going.
+    func compact() async {
+        guard let engine, let active else { return }
+        do {
+            try await resume(active)
+            _ = try await engine.request("thread/compact/start", ["threadId": active])
+            note("Shortening this chat. The model keeps a summary of what came before and carries on from there.")
+        } catch {
+            note("Could not shorten the chat: \(error.localizedDescription)")
+        }
+    }
+
+    /// Give the chat a goal. The engine keeps taking turns until the goal is met or it needs the person.
+    func setGoal(_ objective: String) async {
+        let objective = objective.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let engine, !objective.isEmpty else { return }
+        do {
+            if active == nil {
+                let started = try await engine.request("thread/start", threadSettings([:]))
+                guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
+                active = id
+                resumed.insert(id)
+                startedHere.insert(id)
+                let new = ChatThread(id: id, title: String(objective.prefix(80)), named: false)
+                if project == nil { generalThreads.insert(new, at: 0) } else { threads.insert(new, at: 0) }
+                remember()
+                onUntitled?(id, objective)
+            } else if let active {
+                try await resume(active)
+            }
+            guard let active else { return }
+            note("**Goal:** \(objective)\n\nThe agent keeps working, turn after turn, until this is done or it needs you. Stop ends it.")
+            running = true
+            _ = try await engine.request("thread/goal/set", ["threadId": active, "objective": objective, "status": "active"])
+        } catch {
+            running = false
+            note("Could not set the goal: \(error.localizedDescription)")
+        }
     }
 
     func archive(_ thread: ChatThread) async {
@@ -275,6 +367,8 @@ final class ChatModel: ObservableObject {
 
     func stop() async {
         guard let engine, let active, let turn else { return }
+        // A chat with a goal would start its next turn on its own, so pause the goal first.
+        if goals.contains(active) { _ = try? await engine.request("thread/goal/set", ["threadId": active, "status": "paused"]) }
         _ = try? await engine.request("turn/interrupt", ["threadId": active, "turnId": turn])
     }
 
@@ -307,6 +401,14 @@ final class ChatModel: ObservableObject {
         // Runs carry on while another chat is on screen, so keep track of every chat's turn.
         if method == "turn/started" { live[thread] = (params["turn"] as? JSON)?["id"] as? String ?? "" }
         if method == "turn/completed" { live[thread] = nil }
+        if method == "thread/tokenUsage/updated", let use = params["tokenUsage"] as? JSON {
+            let used = (use["last"] as? JSON)?["totalTokens"] as? Int ?? (use["total"] as? JSON)?["totalTokens"] as? Int ?? 0
+            usage[thread] = (used, use["modelContextWindow"] as? Int)
+        }
+        if method == "thread/goal/updated" {
+            if ((params["goal"] as? JSON)?["status"] as? String) == "active" { goals.insert(thread) } else { goals.remove(thread) }
+        }
+        if method == "thread/goal/cleared" { goals.remove(thread) }
         guard thread == active else { return }
         switch method {
         case "turn/started":

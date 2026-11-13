@@ -165,6 +165,14 @@ private struct ChatRow: View {
             MarkdownText(text: item.text).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 2)
         case .plan:
             PlanCard(item: item)
+        case .note:
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle").font(.system(size: 13)).foregroundStyle(Theme.tan).padding(.top, 2)
+                MarkdownText(text: item.text).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.ink.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
         case .step:
             if let path = item.projectPath {
                 StepRow(item: item)
@@ -569,6 +577,12 @@ struct ModelControl: View {
         }
         .buttonStyle(.plain)
         .help("Choose the model and how hard it thinks")
+        .onChange(of: app.pickerRequest) { _, request in
+            guard let request else { return }
+            listing = request == .model || app.activeEffort == nil
+            open = true
+            app.pickerRequest = nil
+        }
         .popover(isPresented: $open, arrowEdge: .top) {
             Group {
                 if listing {
@@ -609,7 +623,13 @@ struct Composer: View {
     @EnvironmentObject var store: ProjectStore
     @State private var showFlows = false
     @State private var dropping = false
+    /// The highlighted row in the command list, and the draft at which Escape closed it.
+    @State private var selected = 0
+    @State private var dismissed: String?
+    @State private var keys: Any?
     @FocusState private var focused: Bool
+
+    private var commands: [SlashCommand] { dismissed == chat.draft ? [] : SlashCommands.matches(chat.draft) }
 
     private var canSend: Bool {
         !chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !chat.attachments.isEmpty
@@ -622,10 +642,11 @@ struct Composer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if !commands.isEmpty { commandList }
             if !chat.attachments.isEmpty { chips }
             TextField(placeholder, text: $chat.draft, axis: .vertical)
                 .textFieldStyle(.plain).lineLimit(1...8).font(.system(size: 14))
-                .focused($focused).onSubmit(send)
+                .focused($focused).onSubmit { commands.isEmpty ? send() : runSelected() }
                 .padding(.horizontal, 4)
             ViewThatFits(in: .horizontal) {
                 controls(wide: true)
@@ -645,6 +666,83 @@ struct Composer: View {
             return true
         }
         .onAppear { focused = true }
+        .onChange(of: chat.draft) { _, draft in
+            selected = commands.firstIndex { app.unavailable($0) == nil } ?? 0
+            if dismissed != draft { dismissed = nil }
+        }
+        .onChange(of: commands.isEmpty) { _, empty in empty ? stopKeys() : startKeys() }
+        .onDisappear { stopKeys() }
+    }
+
+    // MARK: slash commands
+
+    private var commandList: some View {
+        let list = commands
+        return ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(Array(list.enumerated()), id: \.element.id) { index, c in
+                        let reason = app.unavailable(c)
+                        Button { selected = index; runSelected() } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text(c.name).font(.system(size: 13, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(reason == nil ? Theme.text : Theme.faint)
+                                if let arg = c.argument {
+                                    Text(arg).font(.system(size: 12.5)).foregroundStyle(Theme.faint)
+                                }
+                                Text(c.summary).font(.system(size: 12.5)).foregroundStyle(reason == nil ? Theme.dim : Theme.faint).lineLimit(1)
+                                Spacer(minLength: 8)
+                                if let reason { Text(reason).font(.system(size: 12)).foregroundStyle(Theme.faint).lineLimit(1) }
+                            }
+                            .padding(.horizontal, 10).frame(height: 30)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(index == selected ? Theme.ink.opacity(0.09) : .clear))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).id(c.id)
+                    }
+                }
+            }
+            .frame(maxHeight: min(CGFloat(list.count) * 31, 280))
+            .onChange(of: selected) { _, i in if list.indices.contains(i) { proxy.scrollTo(list[i].id) } }
+        }
+        .padding(.bottom, 2)
+    }
+
+    private func runSelected() {
+        let list = commands
+        guard list.indices.contains(selected), let (_, argument) = SlashCommands.parse(chat.draft) else { return }
+        let c = list[selected]
+        guard app.unavailable(c) == nil else { return }
+        if c.needsArgument && argument.isEmpty {
+            chat.draft = c.name + " "
+            dismissed = chat.draft
+            return
+        }
+        chat.draft = ""
+        app.perform(c, argument: argument)
+    }
+
+    /// While the command list is open, the arrow keys move through it, Tab fills in the name and Escape closes it.
+    private func startKeys() {
+        guard keys == nil else { return }
+        keys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard focused, !commands.isEmpty else { return event }
+            switch event.keyCode {
+            case 126: selected = max(0, selected - 1); return nil
+            case 125: selected = min(commands.count - 1, selected + 1); return nil
+            case 53: dismissed = chat.draft; return nil
+            case 48:
+                if commands.indices.contains(selected) { chat.draft = commands[selected].name + " " }
+                return nil
+            case 36, 76: runSelected(); return nil
+            default: return event
+            }
+        }
+    }
+
+    private func stopKeys() {
+        if let keys { NSEvent.removeMonitor(keys) }
+        keys = nil
     }
 
     private var chips: some View {

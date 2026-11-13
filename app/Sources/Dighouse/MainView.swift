@@ -238,6 +238,12 @@ struct Sidebar: View {
         .padding(.horizontal, 8).padding(.bottom, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.side)
+        .onChange(of: app.renameRequest) { _, thread in
+            guard let thread else { return }
+            newName = thread.title
+            renaming = thread
+            app.renameRequest = nil
+        }
         .alert("Rename chat", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("Name", text: $newName)
             Button("Rename") {

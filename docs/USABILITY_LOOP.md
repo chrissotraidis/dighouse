@@ -86,3 +86,32 @@ Fixed in this pull request, each checked in the app:
 
 Left over: the walk made a second Cahokia project at `~/Documents/Dighouse/cahokia-control-run`; with the settings put back it is not in the sidebar.
 
+
+### 2026-11-13, U2: slash commands
+
+Typing `/` in the message box opens a list of 21 commands that filters as you type. Up and Down move the highlight, Tab fills in the name, Return runs it and Escape closes the list. A command that cannot run here is grey with the reason ("Needs a project", "Start a chat first", "Nothing to take back", "Wait for the run to finish"), and the highlight starts on the first one that can run. Dighouse's own commands run the same workflows as the Workflows menu; text typed after one (`/run look for ring ditches`) is added to its instructions. The Codex ones use the engine directly: `/fork` (thread/fork), `/undo` (thread/rollback), `/compact` (thread/compact/start), `/goal` (thread/goal/set). `/status` and `/help` write a note into the chat that is not sent to the model. Stop now pauses a chat's goal before it interrupts the turn, so the engine does not start the next one.
+
+Checked in the app, keyboard only:
+
+| Command | Seen |
+|---|---|
+| `/` in a general chat | All 21 listed; project commands grey with "Needs a project". |
+| Escape, Down ×3, Return | The list closed; the highlight moved to `/status` and it ran. |
+| `/sc` and Return, in Maiden Castle | Only `/screen` left; screening started (5 helper agents, 40 tiles) and finished all 42 tiles with 5 candidates. The chat shows "Screen the tiles". |
+| `/status` | Model and effort, project, and "Usage for this period: 77% left, resets Nov 18" from the engine's rate limits. Context use shows once the engine has reported it for the chat. |
+| `/rename Hillfort test` | The sidebar name changed. |
+| `/fork` | "Copy of Hillfort test" opened with the whole history and a note that the original is untouched. |
+| `/undo` in the copy | The message and its answer went; the message came back into the box to edit. The original kept both. |
+| `/compact` | "Summarized the conversation so far" appeared as a step. |
+| `/model`, `/effort` | The model list and the effort slider opened over the message box. |
+| `/goal Reply with the single word done, then stop.` | The goal note, then "done", and the goal ended on its own. |
+| `/help` | Both groups listed with their descriptions. |
+| `/archive` twice | Both test chats left the sidebar. |
+| `/new-project`, `/new` | The New project page; a new chat. `/new` first picked `/new-project` because it was listed first; an exact name now comes first. |
+
+The other workflow commands (`/research`, `/run`, `/terrain`, `/check`, `/second-look`, `/sources`, `/decide`, `/report`) go through the same path as `/screen` and were seen in the list with the right availability, but not each run.
+
+Found and fixed during the check: opening a chat that the Codex app also has open showed only "thread … already has an active writer" and hid the history. The history now shows, with a note that the chat can be read here but not continued until it is closed in the other app.
+
+Seen and left for later: the modern-feature check stalled again in the Maiden Castle run (the map service was slow), and the agent stopped it. That is U5 and U11.
+

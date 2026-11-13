@@ -27,6 +27,10 @@ final class AppState: ObservableObject {
     @Published var route = Route.home
     @Published var onboarded = UserDefaults.standard.bool(forKey: "onboarded")
     @Published var showWelcome = false
+    /// A slash command asking the message box to open the model list or the effort slider.
+    @Published var pickerRequest: PickerRequest?
+    /// A slash command asking the sidebar to rename a chat.
+    @Published var renameRequest: ChatThread?
     @Published var starting = true
     @Published var sidebarVisible = true
     @Published var sidebarPeek = false

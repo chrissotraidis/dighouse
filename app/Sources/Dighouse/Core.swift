@@ -230,7 +230,7 @@ struct PlanStep: Hashable {
 }
 
 struct ChatItem: Identifiable {
-    enum Kind { case user, agent, step, plan }
+    enum Kind { case user, agent, step, plan, note }
     enum State { case running, done, failed }
     let id: String
     var kind: Kind
