@@ -97,3 +97,30 @@ HANDOFF.md has the full list. In short:
 - **Found on the way, not ours to fix:** the second-opinion model, AG · Gemini 3.8 Flash, was refused by its provider during the test search (403, "This service has been disabled in this account for violation of Terms of Service"). Dighouse showed the provider's message on the record, the report said "Second model: has not looked", and the card offered [Get a second opinion or Decide 2 finds](loop5/r2-second-opinion-missing.jpg). No second opinion was obtained in this loop. Chris needs to look at that account.
 - **A finished search:** both scratch finds were decided in the review, and the card then read ["This search is finished"](loop5/r2-6-finished.jpg), with Read the report and Widen the search.
 - **Not checked:** the "Nothing here looked built" card, which needs a project where no tile was marked. Widen the search was not pressed.
+
+### R3, a Toolbox you can use, with half the words: done 2026-11-14
+
+Words on each tab at 1440 × 900, counted from the accessibility text of the page (sidebar and title bar left out):
+
+| Tab | Before | After |
+|---|---|---|
+| How a search works, per stage | 357 to 486 | 113 to 150 |
+| Workflows | 602 | 153 |
+| Open data | 343 | 136 |
+| More tools | 292 | 139 |
+
+- **How a search works** is one large picture per stage with one sentence above it, and each picture has something to do.
+  - **Choose:** a map of where lidar is open, or the sites on record at Cahokia.
+  - **Bare ground:** drag the trees away.
+  - **Look:** press a tile to read the agent's own note.
+  - **Check:** [drag a line across Monks Mound and the slice is drawn beside it](loop5/r3-how-4-slice.jpg), from the real ground and the highest laser returns, with its length and rise. The second opinion and the map check are the other two.
+  - **Read:** press a source to see what the agent does with it.
+  - **Record:** the record the run ended with, and Try it yourself.
+  - The tools of a stage are behind one button ("6 tools"), and the five rules behind one line.
+- **Workflows** is [one picture](loop5/r3-workflows.jpg): three lanes (agent, second model, you) and eight parts in order, each showing where the open project stands. Press a part and one line under the picture says what it does, with its Run button. Find and report back sits above it. The four that need no project are a row of buttons.
+- **Open data** opens with [a map of the world](loop5/r3-data.jpg) and Europe drawn larger beside it: the United States, the countries with a national ground model, the surveys flown for archaeology, and the region of ancient places on record. Pressing a name under the map brings that layer forward. So "why is there not more" is answered by looking: open lidar that needs no account is in few places. Each service is a tile, and pressing it opens [a page](loop5/r3-data-page.jpg) with a large picture made from its data, what Dighouse takes, where it reaches, whether it answers now, and one thing to try. The National Register had no picture; [it has one now](loop5/r3-data-page-register.jpg), made from its public layer. "Not read yet, and why" is a short list behind one line.
+- **More tools** is [a grid](loop5/r3-more.jpg) with one request to try on each. Pressing one puts the request in the message box of a new chat, unsent. Adding a tool server is behind one button.
+- **Every control pressed once and its effect seen:** six stops, both sides of Choose, the handle, six tiles, three checks, a slice dragged, a source, the tools list, the rules line, Back, Next, Run this stage (started on a scratch project and stopped), Try it yourself; four workflow buttons and eight lane parts, Run (Show open surveys started a chat); four map layers, eleven service pages, Ask the agent (the question was shown; cancelled), Check status, the not-yet list; a More tools card, the add form (opened, nothing added), the other-plugins line.
+- **Fixed on the way:** Run on a workflow that needs no project now always starts a chat of its own from the Toolbox, Home or Settings. Before, it went into whichever general chat was open.
+- **Looks:** [Canopy](loop5/r3-how-canopy.jpg) and [Graphite](loop5/r3-how-graphite.jpg) seen on How a search works; all four tabs seen in a narrow window (864 wide), where the pictures stack and the lanes scroll sideways.
+- **Not checked:** the slice was dragged by the test tooling, not a hand on a trackpad. Links to the services' own websites were not pressed. Find and report back was not pressed from this tab (it was in R2, from the overview).

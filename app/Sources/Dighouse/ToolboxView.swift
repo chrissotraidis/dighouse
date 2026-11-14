@@ -2,6 +2,7 @@ import SwiftUI
 
 /// The Toolbox: what Dighouse gives the agent that a chat app does not. A walk through one real search, the workflows
 /// that run each part, where the data comes from, and other tools the agent can use.
+/// Each tab is a picture to press or drag first, and words second.
 struct ToolboxView: View {
     enum Tab: String, CaseIterable {
         case how = "How a search works", workflows = "Workflows", data = "Open data", more = "More tools"
@@ -15,12 +16,12 @@ struct ToolboxView: View {
         // The page is always a little taller than the window, so the scroll bar never comes and goes and nothing shifts sideways.
         GeometryReader { geo in
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 14) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Toolbox").font(.system(size: 26 * Theme.scale, weight: .bold))
-                        Text("\(ToolGuide.toolCount) archaeology tools come built in. Here is what they do, how to run them, and where the data comes from.")
-                            .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        Text("\(ToolGuide.toolCount) built-in tools, the workflows that run them, and the open data behind them.")
+                            .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 4) {
@@ -54,6 +55,52 @@ struct ToolboxView: View {
     }
 }
 
+/// A row of small pills, one of them chosen. Used wherever a picture has more than one side to show.
+private struct Chips: View {
+    let names: [String]
+    @Binding var pick: Int
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(names.indices, id: \.self) { i in
+                Button { pick = i } label: {
+                    Text(names[i]).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                        .foregroundStyle(pick == i ? .black : Theme.dim)
+                        .padding(.horizontal, 11).frame(height: 27)
+                        .background(Capsule().fill(pick == i ? Theme.tan : Theme.ink.opacity(0.06)))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+/// A line that opens and closes what is under it.
+private struct Disclosure<Content: View>: View {
+    let title: String
+    @State private var open = false
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button { withAnimation(.easeOut(duration: 0.15)) { open.toggle() } } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).rotationEffect(.degrees(open ? 90 : 0))
+                    Text(title).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                }
+                .foregroundStyle(Theme.dim).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if open { content() }
+        }
+    }
+}
+
+private func caption(_ text: String) -> some View {
+    Text(text).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+}
+
 // MARK: - How a search works
 
 /// One real search, stage by stage: Monks Mound at Cahokia, run as a test on a site everyone knows.
@@ -61,26 +108,27 @@ private struct HowTab: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var setup: Setup
     @AppStorage("tourStage") private var stage = 0
+    @State private var showTools = false
 
     var body: some View {
         let packs = ToolGuide.packs
         let at = min(max(stage, 0), packs.count - 1)
+        let pack = packs[at]
+        let flow = ToolGuide.workflows.first { $0.id == pack.flow }
         if !setup.toolsReady { SetupChecklist() }
-        Text("Follow one real search from start to finish. This is a test run at Cahokia, Illinois, on a mound everyone knows, so you can see what the agents did and what they wrote down. Step through the six stages.")
-            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+        Text("One real search, at Cahokia in Illinois. Step through it and try each picture.")
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim)
 
         StageRail(stage: at) { stage = $0 }
 
         VStack(alignment: .leading, spacing: 0) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 22) {
-                    StageArt(stage: at).frame(width: 400)
-                    StageWords(number: at + 1, pack: packs[at]).frame(minWidth: 340, idealWidth: 340, maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(pack.title).font(.system(size: 20 * Theme.scale, weight: .bold))
+                    Text(pack.summary).font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.86))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                VStack(alignment: .leading, spacing: 18) {
-                    StageArt(stage: at).frame(maxWidth: 460)
-                    StageWords(number: at + 1, pack: packs[at])
-                }
+                StageArt(stage: at).frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(18)
             Hairline()
@@ -88,9 +136,15 @@ private struct HowTab: View {
                 Button("Back") { stage = at - 1 }.buttonStyle(SecondaryButton()).disabled(at == 0)
                 Text("Stage \(at + 1) of \(packs.count)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
                 Spacer()
+                Button { showTools = true } label: { Label("\(pack.tools.count) tools", systemImage: "wrench.and.screwdriver") }
+                    .buttonStyle(SecondaryButton()).help("The tools the agent uses at this stage")
+                    .popover(isPresented: $showTools, arrowEdge: .top) { ToolList(pack: pack).popoverSurface() }
+                if let flow, app.state(of: flow).ready {
+                    Button("Run this stage") { app.run(flow) }.buttonStyle(SecondaryButton())
+                        .help(flow.scope == .project ? "Runs on the open project." : "Starts a chat.")
+                }
                 if at < packs.count - 1 {
-                    Button("Next: \(packs[at + 1].short)") { stage = at + 1 }.buttonStyle(PrimaryButton())
-                        .help(packs[at + 1].title)
+                    Button("Next: \(packs[at + 1].short)") { stage = at + 1 }.buttonStyle(PrimaryButton()).help(packs[at + 1].title)
                 } else {
                     Button("Try it yourself") { app.startProject(from: StartingPoints.all[0]) }.buttonStyle(PrimaryButton())
                 }
@@ -99,7 +153,7 @@ private struct HowTab: View {
         }
         .panel()
 
-        PageSection(title: "Rules the tools enforce", caption: "These are built into the tools, so they hold whichever model is running.") {
+        Disclosure(title: "\(ToolGuide.rules.count) rules the tools enforce") {
             VStack(alignment: .leading, spacing: 9) {
                 ForEach(ToolGuide.rules, id: \.self) { rule in
                     HStack(alignment: .firstTextBaseline, spacing: 9) {
@@ -110,6 +164,24 @@ private struct HowTab: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14)
         }
+    }
+}
+
+/// The tools of one stage, in a small panel.
+private struct ToolList: View {
+    let pack: ToolGuide.Pack
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            ForEach(pack.tools) { tool in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(tool.title).font(.system(size: 13 * Theme.scale, weight: .medium))
+                    Text(tool.does).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                }
+                .help("The agent calls this tool \(tool.name)")
+            }
+        }
+        .padding(16).frame(width: 340, alignment: .leading).foregroundStyle(Theme.text)
     }
 }
 
@@ -149,77 +221,46 @@ private struct StageRail: View {
     }
 }
 
-/// What a stage does, why it matters, its tools, and the button that runs it.
-private struct StageWords: View {
-    let number: Int
-    let pack: ToolGuide.Pack
-    @EnvironmentObject var app: AppState
-
-    var body: some View {
-        let flow = ToolGuide.workflows.first { $0.id == pack.flow }
-        let state = flow.map { app.state(of: $0) }
-        VStack(alignment: .leading, spacing: 12) {
-            Text(pack.title).font(.system(size: 20 * Theme.scale, weight: .bold))
-            Text(pack.summary).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.88)).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Image(systemName: "lightbulb").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.tan)
-                Text(pack.why).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                Text("The tools for this stage").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint).padding(.bottom, 6)
-                ForEach(pack.tools) { tool in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Circle().fill(Theme.tan.opacity(0.8)).frame(width: 4, height: 4).padding(.horizontal, 3).alignmentGuide(.firstTextBaseline) { $0[.bottom] + 3 }
-                        (Text(tool.title).fontWeight(.medium).foregroundColor(Theme.text) + Text("  " + tool.does).foregroundColor(Theme.dim))
-                            .font(.system(size: 12.5 * Theme.scale)).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.vertical, 3).help("The agent calls this tool \(tool.name)")
-                }
-            }
-            if let flow {
-                HStack(spacing: 10) {
-                    Button("Run this stage") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(state?.ready != true)
-                    Text(state?.ready == true ? (flow.scope == .project ? "Runs on the open project." : "Starts a chat.")
-                         : (state?.note ?? "") == "Needs a project" ? "Open a project from the sidebar first."
-                         : "\(app.store.current?.name ?? "This project"): \((state?.note ?? "").lowercased())")
-                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-                }
-                .padding(.top, 2)
-            }
-        }
-    }
-}
-
-/// The picture for each stage, made from the Cahokia run and the open data behind it.
+/// The picture for each stage, made from the Cahokia run and the open data behind it. Each has something to press or drag.
 private struct StageArt: View {
     let stage: Int
 
     var body: some View {
         switch stage {
-        case 0: captioned("data-wikidata", "Sites already on record within about 24 km of Cahokia, from Wikidata. The agent weighs this against which lidar is open.")
+        case 0: ChooseArt()
         case 1:
-            VStack(alignment: .leading, spacing: 6) {
-                ForestReveal(animateIn: false)
-                Text("Drag the handle. Serpent Mound, Ohio: the same laser points, first the highest returns, then only the ground.")
-                    .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                ForestReveal(animateIn: false).frame(maxWidth: 640)
+                caption("Drag the handle. The same laser points at Serpent Mound, Ohio: first the treetops, then only the ground.")
             }
         case 2: TileBoard()
         case 3: ChecksArt()
-        case 4: PapersArt(caption: "What the search returns for Monks Mound. The agent reads the ones that are free to read and logs every one.")
-        default: RecordArt()
+        case 4: PapersArt().frame(maxWidth: 640)
+        default: RecordArt().frame(maxWidth: 640)
         }
     }
+}
 
-    private func captioned(_ name: String, _ caption: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let image = Tour.image(name) {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
+/// Where a search can go: the places open lidar reaches, and what is already on record at one of them.
+private struct ChooseArt: View {
+    @EnvironmentObject var app: AppState
+    @State private var side = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Chips(names: ["Where lidar is open", "What is on record"], pick: $side)
+            if side == 0 {
+                CoverageMap(surveys: app.surveys.map(\.box))
+                caption("Lidar the tools can fetch with no account. The dots are surveys flown for archaeology.")
+            } else {
+                if let image = Tour.image("data-wikidata") {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line)).frame(maxWidth: 640)
+                }
+                caption("Each dot is a site already on record within about 24 km of Cahokia.")
             }
-            Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
         }
+        .task { await app.loadSurveys() }
     }
 }
 
@@ -245,87 +286,83 @@ private struct TileBoard: View {
 
     var body: some View {
         let spot = rows.joined().first { $0.id == picked } ?? rows[0][0]
-        VStack(alignment: .leading, spacing: 8) {
-            GeometryReader { geo in
-                let unit = (geo.size.width - 6) / 1175
-                VStack(spacing: 3) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        HStack(spacing: 3) {
-                            ForEach(row) { tile in
-                                Button { picked = tile.id } label: {
-                                    Group {
-                                        if let image = Tour.image("tile-" + tile.id) { Image(nsImage: image).resizable() } else { Theme.side }
-                                    }
-                                    .frame(width: tile.wide * unit, height: 500 * unit)
-                                    .overlay(Rectangle().strokeBorder(picked == tile.id ? Color.white : color(tile.verdict),
-                                                                      lineWidth: picked == tile.id ? 3 : 1.5))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 20) {
+                board.frame(width: 470)
+                note(spot).frame(minWidth: 230, idealWidth: 300, maxWidth: .infinity, alignment: .leading)
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                board.frame(maxWidth: 470)
+                note(spot)
+            }
+        }
+    }
+
+    private var board: some View {
+        GeometryReader { geo in
+            let unit = (geo.size.width - 6) / 1175
+            VStack(spacing: 3) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    HStack(spacing: 3) {
+                        ForEach(row) { tile in
+                            Button { picked = tile.id } label: {
+                                Group {
+                                    if let image = Tour.image("tile-" + tile.id) { Image(nsImage: image).resizable() } else { Theme.side }
                                 }
-                                .buttonStyle(.plain).help("Tile \(tile.id): \(tile.verdict)")
+                                .frame(width: tile.wide * unit, height: 500 * unit)
+                                .overlay(Rectangle().strokeBorder(picked == tile.id ? Color.white : color(tile.verdict),
+                                                                  lineWidth: picked == tile.id ? 3 : 1.5))
                             }
+                            .buttonStyle(.plain).help("Tile \(tile.id): \(tile.verdict)").accessibilityLabel("Tile \(tile.id)")
                         }
                     }
                 }
             }
-            .aspectRatio(1175.0 / 1003.0, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
-                    Text("Tile \(spot.id)").font(.system(size: 12.5 * Theme.scale, weight: .semibold))
-                    Badge(text: spot.verdict.capitalized, color: color(spot.verdict))
-                }
-                Text(spot.note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
-            Text("Click a tile. These are the agent's own notes from the run.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+        }
+        .aspectRatio(1175.0 / 1003.0, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func note(_ spot: Spot) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            caption("Press a tile to read the agent's note.")
+            Badge(text: spot.verdict == "built" ? "Looks built" : spot.verdict.capitalized, color: color(spot.verdict))
+            Text("“\(spot.note)”").font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.92)).lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
 
-/// The three tests on a flag, one at a time.
+/// The three tests on a find, one at a time.
 private struct ChecksArt: View {
     @State private var check = 0
-    private let names = ["Slice", "Second opinion", "Open maps"]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 4) {
-                ForEach(names.indices, id: \.self) { i in
-                    Button { check = i } label: {
-                        Text(names[i]).font(.system(size: 12.5 * Theme.scale, weight: .medium))
-                            .foregroundStyle(check == i ? .black : Theme.dim)
-                            .padding(.horizontal, 11).frame(height: 27)
-                            .background(Capsule().fill(check == i ? Theme.tan : Theme.ink.opacity(0.06)))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            Chips(names: ["Slice", "Second opinion", "Open maps"], pick: $check)
             switch check {
-            case 0:
-                picture("section")
-                result("In the ground", "The slice measured the mound at 27.6 m high, with 79 ground returns within 5 m of its peak. A shape made of treetops would have none.")
+            case 0: SliceBoard()
             case 1:
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: 16) {
                     if let tile = Tour.image("tile-r001c001") {
-                        Image(nsImage: tile).resizable().aspectRatio(contentMode: .fit).frame(width: 130).clipShape(RoundedRectangle(cornerRadius: 8))
+                        Image(nsImage: tile).resizable().aspectRatio(contentMode: .fit).frame(width: 240).clipShape(RoundedRectangle(cornerRadius: 10))
                     }
-                    Text("“The feature exhibits distinct rectilinear terraces, sharp artificial slope breaks, and flat platforms characteristic of a monumental earthen mound.”")
-                        .font(.system(size: 13 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.9)).lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("“…distinct rectilinear terraces, sharp artificial slope breaks, and flat platforms…”")
+                            .font(.system(size: 15 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.92)).lineSpacing(4)
+                            .fixedSize(horizontal: false, vertical: true)
+                        result("A different model agrees", "Gemini 3.8 Flash saw the tile, and not the first model's note.")
+                    }
                 }
-                result("A different model agrees", "Gemini 3.8 Flash was shown the tile, without the first model's note. The tools refuse a second opinion from the model that marked the find.")
             default:
-                picture("data-osm")
-                result("Already on the map", "OpenStreetMap has 14 modern features within 150 m, and lists Monks Mound among the historic places nearby. So this find is already known.")
+                VStack(alignment: .leading, spacing: 10) {
+                    if let image = Tour.image("data-osm") {
+                        Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line)).frame(maxWidth: 560)
+                    }
+                    result("Already on the map", "Open maps show 14 modern features within 150 m, and Monks Mound itself.")
+                }
             }
-        }
-    }
-
-    @ViewBuilder private func picture(_ name: String) -> some View {
-        if let image = Tour.image(name) {
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
         }
     }
 
@@ -334,15 +371,143 @@ private struct ChecksArt: View {
             Image(systemName: "checkmark.circle.fill").font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.green).padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold))
-                Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 }
 
-/// What a literature search returns, drawn as the list the agent sees.
+/// The ground at Monks Mound and the highest laser returns above it, on a 2 m grid, so a slice can be cut anywhere.
+private enum SliceData {
+    static let grid: (cols: Int, rows: Int, cell: Double, base: Double, ground: [UInt16], top: [UInt16])? = {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("tour/slice.bin"), let data = try? Data(contentsOf: url), data.count > 8 else { return nil }
+        let words = data.withUnsafeBytes { Array($0.bindMemory(to: UInt16.self)) }.map { UInt16(littleEndian: $0) }
+        let cols = Int(words[0]), rows = Int(words[1]), n = cols * rows
+        guard words.count >= 4 + 2 * n else { return nil }
+        return (cols, rows, Double(words[2]) / 100, Double(words[3]) / 10, Array(words[4..<4 + n]), Array(words[4 + n..<4 + 2 * n]))
+    }()
+
+    /// Heights of the ground and of the highest return along a line, in metres above the lowest ground, and the line's length.
+    static func cut(from a: CGPoint, to b: CGPoint, samples: Int = 140) -> (ground: [Double], top: [Double], length: Double)? {
+        guard let g = grid else { return nil }
+        func at(_ values: [UInt16], _ x: Double, _ y: Double) -> Double {
+            let c = min(max(Int(x * Double(g.cols - 1)), 0), g.cols - 1), r = min(max(Int(y * Double(g.rows - 1)), 0), g.rows - 1)
+            return Double(values[r * g.cols + c]) / 100
+        }
+        var ground: [Double] = [], top: [Double] = []
+        for i in 0..<samples {
+            let t = Double(i) / Double(samples - 1)
+            let x = Double(a.x) + (Double(b.x) - Double(a.x)) * t, y = Double(a.y) + (Double(b.y) - Double(a.y)) * t
+            ground.append(at(g.ground, x, y))
+            top.append(at(g.top, x, y))
+        }
+        let dx = Double(b.x - a.x) * Double(g.cols) * g.cell, dy = Double(b.y - a.y) * Double(g.rows) * g.cell
+        return (ground, top, (dx * dx + dy * dy).squareRoot())
+    }
+}
+
+/// Cut your own slice: drag a line across the mound, and the ground under it is drawn beside the picture.
+private struct SliceBoard: View {
+    @State private var from = CGPoint(x: 0.12, y: 0.52)
+    @State private var to = CGPoint(x: 0.9, y: 0.5)
+
+    var body: some View {
+        let cut = SliceData.cut(from: from, to: to)
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 20) {
+                picture.frame(width: 400)
+                profile(cut).frame(minWidth: 300, idealWidth: 340, maxWidth: .infinity, alignment: .leading)
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                picture.frame(maxWidth: 400)
+                profile(cut)
+            }
+        }
+    }
+
+    private var picture: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            ZStack {
+                if let image = Tour.image("slice-ground") { Image(nsImage: image).resizable() } else { Theme.side }
+                Path { p in
+                    p.move(to: CGPoint(x: from.x * size.width, y: from.y * size.height))
+                    p.addLine(to: CGPoint(x: to.x * size.width, y: to.y * size.height))
+                }
+                .stroke(Theme.tan, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                ForEach([from, to], id: \.x) { end in
+                    Circle().fill(.white).frame(width: 11, height: 11).shadow(color: .black.opacity(0.6), radius: 2)
+                        .position(x: end.x * size.width, y: end.y * size.height)
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { drag in
+                    func unit(_ p: CGPoint) -> CGPoint { CGPoint(x: min(max(p.x / size.width, 0), 1), y: min(max(p.y / size.height, 0), 1)) }
+                    from = unit(drag.startLocation)
+                    to = unit(drag.location)
+                })
+        }
+        .aspectRatio(747.0 / 711.0, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
+        .accessibilityElement()
+        .accessibilityLabel("Monks Mound from above. Drag across it to cut a slice.")
+        .accessibilityAddTraits(.allowsDirectInteraction)
+    }
+
+    private func profile(_ cut: (ground: [Double], top: [Double], length: Double)?) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            caption("Drag across the mound to cut a slice.")
+            if let cut, cut.length > 4 {
+                let low = cut.ground.min() ?? 0, high = cut.ground.max() ?? 0
+                let trees = zip(cut.top, cut.ground).filter { $0 - $1 > 2 }.count
+                Canvas { context, size in
+                    let ceiling = max(high - low, 4) * 1.5
+                    func point(_ i: Int, _ height: Double) -> CGPoint {
+                        CGPoint(x: size.width * CGFloat(i) / CGFloat(cut.ground.count - 1),
+                                y: size.height - 6 - (size.height - 12) * CGFloat(min(max(height - low, 0), ceiling) / ceiling))
+                    }
+                    // Treetops and anything else above the ground: dots, as the laser saw them.
+                    for i in cut.top.indices where cut.top[i] - cut.ground[i] > 2 {
+                        let p = point(i, cut.top[i])
+                        context.fill(Path(ellipseIn: CGRect(x: p.x - 1.5, y: p.y - 1.5, width: 3, height: 3)), with: .color(Theme.green.opacity(0.8)))
+                    }
+                    var line = Path()
+                    for i in cut.ground.indices { i == 0 ? line.move(to: point(i, cut.ground[i])) : line.addLine(to: point(i, cut.ground[i])) }
+                    var fill = line
+                    fill.addLine(to: CGPoint(x: size.width, y: size.height))
+                    fill.addLine(to: CGPoint(x: 0, y: size.height))
+                    fill.closeSubpath()
+                    context.fill(fill, with: .color(Theme.tan.opacity(0.16)))
+                    context.stroke(line, with: .color(Theme.tan), lineWidth: 2)
+                }
+                .frame(height: 170)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.side))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
+                Text("\(Int(cut.length.rounded())) m long. The ground rises \(String(format: "%.1f", high - low)) m.")
+                    .font(.system(size: 15 * Theme.scale, weight: .semibold))
+                HStack(spacing: 14) {
+                    key(Theme.tan, "Ground")
+                    key(Theme.green, trees > 0 ? "Treetops" : "No trees on this line")
+                }
+                caption("A mound is in the ground line. A shape made of treetops is not.")
+            } else {
+                caption("That line is too short to measure.")
+            }
+        }
+    }
+
+    private func key(_ color: Color, _ text: String) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+        }
+    }
+}
+
+/// What a literature search returns, drawn as the list the agent sees. Press a source to see what the agent does with it.
 struct PapersArt: View {
-    var caption = ""
     var papers: [(String, String, Bool)] = [
         ("Building Monks Mound, Cahokia, Illinois, A.D. 800–1400", "T. M. Schilling · 2012", false),
         ("Cahokia or Monks Mound Not of Artificial Origin", "A. R. Crook · 1914", true),
@@ -350,33 +515,43 @@ struct PapersArt: View {
         ("Antiquities of Cahokia, or Monks' Mound, in Madison County, Illinois", "William McAdams · 1883", true),
     ]
     var yes = "Free to read", no = "No free copy"
+    /// What happens to a source of each kind. Empty when the rows are not sources to open.
+    var then = ("The agent opens it, reads it and logs what it says about this place.",
+                "Logged as could not open. You can open it yourself and hand the page over.")
+    @State private var picked: Int?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            if !then.0.isEmpty { caption("What the search returned for Monks Mound. Press a source.") }
             VStack(spacing: 0) {
                 ForEach(Array(papers.enumerated()), id: \.offset) { index, paper in
                     if index > 0 { Hairline() }
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "doc.text").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.tan).padding(.top, 2)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(paper.0).font(.system(size: 12.5 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
-                            Text(paper.1).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                            if !(paper.2 ? yes : no).isEmpty {
-                                Label(paper.2 ? yes : no, systemImage: paper.2 ? "checkmark" : "minus")
-                                    .font(.system(size: 11 * Theme.scale, weight: .medium))
-                                    .foregroundStyle(paper.2 ? Theme.green.opacity(0.85) : Theme.faint)
+                    Button { picked = picked == index ? nil : index } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "doc.text").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.tan).padding(.top, 2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(paper.0).font(.system(size: 13 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                                    .multilineTextAlignment(.leading)
+                                Text(paper.1).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                                if !(paper.2 ? yes : no).isEmpty {
+                                    Label(paper.2 ? yes : no, systemImage: paper.2 ? "checkmark" : "minus")
+                                        .font(.system(size: 11 * Theme.scale, weight: .medium))
+                                        .foregroundStyle(paper.2 ? Theme.green.opacity(0.85) : Theme.faint)
+                                }
+                                if picked == index, !then.0.isEmpty {
+                                    Text(paper.2 ? then.0 : then.1).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.9))
+                                        .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading).padding(.top, 4)
+                                }
                             }
+                            Spacer(minLength: 0)
                         }
-                        Spacer(minLength: 0)
+                        .padding(.horizontal, 12).padding(.vertical, 9).contentShape(Rectangle())
                     }
-                    .padding(.horizontal, 12).padding(.vertical, 9)
+                    .buttonStyle(.plain).disabled(then.0.isEmpty)
                 }
             }
             .background(RoundedRectangle(cornerRadius: 12).fill(Theme.side))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
-            if !caption.isEmpty {
-                Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-            }
         }
     }
 }
@@ -384,31 +559,28 @@ struct PapersArt: View {
 /// The record the run ended with.
 private struct RecordArt: View {
     private let lines: [(String, String)] = [
-        ("In the ground returns", "27.6 m high"),
-        ("A second model agrees", "Gemini 3.8 Flash"),
-        ("Modern features checked", "Paths and stairs on it; already mapped"),
+        ("In the ground", "27.6 m high"),
+        ("Second opinion", "Gemini 3.8 Flash agrees"),
+        ("Open maps", "Paths and stairs on it; already mapped"),
         ("Decided by a person", "“This is Monks Mound at Cahokia Mounds State Historic Site.”"),
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("candidates/C-001.md").font(.system(size: 11 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.faint)
                 HStack(alignment: .top, spacing: 12) {
                     if let relief = Tour.image("record-relief") {
-                        Image(nsImage: relief).resizable().aspectRatio(contentMode: .fit).frame(width: 110).clipShape(RoundedRectangle(cornerRadius: 8))
+                        Image(nsImage: relief).resizable().aspectRatio(contentMode: .fit).frame(width: 150).clipShape(RoundedRectangle(cornerRadius: 8))
                     }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("C-001 Large terraced platform mound").font(.system(size: 14.5 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("C-001 Large terraced platform mound").font(.system(size: 15 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
                         Badge(text: "Already published", color: Theme.tan)
-                    }
-                }
-                ForEach(lines, id: \.0) { line in
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.green).padding(.top, 1)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(line.0).font(.system(size: 12.5 * Theme.scale, weight: .medium))
-                            Text(line.1).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        ForEach(lines, id: \.0) { line in
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.green).padding(.top, 1)
+                                (Text(line.0).fontWeight(.medium) + Text("  " + line.1).foregroundColor(Theme.dim))
+                                    .font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
                 }
@@ -416,103 +588,274 @@ private struct RecordArt: View {
             .padding(14).frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 12).fill(Theme.side))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
-            Text("Finding a known site again is the right answer for a test. The same page is written for every find.")
-                .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            caption("Finding a known site again is the right answer for a test run.")
         }
     }
+}
+
+// MARK: - Where the data reaches
+
+/// The world, with the places each kind of open data reaches, and Europe drawn larger beside it.
+struct CoverageMap: View {
+    /// The layer to bring forward: "us", "national", "surveys" or "ancient". Nil shows all of them alike.
+    var highlight: String? = nil
+    /// The boxes of the open surveys flown for archaeology, as west, south, east, north.
+    var surveys: [[Double]] = []
+
+    private static let land: [[Double]] = {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("tour/world.json"), let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [[Double]] ?? []
+    }()
+
+    private struct Frame {
+        let west: Double, east: Double, south: Double, north: Double
+        let rect: CGRect
+        func point(_ lon: Double, _ lat: Double) -> CGPoint {
+            CGPoint(x: rect.minX + rect.width * CGFloat((lon - west) / (east - west)),
+                    y: rect.minY + rect.height * CGFloat((north - lat) / (north - south)))
+        }
+    }
+
+    var body: some View {
+        Canvas { context, size in
+            let gap: CGFloat = 10, inset = size.height * 1.05
+            let world = Frame(west: -168, east: 180, south: -57, north: 76, rect: CGRect(x: 0, y: 0, width: size.width - inset - gap, height: size.height))
+            let europe = Frame(west: -11.5, east: 27, south: 41, north: 62.5, rect: CGRect(x: size.width - inset, y: 0, width: inset, height: size.height))
+            for frame in [world, europe] {
+                var layer = context
+                layer.clip(to: Path(roundedRect: frame.rect, cornerRadius: 10))
+                layer.fill(Path(frame.rect), with: .color(Theme.side))
+                for ring in Self.land { layer.fill(path(ring, frame), with: .color(Theme.ink.opacity(0.16))) }
+                func shade(_ id: String) -> Double { highlight == nil || highlight == id ? 1 : 0.18 }
+                // Ancient places on record: a region, drawn as an outline so the lidar shows through it.
+                layer.stroke(path(Reach.ancient, frame), with: .color(Theme.dim.opacity(0.9 * shade("ancient"))), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
+                layer.fill(path(Reach.unitedStates, frame), with: .color(Theme.tan.opacity(0.75 * shade("us"))))
+                for country in Reach.national {
+                    let shape = path(country.ring, frame)
+                    layer.fill(shape, with: .color(Theme.accent.opacity(0.8 * shade("national"))))
+                    layer.stroke(shape, with: .color(Theme.accent.opacity(shade("national"))), lineWidth: 1)
+                }
+                for box in surveys where box.count == 4 {
+                    let p = frame.point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+                    layer.fill(Path(ellipseIn: CGRect(x: p.x - 3.5, y: p.y - 3.5, width: 7, height: 7)), with: .color(Theme.amber.opacity(shade("surveys"))))
+                    layer.stroke(Path(ellipseIn: CGRect(x: p.x - 3.5, y: p.y - 3.5, width: 7, height: 7)), with: .color(.black.opacity(0.5 * shade("surveys"))), lineWidth: 0.8)
+                }
+                context.stroke(Path(roundedRect: frame.rect, cornerRadius: 10), with: .color(Theme.line), lineWidth: 1)
+            }
+            // Where the larger picture of Europe sits on the world.
+            let a = world.point(europe.west, europe.north), b = world.point(europe.east, europe.south)
+            context.stroke(Path(CGRect(x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y)), with: .color(Theme.faint), lineWidth: 0.8)
+        }
+        .aspectRatio(3.7, contentMode: .fit)
+        .accessibilityElement()
+        .accessibilityLabel("A map of the world showing where open lidar reaches: the United States, \(Reach.national.map(\.name).joined(separator: ", ")), and \(surveys.count) surveys flown for archaeology.")
+    }
+
+    private func path(_ ring: [Double], _ frame: Frame) -> Path {
+        var p = Path()
+        var i = 0
+        while i + 1 < ring.count {
+            let point = frame.point(ring[i], ring[i + 1])
+            i == 0 ? p.move(to: point) : p.addLine(to: point)
+            i += 2
+        }
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Rough outlines of where each kind of open data reaches, as longitude and latitude pairs in a row.
+enum Reach {
+    static let unitedStates: [Double] = [-124.6, 48.4, -95.1, 49.0, -88.0, 48.0, -82.5, 45.3, -82.4, 41.7, -79.0, 43.3, -76.5, 44.2, -71.5, 45.0, -69.2, 47.4,
+                                         -67.0, 44.8, -70.7, 41.6, -74.0, 40.5, -75.5, 35.3, -81.0, 31.5, -80.0, 25.3, -81.8, 25.0, -82.8, 29.0, -85.5, 29.8,
+                                         -89.5, 29.2, -94.0, 29.5, -97.3, 26.0, -101.5, 29.8, -103.2, 29.0, -106.5, 31.8, -111.0, 31.3, -114.8, 32.5,
+                                         -117.1, 32.5, -120.6, 34.5, -123.8, 39.5, -124.3, 42.0]
+    static let ancient: [Double] = [-10, 35, -9, 44, 2, 51.5, 12, 54, 30, 48, 42, 44, 52, 40, 62, 36, 60, 25, 45, 14, 34, 20, 25, 30, 10, 30, -8, 28]
+    /// Countries whose national ground model the tools can fetch, in the order they were added.
+    static let national: [(name: String, ring: [Double])] = [
+        ("England", [-5.8, 50.0, -4.2, 50.3, -3.0, 50.6, -1.0, 50.7, 1.4, 51.1, 1.8, 52.6, 0.3, 53.5, -0.1, 54.5, -1.6, 55.65, -2.1, 55.85, -3.1, 55.05,
+                     -3.6, 54.5, -3.1, 53.35, -2.95, 52.0, -2.65, 51.6, -3.6, 51.2, -4.6, 51.1]),
+        ("the Netherlands", [3.3, 51.4, 3.4, 51.2, 5.8, 51.0, 6.0, 50.75, 6.2, 51.4, 6.9, 51.9, 7.25, 53.2, 6.9, 53.6, 4.8, 53.4, 4.5, 52.5, 3.9, 51.9]),
+        ("France", [-4.9, 48.4, -1.6, 48.7, -1.4, 49.75, 1.6, 50.95, 2.55, 51.1, 4.2, 49.95, 6.4, 49.5, 8.25, 48.95, 7.6, 47.55, 6.9, 47.35, 6.0, 46.2,
+                    7.05, 45.9, 6.6, 45.1, 7.6, 43.8, 6.2, 43.05, 3.1, 43.0, 3.2, 42.4, -1.8, 43.35, -1.2, 46.0, -2.6, 47.3]),
+    ]
 }
 
 // MARK: - Workflows
 
+/// A search from left to right: who does each part, where the open project stands, and a button for each.
 private struct WorkflowsTab: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
+    @State private var picked: String?
 
-    private let roles: [(String, String, String)] = [
-        ("dig.trowel", "Agent", "The model you chose. It runs the search, calls the tools and keeps the plan."),
-        ("person.2", "Helper agents", "Copies it starts when there are many tiles, each given a batch to look at."),
-        ("eye", "Second model", "A different model that gives its own opinion on each find."),
-        ("person", "You", "You decide what each find is, and you send any report."),
-    ]
+    /// The parts of a search in order, and the lane each sits in: 0 the agent, 1 a second model, 2 you.
+    private let parts: [(id: String, lane: Int)] = [("terrain", 0), ("screen", 0), ("check", 0), ("second", 1), ("prior", 0), ("decide", 0), ("review", 2), ("report", 0)]
+    private let lanes: [(icon: String, name: String)] = [("dig.trowel", "Agent"), ("eye", "Second model"), ("person", "You")]
+
+    private func flow(_ id: String) -> ToolGuide.Workflow? { ToolGuide.workflows.first { $0.id == id } }
+    private var waiting: Int { store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }.count }
+
+    /// A part's short name, where it stands, and whether it can run now.
+    private func facts(_ id: String) -> (title: String, icon: String, note: String, ready: Bool, done: Bool) {
+        if id == "review" {
+            let note = store.current == nil ? "Needs a project" : store.candidates.isEmpty ? "Needs finds" : waiting == 0 ? "Done" : "\(waiting) waiting"
+            return ("Decide", "dig.brush", note, waiting > 0, note == "Done")
+        }
+        guard let flow = flow(id) else { return (id, "questionmark", "", false, false) }
+        let state = app.state(of: flow)
+        let done = state.note == "Done" || state.note == "All decided" || state.note == "Prepared"
+        return (id == "second" ? "Second opinion" : id == "prior" ? "What is published" : flow.title, flow.icon, state.note, state.ready, done)
+    }
 
     var body: some View {
-        Text("A workflow is a ready-made request. Press Run and the agent carries it out with the tools, in a chat you can watch and steer. Each one shows who does which part.")
-            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
-            ForEach(roles, id: \.1) { role in
-                HStack(alignment: .top, spacing: 10) {
-                    Glyph(name: role.0, size: 14 * Theme.scale).foregroundStyle(role.1 == "You" ? Theme.accent : Theme.tan).frame(width: 20)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(role.1).font(.system(size: 13 * Theme.scale, weight: .semibold))
-                        Text(role.2).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+        let general = ToolGuide.workflows.filter { $0.scope == .general }
+        let chosen = picked ?? app.nextStep?.id ?? "full"
+        Text("A workflow is a ready-made request. Press one to see what it does, then Run.")
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim)
+
+        PageSection(title: "Before a project") {
+            Flow(spacing: 8) {
+                ForEach(general) { flow in
+                    chip(flow.id, flow.icon, flow.title, chosen == flow.id)
+                }
+            }
+        }
+
+        PageSection(title: store.current.map { "In \($0.name)" } ?? "In a project") {
+            VStack(alignment: .leading, spacing: 12) {
+                if let whole = flow("full") {
+                    HStack(spacing: 12) {
+                        Button { app.run(whole) } label: { Label(whole.title, glyph: whole.icon) }
+                            .buttonStyle(PrimaryButton()).disabled(!app.state(of: whole).ready)
+                        Text(store.current == nil ? "Open a project from the sidebar to run these." : "Every step below, in one press.")
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
-                .panel(padding: 12, radius: 12)
+                // The lanes need room. In a narrow window they keep their width and scroll sideways.
+                GeometryReader { geo in
+                    ScrollView(.horizontal, showsIndicators: false) { picture(chosen).frame(width: max(geo.size.width, 760)) }
+                }
+                .frame(height: 3 * 92 + 3 * 6 + 16)
             }
         }
-        group("To find a place", "These start a chat. No project is needed.", ToolGuide.workflows.filter { $0.scope == .general })
-        group("To search a project",
-              store.current.map { "These run on \($0.name), the open project, in the order a search goes. Each picks up where the project stands." }
-                ?? "Open a project from the sidebar to run these. They are listed in the order a search goes.",
-              ToolGuide.workflows.filter { $0.scope == .project })
+
+        detail(chosen)
     }
 
-    private func group(_ title: String, _ caption: String, _ flows: [ToolGuide.Workflow]) -> some View {
-        PageSection(title: title, caption: caption) {
-            VStack(spacing: 0) {
-                ForEach(Array(flows.enumerated()), id: \.element.id) { index, flow in
-                    if index > 0 { Hairline() }
-                    WorkflowLine(flow: flow)
+    /// The lanes: one row for each of the three who take part, one column for each part of the search.
+    private func picture(_ chosen: String) -> some View {
+        Grid(alignment: .topLeading, horizontalSpacing: 6, verticalSpacing: 6) {
+            GridRow {
+                Color.clear.frame(width: 116, height: 1)
+                ForEach(parts.indices, id: \.self) { i in
+                    HStack(spacing: 4) {
+                        Text("\(i + 1)").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                        Rectangle().fill(Theme.line).frame(height: 1)
+                        if i < parts.count - 1 {
+                            Image(systemName: "chevron.right").font(.system(size: 7 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
             }
-            .panel()
-        }
-    }
-}
-
-/// One workflow: where it stands, what it does, who does each part, and the button that runs it.
-private struct WorkflowLine: View {
-    let flow: ToolGuide.Workflow
-    @EnvironmentObject var app: AppState
-
-    var body: some View {
-        let state = app.state(of: flow)
-        let done = state.note == "Done"
-        HStack(alignment: .top, spacing: 14) {
-            Group {
-                if done {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 20 * Theme.scale)).foregroundStyle(Theme.green)
-                } else {
-                    IconTile(name: flow.icon).opacity(state.ready ? 1 : 0.55)
-                }
-            }
-            .frame(width: 34, height: 34)
-            VStack(alignment: .leading, spacing: 7) {
-                Text(flow.title).font(.system(size: 14 * Theme.scale, weight: .semibold))
-                Text(flow.summary).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Flow(spacing: 5) {
-                    ForEach(Array(flow.steps.enumerated()), id: \.offset) { index, step in
-                        HStack(spacing: 5) {
-                            if index > 0 { Image(systemName: "arrow.right").font(.system(size: 8 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint) }
-                            (Text(step.who).fontWeight(.semibold).foregroundColor(step.who == "You" ? Theme.accent : Theme.tan)
-                             + Text("  " + step.does).foregroundColor(Theme.dim))
-                                .font(.system(size: 11.5 * Theme.scale)).lineLimit(1)
+            ForEach(lanes.indices, id: \.self) { lane in
+                GridRow {
+                    HStack(spacing: 7) {
+                        Glyph(name: lanes[lane].icon, size: 13 * Theme.scale).foregroundStyle(lane == 2 ? Theme.accent : Theme.tan).frame(width: 18)
+                        Text(lanes[lane].name).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
+                    }
+                    .frame(width: 116, height: 92, alignment: .leading)
+                    ForEach(parts.indices, id: \.self) { i in
+                        if parts[i].lane == lane {
+                            card(parts[i].id, chosen == parts[i].id)
+                        } else if lane == 2, parts[i].id == "report" {
+                            Text("You send it").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.accent)
+                                .frame(maxWidth: .infinity, minHeight: 92)
+                        } else {
+                            RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.02)).frame(maxWidth: .infinity, minHeight: 92)
                         }
                     }
                 }
             }
-            Spacer(minLength: 10)
-            VStack(alignment: .trailing, spacing: 6) {
-                Button(done ? "Run again" : "Run") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(!state.ready)
-                if !state.note.isEmpty {
-                    Text(state.note).font(.system(size: 11.5 * Theme.scale, weight: .medium))
-                        .foregroundStyle(done ? Theme.green : state.ready ? Theme.tan : Theme.faint).lineLimit(1).fixedSize()
+        }
+    }
+
+    private func card(_ id: String, _ on: Bool) -> some View {
+        let part = facts(id)
+        return Button { picked = id } label: {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Glyph(name: part.icon, size: 14 * Theme.scale).foregroundStyle(id == "review" ? Theme.accent : Theme.tan)
+                    Spacer(minLength: 0)
+                    if part.done { Image(systemName: "checkmark").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.green) }
+                }
+                Text(part.title).font(.system(size: 12 * Theme.scale, weight: .semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if !part.note.isEmpty, part.ready, !part.done {
+                    Text(part.note).font(.system(size: 10.5 * Theme.scale)).foregroundStyle(part.ready ? Theme.tan : Theme.faint).lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .padding(9).frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(on ? 0.1 : 0.045)))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? Theme.tan : Theme.line, lineWidth: on ? 1.5 : 1))
+            .opacity(part.ready || part.done || on ? 1 : 0.7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(part.title), \(lanes[parts.first { $0.id == id }?.lane ?? 0].name)\(part.note.isEmpty ? "" : ", \(part.note)")")
+    }
+
+    private func chip(_ id: String, _ icon: String, _ title: String, _ on: Bool) -> some View {
+        Button { picked = id } label: {
+            HStack(spacing: 7) {
+                Glyph(name: icon, size: 13 * Theme.scale).foregroundStyle(Theme.tan)
+                Text(title).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+            }
+            .padding(.horizontal, 12).frame(height: 34)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(on ? 0.1 : 0.045)))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? Theme.tan : Theme.line, lineWidth: on ? 1.5 : 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// The chosen workflow: one sentence, who does it, and the button that runs it.
+    @ViewBuilder private func detail(_ id: String) -> some View {
+        let lane = parts.first { $0.id == id }?.lane ?? 0
+        HStack(alignment: .center, spacing: 14) {
+            if id == "review" {
+                IconTile(name: "dig.brush", size: 38)
+                words("Decide the finds", "You look at each find and decide what it is. Nothing is final before that.", lanes[2].name)
+                Spacer(minLength: 10)
+                Button("Review") { app.reviewing = true; app.route = .chat }.buttonStyle(SecondaryButton()).disabled(waiting == 0)
+            } else if let flow = flow(id) {
+                let state = app.state(of: flow)
+                IconTile(name: flow.icon, size: 38)
+                words(flow.title, flow.summary, flow.scope == .general ? "Agent, then you" : id == "report" ? "Agent, then you" : lanes[lane].name)
+                Spacer(minLength: 10)
+                VStack(alignment: .trailing, spacing: 5) {
+                    Button(state.note == "Done" ? "Run again" : "Run") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(!state.ready)
+                    if !state.note.isEmpty {
+                        Text(state.note).font(.system(size: 11.5 * Theme.scale, weight: .medium))
+                            .foregroundStyle(state.note == "Done" ? Theme.green : state.ready ? Theme.tan : Theme.faint).lineLimit(1).fixedSize()
+                    }
                 }
             }
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .panel(padding: 14)
+    }
+
+    private func words(_ title: String, _ text: String, _ who: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
+                Badge(text: who, color: who == "You" ? Theme.accent : Theme.tan)
+            }
+            Text(text).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
@@ -526,120 +869,171 @@ private struct DataTab: View {
     @State private var checked: Date?
     @State private var checking = false
     @State private var open: String?
+    @State private var layer: String?
     @State private var asking: ToolGuide.DataSource?
 
-    /// Where each service's data covers, so a person can see at a glance which ones matter for their place.
-    private static let regions: [(title: String, note: String, names: [String])] = [
-        ("Anywhere", "Used for every project, wherever it is.", ["OpenTopography", "Wikidata", "OpenStreetMap", "OpenAlex", "Open Context"]),
-        ("United States", "Lidar and records for places in the US.", ["USGS 3DEP", "National Register of Historic Places"]),
-        ("England, the Netherlands and France", "Ready-made national ground models, used only for places in these countries.",
-         ["Environment Agency lidar (England)", "AHN (Netherlands)", "IGN LiDAR HD (France)"]),
-        ("The ancient Mediterranean and Near East", "Ancient places on record, used only for places in that region.", ["Pleiades"]),
-    ]
+    private let layers: [(id: String, name: String)] = [("us", "United States"), ("national", "National ground models"),
+                                                         ("surveys", "Surveys flown for archaeology"), ("ancient", "Ancient places on record")]
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Everything Dighouse searches is public, and none of it needs an account or a key. Click a service to see what it gives and a picture made from its data.")
-                .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 4) {
-                Button { Task { await probe() } } label: { Label(checking ? "Checking…" : "Check status", systemImage: "arrow.clockwise") }
-                    .buttonStyle(SecondaryButton()).disabled(checking)
-                    .help("Sends a small test request to each service from this Mac.")
-                if let checked {
-                    let up = online.filter { $0.value && !partly.contains($0.key) }.count
-                    Text("\(up) of \(ToolGuide.allSources.count) online at \(checked.formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(up == ToolGuide.allSources.count ? Theme.faint : Theme.amber)
-                }
+        Group {
+            if let source = ToolGuide.allSources.first(where: { $0.name == open }) {
+                page(source)
+            } else {
+                overview
             }
         }
-        ForEach(Self.regions, id: \.title) { region in
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(region.title).font(.system(size: 15 * Theme.scale, weight: .semibold))
-                    Text(region.note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                }
-                VStack(spacing: 0) {
-                    let sources = region.names.compactMap { name in ToolGuide.allSources.first { $0.name == name } }
-                    ForEach(Array(sources.enumerated()), id: \.element.id) { i, source in
-                        if i > 0 { Hairline() }
-                        row(source)
-                    }
-                }
-                .panel()
-            }
-        }
-        .task { await probe() }
+        .task { await app.loadSurveys(); await probe() }
         .confirmationDialog(asking.map { "Ask the agent about \($0.name)?" } ?? "", isPresented: Binding(get: { asking != nil }, set: { if !$0 { asking = nil } }),
                             titleVisibility: .visible) {
             Button("Start a chat") { if let asking { app.askGeneral(asking.ask) }; asking = nil }
             Button("Cancel", role: .cancel) { asking = nil }
         } message: {
-            Text(asking.map { "This starts a new chat in which the agent uses \($0.name) to answer: \"\($0.ask)\" It uses your AI model." } ?? "")
+            Text(asking.map { "This starts a new chat that asks: \"\($0.ask)\" It uses your AI model." } ?? "")
         }
     }
 
-    private func row(_ source: ToolGuide.DataSource) -> some View {
-        let expanded = open == source.name
-        return VStack(alignment: .leading, spacing: 12) {
-            Button { withAnimation(.easeOut(duration: 0.15)) { open = expanded ? nil : source.name } } label: {
-                HStack(spacing: 12) {
-                    thumb(source).frame(width: 64, height: 44).clipShape(RoundedRectangle(cornerRadius: 6))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(source.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                        Text(source.what).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(expanded ? nil : 1)
-                            .fixedSize(horizontal: false, vertical: expanded).multilineTextAlignment(.leading)
-                    }
-                    Spacer(minLength: 8)
-                    status(source)
-                    Image(systemName: "chevron.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
-                }
-                .contentShape(Rectangle())
+    @ViewBuilder private var overview: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("All of it is public and needs no account. Press a service to see what it gives.")
+                .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            if let checked {
+                let up = online.filter { $0.value && !partly.contains($0.key) }.count
+                Text("\(up) of \(ToolGuide.allSources.count) online at \(checked.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(up == ToolGuide.allSources.count ? Theme.faint : Theme.amber)
             }
-            .buttonStyle(.plain)
-            if expanded {
-                HStack(alignment: .top, spacing: 16) {
-                    art(source).frame(width: 260)
-                    VStack(alignment: .leading, spacing: 9) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("What Dighouse takes from it").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
-                            Text(source.gives).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                        }
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text("Used for").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
-                            Text(source.usedFor.components(separatedBy: " · ").joined(separator: ", "))
-                                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
-                        }
-                        HStack(spacing: 10) {
-                            Button { asking = source } label: { Label("Ask the agent…", glyph: "dig.trowel") }
-                                .buttonStyle(SecondaryButton())
-                                .help("Starts a chat in which the agent uses this service. It asks you first.")
-                            if let url = URL(string: source.url) {
-                                Link(destination: url) { Label(url.host ?? source.url, systemImage: "arrow.up.right") }
-                                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.accent)
-                            }
-                        }
-                    }
-                }
-                .padding(.leading, 76)
-            }
+            Button { Task { await probe() } } label: { Label(checking ? "Checking…" : "Check status", systemImage: "arrow.clockwise") }
+                .buttonStyle(SecondaryButton()).disabled(checking)
+                .help("Sends a small test request to each service from this Mac.")
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
+        VStack(alignment: .leading, spacing: 10) {
+            CoverageMap(highlight: layer, surveys: app.surveys.map(\.box))
+            Flow(spacing: 6) {
+                ForEach(layers, id: \.id) { item in
+                    Button { layer = layer == item.id ? nil : item.id } label: {
+                        HStack(spacing: 6) {
+                            mark(item.id)
+                            Text(item.name).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(layer == item.id ? Theme.text : Theme.dim)
+                        }
+                        .padding(.horizontal, 10).frame(height: 26)
+                        .background(Capsule().fill(Theme.ink.opacity(layer == item.id ? 0.12 : 0.05))).contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            caption("Lidar is open in few places. Maps, site lists and papers are read worldwide.")
+        }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
+            ForEach(ToolGuide.allSources) { source in tile(source) }
+        }
+        Disclosure(title: "Not read yet, and why (\(ToolGuide.notYet.count))") {
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(ToolGuide.notYet, id: \.0) { item in
+                    (Text(item.0).fontWeight(.medium).foregroundColor(Theme.text) + Text("  " + item.1).foregroundColor(Theme.dim))
+                        .font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14)
+        }
     }
 
-    private func status(_ source: ToolGuide.DataSource) -> some View {
+    @ViewBuilder private func mark(_ id: String) -> some View {
+        switch id {
+        case "us": RoundedRectangle(cornerRadius: 2).fill(Theme.tan).frame(width: 10, height: 10)
+        case "national": RoundedRectangle(cornerRadius: 2).fill(Theme.accent).frame(width: 10, height: 10)
+        case "surveys": Circle().fill(Theme.amber).frame(width: 9, height: 9)
+        default: RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.dim, style: StrokeStyle(lineWidth: 1.2, dash: [3, 2])).frame(width: 10, height: 10)
+        }
+    }
+
+    private func tile(_ source: ToolGuide.DataSource) -> some View {
+        Button { open = source.name } label: {
+            HStack(spacing: 10) {
+                thumb(source).frame(width: 52, height: 40).clipShape(RoundedRectangle(cornerRadius: 6))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(source.name).font(.system(size: 12.5 * Theme.scale, weight: .semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(source.reach).font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                dot(source)
+            }
+            .padding(9).frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+            .panel(radius: 12).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(source.name), \(source.reach), \(word(source))")
+    }
+
+    private func word(_ source: ToolGuide.DataSource) -> String {
+        let state = online[source.name]
+        return state == true && partly.contains(source.name) ? "Partly online" : state == true ? "Online" : state == false ? "Not answering" : "Checking"
+    }
+
+    private func dot(_ source: ToolGuide.DataSource) -> some View {
         let state = online[source.name]
         let part = state == true && partly.contains(source.name)
-        return HStack(spacing: 6) {
-            Circle().fill(part || state == false ? Theme.amber : state == true ? Theme.green : Theme.faint).frame(width: 7, height: 7)
-            Text(part ? "Partly online" : state == true ? "Online" : state == false ? "Not answering" : "Checking")
-                .font(.system(size: 12 * Theme.scale)).foregroundStyle(part || state == false ? Theme.amber : Theme.dim)
+        return Circle().fill(part || state == false ? Theme.amber : state == true ? Theme.green : Theme.faint).frame(width: 8, height: 8)
+            .help(part ? source.alsoNote
+                  : state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
+                  : state == true ? "This service replied to a test request from this Mac."
+                  : "Waiting for this service to reply to a test request.")
+    }
+
+    /// One service: a large picture made from its data, what Dighouse takes, where it reaches, and one thing to try.
+    @ViewBuilder private func page(_ source: ToolGuide.DataSource) -> some View {
+        Button { open = nil } label: { Label("All open data", systemImage: "chevron.left") }.buttonStyle(SecondaryButton())
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 24) {
+                art(source).frame(width: 440)
+                facts(source).frame(minWidth: 280, idealWidth: 340, maxWidth: .infinity, alignment: .leading)
+            }
+            VStack(alignment: .leading, spacing: 16) {
+                art(source).frame(maxWidth: 440)
+                facts(source)
+            }
         }
-        .help(part ? source.alsoNote
-              : state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
-              : state == true ? "This service replied to a test request from this Mac."
-              : "Waiting for this service to reply to a test request.")
+    }
+
+    private func facts(_ source: ToolGuide.DataSource) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(source.name).font(.system(size: 22 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                Text(source.what).font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.86)).fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 7) {
+                dot(source)
+                Text(word(source)).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                if online[source.name] == true, partly.contains(source.name) {
+                    Text(source.alsoNote).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            fact("Dighouse takes", source.gives)
+            fact("It reaches", source.reach)
+            fact("Used for", source.usedFor.components(separatedBy: " · ").joined(separator: ", "))
+            if !source.ask.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Try it").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                    Text("“\(source.ask)”").font(.system(size: 13.5 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 12) {
+                        Button { asking = source } label: { Label("Ask the agent…", glyph: "dig.trowel") }.buttonStyle(PrimaryButton())
+                        if let url = URL(string: source.url) {
+                            Link(destination: url) { Label(url.host ?? source.url, systemImage: "arrow.up.right") }
+                                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.accent)
+                        }
+                    }
+                }
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    private func fact(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+            Text(text).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     @ViewBuilder private func thumb(_ source: ToolGuide.DataSource) -> some View {
@@ -654,27 +1048,27 @@ private struct DataTab: View {
     }
 
     @ViewBuilder private func art(_ source: ToolGuide.DataSource) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             if source.image == "papers" {
-                PapersArt()
+                PapersArt(then: ("", ""))
             } else if source.image == "records" {
                 PapersArt(papers: [("11Ms136", "Site · Illinois Site Files · Madison County", true), ("11Ms99", "Site · Illinois Site Files · Madison County", true),
                                    ("11S1232", "Site · Illinois Site Files · Saint Clair County", true), ("11Ms1672", "Site · Illinois Site Files · Madison County", true)],
-                          yes: "Public record", no: "")
+                          yes: "Public record", no: "", then: ("", ""))
             } else if source.image.isEmpty {
-                RoundedRectangle(cornerRadius: 10).fill(Theme.side).frame(height: 120)
-                    .overlay(Image(systemName: "building.columns").font(.system(size: 36 * Theme.scale, weight: .light)).foregroundStyle(Theme.tan.opacity(0.8)))
+                RoundedRectangle(cornerRadius: 12).fill(Theme.side).frame(height: 220)
+                    .overlay(Image(systemName: "building.columns").font(.system(size: 54 * Theme.scale, weight: .light)).foregroundStyle(Theme.tan.opacity(0.8)))
             } else if let image = source.image.hasPrefix("start:")
                         ? StartingPoints.image(named: String(source.image.dropFirst(6))) : Tour.image(source.image) {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
             }
-            Text(source.caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
+            if !source.caption.isEmpty { caption(source.caption) }
         }
     }
 
     private func probe() async {
+        guard !checking else { return }
         checking = true
         online = [:]
         partly = []
@@ -707,7 +1101,6 @@ private struct DataTab: View {
     }
 }
 
-
 // MARK: - More tools
 
 private struct MoreTab: View {
@@ -715,7 +1108,7 @@ private struct MoreTab: View {
     @EnvironmentObject var engine: Engine
     @State private var name = ""
     @State private var command = ""
-    @State private var showServers = false
+    @State private var adding = false
 
     private var known: [(String, ToolGuide.Addon)] {
         engine.plugins.compactMap { id in ToolGuide.addons[id].map { (id, $0) } }
@@ -723,100 +1116,100 @@ private struct MoreTab: View {
     private var others: [String] { engine.plugins.filter { ToolGuide.addons[$0] == nil } }
 
     var body: some View {
-        Text("The archaeology tools are built in. The agent can also use other tools, in two ways: the ones your Codex app already has, and ones you add here.")
-            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+        Text("The agent can also use what your Codex app has. Press one to put a request in a new chat.")
+            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
 
-        PageSection(title: "Already on this Mac",
-                    caption: "Dighouse runs on the same engine as the Codex app, so whatever you connected there works here too. Ask for it in plain words, for example \"copy these records into Notion\". These come from your Codex setup.") {
-            if engine.plugins.isEmpty && engine.connections.isEmpty {
-                Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
-            }
-            if !known.isEmpty {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
-                    ForEach(known, id: \.0) { _, addon in
+        if known.isEmpty {
+            Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
+                ForEach(known, id: \.0) { _, addon in
+                    Button { app.draft(addon.tryIt) } label: {
                         HStack(alignment: .top, spacing: 12) {
                             IconTile(name: addon.icon, size: 32)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(addon.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                                Text(addon.use).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("“\(addon.tryIt)”").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                    .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                             }
                             Spacer(minLength: 0)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 52, alignment: .topLeading)
-                        .padding(.vertical, 4)
+                        .padding(11).frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
+                        .panel(radius: 12).contentShape(Rectangle())
                     }
-                }
-            }
-            if !engine.connections.isEmpty || !others.isEmpty {
-                Button { showServers.toggle() } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).rotationEffect(.degrees(showServers ? 90 : 0))
-                        Text("Technical details: \(others.count) other Codex plugins, \(engine.connections.count) tool servers").font(.system(size: 12.5 * Theme.scale))
-                    }
-                    .foregroundStyle(Theme.dim).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain).padding(.top, 4)
-                if showServers {
-                    if !others.isEmpty {
-                        Text("Other plugins in your Codex setup, by the names Codex gives them: " + others.joined(separator: ", ") + ".")
-                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                    }
-                    VStack(spacing: 0) {
-                        ForEach(Array(engine.connections.enumerated()), id: \.element.id) { index, server in
-                            if index > 0 { Hairline() }
-                            HStack(spacing: 12) {
-                                Text(server.name).font(.system(size: 12.5 * Theme.scale, design: .monospaced))
-                                Spacer()
-                                Text(server.tools == 0 ? "Starts when used" : "\(server.tools) tools").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                            }
-                            .padding(.horizontal, 14).padding(.vertical, 9)
-                        }
-                    }
-                    .panel(radius: 10)
+                    .buttonStyle(.plain).help(addon.use)
                 }
             }
         }
 
-        PageSection(title: "Add your own",
-                    caption: "A tool server is a small program that gives the agent a new ability, such as a mapping package, a museum's site database, or a reader for a file type. It speaks an open standard called MCP, and many are free to download. Give it a name and the command that starts it. The engine restarts to load it, which stops any running work.") {
-            ForEach(app.toolServers) { server in
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(server.name).font(.system(size: 13 * Theme.scale, weight: .medium))
-                        Text(server.command).font(.system(size: 12 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.dim).lineLimit(1)
-                    }
-                    Spacer()
-                    if let found = engine.connections.first(where: { $0.name == server.key }) {
-                        Badge(text: found.tools == 0 ? "No tools found" : "\(found.tools) tools", color: found.tools == 0 ? Theme.amber : Theme.green)
-                    }
-                    Button("Remove") {
-                        app.toolServers.removeAll { $0 == server }
-                        Task { await app.boot() }
-                    }
-                    .buttonStyle(SecondaryButton())
+        ForEach(app.toolServers) { server in
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(server.name).font(.system(size: 13 * Theme.scale, weight: .medium))
+                    Text(server.command).font(.system(size: 12 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.dim).lineLimit(1)
                 }
-                .panel(padding: 12, radius: 12)
+                Spacer()
+                if let found = engine.connections.first(where: { $0.name == server.key }) {
+                    Badge(text: found.tools == 0 ? "No tools found" : "\(found.tools) tools", color: found.tools == 0 ? Theme.amber : Theme.green)
+                }
+                Button("Remove") {
+                    app.toolServers.removeAll { $0 == server }
+                    Task { await app.boot() }
+                }
+                .buttonStyle(SecondaryButton())
             }
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { fields }
-                VStack(alignment: .leading, spacing: 8) { fields }
-            }
-            .font(.system(size: 13 * Theme.scale))
+            .panel(padding: 12, radius: 12)
         }
+
+        HStack(spacing: 12) {
+            Button { adding = true } label: { Label("Add a tool server…", systemImage: "plus") }.buttonStyle(SecondaryButton())
+                .popover(isPresented: $adding, arrowEdge: .top) { addForm.popoverSurface() }
+            if !engine.connections.isEmpty || !others.isEmpty {
+                Disclosure(title: "\(others.count) other plugins, \(engine.connections.count) tool servers") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !others.isEmpty {
+                            Text(others.joined(separator: ", ")).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        }
+                        VStack(spacing: 0) {
+                            ForEach(Array(engine.connections.enumerated()), id: \.element.id) { index, server in
+                                if index > 0 { Hairline() }
+                                HStack(spacing: 12) {
+                                    Text(server.name).font(.system(size: 12.5 * Theme.scale, design: .monospaced))
+                                    Spacer()
+                                    Text(server.tools == 0 ? "Starts when used" : "\(server.tools) tools").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 9)
+                            }
+                        }
+                        .panel(radius: 10)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    @ViewBuilder private var fields: some View {
-        TextField("Name", text: $name).field().frame(minWidth: 120, maxWidth: 170)
-        TextField("Command, for example: uvx my-gis-server (quote a path that has spaces)", text: $command).field().frame(minWidth: 260)
-        Button("Add") {
-            app.toolServers.append(ToolServer(name: name.trimmingCharacters(in: .whitespaces), command: command.trimmingCharacters(in: .whitespaces)))
-            name = ""
-            command = ""
-            Task { await app.boot() }
+    /// A tool server's name and the command that starts it.
+    private var addForm: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("A tool server is a small program that gives the agent a new ability. Adding one restarts the engine, which stops running work.")
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            TextField("Name", text: $name).field()
+            TextField("Command, such as: uvx my-gis-server", text: $command).field()
+            HStack {
+                Spacer()
+                Button("Add") {
+                    app.toolServers.append(ToolServer(name: name.trimmingCharacters(in: .whitespaces), command: command.trimmingCharacters(in: .whitespaces)))
+                    name = ""
+                    command = ""
+                    adding = false
+                    Task { await app.boot() }
+                }
+                .buttonStyle(PrimaryButton())
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || command.trimmingCharacters(in: .whitespaces).isEmpty
+                          || app.toolServers.contains { $0.name == name.trimmingCharacters(in: .whitespaces) })
+            }
         }
-        .buttonStyle(PrimaryButton())
-        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || command.trimmingCharacters(in: .whitespaces).isEmpty
-                  || app.toolServers.contains { $0.name == name.trimmingCharacters(in: .whitespaces) })
+        .font(.system(size: 13 * Theme.scale)).padding(16).frame(width: 380).foregroundStyle(Theme.text)
     }
 }

@@ -498,7 +498,8 @@ final class AppState: ObservableObject {
                 .filter { ($0.status == "flagged" || $0.status == "ground_confirmed") && $0.checks["second_look"] == nil }.map(\.id)
             showRecords(secondLookQueue.first)
             nextSecondLook()
-        } else if flow.scope == .general, chat.project != nil {
+        } else if flow.scope == .general, chat.project != nil || route != .chat {
+            // From a project, or from Home, the Toolbox or Settings, a workflow that needs no project starts a chat of its own.
             route = .chat
             Task { @MainActor in
                 await chat.open(project: nil)
@@ -602,6 +603,18 @@ final class AppState: ObservableObject {
         if store.current?.path == path {
             tab = .map
             reportShown = path + "/" + file
+        }
+    }
+
+    /// Put a request in the message box of a new chat, for the person to change or send.
+    /// The chat belongs to the open project when there is one, since most requests are about it.
+    func draft(_ text: String) {
+        sidebarPeek = false
+        route = .chat
+        if layout == .workspace { layout = .split }
+        Task { @MainActor in
+            if store.current == nil { await chat.open(project: nil) } else { chat.newChat() }
+            chat.draft = text
         }
     }
 
