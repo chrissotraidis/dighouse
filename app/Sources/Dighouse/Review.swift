@@ -174,7 +174,8 @@ struct ReviewSheet: View {
     @ViewBuilder private func picture(_ path: String, _ caption: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             if let image = Images.load(path) {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 250)
+                // A wide picture sits on its caption, not in the middle of the space the taller one needs.
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 250, alignment: .bottomLeading)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 RoundedRectangle(cornerRadius: 8).fill(Theme.side).frame(height: 160)
@@ -182,7 +183,7 @@ struct ReviewSheet: View {
             }
             Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder private func footer(_ c: Candidate) -> some View {

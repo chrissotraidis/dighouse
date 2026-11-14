@@ -42,11 +42,20 @@ final class Setup: ObservableObject {
         }
         let home = NSHomeDirectory()
         path = value("DH_PATH") ?? "/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin:\(home)/.local/bin"
-        codex = existing([value("DH_CODEX"), "\(home)/.local/bin/codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex"])
         uv = existing([value("DH_UV"), "\(home)/.local/bin/uv", "/opt/homebrew/bin/uv", "/usr/local/bin/uv", "\(home)/.cargo/bin/uv"])
-        if let codex {
-            codexVersion = await Shell.run(codex, ["--version"]).out.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A Mac can hold several copies of the engine: one installed for the command line, one inside the Codex app.
+        // The newest wins, because providers refuse their newer models to an older engine.
+        let copies = [value("DH_CODEX"), "\(home)/.local/bin/codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex",
+                      "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
+                      "/Applications/Codex.app/Contents/Resources/codex"]
+            .compactMap { $0 }.filter { !$0.isEmpty && FileManager.default.isExecutableFile(atPath: $0) }
+        var best: (path: String, version: String)?
+        for copy in copies where best?.path != copy {
+            let version = await Shell.run(copy, ["--version"]).out.trimmingCharacters(in: .whitespacesAndNewlines)
+            if best == nil || Self.newer(version, than: best?.version ?? "") { best = (copy, version) }
         }
+        codex = best?.path
+        codexVersion = best?.version ?? ""
         ocxRunning = await routerAnswers()
         toolsSource = existing([
             ProcessInfo.processInfo.environment["DIGHOUSE_TOOLS_DIR"],
@@ -77,6 +86,22 @@ final class Setup: ObservableObject {
 
     private func existing(_ candidates: [String?]) -> String? {
         candidates.compactMap { $0 }.first { !$0.isEmpty && FileManager.default.fileExists(atPath: $0) }
+    }
+
+    /// Whether one "codex-cli 0.167.0-alpha.4" style version is later than another. With the same numbers, a finished
+    /// release is later than its alpha.
+    static func newer(_ a: String, than b: String) -> Bool {
+        func parts(_ text: String) -> (numbers: [Int], finished: Bool) {
+            let word = text.split(separator: " ").last.map(String.init) ?? ""
+            let core = word.split(separator: "-", maxSplits: 1)
+            return ((core.first ?? "").split(separator: ".").map { Int($0) ?? 0 }, core.count == 1)
+        }
+        let (x, y) = (parts(a), parts(b))
+        for i in 0..<max(x.numbers.count, y.numbers.count) {
+            let (m, n) = (i < x.numbers.count ? x.numbers[i] : 0, i < y.numbers.count ? y.numbers[i] : 0)
+            if m != n { return m > n }
+        }
+        return x.finished && !y.finished
     }
 
     /// OpenCodex listens on a fixed local address. Any answer, even a refusal, means it is running.

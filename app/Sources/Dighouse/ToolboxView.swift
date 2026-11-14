@@ -12,6 +12,8 @@ struct ToolboxView: View {
     @AppStorage("toolboxTab") private var tab = Tab.how
 
     var body: some View {
+        // The page is always a little taller than the window, so the scroll bar never comes and goes and nothing shifts sideways.
+        GeometryReader { geo in
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 14) {
@@ -44,7 +46,8 @@ struct ToolboxView: View {
                 }
             }
             .padding(.horizontal, 32).padding(.top, 26).padding(.bottom, 32)
-            .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity)
+            .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity, minHeight: geo.size.height + 1, alignment: .top)
+        }
         }
         .background(Theme.bg)
         .task(id: engine.ready) { await engine.loadConnections() }
@@ -86,7 +89,8 @@ private struct HowTab: View {
                 Text("Stage \(at + 1) of \(packs.count)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
                 Spacer()
                 if at < packs.count - 1 {
-                    Button("Next: \(packs[at + 1].title)") { stage = at + 1 }.buttonStyle(PrimaryButton())
+                    Button("Next: \(packs[at + 1].short)") { stage = at + 1 }.buttonStyle(PrimaryButton())
+                        .help(packs[at + 1].title)
                 } else {
                     Button("Try it yourself") { app.startProject(from: StartingPoints.all[0]) }.buttonStyle(PrimaryButton())
                 }
@@ -729,21 +733,20 @@ private struct MoreTab: View {
                     }
                 }
             }
-            if !others.isEmpty {
-                Text("Also connected").font(.system(size: 12.5 * Theme.scale, weight: .semibold)).padding(.top, 4)
-                Text(others.joined(separator: ", ")).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if !engine.connections.isEmpty {
+            if !engine.connections.isEmpty || !others.isEmpty {
                 Button { showServers.toggle() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).rotationEffect(.degrees(showServers ? 90 : 0))
-                        Text("Technical details: \(engine.connections.count) tool servers").font(.system(size: 12.5 * Theme.scale))
+                        Text("Technical details: \(others.count) other Codex plugins, \(engine.connections.count) tool servers").font(.system(size: 12.5 * Theme.scale))
                     }
                     .foregroundStyle(Theme.dim).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).padding(.top, 4)
                 if showServers {
+                    if !others.isEmpty {
+                        Text("Other plugins in your Codex setup, by the names Codex gives them: " + others.joined(separator: ", ") + ".")
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    }
                     VStack(spacing: 0) {
                         ForEach(Array(engine.connections.enumerated()), id: \.element.id) { index, server in
                             if index > 0 { Hairline() }

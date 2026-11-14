@@ -5,8 +5,11 @@ enum Route: Equatable {
     case home, chat, newProject, toolbox, settings
 }
 
-enum PaneLayout: String {
+enum PaneLayout: String, CaseIterable {
     case chat, split, workspace
+
+    static let names: [PaneLayout: String] = [.chat: "Chat only", .split: "Chat and workspace", .workspace: "Workspace only"]
+    var icon: String { self == .chat ? "bubble.left" : self == .split ? "rectangle.split.2x1" : "map" }
 }
 
 enum WorkTab: String, CaseIterable {
@@ -377,6 +380,37 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Save a project as a zip to hand to someone else: its records, notes, sources, reports and history, without the
+    /// downloaded data or anything under private/. The research record is brought up to date first.
+    /// Returns what happened in plain words, or nil when the person cancelled. Unless quiet, a failure is shown in an alert.
+    @discardableResult
+    func exportProject(_ project: ProjectRef? = nil, quiet: Bool = false) async -> String? {
+        guard let project = project ?? store.current else { return nil }
+        let folder = URL(fileURLWithPath: project.path)
+        let name = folder.lastPathComponent
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = name + ".zip"
+        panel.allowedContentTypes = [.zip]
+        panel.message = "The records, notes, sources and reports, without downloaded data or locations."
+        guard panel.runModal() == .OK, let out = panel.url else { return nil }
+        if engine.ready { _ = try? await engine.callTool("document_project", ["project": project.path]) }
+        try? FileManager.default.removeItem(at: out)
+        let zip = await Shell.run("/usr/bin/zip", ["-r", "-q", out.path, name, "-x", "\(name)/private/*", "\(name)/data/*", "*.DS_Store"],
+                                  in: folder.deletingLastPathComponent().path)
+        if zip.code == 0 {
+            NSWorkspace.shared.selectFile(out.path, inFileViewerRootedAtPath: "")
+            return "Saved \(out.lastPathComponent): records, notes, sources and reports, with no downloaded data and nothing from private/."
+        }
+        let problem = "Could not make the zip. \(zip.out.trimmingCharacters(in: .whitespacesAndNewlines))"
+        if !quiet {
+            let alert = NSAlert()
+            alert.messageText = "The project was not exported"
+            alert.informativeText = problem
+            alert.runModal()
+        }
+        return problem
+    }
+
     func loadSurveys() async {
         guard engine.ready, !surveysLoading, surveys.isEmpty else { return }
         surveysLoading = true
@@ -635,36 +669,124 @@ struct DighouseApp: App {
                 Button("New Project…") { app.startProject() }.keyboardShortcut("n", modifiers: [.command, .shift])
                 Divider()
                 Button("Open Project Folder…") { app.chooseProjectFolder() }.keyboardShortcut("o")
+                FileMenuExport(app: app, store: app.store)
             }
-            CommandGroup(after: .sidebar) {
-                Button("Home") { app.goHome() }.keyboardShortcut("0")
-                Button("Toolbox") { app.show(.toolbox) }.keyboardShortcut("t")
-                Button("Jump To…") { app.jumping = true }.keyboardShortcut("k")
-                Button("Find a Chat…") { app.findingChat = true }.keyboardShortcut("f", modifiers: [.command, .shift])
-                Divider()
-                Button(app.sidebarVisible ? "Hide Sidebar" : "Show Sidebar") { app.sidebarVisible.toggle() }
-                    .keyboardShortcut("s", modifiers: [.command, .control])
-                Button("Chat Only") { app.layout = .chat }.keyboardShortcut("1")
-                Button("Chat and Workspace") { app.layout = .split }.keyboardShortcut("2")
-                Button("Workspace Only") { app.layout = .workspace }.keyboardShortcut("3")
-                Divider()
-            }
-            CommandMenu("Run") {
-                ForEach(ToolGuide.workflows.filter { $0.scope == .project }) { flow in
-                    Button(flow.title) { app.run(flow) }.disabled(!app.state(of: flow).ready)
-                }
-                Divider()
-                Button("Stop") { Task { await app.chat.stop() } }
-                    .keyboardShortcut(".").disabled(!app.chat.running)
-            }
+            CommandGroup(after: .sidebar) { ViewMenu(app: app) }
+            CommandMenu("Project") { ProjectMenu(app: app, store: app.store, chat: app.chat) }
             CommandGroup(replacing: .help) {
-                Button("Commands and Shortcuts") { app.route = .chat; app.chat.note(SlashCommands.help) }
                 Button("Welcome Guide") { app.showWelcome = true }
-                Button("Toolbox: Tools and Workflows") { app.show(.toolbox) }
+                Button("Commands and Shortcuts") { app.route = .chat; app.chat.note(SlashCommands.help) }.keyboardShortcut("/")
+                Button("How a Search Works") { UserDefaults.standard.set(ToolboxView.Tab.how.rawValue, forKey: "toolboxTab"); app.show(.toolbox) }
                 Divider()
                 Link("Dighouse on GitHub", destination: URL(string: "https://github.com/chrissotraidis/dighouse")!)
             }
         }
+    }
+}
+
+// MARK: - The menu bar
+
+/// File › Export Project. A view of its own so it follows the open project.
+private struct FileMenuExport: View {
+    @ObservedObject var app: AppState
+    @ObservedObject var store: ProjectStore
+
+    var body: some View {
+        Button { Task { await app.exportProject() } } label: {
+            Text("Export Project…")
+            if store.current == nil { Text("Open a project first") }
+        }
+        .keyboardShortcut("e", modifiers: [.command, .shift]).disabled(store.current == nil)
+    }
+}
+
+/// View: the three layouts, the sidebar, the two ways to find things, the two pages, and text size.
+private struct ViewMenu: View {
+    @ObservedObject var app: AppState
+
+    private static let sizes = ["standard", "large", "larger"]
+
+    var body: some View {
+        ForEach(Array(PaneLayout.allCases.enumerated()), id: \.element) { index, layout in
+            Toggle((PaneLayout.names[layout] ?? "").titleCased, isOn: Binding(get: { app.layout == layout }, set: { _ in app.layout = layout }))
+                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")))
+        }
+        Divider()
+        Button(app.sidebarVisible ? "Hide Sidebar" : "Show Sidebar") { app.sidebarVisible.toggle() }
+            .keyboardShortcut("s", modifiers: [.command, .control])
+        Divider()
+        Button("Jump To…") { app.jumping = true }.keyboardShortcut("k")
+        Button("Find a Chat…") { app.findingChat = true }.keyboardShortcut("f", modifiers: [.command, .shift])
+        Divider()
+        Button("Home") { app.goHome() }.keyboardShortcut("0")
+        Button("Toolbox") { app.show(.toolbox) }.keyboardShortcut("t")
+        Divider()
+        Button("Bigger Text") { step(1) }.keyboardShortcut("+").disabled(app.textSize == Self.sizes.last)
+        Button("Smaller Text") { step(-1) }.keyboardShortcut("-").disabled(app.textSize == Self.sizes.first)
+        Picker("Text Size", selection: $app.textSize) {
+            Text("Standard").tag("standard")
+            Text("Large").tag("large")
+            Text("Larger").tag("larger")
+        }
+        Divider()
+    }
+
+    private func step(_ by: Int) {
+        let i = (Self.sizes.firstIndex(of: app.textSize) ?? 0) + by
+        if Self.sizes.indices.contains(i) { app.textSize = Self.sizes[i] }
+    }
+}
+
+/// Project: each part of a search, the review, the research record, and the folder. An item that cannot run says why.
+private struct ProjectMenu: View {
+    @ObservedObject var app: AppState
+    @ObservedObject var store: ProjectStore
+    @ObservedObject var chat: ChatModel
+
+    var body: some View {
+        let none = store.current == nil
+        ForEach(ToolGuide.workflows.filter { $0.scope == .project }) { flow in
+            let state = app.state(of: flow)
+            Button { app.run(flow) } label: {
+                Text(flow.title.titleCased)
+                if !state.ready { Text(state.note == "Done" ? "Nothing left to do" : state.note.isEmpty ? "Not ready yet" : state.note) }
+            }
+            .disabled(!state.ready)
+        }
+        Divider()
+        Button { app.reviewing = true } label: {
+            Text("Review the Finds…")
+            if store.candidates.isEmpty { Text(none ? "Needs a project" : "Needs candidates") }
+        }
+        .keyboardShortcut("r").disabled(store.candidates.isEmpty)
+        Button { app.showNotes("record") } label: {
+            Text("Research Record")
+            if none { Text("Needs a project") }
+        }
+        .keyboardShortcut("r", modifiers: [.command, .shift]).disabled(none)
+        Divider()
+        Button { if let path = store.current?.path { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path) } } label: {
+            Text("Show in Finder")
+            if none { Text("Needs a project") }
+        }
+        .disabled(none)
+        Divider()
+        Button { Task { await chat.stop() } } label: {
+            Text("Stop the Run")
+            if !chat.running { Text("Nothing is running") }
+        }
+        .keyboardShortcut(".").disabled(!chat.running)
+    }
+}
+
+extension String {
+    /// Menu-bar capitals: "Run the whole search" becomes "Run the Whole Search".
+    var titleCased: String {
+        let small: Set<String> = ["a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "by", "at"]
+        let words = split(separator: " ").map(String.init)
+        return words.enumerated().map { i, word in
+            i > 0 && i < words.count - 1 && small.contains(word) ? word : word.prefix(1).uppercased() + word.dropFirst()
+        }.joined(separator: " ")
     }
 }
 

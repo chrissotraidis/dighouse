@@ -17,32 +17,22 @@ struct FindChatSheet: View {
     private var folders: Set<String> { Set(store.projects.map(\.path) + [Paths.general.path]) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
+        // The same frame as the ⌘K palette: a bare field on top, the list, and a foot with the hint and Close.
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.faint)
-                TextField("Find a chat by what was said in it", text: $term).textFieldStyle(.plain).font(.system(size: 15 * Theme.scale))
+                TextField("Find a chat by what was said in it", text: $term).textFieldStyle(.plain).font(.system(size: 16 * Theme.scale))
                     .focused($focused)
                 if searching { ProgressView().controlSize(.small) }
             }
-            .padding(.horizontal, 12).frame(height: 40)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.06)))
-
-            HStack {
-                Button(showArchive ? "Search" : "Archived chats") {
-                    showArchive.toggle()
-                    if showArchive { Task { archive = await chat.archived(folders: folders) } }
-                }
-                .buttonStyle(SecondaryButton())
-                Spacer()
-                Button("Close") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
-            }
-
+            .padding(.horizontal, 16).frame(height: 52)
+            Hairline()
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     let rows = showArchive ? archive : results
                     if rows.isEmpty {
                         Text(showArchive ? "No archived chats." : term.isEmpty ? "Type to search chats in every project." : searching ? "" : "No chat says that.")
-                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(.vertical, 20)
+                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(10)
                     }
                     ForEach(rows) { row in
                         HStack(alignment: .top, spacing: 10) {
@@ -72,10 +62,22 @@ struct FindChatSheet: View {
                         .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.03)))
                     }
                 }
+                .padding(6)
             }
-            .frame(minHeight: 280)
+            Hairline()
+            HStack(spacing: 8) {
+                Text(showArchive ? "Archived chats, newest first" : "Chats in every project").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                Spacer()
+                Button(showArchive ? "Back to search" : "Archived chats") {
+                    showArchive.toggle()
+                    if showArchive { Task { archive = await chat.archived(folders: folders) } }
+                }
+                .buttonStyle(SecondaryButton())
+                Button("Close") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
         }
-        .padding(18).frame(width: min(600, app.windowSize.width - 40), height: min(480, app.windowSize.height - 40))
+        .frame(width: min(620, app.windowSize.width - 40), height: min(440, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .onAppear { focused = true }
         .onChange(of: term) { _, value in

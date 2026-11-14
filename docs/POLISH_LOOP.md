@@ -119,8 +119,88 @@ Every screen was captured from the running app in Earth at 1440 × 900, and Home
 
 **Looked at and left alone:** Home, New project, the project overview's layout, Records, the model panel, ⌘K, the welcome guide and the seven Settings pages are consistent with each other in spacing, buttons and type. Graphite has no problems of its own (loop4/a1-34-graphite-project.jpg).
 
-**Not captured yet:** a chat while the agent is working, and a project with no terrain. Both come up in A3 and A4 and are added there.
+**Captured later, during A2:** a project with no terrain (loop4/a1-36-project-no-terrain.jpg) and a chat while the agent is working, with the system spinner beside "Working" and in the top bar (loop4/a1-37-chat-working.jpg).
 
 **The goals stand as written.** Nothing on the list is bigger than a goal already covers. Items 1, 2 and 4 are wrong rather than rough, so they are fixed first, with A2.
+
+### 2026-11-14, A2: menus, and an engine that runs the cheap model
+
+**Found on the way, and fixed first: the cheap model did not run.** Every message to primary / 6.1 Terra failed with "The 'gpt-6.1-terra' model is not supported when using Codex with a ChatGPT account." Dighouse was starting the first `codex` on the PATH, version 0.146.0, and the provider refuses Terra to that version. The copy inside the ChatGPT app is 0.167 and answers.
+
+- **The newest engine wins.** Setup now asks every copy of Codex on the Mac for its version and starts the newest. On this Mac that is 0.167.0-alpha.4.1.
+- **The newer engine asks before every tool call.** With no one to ask, it refused all 32 tools ("the Dighouse tools require approval"). Dighouse's own tools are now approved when the engine starts; tools a person adds still ask.
+- **A failure of this kind says so.** The bar under a failed chat reads "This model needs a newer Codex engine". In a narrow chat its buttons go under the words; they used to squeeze the words into a column three words wide (loop4/a2-recovery-bar.jpg).
+- **Checked:** on the scratch project, Get the terrain, Screen the tiles and Check the flags each ran to the end on Terra with engine 0.167. Chats, the model list, usage left and the second look (Gemini 3.8 Flash) work as before.
+
+**The menu bar** was read and clicked through accessibility. A menu opened by test tooling is not drawn on screen, so its shortcuts and the grey second line that says why an item is off were not seen, only set in the code.
+
+| Menu | Item | Result |
+|---|---|---|
+| Dighouse | About Dighouse | The About panel: icon, "Dighouse Version 0.2.0 (1)". |
+| Dighouse | Settings… ⌘, | Settings opened on General. |
+| File | New Chat ⌘N | A new general chat. |
+| File | New Project… ⇧⌘N | The New project page. |
+| File | Open Project Folder… ⌘O | The folder panel with its message. Chose the scratch project's folder; it opened with its overview and was added to the sidebar. |
+| File | Export Project… ⇧⌘E | Off with no project open. With one open, the save panel with "The records, notes, sources and reports, without downloaded data or locations." The export itself is checked in A4. |
+| File | Close ⌘W | The window closed; opening the app again brought it back. |
+| View | Chat Only ⌘1, Chat and Workspace ⌘2, Workspace Only ⌘3 | Each set the layout (read back from the saved setting). |
+| View | Hide Sidebar ⌃⌘S | The sidebar went, and the item became Show Sidebar, which brought it back. |
+| View | Jump To… ⌘K | The palette opened. |
+| View | Find a Chat… ⇧⌘F | The search panel opened. |
+| View | Home ⌘0, Toolbox ⌘T | Each page opened. |
+| View | Bigger Text ⌘+, Smaller Text ⌘− | Standard became Large and back. Smaller is off at Standard. The Text Size submenu lists the three sizes. |
+| Project | Get the Terrain | A chat started and fetched USGS 3DEP lidar: 7.41 ground returns per sq m, 4 tiles. |
+| Project | Screen the Tiles | Screened 4 of 4 tiles and flagged the effigy as C-001. It went on to cut a section, search the literature and suggest a decision. |
+| Project | Check the Flags | Ran. The section was already on record, so it did not cut another. The modern-features check timed out twice at OpenStreetMap's map service, and the agent said so. |
+| Project | Second Look | Records opened and Gemini 3.8 Flash was asked; "A second model agrees it looks built" is on C-001's record. |
+| Project | Search What Is Published, Prepare My Review | Both off, rightly: the screening run had already logged a source and suggested a decision. Not clicked while on. |
+| Project | Draft a Report | Off: no candidate is decided as having no match. Not clicked while on. |
+| Project | Run the Whole Search | Not clicked here. It is A7's button. |
+| Project | Review the Finds… ⌘R | The review opened on C-001 with the agent's suggestion. Recorded it as already published. |
+| Project | Research Record ⇧⌘R | Notes opened on Record. |
+| Project | Show in Finder | Finder came forward on the project's folder. |
+| Project | Stop the Run ⌘. | Stopped the screening run mid-way; the chat went idle. Off when nothing runs. |
+| Help | Welcome Guide | The guide opened; Close guide closed it. |
+| Help | Commands and Shortcuts ⌘/ | The commands and the shortcuts were written into the chat. |
+| Help | How a Search Works | The Toolbox opened on that tab. |
+| Help | Dighouse on GitHub | Not clicked: it opens the browser. The tutorial is added to this menu by A6. |
+
+Edit, Window and the rest of the Dighouse menu are the system's own and were left as they are.
+
+**In-app menus share one look.** One menu panel (MenuPanel in Controls.swift) now draws all of them: a row 30 points high, the icon on the left, a divider between groups, a heading where it helps, and a green tick on the current choice. A menu with a second line (Workflows) shows it in full, on up to three lines.
+
+| Menu | Picture |
+|---|---|
+| A chat's menu (right-click, or the "…" that shows under the pointer): Rename, Archive | loop4/a2-menu-chat.jpg |
+| A project's menu: Research record, Show in Finder, Export project, Remove from list | loop4/a2-menu-project.jpg |
+| The map's view menu, with the tick on Composite | loop4/a2-menu-map-view.jpg |
+| Workflows, with what each does, where it stands, and why a greyed one cannot run | loop4/a2-menu-workflows.jpg |
+| The model panel, with the tick on the model in use | loop4/a2-menu-model.jpg |
+| The + button with a candidate selected | loop4/a2-menu-attach.jpg |
+
+The right-click was made by test tooling, which finds the row by where it sits in the window. The "…" button depends on the pointer being over the row, which tooling cannot do, so that button was seen only when the real pointer happened to rest on a row.
+
+**The A1 list, as far as this goal goes**
+
+| # | Now |
+|---|---|
+| 1 | Fixed. "Looks built" is green in every look. |
+| 2 | Fixed. A flag with its section and modern-features check on record reads "Needs your decision" (loop4/a2-review.jpg). |
+| 3 | Fixed, as the table above shows. The Run menu is now Project. |
+| 5 | Fixed. With nothing selected the + button opens the file panel directly. |
+| 6, 7 | Fixed, as above. |
+| 8 | Fixed. Find a chat has the palette's frame (loop4/a2-find-a-chat.jpg). |
+| 9 | Fixed early: one arrow, →. |
+| 11 | Fixed. The Toolbox is always a point taller than the window, so its scroll bar stays. |
+| 12 | Fixed. It is a button, "Open a project folder…". |
+| 13 | Fixed. Both pictures sit on their captions, at the left. |
+| 14 | Fixed: "Could not open". A source with no link has no arrow because there is nothing to open. |
+| 15 | Fixed. |
+| 16 | Fixed: "See every open survey" and "Next: Read". |
+| 21 | Fixed. The names are under "Technical details". |
+| 23 | Fixed for new chats: a second chat from the same workflow is numbered ("Get the terrain 2"). Chris's three older chats keep their names. |
+
+Also changed: "Prior-art sweep" is now "Search what is published", in the app's words everywhere.
+
 
 

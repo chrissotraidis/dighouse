@@ -120,10 +120,10 @@ private struct GeneralSettings: View {
             }
             Hairline()
             SettingRow(title: "A project opens as", note: "You can change this at any time from the top right of a project.") {
-                PillMenu(title: ["chat": "Chat only", "split": "Chat and workspace", "workspace": "Workspace only"][app.layout.rawValue] ?? "") {
-                    Button("Chat only") { app.layout = .chat }
-                    Button("Chat and workspace") { app.layout = .split }
-                    Button("Workspace only") { app.layout = .workspace }
+                PillMenu(title: PaneLayout.names[app.layout] ?? "") {
+                    PaneLayout.allCases.map { layout in
+                        MenuEntry(title: PaneLayout.names[layout] ?? "", icon: layout.icon, checked: app.layout == layout) { app.layout = layout }
+                    }
                 }
             }
             Hairline()

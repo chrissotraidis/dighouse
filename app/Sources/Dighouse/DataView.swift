@@ -73,8 +73,7 @@ struct DataView: View {
                         .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.05)))
                 }
             }
-            .padding(20).frame(maxWidth: 720, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
         }
     }
 
@@ -179,34 +178,10 @@ struct DataView: View {
     }
 
     private func exportProject() {
-        guard let project = store.current else { return }
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = URL(fileURLWithPath: project.path).lastPathComponent + ".zip"
-        panel.allowedContentTypes = [.zip]
-        panel.message = "The records, notes, sources and reports, without downloaded data or locations."
-        guard panel.runModal() == .OK, let out = panel.url else { return }
         busy = "zip"
         Task {
             defer { busy = nil }
-            let folder = URL(fileURLWithPath: project.path)
-            let name = folder.lastPathComponent
-            try? FileManager.default.removeItem(at: out)
-            let zip = Process()
-            zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
-            zip.currentDirectoryURL = folder.deletingLastPathComponent()
-            zip.arguments = ["-r", "-q", out.path, name, "-x", "\(name)/private/*", "\(name)/data/*", "*.DS_Store"]
-            do {
-                try zip.run()
-                zip.waitUntilExit()
-                if zip.terminationStatus == 0 {
-                    message = "Saved \(out.lastPathComponent): records, notes, sources and reports, with no downloaded data and nothing from private/."
-                    NSWorkspace.shared.selectFile(out.path, inFileViewerRootedAtPath: "")
-                } else {
-                    message = "Could not make the zip (zip ended with code \(zip.terminationStatus))."
-                }
-            } catch {
-                message = "Could not make the zip: \(error.localizedDescription)"
-            }
+            if let said = await app.exportProject(quiet: true) { message = said }
         }
     }
 }

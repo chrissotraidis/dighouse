@@ -87,8 +87,9 @@ struct MapView: View {
         let text: String
     }
 
-    static let styles: [(id: String, name: String)] = [("composite", "Composite"), ("hillshade", "Hillshade"),
-                                                       ("local_relief", "Local relief"), ("sky_view", "Sky view")]
+    static let styles: [(id: String, name: String, icon: String)] = [
+        ("composite", "Composite", "square.3.layers.3d"), ("hillshade", "Hillshade", "sun.max"),
+        ("local_relief", "Local relief", "water.waves"), ("sky_view", "Sky view", "circle.dotted")]
 
     /// The terrain picked from the menu, or the first one with tiles. With no pick, every tiled terrain in the same
     /// coordinate system is shown together, so fetching more of an area adds its tiles beside the old ones.
@@ -254,8 +255,9 @@ struct MapView: View {
                 .buttonStyle(IconButton(size: 28)).disabled(zoom <= 1).help("Zoom out")
             Button { zoom = min(8, zoom * 1.5) } label: { Image(systemName: "plus") }
                 .buttonStyle(IconButton(size: 28)).help("Zoom in")
-            PillMenu(title: Self.styles.first { $0.id == style }?.name ?? "View", quiet: true) {
-                ForEach(Self.styles, id: \.id) { s in Button(s.name) { style = s.id } }
+            PillMenu(title: Self.styles.first { $0.id == style }?.name ?? "View", quiet: true, width: 200) {
+                [.header("How the ground is drawn")]
+                    + Self.styles.map { s in MenuEntry(title: s.name, icon: s.icon, checked: s.id == style) { style = s.id } }
             }
             .help("How the ground is drawn: sky view shows low banks and ditches best")
             if rendering { ProgressView().controlSize(.small).padding(.horizontal, 4) }
@@ -271,11 +273,11 @@ struct MapView: View {
                 .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a section through the ground")
             if store.terrains.count > 1 {
                 PillMenu(title: terrain == nil && shownTerrains.count > 1 ? "All terrain"
-                         : store.terrains.first { $0.id == current }?.name ?? "Terrain", quiet: true) {
-                    Button("All terrain, side by side") { terrain = nil }
-                    ForEach(store.terrains) { t in
-                        Button(label(t)) { terrain = t.id }
-                    }
+                         : store.terrains.first { $0.id == current }?.name ?? "Terrain", quiet: true, width: 340) {
+                    [MenuEntry(title: "All terrain, side by side", icon: "square.grid.2x2", checked: terrain == nil) { terrain = nil }, .divider]
+                        + store.terrains.map { t in
+                            MenuEntry(title: label(t), icon: "mountain.2", checked: terrain == t.id) { terrain = t.id }
+                        }
                 }
             }
         }
@@ -360,7 +362,7 @@ struct MapView: View {
 
     private var legend: some View {
         HStack(spacing: 12) {
-            key(Theme.accent, "Looks built")
+            key(Theme.green, "Looks built")
             key(Theme.amber, "Possible")
             key(Theme.faint, "Not screened")
         }
@@ -455,7 +457,7 @@ private struct TileView: View {
     private var outline: Color {
         if selected { return .white }
         switch tile.verdict {
-        case "built": return Theme.accent
+        case "built": return Theme.green   // not the accent, which is tan in Canopy and too close to "possible"
         case "possible": return Theme.amber
         default: return .white.opacity(0.1)
         }
@@ -519,9 +521,11 @@ struct RecordsView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             if geo.size.width < 760, let c = current {
-                                PillMenu(title: "\(c.id) \(c.name)") {
-                                    ForEach(store.candidates) { other in
-                                        Button("\(other.id) \(other.name)") { store.selectedCandidate = other.id }
+                                PillMenu(title: "\(c.id) \(c.name)", width: 340) {
+                                    store.candidates.map { other in
+                                        MenuEntry(title: "\(other.id) \(other.name)", icon: "mappin", checked: other.id == c.id) {
+                                            store.selectedCandidate = other.id
+                                        }
                                     }
                                 }
                                 .padding(.bottom, 16)
@@ -587,7 +591,7 @@ struct RecordsView: View {
                     ForEach(c.sources) { s in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.title).font(.system(size: 13 * Theme.scale))
-                            Text("\(s.status.replacingOccurrences(of: "_", with: " ").capitalized) · \(s.finding)")
+                            Text("\(s.statusLabel) · \(s.finding)")
                                 .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -827,7 +831,7 @@ struct NotesView: View {
                 .padding(2).background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
                 if list.count > 1 {
                     PillMenu(title: file.map(label) ?? "", quiet: true) {
-                        ForEach(list, id: \.self) { f in Button(label(f)) { picked = f } }
+                        list.map { f in MenuEntry(title: label(f), icon: "doc.text", checked: f == file) { picked = f } }
                     }
                 }
                 Spacer()
@@ -1017,7 +1021,7 @@ struct SourcesView: View {
                         Circle().fill(color(source.status)).frame(width: 7, height: 7).padding(.top, 6)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(source.title).font(.system(size: 13 * Theme.scale, weight: .medium)).multilineTextAlignment(.leading)
-                            Text("\(source.status.replacingOccurrences(of: "_", with: " ").capitalized) · \(source.finding)")
+                            Text("\(source.statusLabel) · \(source.finding)")
                                 .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(3).multilineTextAlignment(.leading)
                         }
                         Spacer(minLength: 6)

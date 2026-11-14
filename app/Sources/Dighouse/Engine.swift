@@ -87,6 +87,9 @@ final class Engine: ObservableObject {
             "-c", "mcp_servers.dighouse.startup_timeout_sec=60",
             // Downloading a survey's tiles for a few square km can take well over the default five minutes.
             "-c", "mcp_servers.dighouse.tool_timeout_sec=1200",
+            // Newer engines ask before every tool call. Dighouse's own tools are part of the app, so they are approved here;
+            // tools the person adds still ask.
+            "-c", "mcp_servers.dighouse.default_tools_approval_mode=\"approve\"",
         ]
         for server in extraServers {
             let parts = Self.words(server.command)

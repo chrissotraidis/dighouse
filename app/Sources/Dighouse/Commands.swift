@@ -82,10 +82,12 @@ enum SlashCommands {
 
     static let shortcuts: [(String, String)] = [
         ("⌘K", "Jump to a project, chat, candidate, page or command"),
-        ("⌘N", "New chat"), ("⇧⌘N", "New project"), ("⌘O", "Open a project folder"),
+        ("⌘N", "New chat"), ("⇧⌘N", "New project"), ("⌘O", "Open a project folder"), ("⇧⌘E", "Export the project to share"),
         ("⌘0", "Home"), ("⌘T", "Toolbox"), ("⌘,", "Settings"), ("⇧⌘F", "Find a chat by its words"),
         ("⌃⌘S", "Show or hide the sidebar"), ("⌘1, ⌘2, ⌘3", "Chat only, chat and workspace, workspace only"),
-        ("⌘.", "Stop the run"), ("/", "Commands, in the message box"), ("@", "Mention a candidate, tile, source or file"),
+        ("⌘+, ⌘−", "Bigger or smaller text"),
+        ("⌘R", "Review the finds"), ("⇧⌘R", "The research record"),
+        ("⌘.", "Stop the run"), ("⌘/", "This list"), ("/", "Commands, in the message box"), ("@", "Mention a candidate, tile, source or file"),
         ("1 to 4, ← →", "Decide and move between finds, in the review"),
     ]
 }

@@ -130,16 +130,121 @@ extension View {
     }
 }
 
-/// A menu drawn as a pill with its current choice and a chevron.
-struct PillMenu<Content: View>: View {
-    let title: String
-    var quiet = false
-    @ViewBuilder let content: () -> Content
+// MARK: - Menus
+
+/// One line of an in-app menu: a choice, a divider between groups, or a heading.
+/// Every menu in the app is a list of these, so they all look and behave alike.
+struct MenuEntry: Identifiable {
+    let id = UUID()
+    var title = ""
+    var icon: String? = nil
+    /// A second line under the title.
+    var detail: String? = nil
+    /// A short word on the right, such as "3 left".
+    var note: String? = nil
+    /// Draws the note in amber, for something that needs attention.
+    var warn = false
+    /// Marks the current choice.
+    var checked = false
+    /// Why the choice cannot be used now. It is shown under the title, and the row is greyed.
+    var blocked: String? = nil
+    var isDivider = false
+    var isHeader = false
+    var action: () -> Void = {}
+
+    static var divider: MenuEntry { MenuEntry(isDivider: true) }
+    static func header(_ title: String) -> MenuEntry { MenuEntry(title: title, isHeader: true) }
+}
+
+/// One choice in a menu: icon on the left, a tick on the right for the current choice.
+struct MenuRow: View {
+    let entry: MenuEntry
+    var selected = false
+    let action: () -> Void
+    @State private var hover = false
+
+    private var second: String? { entry.blocked ?? entry.detail }
 
     var body: some View {
-        Menu {
-            content()
-        } label: {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                if let icon = entry.icon {
+                    if second != nil { IconTile(name: icon, size: 30) } else {
+                        Image(systemName: icon).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 18)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.title).font(.system(size: 13.5 * Theme.scale, weight: second == nil ? .regular : .medium)).lineLimit(1)
+                    if let second {
+                        Text(second).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                            .lineLimit(3).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 8)
+                if let note = entry.note {
+                    Text(note).font(.system(size: 12 * Theme.scale)).foregroundStyle(entry.warn ? Theme.amber : Theme.faint).lineLimit(1).fixedSize()
+                }
+                if entry.checked {
+                    Image(systemName: "checkmark").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.accent)
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, second == nil ? 0 : 6).frame(minHeight: 30)
+            .background(RoundedRectangle(cornerRadius: 8).fill(
+                selected || entry.checked ? Theme.ink.opacity(0.09) : hover && entry.blocked == nil ? Theme.hover : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).disabled(entry.blocked != nil).opacity(entry.blocked == nil ? 1 : 0.55)
+        .onHover { hover = $0 }
+        .accessibilityAddTraits(entry.checked ? .isSelected : [])
+    }
+}
+
+/// The body of every in-app menu: rows with the same padding, icons on the left and dividers between groups.
+struct MenuPanel: View {
+    let entries: [MenuEntry]
+    var width: CGFloat = 240
+    /// Taller menus than this scroll.
+    var maxHeight: CGFloat = 420
+    let close: () -> Void
+
+    /// A plain row is 31 points and a row with a second line about 50.
+    private var height: CGFloat {
+        entries.reduce(0) { $0 + ($1.isDivider ? 9 : $1.isHeader ? 24 : ($1.detail ?? $1.blocked) == nil ? 31 : 50) * ($1.isDivider ? 1 : Theme.scale) }
+    }
+
+    var body: some View {
+        Group {
+            if height > maxHeight { ScrollView { rows }.frame(height: maxHeight) } else { rows }
+        }
+        .padding(6).frame(width: width).foregroundStyle(Theme.text)
+    }
+
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            ForEach(entries) { entry in
+                if entry.isDivider {
+                    Hairline().padding(.vertical, 4)
+                } else if entry.isHeader {
+                    Text(entry.title).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.faint)
+                        .padding(.horizontal, 10).padding(.top, 5).padding(.bottom, 3)
+                } else {
+                    MenuRow(entry: entry) { close(); entry.action() }
+                }
+            }
+        }
+    }
+}
+
+/// A menu drawn as a pill with its current choice and a chevron.
+struct PillMenu: View {
+    let title: String
+    var quiet = false
+    var width: CGFloat = 240
+    let entries: () -> [MenuEntry]
+    @State private var open = false
+
+    var body: some View {
+        Button { open.toggle() } label: {
             HStack(spacing: 5) {
                 Text(title).lineLimit(1)
                 Image(systemName: "chevron.down").font(.system(size: 8.5 * Theme.scale, weight: .bold))
@@ -147,11 +252,14 @@ struct PillMenu<Content: View>: View {
             .font(.system(size: 12.5 * Theme.scale))
             .foregroundStyle(quiet ? Theme.dim : Theme.text)
             .padding(.horizontal, quiet ? 8 : 12).frame(height: 28)
-            .background(Capsule().fill(Theme.ink.opacity(quiet ? 0 : 0.05)))
+            .background(Capsule().fill(Theme.ink.opacity(quiet ? (open ? 0.08 : 0) : 0.05)))
             .overlay(Capsule().strokeBorder(quiet ? .clear : Theme.ink.opacity(0.16)))
             .contentShape(Capsule())
         }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+        .buttonStyle(.plain).fixedSize()
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            MenuPanel(entries: entries(), width: width) { open = false }.popoverSurface()
+        }
     }
 }
 
@@ -441,7 +549,7 @@ struct ModelList: View {
                 }
                 .padding(.horizontal, 6)
             }
-            .frame(height: min(max(CGFloat(shown.count + (recentShown.count > 1 ? recentShown.count + 2 : 0)), 1) * 39, 340))
+            .frame(height: min(max(CGFloat(shown.count + (recentShown.count > 1 ? recentShown.count + 2 : 0)), 1) * 31 * Theme.scale, 340))
         }
         .padding(.vertical, 8)
         .frame(width: 300)
@@ -459,21 +567,12 @@ struct ModelList: View {
     }
 
     private func row(_ model: ModelInfo) -> some View {
-                        Button { pick(model) } label: {
-                            HStack(spacing: 8) {
-                                Text(model.name).font(.system(size: 14 * Theme.scale)).lineLimit(1)
-                                if !model.readsImages { Text("text only").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint) }
-                                Spacer(minLength: 0)
-                                if let check = checks[model.id] {
-                                    Text(check.ok ? "tested" : "failed test").font(.system(size: 11 * Theme.scale))
-                                        .foregroundStyle(check.ok ? Theme.faint : Theme.amber)
-                                        .help(check.ok ? "Answered a test message\(check.effort.map { " at \(Effort.label($0))" } ?? "")." : check.message)
-                                }
-                                if model.id == current { Image(systemName: "checkmark").font(.system(size: 11 * Theme.scale, weight: .semibold)) }
-                            }
-                            .padding(.vertical, 3)
-                        }
-                        .buttonStyle(RowButton(selected: model.id == current))
+        // The same row as every other menu, with what is known about the model on the right.
+        let check = checks[model.id]
+        let notes = [model.readsImages ? nil : "text only", check.map { $0.ok ? "tested" : "failed test" }].compactMap { $0 }
+        return MenuRow(entry: MenuEntry(title: model.name, note: notes.isEmpty ? nil : notes.joined(separator: " · "),
+                                        warn: check?.ok == false, checked: model.id == current)) { pick(model) }
+            .help(check.map { $0.ok ? "Answered a test message\($0.effort.map { " at \(Effort.label($0))" } ?? "")." : $0.message } ?? "")
     }
 }
 

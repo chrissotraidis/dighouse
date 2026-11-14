@@ -205,17 +205,13 @@ struct LayoutSwitch: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            option(.chat, "bubble.left", "Chat only")
-            option(.split, "rectangle.split.2x1", "Chat and workspace")
-            option(.workspace, "map", "Workspace only")
+            ForEach(PaneLayout.allCases, id: \.self) { layout in
+                Button { app.layout = layout } label: { Image(systemName: layout.icon) }
+                    .buttonStyle(IconButton(size: 28, active: app.layout == layout)).help(PaneLayout.names[layout] ?? "")
+            }
         }
         .padding(2)
         .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.05)))
-    }
-
-    private func option(_ layout: PaneLayout, _ icon: String, _ help: String) -> some View {
-        Button { app.layout = layout } label: { Image(systemName: icon) }
-            .buttonStyle(IconButton(size: 28, active: app.layout == layout)).help(help)
     }
 }
 
@@ -225,6 +221,11 @@ struct Sidebar: View {
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var engine: Engine
     @State private var collapsed: Set<String> = []
+    /// The row under the pointer and the row whose menu is open. A right-click opens the menu of the row it lands on.
+    @State private var hovered: String?
+    @State private var menuFor: String?
+    @State private var clicks: Any?
+    @State private var frames = RowFrames.Box()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -274,6 +275,45 @@ struct Sidebar: View {
         .padding(.horizontal, 8).padding(.bottom, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.side)
+        .onPreferenceChange(RowFrames.self) { frames.value = $0 }
+        .onAppear {
+            // A right-click, or a click with Control held, opens the same menu as a row's "…" button.
+            clicks = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown, .leftMouseDown]) { event in
+                guard event.type == .rightMouseDown || event.modifierFlags.contains(.control),
+                      let window = event.window, window === NSApp.mainWindow, let content = window.contentView else { return event }
+                let at = CGPoint(x: event.locationInWindow.x, y: content.bounds.height - event.locationInWindow.y)
+                guard let id = frames.value.first(where: { $0.value.contains(at) })?.key else { return event }
+                menuFor = id
+                return nil
+            }
+        }
+        .onDisappear {
+            if let clicks { NSEvent.removeMonitor(clicks) }
+            clicks = nil
+        }
+    }
+
+    /// Gives a row its menu: a "…" button while the pointer is over it, and the same menu on a right-click.
+    private func rowMenu(_ id: String, _ what: String, entries: @escaping () -> [MenuEntry]) -> some View {
+        Group {
+            if hovered == id || menuFor == id {
+                Button { menuFor = id } label: { Image(systemName: "ellipsis") }
+                    .buttonStyle(IconButton(size: 24)).help("More").accessibilityLabel("More for \(what)")
+                    .popover(isPresented: Binding(get: { menuFor == id }, set: { if !$0, menuFor == id { menuFor = nil } }), arrowEdge: .trailing) {
+                        MenuPanel(entries: entries(), width: 220) { menuFor = nil }.popoverSurface()
+                    }
+                    .padding(.trailing, 4)
+            }
+        }
+    }
+
+    private func hover(_ id: String, _ inside: Bool) {
+        if inside { hovered = id } else if hovered == id { hovered = nil }
+    }
+
+    /// Reports where a row sits in the window, so a right-click can find the row under it.
+    private func place(_ id: String) -> some View {
+        GeometryReader { geo in Color.clear.preference(key: RowFrames.self, value: [id: geo.frame(in: .global)]) }
     }
 
     private func header(_ title: String) -> some View {
@@ -290,19 +330,26 @@ struct Sidebar: View {
 
     private func chatRow(_ thread: ChatThread, in project: ProjectRef?, indent: CGFloat) -> some View {
         let selected = app.route == .chat && chat.active == thread.id
+        let menu = hovered == thread.id || menuFor == thread.id
         return Button { app.openChat(thread, in: project) } label: {
             HStack(spacing: 6) {
                 Text(thread.title).font(.system(size: 13 * Theme.scale)).lineLimit(1).foregroundStyle(selected ? Theme.text : Theme.dim)
                 Spacer(minLength: 0)
                 if chat.live[thread.id] != nil { ProgressView().controlSize(.mini) }
             }
+            .padding(.trailing, menu ? 24 : 0)
         }
         .buttonStyle(RowButton(selected: selected))
-        .padding(.leading, indent)
-        .contextMenu {
-            Button("Rename…") { app.renameRequest = thread }
-            Button("Archive") { Task { await chat.archive(thread) } }
+        .overlay(alignment: .trailing) {
+            rowMenu(thread.id, thread.title) {
+                [MenuEntry(title: "Rename…", icon: "pencil") { app.renameRequest = thread },
+                 .divider,
+                 MenuEntry(title: "Archive", icon: "archivebox") { Task { await chat.archive(thread) } }]
+            }
         }
+        .onHover { hover(thread.id, $0) }
+        .background(place(thread.id))
+        .padding(.leading, indent)
     }
 
     @ViewBuilder private func projectRows(_ project: ProjectRef) -> some View {
@@ -323,15 +370,26 @@ struct Sidebar: View {
                     .help(open ? "Hide this project's chats" : "Show this project's chats")
                 Text(project.name).font(.system(size: 13.5 * Theme.scale)).lineLimit(1)
             }
+            .padding(.trailing, hovered == project.path || menuFor == project.path ? 24 : 0)
         }
         .buttonStyle(RowButton(selected: current && app.route == .chat && chat.active == nil))
-        .contextMenu {
-            Button("Show in Finder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
-            Button("Remove from List") {
-                if current { app.goHome() }
-                store.remove(project)
+        .overlay(alignment: .trailing) {
+            rowMenu(project.path, project.name) {
+                [MenuEntry(title: "Research record", icon: "book.closed") {
+                    if !current { app.open(project) }
+                    app.showNotes("record")
+                 },
+                 MenuEntry(title: "Show in Finder", icon: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) },
+                 MenuEntry(title: "Export project…", icon: "square.and.arrow.up") { Task { await app.exportProject(project) } },
+                 .divider,
+                 MenuEntry(title: "Remove from list", icon: "minus.circle", detail: nil) {
+                    if current { app.goHome() }
+                    store.remove(project)
+                 }]
             }
         }
+        .onHover { hover(project.path, $0) }
+        .background(place(project.path))
         if open {
             ForEach(chat.threads) { thread in chatRow(thread, in: project, indent: 18) }
         }
@@ -340,6 +398,13 @@ struct Sidebar: View {
 
 
 /// The rename box for a chat, asked for by /rename or a chat's menu in the sidebar.
+private struct RowFrames: PreferenceKey {
+    /// Kept outside the view's state, so scrolling the sidebar does not redraw it.
+    final class Box { var value: [String: CGRect] = [:] }
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) { value.merge(nextValue()) { $1 } }
+}
+
 private struct RenameChat: ViewModifier {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var chat: ChatModel

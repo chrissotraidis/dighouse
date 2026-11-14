@@ -55,15 +55,26 @@ private struct RecoveryBar: View {
     }
 
     private func bar(_ title: String, _ advice: String, @ViewBuilder buttons: () -> some View) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+        let words = HStack(alignment: .top, spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.amber)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Text(advice).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 8)
-            buttons()
         }
+        // In a narrow chat the buttons go under the words, so the words are never squeezed into a thin column.
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 12) {
+                words.frame(minWidth: 300, alignment: .leading)
+                Spacer(minLength: 8)
+                buttons()
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                words
+                HStack(spacing: 8) { buttons() }.padding(.leading, 28)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .panel(padding: 12)
         .frame(maxWidth: 760).padding(.horizontal, 16).padding(.bottom, 6)
     }
@@ -72,6 +83,9 @@ private struct RecoveryBar: View {
     static func explain(_ raw: String) -> (String, String) {
         let text = raw.lowercased()
         func has(_ words: String...) -> Bool { words.contains { text.contains($0) } }
+        if has("not supported when using codex") {
+            return ("This model needs a newer Codex engine", "The provider refuses this model to the engine on this Mac. Update Codex, then restart Dighouse, or choose another model.")
+        }
         if has("rate limit", "usage limit", "quota", "429", "too many requests") {
             return ("The usage limit was reached", "Wait until it resets (/status says when), or choose a model that runs through another provider.")
         }
@@ -486,45 +500,6 @@ private struct StepRow: View {
 
 // MARK: - Empty chat
 
-/// A workflow as something to click: what it is, what it does, and where it stands.
-struct WorkflowRow: View {
-    let flow: ToolGuide.Workflow
-    var outlined = true
-    let action: () -> Void
-    @EnvironmentObject var app: AppState
-
-    var body: some View {
-        let state = app.state(of: flow)
-        let done = state.note == "Done"
-        Button(action: action) {
-            HStack(spacing: 12) {
-                if done {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.green).frame(width: 30, height: 30)
-                } else {
-                    IconTile(name: flow.icon, size: 30).opacity(state.ready ? 1 : 0.5)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(flow.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).foregroundStyle(state.ready || done ? Theme.text : Theme.dim)
-                    // A workflow that cannot run says why, in place of what it does.
-                    Text(state.ready || done ? flow.summary : state.note + ".").font(.system(size: 12.5 * Theme.scale))
-                        .foregroundStyle(state.ready ? Theme.dim : Theme.faint)
-                        .lineLimit(outlined ? 2 : 1).multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 8)
-                if done {
-                    Text("Done").font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.green)
-                } else if state.ready, !state.note.isEmpty {
-                    Text(state.note).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan).lineLimit(1).fixedSize()
-                }
-            }
-            .padding(.vertical, 6)
-        }
-        .buttonStyle(RowButton())
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(outlined ? Theme.line : .clear))
-        .disabled(!state.ready)
-    }
-}
-
 /// What a new chat shows: the workflows that make sense right now, and a few questions to try.
 private struct EmptyChat: View {
     @EnvironmentObject var app: AppState
@@ -602,7 +577,7 @@ private struct EmptyChat: View {
                                 Image(systemName: question.0).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 18)
                                 Text(question.1).font(.system(size: 13.5 * Theme.scale)).multilineTextAlignment(.leading)
                                 Spacer(minLength: 8)
-                                Image(systemName: "arrow.up").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
+                                Image(systemName: "arrow.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                             }
                             .padding(.vertical, 5)
                         }
@@ -754,6 +729,7 @@ struct Composer: View {
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var store: ProjectStore
     @State private var showFlows = false
+    @State private var showAttach = false
     @State private var dropping = false
     /// The highlighted row in the command list, and the draft at which Escape closed it.
     @State private var selected = 0
@@ -1001,20 +977,17 @@ struct Composer: View {
 
     private func controls(wide: Bool) -> some View {
         HStack(spacing: 2) {
-            Menu {
-                Button("Attach files…", action: attachFiles)
-                if let tile = store.selectedTile, let root = store.current?.path {
-                    Button("Attach the selected tile") { chat.attach("\(root)/data/tiles/\(tile)-composite.png") }
-                }
-                if let c = store.candidates.first(where: { $0.id == store.selectedCandidate }) {
-                    Button("Attach the section through \(c.id)") { chat.attach(c.section) }
-                }
-            } label: {
+            // With nothing selected in the project there is one thing to attach, so the button goes straight to it.
+            Button { if attachChoices.count > 1 { showAttach.toggle() } else { attachFiles() } } label: {
                 Image(systemName: "plus").font(.system(size: 15 * Theme.scale, weight: .medium)).foregroundStyle(Theme.dim)
                     .frame(width: 30, height: 30).contentShape(Rectangle())
             }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+            .buttonStyle(.plain)
             .help("Attach images, video, audio or any file. You can also drop files here.")
+            .accessibilityLabel("Attach")
+            .popover(isPresented: $showAttach, arrowEdge: .top) {
+                MenuPanel(entries: attachChoices, width: 280) { showAttach = false }.popoverSurface()
+            }
 
             Button { showFlows.toggle() } label: {
                 HStack(spacing: 5) {
@@ -1059,6 +1032,19 @@ struct Composer: View {
         app.ask(text)
     }
 
+    /// What the + button offers: files from this Mac, and whatever is selected in the open project.
+    private var attachChoices: [MenuEntry] {
+        var out = [MenuEntry(title: "Files from this Mac…", icon: "paperclip", action: attachFiles)]
+        if let tile = store.selectedTile, let root = store.current?.path {
+            out.append(MenuEntry(title: "The selected tile", icon: "square.grid.3x3") { chat.attach("\(root)/data/tiles/\(tile)-composite.png") })
+        }
+        if let c = store.candidates.first(where: { $0.id == store.selectedCandidate }) {
+            out.append(MenuEntry(title: "The section through \(c.id)", icon: "chart.xyaxis.line") { chat.attach(c.section) })
+        }
+        if out.count > 1 { out.insert(.header("Attach"), at: 0); out.insert(.divider, at: 2) }
+        return out
+    }
+
     private func attachFiles() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
@@ -1078,32 +1064,22 @@ private struct WorkflowMenu: View {
         ToolGuide.workflows.filter { $0.scope == (store.current == nil ? .general : .project) }
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(store.current == nil ? "Workflows" : "Workflows for this project")
-                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(.horizontal, 10).padding(.vertical, 4)
-            ScrollView {
-                VStack(spacing: 1) {
-                    ForEach(flows) { flow in
-                        WorkflowRow(flow: flow, outlined: false) {
-                            close()
-                            app.run(flow)
-                        }
-                    }
-                }
-            }
-            .frame(maxHeight: 400)
-            Hairline().padding(.vertical, 4)
-            Button {
-                close()
-                app.show(.toolbox)
-            } label: {
-                Label("Open the Toolbox", systemImage: "wrench.and.screwdriver").font(.system(size: 13 * Theme.scale))
-            }
-            .buttonStyle(RowButton())
+    /// Each workflow says what it does on a second line, or why it cannot run; where it stands is on the right.
+    private var entries: [MenuEntry] {
+        var out: [MenuEntry] = [.header(store.current == nil ? "Workflows" : "Workflows for this project")]
+        out += flows.map { flow in
+            let state = app.state(of: flow)
+            let done = state.note == "Done" || state.note == "All decided"
+            return MenuEntry(title: flow.title, icon: flow.icon, detail: flow.summary, note: state.ready && !state.note.isEmpty ? state.note : nil,
+                             blocked: state.ready ? nil : done ? "Nothing left to do." : state.note + ".") { app.run(flow) }
         }
-        .padding(8).frame(width: 440)
-        .foregroundStyle(Theme.text)
+        out.append(.divider)
+        out.append(MenuEntry(title: "Open the Toolbox", icon: "wrench.and.screwdriver") { app.show(.toolbox) })
+        return out
+    }
+
+    var body: some View {
+        MenuPanel(entries: entries, width: 460, maxHeight: max(300, min(560, app.windowSize.height - 160)), close: close)
     }
 }
 

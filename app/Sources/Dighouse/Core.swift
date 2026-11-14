@@ -83,13 +83,14 @@ enum Theme {
 
 enum Shell {
     /// Run a program and collect what it prints.
-    static func run(_ exe: String, _ args: [String], env: [String: String]? = nil) async -> (code: Int32, out: String) {
+    static func run(_ exe: String, _ args: [String], env: [String: String]? = nil, in folder: String? = nil) async -> (code: Int32, out: String) {
         await withCheckedContinuation { done in
             DispatchQueue.global().async {
                 let p = Process()
                 p.executableURL = URL(fileURLWithPath: exe)
                 p.arguments = args
                 if let env { p.environment = env }
+                if let folder { p.currentDirectoryURL = URL(fileURLWithPath: folder) }
                 let pipe = Pipe()
                 p.standardOutput = pipe
                 p.standardError = pipe
@@ -187,6 +188,12 @@ struct Source: Identifiable {
     let id = UUID()
     let title: String, status: String, finding: String
     var link = ""
+
+    /// "could_not_open" reads "Could not open".
+    var statusLabel: String {
+        let words = status.replacingOccurrences(of: "_", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
 }
 
 struct Candidate: Identifiable {
@@ -218,7 +225,11 @@ struct Candidate: Identifiable {
         "no_match_in_sources_read": "No match in the sources read",
         "reported": "Reported to the heritage authority",
     ]
-    var statusLabel: String { Self.labels[status] ?? status }
+    /// A flag with its section and its modern-features check on record is waiting for the person, not for more checks.
+    var statusLabel: String {
+        if status == "flagged", checks["section"] != nil, checks["modern"] != nil { return "Needs your decision" }
+        return Self.labels[status] ?? status
+    }
 
     var statusColor: Color {
         switch status {

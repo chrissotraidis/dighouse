@@ -153,9 +153,9 @@ struct HomeView: View {
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.ink.opacity(0.06)))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
                 Spacer()
-                Button("Open a shared project folder…") { app.chooseProjectFolder() }.buttonStyle(.plain)
-                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                    .help("A project is a folder of Markdown records, so it can be shared like any folder.")
+                Button { app.chooseProjectFolder() } label: { Label("Open a project folder…", systemImage: "folder") }
+                    .buttonStyle(SecondaryButton())
+                    .help("Someone shared a project with you? A project is a folder of Markdown records, so it opens like any folder.")
             }
             if startKind == 0 {
                 Text("Lidar flown for archaeology and published openly, read from OpenTopography's live catalog. Each one listed was fetched and built into terrain by Dighouse first.")
@@ -221,13 +221,13 @@ struct HomeView: View {
                     if let flow = ToolGuide.workflows.first(where: { $0.id == "surveys" }) { app.run(flow) }
                 } label: {
                     HStack {
-                        Text("Ask the agent for every survey in the catalog").font(.system(size: 13 * Theme.scale))
+                        Text("See every open survey").font(.system(size: 13 * Theme.scale))
                         Spacer()
-                        Image(systemName: "arrow.up.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                        Image(systemName: "arrow.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                     }
                     .padding(.vertical, 5)
                 }
-                .buttonStyle(RowButton()).padding(4)
+                .buttonStyle(RowButton()).padding(4).help("Starts a chat in which the agent lists every survey in the catalog.")
             }
             .panel()
         }

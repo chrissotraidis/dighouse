@@ -330,6 +330,7 @@ final class ChatModel: ObservableObject {
     func setGoal(_ objective: String, title: String? = nil) async {
         let objective = objective.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let engine, !objective.isEmpty else { return }
+        let title = title.map(fresh)
         do {
             if active == nil {
                 let started = try await engine.request("thread/start", threadSettings([:]))
@@ -358,6 +359,15 @@ final class ChatModel: ObservableObject {
     static func goalNote(_ objective: String) -> String {
         let name = ToolGuide.workflow(sentAs: objective)?.title ?? objective
         return "**Goal:** \(name)\n\nThe agent keeps working, turn after turn, until this is done or it needs you. Stop ends it."
+    }
+
+    /// A workflow names its chat, so a second chat from the same workflow gets a number and the two can be told apart.
+    private func fresh(_ title: String) -> String {
+        let taken = Set((project == nil ? generalThreads : threads).map(\.title))
+        guard taken.contains(title) else { return title }
+        var n = 2
+        while taken.contains("\(title) \(n)") { n += 1 }
+        return "\(title) \(n)"
     }
 
     /// A chat found by search or in the archive, with the folder it belongs to.
@@ -476,6 +486,7 @@ final class ChatModel: ObservableObject {
     func send(_ text: String, title: String? = nil) async {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let engine, !text.isEmpty || !attachments.isEmpty else { return }
+        let title = active == nil ? title.map(fresh) : title
         let sending = attachments
         attachments = []
         var shown = ChatItem(id: UUID().uuidString, kind: .user, text: Mentions.visible(text))
