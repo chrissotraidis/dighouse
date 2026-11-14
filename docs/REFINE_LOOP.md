@@ -214,3 +214,4 @@ Chris asked for one more pass: text that grows and shrinks with ⌘+ and ⌘−,
 - **Not checked:** a real pointer's hover (the test tools move the pointer themselves), and Reduce Motion switched on in System Settings, which was left alone.
 - `uv run pytest -q`: 13 passed.
 
+- **Docs:** the README is rewritten for a public release (what it is, why, how a search works, getting started, tools, data, rules, known sites, limits, contributing), with a new Home picture. [ROADMAP.md](ROADMAP.md) holds what comes next and summarizes the open astronomy study as a possible second field. HANDOFF and concept link to it. Nothing was made public or released.

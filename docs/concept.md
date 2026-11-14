@@ -156,3 +156,4 @@ Not every model in a roster works, or works at every thinking effort. The app do
 - **Controls.** Published site locations are not open for every region, so some projects will run without controls.
 - **Name.** Dighouse passed checks of domains, GitHub, package registries and the App Store. A trademark search has not been done.
 
+What comes next, including a second field for open astronomy, is in [ROADMAP.md](ROADMAP.md).

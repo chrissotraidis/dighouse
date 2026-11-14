@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished. This file is the prompt for whoever continues the work. Read it, then the Log at the end of REFINE_LOOP.md, which says what was checked and how, and what was not.
+Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-15 after the final pass. This file is the prompt for whoever continues the work. Read it, then the Log at the end of REFINE_LOOP.md, which says what was checked and how, and what was not.
 
 ## Your brief
 
@@ -48,11 +48,21 @@ Five loops are finished. There is no sixth plan yet: it should come from Chris's
 - **R5, more of the world.** Flanders, Norway, Estonia and Switzerland in `national.py`. Switzerland is read from swisstopo's file catalog, one file for each square km.
 - **R6, research.** [research/open-astronomy.md](research/open-astronomy.md): whether the same method could search open sky data. No code.
 
+## What the final pass added (2026-11-15)
+
+- **Text size:** five steps (`TextSize` in `Core.swift`), ⌘=, ⌘+ and ⌘− in the View menu, a short note at the top of the window, and the same five in Personalize. The workflow lanes and the Toolbox stage card hold at Largest.
+- **Movement:** `Motion` in `Core.swift` and `.arrives()` in `Controls.swift` (fade and rise, in order); `CardButton` for cards that are buttons. All of it is off with Reduce Motion. Use these for anything new rather than adding another animation.
+- **Personal:** Home's greeting card (`WelcomeBack` in `HomeView.swift`) shows the last project, what it waits for and the person's totals, read from the folders by `ProjectStore.glance`. The overview's card says "Your turn, Chris".
+- **Docs:** the README is written for a public release, and [ROADMAP.md](ROADMAP.md) holds what comes next, including the open astronomy field.
+
 ## How a project documents itself (Chris's priority)
 
 Every project is a folder with a git history (data/ and private/ left out) and one method. RESEARCH.md is its research record, rebuilt by `record.py` when a run ends (with or without a summary), a person decides, a second opinion comes back, or the project is opened. METHODOLOGY.md says how the work and the record are kept, and the agent reads both first. Keep this method when changing anything that writes into a project: whatever a run looks at or reads should end up in the record, and nothing with a location may go into notes/, reports/ or the record.
 
 ## Waiting on Chris
+
+- **The promotional video** (30 to 40 seconds, made from real app footage) waits for his pass.
+- **Going public.** The README reads as if the repository were public. Making it public, tagging a release, and a notarized download are his decisions.
 
 - **Use this build and say what is still rough.** Loop 5 answered his list item by item (the Log has a picture for each), but his eye has not been over the result.
 - **The second-opinion model is being refused.** On 2026-11-14 the provider of AG · Gemini 3.8 Flash answered every request with 403, "This service has been disabled in this account for violation of Terms of Service", and told the account holder to appeal. It worked that afternoon. Only Chris can look at that account or choose another second model. Until then no second opinion can be had; Dighouse says so on the record and carries on.
