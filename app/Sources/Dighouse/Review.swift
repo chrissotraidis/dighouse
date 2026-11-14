@@ -92,7 +92,9 @@ struct ReviewSheet: View {
             return ("already_published", named.title, "the sources on its record")
         }
         if (c.checks["modern"] as? JSON)?["likely_modern"] as? Bool == true, c.sources.allSatisfy({ $0.status != "read" }),
-           let summary = (c.checks["modern"] as? JSON)?["summary"] as? String {
+           let summary = (c.checks["modern"] as? JSON)?["summary"] as? String,
+           !summary.contains("historic places mapped") {
+            // Roads and buildings beside a mapped historic place say nothing either way, so the map alone suggests nothing there.
             return ("modern", summary, "the map check")
         }
         return nil
@@ -108,7 +110,8 @@ struct ReviewSheet: View {
             header
             Hairline()
             if let c = current {
-                ScrollView { content(c).padding(22) }
+                // Each find arrives as its own page, starting from the top.
+                ScrollView { content(c).padding(22).arrives() }.id(c.id)
                 Hairline()
                 footer(c).padding(.horizontal, 22).padding(.vertical, 14)
             } else {

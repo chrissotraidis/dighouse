@@ -89,6 +89,28 @@ final class ProjectStore: ObservableObject {
         reloadIfChanged()
     }
 
+    /// The project that was open last, for Home to offer again. Opening a project brings its research record
+    /// up to date, so the newest record marks it.
+    var recent: ProjectRef? {
+        func written(_ ref: ProjectRef) -> Date {
+            let fm = FileManager.default
+            return ["/RESEARCH.md", "/PROJECT.md"].lazy.compactMap { (try? fm.attributesOfItem(atPath: ref.path + $0)[.modificationDate]) as? Date }.first ?? .distantPast
+        }
+        return projects.max { written($0) < written($1) }
+    }
+
+    /// What a project holds, read from its folder without opening it.
+    static func glance(_ root: String) -> (tiles: Int, unscreened: Int, finds: Int, undecided: Int) {
+        let fm = FileManager.default
+        let tiles = (fm.contents(atPath: root + "/private/state/tiles.json").flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: JSON] ?? [:]).values
+        let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }
+        let undecided = records.filter { file in
+            let text = (try? String(contentsOfFile: root + "/candidates/" + file, encoding: .utf8)) ?? ""
+            return text.contains("\nstatus: \"flagged\"") || text.contains("\nstatus: \"ground_confirmed\"")
+        }.count
+        return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, records.count, undecided)
+    }
+
     func reloadIfChanged() {
         guard let root = current?.path else {
             terrains = []; tiles = []; candidates = []; status = RunStatus(); download = nil

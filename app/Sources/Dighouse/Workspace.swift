@@ -31,6 +31,7 @@ struct WorkspaceView: View {
                 }
                 Spacer()
             }
+            .animation(Motion.ease(0.15), value: app.tab)
             .padding(.horizontal, 12).frame(height: 46)
             Hairline()
             switch app.tab {

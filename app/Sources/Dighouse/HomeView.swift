@@ -80,7 +80,8 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
-                hero
+                if !app.offersTutorial { WelcomeBack().padding(.bottom, -8) }
+                hero.arrives()
                 if app.offersTutorial {
                     // For a first visit, and for anyone part-way through: one real search, a step at a time.
                     StartTile(icon: "dig.trowel", title: app.tutorialProject == nil ? "Start your first project" : "Continue your first project",
@@ -88,6 +89,7 @@ struct HomeView: View {
                               strong: true) { app.startTutorial() }
                         .coach(.start, radius: 14)
                         .padding(.top, -8)
+                        .arrives(1)
                 }
                 LazyVGrid(columns: paths, spacing: 12) {
                     PathCard(icon: "sparkle.magnifyingglass", title: "What should I research?",
@@ -100,8 +102,9 @@ struct HomeView: View {
                     }
                 }
                 .padding(.top, -8)
-                CompareBoard()
-                starts
+                .arrives(1)
+                CompareBoard().arrives(2)
+                starts.arrives(3)
             }
             .padding(.horizontal, 32).padding(.top, 34).padding(.bottom, 40)
             .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity)
@@ -328,9 +331,47 @@ private struct CompareBoard: View {
     }
 }
 
-/// One of the two ways in from Home.
+/// For someone coming back: a greeting by name, the project they last had open, and what it is waiting for.
+private struct WelcomeBack: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+    @State private var waiting = ""
+    @State private var totals = ""
+
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let part = (5..<12).contains(hour) ? "Good morning" : (12..<18).contains(hour) ? "Good afternoon" : "Good evening"
+        return app.firstName.isEmpty ? part + "." : "\(part), \(app.firstName)."
+    }
+
+    var body: some View {
+        if let project = store.recent {
+            PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
+                .help("Open \(project.name)")
+                .arrives()
+                .onAppear { read(project) }
+        }
+    }
+
+    private func read(_ project: ProjectRef) {
+        func count(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
+        let it = ProjectStore.glance(project.path)
+        waiting = it.tiles == 0 && it.finds == 0 ? "Its search has not started."
+            : it.unscreened > 0 ? "\(count(it.unscreened, "tile")) \(it.unscreened == 1 ? "is" : "are") still to be looked at."
+            : it.undecided > 0 ? "\(count(it.undecided, "find")) \(it.undecided == 1 ? "is" : "are") not decided yet."
+            : it.finds == 0 ? "Every tile was looked at and nothing was marked."
+            : "Every find is decided."
+        let all = store.projects.map { ProjectStore.glance($0.path) }
+        let finds = all.reduce(0) { $0 + $1.finds }
+        let decided = finds - all.reduce(0) { $0 + $1.undecided }
+        totals = "\(count(all.count, "project")) · \(count(finds, "find")) · \(decided) decided"
+    }
+}
+
+/// One of the ways in from Home.
 private struct PathCard: View {
     let icon: String, title: String, text: String
+    var foot = ""
     let action: () -> Void
     @State private var hover = false
 
@@ -342,9 +383,13 @@ private struct PathCard: View {
                     Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
                     Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                         .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    if !foot.isEmpty {
+                        Text(foot).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).padding(.top, 2)
+                    }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "arrow.right").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(hover ? Theme.text : Theme.faint)
+                    .offset(x: hover ? 3 : 0)
             }
             .padding(16).frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
@@ -370,7 +415,7 @@ struct StartCard: View {
                     Theme.ink.opacity(0.04).aspectRatio(16 / 9, contentMode: .fit)
                         .overlay {
                             if let image = StartingPoints.image(point) {
-                                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill).scaleEffect(hover ? 1.04 : 1)
                             }
                         }
                         .clipped()

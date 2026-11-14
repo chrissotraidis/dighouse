@@ -199,3 +199,18 @@ Words on each page at 1440 × 900, counted the same way as R3:
 - **README, concept and HANDOFF** use the new words, list the eight countries, the two fallbacks and the 13 offline tests, and no longer mention a Test button. HANDOFF is rewritten for whoever comes next, with what waits on Chris at the top.
 - **Chris's things:** his settings were put back from the copy taken at the start and compared. The scratch projects were taken out of his list, and the chats this loop made in general chat were archived.
 - **Not done:** the welcome guide still has its older, longer text. A sixth plan was not written; it should come from Chris's notes on this build.
+
+### Final pass, 2026-11-15
+
+Chris asked for one more pass: text that grows and shrinks with ⌘+ and ⌘−, more tasteful movement, and a more personal app.
+
+- **Text size.** Five steps now, from Small (92 %) to Largest (130 %). ⌘= and ⌘+ both make text bigger and ⌘− smaller; each press shows "Text size: Large" for a moment at the top of the window ([picture](final/text-size-note.jpg)). Settings › Personalize lists the same five and says the shortcuts work too ([picture](final/personalize-largest.jpg)). Every page was looked at in Small and Largest at 1440 × 900, and the main pages again at Largest in a 900 × 640 window.
+- **Fixed for large text:** the workflow lanes grow with the text, so "What is published" no longer cuts off ([picture](final/lanes-largest.jpg)). The stage card's buttons take a second row when the window is narrow ([picture](final/narrow-largest-toolbox.jpg)).
+- **Movement.** A page, a Toolbox tab, a Toolbox stage, a Settings page, a workflow's detail, a welcome page and each find in the review fade and rise into place in about a third of a second, a piece at a time. A project's counts roll to their new number and a stage's tick lands with a small spring. Cards brighten under the pointer and dip when pressed; a place's picture eases in a little; the arrow on Home's cards moves toward its target. None of it runs with Reduce Motion on.
+- **Personal.** Home greets you by first name and time of day, says which project you had open last and what it waits for, and counts your projects, finds and decisions; pressing it opens that project ([picture](final/home-small.jpg)). A project waiting on you says "Your turn, Chris: decide 2 finds" ([picture](final/your-turn.jpg)). The name comes from Settings › General.
+- **Left over from loop 5:** the welcome guide has the shorter words now. More tools said "Nothing else is connected" for a moment after launch, before the engine had answered; it now says it is reading your Codex setup.
+- **Fixed on the way:** the review suggested "modern feature" for any find with roads nearby, including Maiden Castle's ramparts, because the same summary lists historic places mapped there. A find beside a mapped historic place now gets no suggestion from the map alone.
+- **Pressed and seen:** ⌘=, ⌘+ and ⌘− from Standard to Largest and back to Small (the setting changed each time and stopped at each end); the greeting card (it opened Maiden Castle); Decide 2 finds, Record and Done in a scratch project; the welcome guide opened and closed; every Toolbox tab and Settings page. Movement was checked in screen recordings at 60 frames a second.
+- **Not checked:** a real pointer's hover (the test tools move the pointer themselves), and Reduce Motion switched on in System Settings, which was left alone.
+- `uv run pytest -q`: 13 passed.
+

@@ -73,11 +73,14 @@ final class Engine: ObservableObject {
     private var waiting: [Int: CheckedContinuation<JSON, Error>] = [:]
     private var serviceThread: String?
     private var connectionsLoaded = false
+    /// True once the engine has said what else is connected, so a page can tell "none" from "not read yet".
+    @Published private(set) var connectionsRead = false
 
     func start(codex: String, toolsBinary: String, path: String, extraServers: [ToolServer]) async {
         stop()
         problem = nil
         connectionsLoaded = false
+        connectionsRead = false
         let p = Process()
         p.executableURL = URL(fileURLWithPath: codex)
         var arguments = [
@@ -203,6 +206,7 @@ final class Engine: ObservableObject {
                 .filter { $0["installed"] as? Bool == true && $0["enabled"] as? Bool == true }
                 .compactMap { $0["name"] as? String }.sorted()
         }
+        connectionsRead = true
     }
 
     // MARK: talking to the engine

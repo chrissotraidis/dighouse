@@ -33,6 +33,8 @@ final class AppState: ObservableObject {
     @Published var textSize = UserDefaults.standard.string(forKey: "textSize") ?? "standard" {
         didSet { UserDefaults.standard.set(textSize, forKey: "textSize") }
     }
+    /// The text size just chosen from the keyboard, shown for a moment at the top of the window.
+    @Published var sizeNote: String?
     /// A slash command asking the message box to open the model list or the effort slider.
     @Published var pickerRequest: PickerRequest?
     /// A slash command asking the sidebar to rename a chat.
@@ -116,6 +118,8 @@ final class AppState: ObservableObject {
     @Published var userName = UserDefaults.standard.string(forKey: "userName") ?? NSFullUserName() {
         didSet { UserDefaults.standard.set(userName, forKey: "userName") }
     }
+    /// The name to greet the person by: the first word of their name, or nothing.
+    var firstName: String { userName.split(separator: " ").first.map(String.init) ?? "" }
     @Published var toolServers: [ToolServer] = (UserDefaults.standard.data(forKey: "toolServers"))
         .flatMap { try? JSONDecoder().decode([ToolServer].self, from: $0) } ?? [] {
         didSet { UserDefaults.standard.set(try? JSONEncoder().encode(toolServers), forKey: "toolServers") }
@@ -808,8 +812,6 @@ private struct FileMenuExport: View {
 private struct ViewMenu: View {
     @ObservedObject var app: AppState
 
-    private static let sizes = ["standard", "large", "larger"]
-
     var body: some View {
         ForEach(Array(PaneLayout.allCases.enumerated()), id: \.element) { index, layout in
             Toggle((PaneLayout.names[layout] ?? "").titleCased, isOn: Binding(get: { app.layout == layout }, set: { _ in app.layout = layout }))
@@ -825,19 +827,25 @@ private struct ViewMenu: View {
         Button("Home") { app.goHome() }.keyboardShortcut("0")
         Button("Toolbox") { app.show(.toolbox) }.keyboardShortcut("t")
         Divider()
-        Button("Bigger Text") { step(1) }.keyboardShortcut("+").disabled(app.textSize == Self.sizes.last)
-        Button("Smaller Text") { step(-1) }.keyboardShortcut("-").disabled(app.textSize == Self.sizes.first)
+        Button("Bigger Text") { step(1) }.keyboardShortcut("+").disabled(app.textSize == TextSize.all.last?.id)
+        Button("Smaller Text") { step(-1) }.keyboardShortcut("-").disabled(app.textSize == TextSize.all.first?.id)
         Picker("Text Size", selection: $app.textSize) {
-            Text("Standard").tag("standard")
-            Text("Large").tag("large")
-            Text("Larger").tag("larger")
+            ForEach(TextSize.all, id: \.id) { size in Text(size.name).tag(size.id) }
         }
         Divider()
     }
 
     private func step(_ by: Int) {
-        let i = (Self.sizes.firstIndex(of: app.textSize) ?? 0) + by
-        if Self.sizes.indices.contains(i) { app.textSize = Self.sizes[i] }
+        let i = (TextSize.all.firstIndex { $0.id == app.textSize } ?? 1) + by
+        guard TextSize.all.indices.contains(i) else { return }
+        app.textSize = TextSize.all[i].id
+        // Say which size it is, briefly, since the change itself can be small.
+        let note = "Text size: \(TextSize.all[i].name)"
+        app.sizeNote = note
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.4))
+            if app.sizeNote == note { app.sizeNote = nil }
+        }
     }
 }
 
@@ -914,5 +922,17 @@ struct RootView: View {
         .foregroundStyle(Theme.text)
         .tint(Theme.accent)
         .id("\(app.look.rawValue)-\(app.textSize)")   // colours and sizes are read when a view is built, so a change rebuilds the window
+        .overlay(alignment: .top) {
+            if let note = app.sizeNote {
+                Text(note).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.text)
+                    .padding(.horizontal, 14).frame(height: 30)
+                    .background(Capsule().fill(Theme.pop).shadow(color: .black.opacity(0.35), radius: 10, y: 3))
+                    .overlay(Capsule().strokeBorder(Theme.line))
+                    .padding(.top, 58)
+                    .transition(.opacity.combined(with: .offset(y: -6)))
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+        }
+        .animation(Motion.ease(0.18), value: app.sizeNote)
     }
 }

@@ -57,6 +57,25 @@ struct SecondaryButton: ButtonStyle {
     }
 }
 
+/// A card that is a button: it brightens under the pointer and dips when pressed.
+struct CardButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { Face(configuration: configuration) }
+
+    private struct Face: View {
+        let configuration: Configuration
+        @State private var hover = false
+
+        var body: some View {
+            configuration.label
+                .brightness(hover ? 0.035 : 0)
+                .scaleEffect(configuration.isPressed ? 0.985 : 1)
+                .onHover { hover = $0 }
+                .animation(Motion.ease(0.12), value: hover)
+                .animation(Motion.ease(0.1), value: configuration.isPressed)
+        }
+    }
+}
+
 /// A square icon button that lights up on hover.
 struct IconButton: ButtonStyle {
     var size: CGFloat = 30
@@ -114,6 +133,9 @@ struct RowButton: ButtonStyle {
 // MARK: - Small pieces
 
 extension View {
+    /// Fades and rises into place when it first appears. Pieces of one page arrive in order, a moment apart.
+    func arrives(_ order: Int = 0) -> some View { modifier(Arrives(order: order)) }
+
     /// A text field that matches the dark surface.
     func field() -> some View {
         self.textFieldStyle(.plain)
@@ -793,5 +815,18 @@ struct PageSection<Content: View>: View {
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct Arrives: ViewModifier {
+    let order: Int
+    @State private var shown = Motion.reduce
+
+    func body(content: Content) -> some View {
+        content.opacity(shown ? 1 : 0).offset(y: shown ? 0 : 8)
+            .onAppear {
+                guard !shown else { return }
+                withAnimation(.easeOut(duration: 0.3).delay(Double(order) * 0.06)) { shown = true }
+            }
     }
 }

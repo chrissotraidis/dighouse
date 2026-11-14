@@ -24,6 +24,7 @@ struct WelcomeView: View {
                     default: first
                     }
                 }
+                .id(page).arrives()
                 .frame(width: 640, alignment: .leading).padding(.vertical, 36)
                 .frame(maxWidth: .infinity)
             }
@@ -81,23 +82,23 @@ struct WelcomeView: View {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 64, height: 64)
                 Text("Dighouse").font(.system(size: 40 * Theme.scale, weight: .bold))
             }
-            Text("Open archaeology on your Mac. AI agents search public lidar for places people built and check what they find. You make the calls.")
+            Text("Open archaeology on your Mac. AI agents search public lidar for places people built, and check each find. You decide what it is.")
                 .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 7) {
                 ForestReveal()
                 Text("Serpent Mound, Ohio. Drag the handle to take the trees away.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
-            Text("Dighouse works with lidar: laser scans made from aircraft that measure the ground through gaps in the trees. A great deal of it is public. Dighouse gives an AI model the tools to fetch it, search it, and check what it finds, which a chat app cannot do.")
+            Text("Lidar is a laser scan from an aircraft that maps the ground through gaps in the trees. Much of it is public. Dighouse gives an AI model the tools to fetch it, look through it and check what it finds.")
                 .foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 0) {
                 point("dig.grid", "Agents do the patient part",
-                      "They fetch public lidar surveys, strip the trees away, and look at every tile of ground.")
+                      "They fetch open lidar, take the trees away, and look at every tile of ground.")
                 Rectangle().fill(Theme.line).frame(height: 1)
                 point("dig.layers", "Every find is checked",
-                      "A slice through the raw laser points, a second model's opinion, a search for modern features, and a literature search.")
+                      "A slice through the laser points, a second model's opinion, open maps, and what is published.")
                 Rectangle().fill(Theme.line).frame(height: 1)
                 point("person", "You decide",
-                      "Nothing is called new. You see the evidence and choose what happens next, and locations never leave this Mac.")
+                      "Nothing is called new. You see the evidence and decide, and locations stay on this Mac.")
             }
             .panel()
         }
@@ -107,7 +108,7 @@ struct WelcomeView: View {
     private var how: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("How a search works").font(.system(size: 28 * Theme.scale, weight: .bold))
-            Text("Dighouse gives the agent six sets of tools, used roughly in this order. You can watch, steer by typing, or leave a run and review it later.")
+            Text("Six sets of tools, used in this order. Watch, steer by typing, or leave a run and review it later.")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(Array(ToolGuide.packs.enumerated()), id: \.element.id) { index, pack in
@@ -120,7 +121,7 @@ struct WelcomeView: View {
                     }
                 }
             }
-            Text("The Toolbox in the main window lists every tool and the workflows that use them.")
+            Text("The Toolbox shows each stage with a picture you can try.")
                 .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
         }
     }
@@ -137,7 +138,7 @@ struct WelcomeView: View {
     private var first: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Your first project").font(.system(size: 28 * Theme.scale, weight: .bold))
-            Text("A project is a folder: the question, the area, and everything the agents find. A good first run is a place that is already published, so you can see what a real site looks like.")
+            Text("A project is a folder: the question, the area, and everything the agents find. A published place makes a good first run, because it shows what a real site looks like.")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 8) {
                 ForEach(StartingPoints.all + [StartingPoints.own]) { option in

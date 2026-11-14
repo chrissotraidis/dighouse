@@ -50,15 +50,28 @@ enum Look: String, CaseIterable {
     }
 }
 
+/// The text sizes, smallest first. ⌘+ and ⌘− step through them, and Settings › Personalize lists them.
+enum TextSize {
+    static let all: [(id: String, name: String, scale: CGFloat)] = [
+        ("small", "Small", 0.92), ("standard", "Standard", 1), ("large", "Large", 1.1), ("larger", "Larger", 1.2), ("largest", "Largest", 1.3),
+    ]
+
+    static func scale(_ id: String) -> CGFloat { all.first { $0.id == id }?.scale ?? 1 }
+}
+
+/// Movement is short and quiet, and there is none when the Mac is set to reduce motion.
+enum Motion {
+    static var reduce: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
+    static func ease(_ seconds: Double = 0.2) -> Animation? { reduce ? nil : .easeOut(duration: seconds) }
+
+    /// A small overshoot, for a tick that lands or a number that changes.
+    static var settle: Animation? { reduce ? nil : .spring(response: 0.35, dampingFraction: 0.62) }
+}
+
 enum Theme {
-    /// How large text is drawn, from Settings › Personalize. Every font size is multiplied by it.
-    static var scale: CGFloat {
-        switch UserDefaults.standard.string(forKey: "textSize") ?? "standard" {
-        case "large": return 1.1
-        case "larger": return 1.2
-        default: return 1
-        }
-    }
+    /// How large text is drawn, from ⌘+ and ⌘− or Settings › Personalize. Every font size is multiplied by it.
+    static var scale: CGFloat { TextSize.scale(UserDefaults.standard.string(forKey: "textSize") ?? "standard") }
 
     static var palette = (Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth).palette
 

@@ -114,7 +114,7 @@ struct ProjectOverview: View {
                         icon: "dig.layers", label: "Carry on") { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }
         }
         let suggested = !open.isEmpty && open.allSatisfy { $0.suggestion != nil || Review_hasSuggestion($0) }
-        let decide = Next(title: "Your turn: decide \(finds)",
+        let decide = Next(title: "Your turn\(app.firstName.isEmpty ? "" : ", " + app.firstName): decide \(finds)",
                           what: suggested ? "The agent checked \(open.count == 1 ? "the find" : "each find") and suggests what it is, with its reason. Look at the pictures, then agree or change it."
                                           : "Look at each find and decide what it is.",
                           after: "About a minute each. Nothing is final until you decide.",
@@ -169,6 +169,7 @@ struct ProjectOverview: View {
                         Text(question).font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .arrives()
                 if let next {
                     let words = HStack(alignment: .top, spacing: 14) {
                         IconTile(name: next.icon, size: 38)
@@ -194,6 +195,7 @@ struct ProjectOverview: View {
                     .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Theme.tan.opacity(0.08)))
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.tan.opacity(0.3)))
+                    .arrives(1)
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("The search so far").font(.system(size: 14 * Theme.scale, weight: .semibold))
@@ -210,9 +212,12 @@ struct ProjectOverview: View {
                                     Text(stage.plain).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                                 }
                                 Spacer(minLength: 8)
+                                // A count rolls to its new value, and the tick lands, when a run moves a stage on.
                                 Text(stage.detail).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                    .contentTransition(.numericText()).animation(Motion.ease(0.25), value: stage.detail)
                                 Image(systemName: "checkmark").font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(Theme.green)
-                                    .opacity(stage.done ? 1 : 0).accessibilityLabel(stage.done ? "Done" : "Not done yet")
+                                    .opacity(stage.done ? 1 : 0).scaleEffect(stage.done ? 1 : 0.3).animation(Motion.settle, value: stage.done)
+                                    .accessibilityLabel(stage.done ? "Done" : "Not done yet")
                             }
                             .padding(.horizontal, 14).padding(.vertical, 9)
                         }

@@ -44,15 +44,18 @@ struct SettingsPage: View {
                             }
                         }
                         Text(app.settingsSection.rawValue).font(.system(size: 24 * Theme.scale, weight: .bold))
-                        switch app.settingsSection {
-                        case .general: GeneralSettings()
-                        case .look: LookSettings()
-                        case .models: ModelSettings()
-                        case .engine: EngineSettings()
-                        case .tools: ToolsSettings()
-                        case .privacy: PrivacySettings()
-                        case .about: AboutSettings()
+                        Group {
+                            switch app.settingsSection {
+                            case .general: GeneralSettings()
+                            case .look: LookSettings()
+                            case .models: ModelSettings()
+                            case .engine: EngineSettings()
+                            case .tools: ToolsSettings()
+                            case .privacy: PrivacySettings()
+                            case .about: AboutSettings()
+                            }
                         }
+                        .id(app.settingsSection).arrives()
                     }
                     .padding(.horizontal, 32).padding(.vertical, 26)
                     .frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
@@ -144,14 +147,14 @@ private struct LookSettings: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SettingRow(title: "Text size") {
+            SettingRow(title: "Text size", note: "⌘+ and ⌘− change it too.") {
                 HStack(spacing: 2) {
-                    ForEach([("standard", "Standard"), ("large", "Large"), ("larger", "Larger")], id: \.0) { item in
-                        Button { app.textSize = item.0 } label: {
-                            Text(item.1).font(.system(size: 12.5 * Theme.scale, weight: app.textSize == item.0 ? .semibold : .medium))
-                                .foregroundStyle(app.textSize == item.0 ? Theme.text : Theme.dim)
+                    ForEach(TextSize.all, id: \.id) { item in
+                        Button { app.textSize = item.id } label: {
+                            Text(item.name).font(.system(size: 12.5 * Theme.scale, weight: app.textSize == item.id ? .semibold : .medium))
+                                .foregroundStyle(app.textSize == item.id ? Theme.text : Theme.dim)
                                 .padding(.horizontal, 12).frame(height: 26)
-                                .background(RoundedRectangle(cornerRadius: 6).fill(app.textSize == item.0 ? Theme.raised : .clear))
+                                .background(RoundedRectangle(cornerRadius: 6).fill(app.textSize == item.id ? Theme.raised : .clear))
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)

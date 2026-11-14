@@ -36,15 +36,19 @@ struct ToolboxView: View {
                                 .buttonStyle(.plain)
                             }
                         }
+                        .animation(Motion.ease(0.15), value: tab)
                     }
                     Hairline()
                 }
-                switch tab {
-                case .how: HowTab()
-                case .workflows: WorkflowsTab()
-                case .data: DataTab()
-                case .more: MoreTab()
+                Group {
+                    switch tab {
+                    case .how: HowTab()
+                    case .workflows: WorkflowsTab()
+                    case .data: DataTab()
+                    case .more: MoreTab()
+                    }
                 }
+                .id(tab).arrives()
             }
             .padding(.horizontal, 32).padding(.top, 26).padding(.bottom, 32)
             .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity, minHeight: geo.size.height + 1, alignment: .top)
@@ -131,11 +135,14 @@ private struct HowTab: View {
                 StageArt(stage: at).frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(18)
+            .id(at).arrives()
             Hairline()
-            HStack(spacing: 10) {
+            // One row when it fits. In a narrow window or with large text, the two ends take a row each.
+            let back = HStack(spacing: 10) {
                 Button("Back") { stage = at - 1 }.buttonStyle(SecondaryButton()).disabled(at == 0)
-                Text("Stage \(at + 1) of \(packs.count)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                Spacer()
+                Text("Stage \(at + 1) of \(packs.count)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
+            }
+            let onward = HStack(spacing: 10) {
                 Button { showTools = true } label: { Label("\(pack.tools.count) tools", systemImage: "wrench.and.screwdriver") }
                     .buttonStyle(SecondaryButton()).help("The tools the agent uses at this stage")
                     .popover(isPresented: $showTools, arrowEdge: .top) { ToolList(pack: pack).popoverSurface() }
@@ -148,6 +155,10 @@ private struct HowTab: View {
                 } else {
                     Button("Try it yourself") { app.startProject(from: StartingPoints.all[0]) }.buttonStyle(PrimaryButton())
                 }
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { back; Spacer(minLength: 10); onward }
+                VStack(alignment: .leading, spacing: 8) { back; onward }
             }
             .padding(.horizontal, 18).padding(.vertical, 12)
         }
@@ -218,6 +229,7 @@ private struct StageRail: View {
                 .buttonStyle(.plain).help(pack.title)
             }
         }
+        .animation(Motion.ease(0.25), value: stage)
     }
 }
 
@@ -741,12 +753,15 @@ private struct WorkflowsTab: View {
                 GeometryReader { geo in
                     ScrollView(.horizontal, showsIndicators: false) { picture(chosen).frame(width: max(geo.size.width, 760)) }
                 }
-                .frame(height: 3 * 92 + 3 * 6 + 16)
+                .frame(height: 3 * tall + 3 * 6 + 16)
             }
         }
 
-        detail(chosen)
+        detail(chosen).id(chosen).arrives()
     }
+
+    /// How tall a lane is. It grows with the text, so a three-line name still fits.
+    private var tall: CGFloat { 92 * max(Theme.scale, 1) }
 
     /// The lanes: one row for each of the three who take part, one column for each part of the search.
     private func picture(_ chosen: String) -> some View {
@@ -770,15 +785,15 @@ private struct WorkflowsTab: View {
                         Glyph(name: lanes[lane].icon, size: 13 * Theme.scale).foregroundStyle(lane == 2 ? Theme.accent : Theme.tan).frame(width: 18)
                         Text(lanes[lane].name).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
                     }
-                    .frame(width: 116, height: 92, alignment: .leading)
+                    .frame(width: 116, height: tall, alignment: .leading)
                     ForEach(parts.indices, id: \.self) { i in
                         if parts[i].lane == lane {
                             card(parts[i].id, chosen == parts[i].id)
                         } else if lane == 2, parts[i].id == "report" {
                             Text("You send it").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.accent)
-                                .frame(maxWidth: .infinity, minHeight: 92)
+                                .frame(maxWidth: .infinity, minHeight: tall)
                         } else {
-                            RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.02)).frame(maxWidth: .infinity, minHeight: 92)
+                            RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.02)).frame(maxWidth: .infinity, minHeight: tall)
                         }
                     }
                 }
@@ -795,7 +810,7 @@ private struct WorkflowsTab: View {
                     Spacer(minLength: 0)
                     if part.done { Image(systemName: "checkmark").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.green) }
                 }
-                Text(part.title).font(.system(size: 12 * Theme.scale, weight: .semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                Text(part.title).font(.system(size: 12 * Theme.scale, weight: .semibold)).lineLimit(3).minimumScaleFactor(0.85).multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 if !part.note.isEmpty, part.ready, !part.done {
@@ -803,13 +818,13 @@ private struct WorkflowsTab: View {
                         .multilineTextAlignment(.leading)
                 }
             }
-            .padding(9).frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+            .padding(9).frame(maxWidth: .infinity, minHeight: tall, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(on ? 0.1 : 0.045)))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? Theme.tan : Theme.line, lineWidth: on ? 1.5 : 1))
             .opacity(part.ready || part.done || on ? 1 : 0.7)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(CardButton())
         .accessibilityLabel("\(part.title), \(lanes[parts.first { $0.id == id }?.lane ?? 0].name)\(part.note.isEmpty ? "" : ", \(part.note)")")
     }
 
@@ -824,7 +839,7 @@ private struct WorkflowsTab: View {
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? Theme.tan : Theme.line, lineWidth: on ? 1.5 : 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(CardButton())
     }
 
     /// The chosen workflow: one sentence, who does it, and the button that runs it.
@@ -966,7 +981,7 @@ private struct DataTab: View {
             .padding(9).frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
             .panel(radius: 12).contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(CardButton())
         .accessibilityLabel("\(source.name), \(source.reach), \(word(source))")
     }
 
@@ -1124,7 +1139,12 @@ private struct MoreTab: View {
         Text("The agent can also use what your Codex app has. Press one to put a request in a new chat.")
             .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
 
-        if known.isEmpty {
+        if !engine.connectionsRead {
+            HStack(spacing: 8) {
+                DigIndicator()
+                Text("Reading your Codex setup").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+            }
+        } else if known.isEmpty {
             Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
         } else {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
@@ -1142,7 +1162,7 @@ private struct MoreTab: View {
                         .padding(11).frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
                         .panel(radius: 12).contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain).help(addon.use)
+                    .buttonStyle(CardButton()).help(addon.use)
                 }
             }
         }
