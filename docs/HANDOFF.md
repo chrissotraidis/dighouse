@@ -8,7 +8,7 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. He wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-Four loops are finished. There is no fifth plan yet: the next work is whatever Chris sends after using this build, plus the lists under "Waiting on Chris" and "Not verified" below.
+Four loops are finished. The fifth is [REFINE_LOOP.md](REFINE_LOOP.md), written from Chris's notes on the loop 4 build: register it as your goal. Suggested objective: "Finish the Dighouse loop in docs/REFINE_LOOP.md: goals R1 to R7 are met, each check verified in the running macOS app with the cheap model, logged, committed and merged."
 
 ## Rules
 
