@@ -232,7 +232,7 @@ private struct ModelSettings: View {
     }
 
     var body: some View {
-        Text("Dighouse uses two models: one runs the search, and another, ideally from a different maker, gives each find an independent second opinion. Test sends a model one short message to make sure it answers.")
+        Text("One model runs the search. A second, from a different maker, gives each find its own opinion.")
             .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
         if !warnings.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
@@ -245,113 +245,43 @@ private struct ModelSettings: View {
             .background(RoundedRectangle(cornerRadius: 10).fill(Theme.amber.opacity(0.08)))
         }
         VStack(spacing: 0) {
-            SettingRow(title: "Agent model", note: "Runs the search. Screening tiles needs a model that reads images.") {
-                HStack(spacing: 10) {
-                    ModelTest(id: app.model?.id, effort: app.activeEffort)
-                    ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id, checks: app.modelChecks) { app.modelID = $0.id }
-                }
+            SettingRow(title: "Agent model", note: "Runs the search. It must be able to read images.") {
+                ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
             }
-            ModelTestProblem(id: app.model?.id)
             Hairline()
             effortRow
             Hairline()
-            SettingRow(title: "Second-look model",
-                       note: "Gives the independent second opinion on a candidate. Choose one from a different maker than the agent's model.") {
-                HStack(spacing: 10) {
-                    ModelTest(id: app.secondModelID, effort: nil)
-                    ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
-                                current: app.secondModelID, checks: app.modelChecks) { app.secondModelID = $0.id }
-                }
+            SettingRow(title: "Second-look model", note: "Gives the second opinion on each find.") {
+                ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
+                            current: app.secondModelID) { app.secondModelID = $0.id }
             }
-            ModelTestProblem(id: app.secondModelID)
         }
         .panel()
-        HStack(spacing: 10) {
-            Button {
-                Task { @MainActor in
-                    if let id = app.model?.id { app.testModel(id, effort: app.activeEffort) }
-                    while app.testingModel != nil { try? await Task.sleep(for: .milliseconds(300)) }
-                    if let second = app.secondModelID, second != app.model?.id { app.testModel(second, effort: nil) }
-                }
-            } label: { Label("Test both", systemImage: "checkmark.circle") }
-            .buttonStyle(SecondaryButton()).disabled(app.testingModel != nil || app.model == nil)
-            Text("Each test is one short message, so it costs very little.").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-        }
         Text(setup.ocxRunning
-             ? "\(engine.models.count) models are listed. The OpenCodex router is running on this Mac, so the list holds every model in its roster, and the start of each name says which provider or account it runs through."
-             : "\(engine.models.count) models are listed, from the Codex sign-in on this Mac. Running the OpenCodex router adds models from other providers.")
-            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-        Text("The same choices are in the message box of every chat.")
-            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
+             ? "\(engine.models.count) models, from the OpenCodex router on this Mac. The start of each name is the provider or account it runs through."
+             : "\(engine.models.count) models, from the Codex sign-in on this Mac. The OpenCodex router adds models from other providers.")
+            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
     }
 
-    /// Says only what was tested: the list offers a step, a test shows whether the provider accepts it.
-    private func testNote(_ model: ModelInfo, _ effort: String) -> String {
-        guard let check = app.modelChecks[model.id], check.effort == effort else {
-            return "\(Effort.label(effort)) has not been tested with this model. Test sends one short message at this step."
-        }
-        let day = check.date.formatted(date: .abbreviated, time: .omitted)
-        return check.ok ? "\(Effort.label(effort)) was tested on \(day) and the model answered."
-                        : "\(Effort.label(effort)) was tested on \(day) and failed: \(check.message)"
-    }
-
-    /// How long the model thinks. The steps on offer belong to the model, so they change when the model does.
+    /// How long the model thinks. The steps, what each is for and the default all come from the model list.
     @ViewBuilder private var effortRow: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Thinking effort").font(.system(size: 13.5 * Theme.scale, weight: .medium))
             if let model = app.model, let effort = app.activeEffort {
-                Text("\(Effort.label(effort)). \(Effort.note(effort))")
-                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Thinking effort").font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                    Spacer()
+                    Text(Effort.label(effort)).font(.system(size: 13.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.accent)
+                }
                 StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
-                    .frame(maxWidth: 420)
-                Text("Your model list gives \(model.name) \(model.efforts.count) steps: \(model.efforts.map(Effort.label).joined(separator: ", ")). \(testNote(model, effort)) If a provider refuses a step, the chat shows the provider's message.")
-                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                Text(Effort.note(effort, for: model))
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             } else {
-                Text("\(app.modelName) has no effort setting. It always thinks the same amount.")
+                Text("Thinking effort").font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                Text("\(app.modelName) has no effort steps in the model list.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// A Test button and the last result for one model, shown beside its picker.
-private struct ModelTest: View {
-    @EnvironmentObject var app: AppState
-    let id: String?
-    let effort: String?
-
-    var body: some View {
-        if let id {
-            HStack(spacing: 8) {
-                if app.testingModel == id {
-                    DigIndicator()
-                    Text("Testing").foregroundStyle(Theme.dim)
-                } else if let check = app.modelChecks[id] {
-                    Circle().fill(check.ok ? Theme.green : Theme.amber).frame(width: 7, height: 7)
-                    Text(check.ok ? "Answered" + (check.effort.map { " at \(Effort.label($0))" } ?? "") : "Failed")
-                        .foregroundStyle(check.ok ? Theme.dim : Theme.amber)
-                }
-                Button("Test") { app.testModel(id, effort: effort) }
-                    .buttonStyle(SecondaryButton()).disabled(app.testingModel != nil)
-                    .help("Sends the model one short message\(effort.map { " at \(Effort.label($0))" } ?? "") and shows whether it answered.")
-            }
-            .font(.system(size: 12.5 * Theme.scale))
-        }
-    }
-}
-
-/// The provider's message when a model failed its test, in full.
-private struct ModelTestProblem: View {
-    @EnvironmentObject var app: AppState
-    let id: String?
-
-    var body: some View {
-        if let id, let check = app.modelChecks[id], !check.ok, app.testingModel != id {
-            Text(check.message).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 14).padding(.bottom, 12).frame(maxWidth: .infinity, alignment: .trailing)
-        }
     }
 }
 

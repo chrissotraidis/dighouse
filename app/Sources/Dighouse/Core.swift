@@ -139,14 +139,8 @@ struct ModelInfo: Identifiable, Hashable {
     let isDefault: Bool
     let efforts: [String]
     let defaultEffort: String?
-}
-
-/// The result of sending a model one short message at one effort step.
-struct ModelCheck: Codable, Hashable {
-    let ok: Bool
-    let effort: String?
-    let message: String
-    let date: Date
+    /// What the model list says each thinking step is for, by step.
+    var effortNotes: [String: String] = [:]
 }
 
 struct ProjectRef: Identifiable, Codable, Hashable {

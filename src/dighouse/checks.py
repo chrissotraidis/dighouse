@@ -5,12 +5,15 @@ from __future__ import annotations
 import html
 import io
 import logging
+import math
 import re
 import time
 
 import httpx
 
 OVERPASS = ("https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter")
+OSM_MAP = "https://api.openstreetmap.org/api/0.6/map.json"
+_overpass_back = 0.0  # when to try the Overpass servers again after both failed
 OPENALEX = "https://api.openalex.org/works"
 logging.getLogger("httpx").setLevel(logging.WARNING)
 _client = httpx.Client(timeout=40, follow_redirects=True,
@@ -19,44 +22,108 @@ _READER = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebK
            "Accept": "text/html,application/pdf;q=0.9,*/*;q=0.8"}
 
 
-def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
-    """What OpenStreetMap has mapped around a point: roads, buildings, land use, and known sites."""
+def _sort(elements: list[dict], near: set | None = None, far: set | None = None) -> dict[str, list[str]]:
+    """Mapped things by kind. near and far say which elements are within the radius and within 2 km; None means all are."""
+    kinds = {"roads": [], "buildings": [], "land_use": [], "structures": [], "historic_within_2km": []}
+    for el in elements:
+        tags, key = el.get("tags") or {}, (el.get("type"), el.get("id"))
+        if "historic" in tags:
+            if far is None or key in far:
+                kinds["historic_within_2km"].append(tags.get("name") or tags["historic"])
+        elif near is not None and (key not in near or el.get("type") == "node" and "man_made" not in tags):
+            continue
+        elif "highway" in tags:
+            kinds["roads"].append(tags.get("name") or tags["highway"])
+        elif "building" in tags:
+            kinds["buildings"].append(tags.get("name") or (tags["building"] if tags["building"] != "yes" else "a building"))
+        elif "landuse" in tags:
+            kinds["land_use"].append(tags["landuse"])
+        elif "man_made" in tags:
+            kinds["structures"].append(tags["man_made"])
+    return kinds
+
+
+def _overpass(lon: float, lat: float, radius_m: int) -> list[dict] | None:
     around = f"(around:{radius_m},{lat},{lon})"
     query = f"""[out:json][timeout:18];
 (way{around}[highway]; way{around}[building]; way{around}[landuse]; nwr{around}[man_made];
  nwr(around:2000,{lat},{lon})[historic];);
 out tags 200;"""
-    r = None
-    # The public map services refuse requests that arrive too close together, and are sometimes down for an hour.
-    # Try each once, then the first again after a pause, with a short limit each time, so a check gives up in about a minute.
-    for wait, host in ((0, OVERPASS[0]), (0, OVERPASS[1]), (5, OVERPASS[0])):
-        time.sleep(wait)
+    global _overpass_back
+    if time.monotonic() < _overpass_back:
+        return None
+    for host in OVERPASS:
         try:
-            r = _client.post(host, data={"data": query}, timeout=20)
+            r = _client.post(host, data={"data": query}, timeout=12)
         except httpx.HTTPError:
             continue
         if r.status_code == 200:
-            break
-    if r is None or r.status_code != 200:
-        raise RuntimeError("The open map services (OpenStreetMap's Overpass servers) did not answer within a minute; they are busy "
-                           "or down. Leave this check for now and carry on; run it again later.")
-    kinds = {"roads": [], "buildings": [], "land_use": [], "structures": [], "historic_within_2km": []}
-    for el in r.json().get("elements", []):
-        tags = el.get("tags", {})
-        if "historic" in tags:
-            kinds["historic_within_2km"].append(tags.get("name") or tags["historic"])
-        elif "highway" in tags:
-            kinds["roads"].append(tags.get("name") or tags["highway"])
-        elif "building" in tags:
-            kinds["buildings"].append(tags.get("name") or tags["building"])
-        elif "landuse" in tags:
-            kinds["land_use"].append(tags["landuse"])
-        elif "man_made" in tags:
-            kinds["structures"].append(tags["man_made"])
+            return r.json().get("elements", [])
+    # Both are down. Do not make the next ten minutes of checks wait for them again.
+    _overpass_back = time.monotonic() + 600
+    return None
+
+
+def _map_box(lon: float, lat: float, reach_m: float) -> list[dict] | None:
+    """Everything OpenStreetMap's own map service holds in a square around a point. None when it refuses or is down."""
+    dy, dx = reach_m / 111_320, reach_m / (111_320 * max(0.1, math.cos(math.radians(lat))))
+    try:
+        r = _client.get(OSM_MAP, params={"bbox": f"{lon - dx:.6f},{lat - dy:.6f},{lon + dx:.6f},{lat + dy:.6f}"}, timeout=25)
+    except httpx.HTTPError:
+        return None
+    return r.json().get("elements", []) if r.status_code == 200 else None  # 400 means the square holds too much
+
+
+def _within(elements: list[dict], lon: float, lat: float, reach_m: float) -> set:
+    """Which elements come within reach of the point. A way is measured along its line, as the Overpass servers do."""
+    k = 111_320 * math.cos(math.radians(lat))
+    spot = {e["id"]: ((e["lon"] - lon) * k, (e["lat"] - lat) * 111_320) for e in elements if e.get("type") == "node"}
+
+    def to_line(a, b) -> float:
+        (ax, ay), (bx, by) = a, b
+        ux, uy = bx - ax, by - ay
+        t = 0 if not (ux or uy) else max(0, min(1, -(ax * ux + ay * uy) / (ux * ux + uy * uy)))
+        return math.hypot(ax + t * ux, ay + t * uy)
+
+    close: set = set()
+    for e in elements:
+        if e.get("type") == "node" and math.hypot(*spot[e["id"]]) <= reach_m:
+            close.add(("node", e["id"]))
+        elif e.get("type") == "way":
+            pts = [spot[n] for n in e.get("nodes", []) if n in spot]
+            if any(to_line(a, b) <= reach_m for a, b in zip(pts, pts[1:] or pts)):
+                close.add(("way", e["id"]))
+    for e in elements:
+        if e.get("type") == "relation" and any((m.get("type"), m.get("ref")) in close for m in e.get("members", [])):
+            close.add(("relation", e["id"]))
+    return close
+
+
+def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
+    """What OpenStreetMap has mapped around a point: roads, buildings, land use, and known sites.
+
+    There are two ways in. The Overpass servers answer exactly this question, but they are public and often full.
+    OpenStreetMap's own map service hands over everything in a small square, and the sorting is done here.
+    """
+    historic_m, via = 2000, "the Overpass servers"
+    found = _overpass(lon, lat, radius_m)
+    if found is not None:
+        kinds = _sort(found)
+    else:
+        via = "OpenStreetMap's map service"
+        box = _map_box(lon, lat, 2000)
+        if box is None:
+            # A square of 4 km can hold more than the service gives at once (a town does). Ask for the radius alone.
+            box, historic_m = _map_box(lon, lat, radius_m), radius_m
+        if box is None:
+            raise RuntimeError("The open map services (OpenStreetMap's Overpass servers and its own map service) did not answer; "
+                               "they are busy or down. Leave this check for now and carry on; run it again later.")
+        kinds = _sort(box, _within(box, lon, lat, radius_m), _within(box, lon, lat, historic_m))
     out = {k: sorted(set(v)) for k, v in kinds.items()}
-    nearby = sum(len(kinds[k]) for k in ("roads", "buildings", "land_use", "structures"))
-    out["mapped_features_within_radius"] = nearby
+    out["mapped_features_within_radius"] = sum(len(kinds[k]) for k in ("roads", "buildings", "land_use", "structures"))
     out["radius_m"] = radius_m
+    out["historic_searched_within_m"] = historic_m
+    out["asked"] = via
     return out
 
 

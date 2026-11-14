@@ -239,7 +239,7 @@ enum ToolGuide {
                    // The same servers, in the same order, that the modern-features check asks.
                    alsoProbe: ["https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%3Bnode%281%29%3Bout%3B",
                                "https://overpass.private.coffee/api/interpreter?data=%5Bout%3Ajson%5D%3Bnode%281%29%3Bout%3B"],
-                   alsoNote: "Place search answers, but OpenStreetMap's map servers (Overpass) do not. The check for modern features near a find fails until they are back. Everything else works."),
+                   alsoNote: "Place search answers. OpenStreetMap's Overpass servers do not, so the check for modern features uses OpenStreetMap's own map service, which is a little slower."),
         DataSource(name: "OpenAlex",
                    what: "An open index of scholarly books and papers.",
                    gives: "Titles, abstracts and links to open copies for the literature search.",

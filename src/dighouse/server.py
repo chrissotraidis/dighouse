@@ -469,10 +469,16 @@ def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
         p.note(f"Could not check for modern features near {candidate}: the open map services did not answer")
         raise
     n = found["mapped_features_within_radius"]
-    summary = f"{n} mapped modern feature(s) within {radius_m} m" if n else f"nothing modern mapped within {radius_m} m"
+    # Say what is there, in words: "paths or roads (footway, track); buildings (Museum)".
+    near = [f"{what} ({', '.join(x.replace('_', ' ') for x in found[key][:4])})" for key, what in
+            (("roads", "paths or roads"), ("buildings", "buildings"), ("land_use", "land in use"), ("structures", "structures")) if found[key]]
+    summary = f"within {radius_m} m open maps show {'; '.join(near)}" if near else f"nothing modern mapped within {radius_m} m"
     if found["historic_within_2km"]:
-        summary += f"; historic places mapped within 2 km: {', '.join(found['historic_within_2km'][:6])}"
-    ledger.set_check(p, candidate, "modern", {"likely_modern": n > 0, "summary": summary})
+        reach = found.get("historic_searched_within_m", 2000)
+        summary += (f"; historic places mapped within {'2 km' if reach == 2000 else f'{reach} m'}: "
+                    f"{', '.join(x.replace('_', ' ') for x in found['historic_within_2km'][:6])}")
+    ledger.set_check(p, candidate, "modern", {"likely_modern": n > 0, "summary": summary, "radius_m": radius_m,
+                                              "near": [w.split(" (")[0] for w in near]})
     return {"candidate": candidate, **found, "summary": summary}
 
 

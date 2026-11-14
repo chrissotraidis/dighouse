@@ -72,3 +72,14 @@ HANDOFF.md has the full list. In short:
 6. Stop when R1 to R7 are checked, when a decision is needed from Chris, or when the time Chris set runs out. Before stopping, write in the Log what is half done and where, and update HANDOFF.md.
 
 ## Log
+
+### R1, the short list: done 2026-11-14
+
+- **The mark opens Home.** The mark and the name at the top of the sidebar are one button. Pressed from the Toolbox, Settings and an open project, each time the title bar read Home.
+- **The report has a ceiling of 400 words.** Decisions come first, one line per find with the agent's suggestion and what each check showed. Finds that do not fit are counted: "13 more finds wait for your decision." Notes are written in full when there is room and cut at a clause when there is not. An offline test builds 20 finds with long notes and gets a report under 400 words. The Serpent Mound report went from 546 words to 376 with all three finds in full.
+- **The map check has a second way in.** When both Overpass servers fail, check_modern asks OpenStreetMap's own map service for a 4 km square, and sorts roads, buildings and mapped sites by distance itself. If the square holds too much, it asks for the radius alone and says how far it looked. Servers that failed are left alone for ten minutes, so the next check does not wait for them. Overpass was still down (502 and a timeout). In the app, Terra ran the check on C-001, C-002 and C-003 of the Serpent Mound search and all three succeeded: paths near each, the museum near two, and Serpent Mound itself among the mapped sites. The record and the report now say what the map shows ("Open maps: paths or roads and buildings within 150 m").
+- **Models says what the model list says.** Step names are spelled out (Medium, Extra high). The line under the slider is the list's own description, with "The default for this model" on the default step. Read in the app for all six of Terra's steps and all five of Gemini 3.8 Flash's; each matched ~/.codex/opencodex-catalog.json. The same line is in the message-box panel.
+- **Testing is gone:** the Test buttons, Test both, and the "tested / not tested" notes in Settings and in the model list. A model that fails says so in the chat. The word "tested" is on neither screen.
+- **Tests:** 12 offline pass (two added: the second way in, and the ceiling).
+- **Not checked:** the fallback in a town dense enough to make the map service refuse the 4 km square, other than in the offline test.
+- **Pictures:** [the report](loop5/r1-report.jpg), [Models](loop5/r1-models.jpg), [the model panel](loop5/r1-model-panel.jpg).

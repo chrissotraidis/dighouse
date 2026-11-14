@@ -262,9 +262,17 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 2) {
             Color.clear.frame(height: 40).background(WindowDragArea())
             HStack(spacing: 9) {
-                MoundMark(working: !chat.live.isEmpty || app.secondLookBusy != nil || app.starting, lively: true).frame(width: 34, height: 15)
-                    .help(chat.live.isEmpty && app.secondLookBusy == nil ? "Dighouse" : "The agent is working")
-                Text("Dighouse").font(.system(size: 15 * Theme.scale, weight: .bold))
+                // The mark and the name are the way home, as a logo is on a website.
+                Button { app.goHome() } label: {
+                    HStack(spacing: 9) {
+                        MoundMark(working: !chat.live.isEmpty || app.secondLookBusy != nil || app.starting, lively: true).frame(width: 34, height: 15)
+                        Text("Dighouse").font(.system(size: 15 * Theme.scale, weight: .bold))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(chat.live.isEmpty && app.secondLookBusy == nil ? "Go to Home" : "The agent is working. Go to Home")
+                .accessibilityLabel("Dighouse, go to Home")
                 Spacer()
             }
             .padding(.horizontal, 10).padding(.bottom, 8)

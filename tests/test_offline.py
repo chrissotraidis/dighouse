@@ -128,8 +128,9 @@ def test_a_map_service_that_is_down_leaves_the_check_open(tmp_path, monkeypatch)
     def down(*args, **kwargs):
         raise httpx.ConnectTimeout("no answer")
 
+    monkeypatch.setattr(checks, "_overpass_back", 0.0)
     monkeypatch.setattr(checks._client, "post", down)
-    monkeypatch.setattr(checks.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(checks._client, "get", down)
     with pytest.raises(RuntimeError, match="did not answer"):
         server.check_modern(root, "C-001")
     assert "modern" not in ledger.get(p, "C-001")[0]["checks"]
@@ -146,9 +147,60 @@ def test_a_map_service_that_is_down_leaves_the_check_open(tmp_path, monkeypatch)
             return {"elements": [{"tags": {"highway": "track"}}, {"tags": {"historic": "archaeological_site", "name": "Old Fort"}}]}
 
     monkeypatch.setattr(checks._client, "post", lambda *args, **kwargs: Reply())
+    monkeypatch.setattr(checks, "_overpass_back", 0.0)  # the ten minutes of not asking the servers that were down are over
     got = server.check_modern(root, "C-001")
     assert got["mapped_features_within_radius"] == 1 and got["historic_within_2km"] == ["Old Fort"]
+    assert got["summary"] == "within 150 m open maps show paths or roads (track); historic places mapped within 2 km: Old Fort"
     assert ledger.get(p, "C-001")[0]["checks"]["modern"]["likely_modern"] is True
+
+
+def test_the_map_check_has_a_second_way_in(monkeypatch):
+    """With the Overpass servers down, OpenStreetMap's own map service is asked for a square and the sorting is done here."""
+    import httpx
+
+    def down(*args, **kwargs):
+        raise httpx.ConnectTimeout("no answer")
+
+    def node(i, east_m, north_m, **tags):
+        return {"type": "node", "id": i, "lon": east_m / 111_320, "lat": north_m / 111_320, **({"tags": tags} if tags else {})}
+
+    square = [node(1, -500, 40), node(2, 500, 40),      # a track that passes 40 m north of the point
+              node(3, 900, 900), node(4, 950, 950),      # a house 1.3 km away
+              node(5, 0, 1500, historic="archaeological_site", name="Old Fort"),
+              node(6, 3000, 3000, historic="memorial", name="Too far"),
+              node(7, 20, 0, man_made="mast"), node(8, 10, 10, highway="crossing"),
+              {"type": "way", "id": 1, "nodes": [1, 2], "tags": {"highway": "track"}},
+              {"type": "way", "id": 2, "nodes": [3, 4, 3], "tags": {"building": "house"}}]
+    asked = []
+
+    class Reply:
+        status_code = 200
+
+        def json(self):
+            return {"elements": square}
+
+    def get(url, params=None, **kwargs):
+        asked.append(params["bbox"])
+        return Reply()
+
+    monkeypatch.setattr(checks, "_overpass_back", 0.0)
+    monkeypatch.setattr(checks._client, "post", down)
+    monkeypatch.setattr(checks._client, "get", get)
+    got = checks.modern_features(0.0, 0.0, 150)
+    # The track counts though neither of its ends is within 150 m; the far house, the far memorial and a tagged node on a road do not.
+    assert got["roads"] == ["track"] and got["buildings"] == [] and got["structures"] == ["mast"]
+    assert got["historic_within_2km"] == ["Old Fort"] and got["mapped_features_within_radius"] == 2
+    assert got["asked"] == "OpenStreetMap's map service" and got["historic_searched_within_m"] == 2000
+
+    # A square that holds too much is refused; the radius alone is asked for, and the answer says how far it looked.
+    class Refused:
+        status_code = 400
+
+    replies = [Refused(), Reply()]
+    monkeypatch.setattr(checks._client, "get", lambda url, params=None, **kwargs: replies.pop(0))
+    got = checks.modern_features(0.0, 0.0, 150)
+    assert got["historic_searched_within_m"] == 150 and got["historic_within_2km"] == [] and got["roads"] == ["track"]
+
 
 
 def test_a_refused_page_says_to_log_it(monkeypatch):
@@ -268,12 +320,12 @@ def test_the_search_report_says_what_the_records_say(tmp_path):
         server.write_report(root, "Look again near 51.00512, 0.00498.")
     got = server.write_report(root, "Try the sky view on the next tile north.")
     text = p.path(got["written"]).read_text()
-    assert got["waiting_for_a_person"] == [cid] and got["words"] < 500
-    for heading in ("What was asked", "The data used", "What was looked at", "What was flagged, and why", "What is already published",
-                    "What was ruled out", "What needs your decision", "What to try next"):
-        assert f"## {heading}" in text
+    assert got["waiting_for_a_person"] == [cid] and got["words"] < 400
+    headings = ("What needs your decision", "What was asked", "What was done", "What is already published",
+                "What was ruled out or decided", "What to try next")
+    assert [l[3:] for l in text.splitlines() if l.startswith("## ")] == list(headings)
     assert "Is the bank built?" in text and "TEST_2020" in text and "2 of 2" in text and "1 looked built, 1 natural" in text
-    assert "A straight low bank across the slope" in text and "measured 0.8 m, in the ground" in text and "no second model has looked yet" in text
+    assert "Slice: 0.8 m high, in the ground" in text and "Second model: has not looked" in text
     assert "A county survey, 1998" in text and "https://example.org/survey" in text
     assert "1 tile showed natural ground." in text
     assert "The agent suggests: already published." in text and "Try the sky view on the next tile north." in text
@@ -283,7 +335,40 @@ def test_the_search_report_says_what_the_records_say(tmp_path):
     # A decision changes the report, and rebuilding it the same day keeps the agent's advice.
     server.set_status(root, cid, "already_published", decided_by="Chris", reason="In the county survey.")
     again = p.path(server.write_report(root)["written"]).read_text()
-    assert "Nothing. 1 find has been decided" in again and "Try the sky view on the next tile north." in again
+    assert "Nothing. Every find has been decided." in again and "1 find has been decided: C-001, already published, by Chris" in again
+    assert "Try the sky view on the next tile north." in again
+
+
+def test_the_search_report_has_a_ceiling(tmp_path):
+    """Twenty finds, long notes and long advice still give a report under 400 words, with the decisions first."""
+    from dighouse import ledger, report
+
+    root = str(tmp_path / "many")
+    p = Project.create(root, "Twenty finds", "Which of the banks on this ridge were built? " * 6, [0.0, 51.0, 0.01, 51.01])
+    p.save("terrains", {f"t{i}": {"dataset": f"usgs:TEST_{i}", "area_km2": 0.5, "ground_points_per_m2": 6.2, "res": 0.5} for i in range(4)})
+    p.save("tiles", {f"t1-r000c{i:03d}": {"terrain": "t1", "window": [0, 0, 500, 500], "status": "screened", "verdict": "built",
+                                          "note": "A bank", "model": "model-a"} for i in range(20)})
+    long = "A straight low bank that crosses the slope and turns a corner by the stream, seen in both views of the tile. " * 4
+    for i in range(20):
+        cid = ledger.create(p, f"Low bank number {i + 1} on the long ridge", f"t1-r000c{i:03d}", (0.005, 51.005), long, "model-a")["id"]
+        ledger.set_check(p, cid, "section", {"feature_height_m": 0.8, "in_ground": True, "ground_returns_within_5m_of_peak": 40})
+        ledger.set_check(p, cid, "second_look", {"agrees": i % 2 == 0, "model": "model-b", "note": long})
+        ledger.set_check(p, cid, "modern", {"likely_modern": False, "summary": "nothing modern mapped within 150 m"})
+        for n in range(4):
+            ledger.add_source(p, cid, f"A long county survey title that goes on, volume {n}", "read", long, "https://example.org/survey")
+        ledger.suggest(p, cid, "already_published", long, "model-a")
+    for i in range(5):
+        ledger.set_status(p, f"C-{16 + i:03d}", "natural", decided_by="Chris", reason=long)
+
+    got = server.write_report(root, long * 3)
+    text = p.path(got["written"]).read_text()
+    assert got["words"] == report.count(text) < report.LIMIT == 400
+    assert len(got["waiting_for_a_person"]) == 15
+    # The decisions come first, the first finds are named, and the rest are counted, not dropped without a word.
+    assert text.index("## What needs your decision") < text.index("## What was asked")
+    shown = text.count("](../candidates/C-")
+    assert shown >= 2 and "C-001" in text and f"{15 - shown} more finds wait for your decision" in text
+    assert "5 finds have been decided: 5 natural feature." in text
 
 
 def test_a_stopped_run_is_on_the_record(tmp_path):

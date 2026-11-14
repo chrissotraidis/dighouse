@@ -727,7 +727,7 @@ private struct MoreTab: View {
             .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
 
         PageSection(title: "Already on this Mac",
-                    caption: "Dighouse runs on the same engine as the Codex app, so whatever you connected there works here too. Ask for it in plain words, for example \"copy these records into Notion\". These come from your Codex setup, and Dighouse has not tested each one.") {
+                    caption: "Dighouse runs on the same engine as the Codex app, so whatever you connected there works here too. Ask for it in plain words, for example \"copy these records into Notion\". These come from your Codex setup.") {
             if engine.plugins.isEmpty && engine.connections.isEmpty {
                 Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
             }

@@ -121,15 +121,6 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(try? JSONEncoder().encode(toolServers), forKey: "toolServers") }
     }
 
-    /// The last test of each model, by model id. Kept between launches.
-    @Published var modelChecks: [String: ModelCheck] = (UserDefaults.standard.data(forKey: "modelChecks"))
-        .flatMap { try? JSONDecoder().decode([String: ModelCheck].self, from: $0) } ?? [:] {
-        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(modelChecks), forKey: "modelChecks") }
-    }
-    @Published var testingModel: String?
-    private var modelTests: [String: (model: String, effort: String?)] = [:]
-    private var modelTestErrors: [String: String] = [:]
-
     private var titleQueue: [(chat: String, text: String)] = []
     private var titleJobs: [String: String] = [:]
     private var titleReplies: [String: String] = [:]
@@ -209,16 +200,6 @@ final class AppState: ObservableObject {
                         self.nextTitle()
                     }
                 }
-                return
-            }
-            if method == "error", let thread = params["threadId"] as? String, self.modelTests[thread] != nil,
-               let message = (params["error"] as? JSON)?["message"] as? String {
-                self.modelTestErrors[thread] = EngineError.plain(message)  // the engine retries, so keep the provider's reason
-                return
-            }
-            if method == "turn/completed", let thread = params["threadId"] as? String, let test = self.modelTests.removeValue(forKey: thread) {
-                let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String
-                self.finishTest(test.model, test.effort, failure.map(EngineError.plain))
                 return
             }
             if method == "turn/completed", let thread = params["threadId"] as? String,
@@ -696,36 +677,6 @@ final class AppState: ObservableObject {
         let line = reply.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
         let bare = line.trimmingCharacters(in: CharacterSet(charactersIn: " \"'*#.`“”‘’"))
         return bare.split(separator: " ").prefix(6).joined(separator: " ")
-    }
-
-    /// Send a model one short message at one effort step, and keep whether it answered.
-    func testModel(_ id: String, effort: String?) {
-        guard testingModel == nil else { return }
-        testingModel = id
-        Task { @MainActor in
-            do {
-                let started = try await engine.request("thread/start", [
-                    "cwd": Paths.support.path, "ephemeral": true, "approvalPolicy": "never", "sandbox": "read-only", "model": id,
-                ])
-                guard let thread = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
-                modelTests[thread] = (id, effort)
-                var params: JSON = ["threadId": thread, "model": id, "input": [["type": "text", "text": "Reply with the single word OK. Do not use any tools."]]]
-                if let effort { params["effort"] = effort }
-                _ = try await engine.request("turn/start", params)
-                try? await Task.sleep(for: .seconds(120))
-                if modelTests.removeValue(forKey: thread) != nil {
-                    let reason = modelTestErrors.removeValue(forKey: thread)
-                    finishTest(id, effort, "No answer within two minutes." + (reason.map { " The provider said: \($0)" } ?? ""))
-                }
-            } catch {
-                finishTest(id, effort, error.localizedDescription)
-            }
-        }
-    }
-
-    private func finishTest(_ id: String, _ effort: String?, _ failure: String?) {
-        modelChecks[id] = ModelCheck(ok: failure == nil, effort: effort, message: failure ?? "Answered", date: Date())
-        if testingModel == id { testingModel = nil }
     }
 
     /// Ask a different model for an independent opinion on a candidate, in its own short conversation.

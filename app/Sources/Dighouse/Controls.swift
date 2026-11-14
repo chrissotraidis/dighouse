@@ -487,7 +487,7 @@ struct StepSlider: View {
                     let usable = max(geo.size.width - knob, 1)
                     let last = CGFloat(max(steps.count - 1, 1))
                     ForEach(steps.indices, id: \.self) { i in
-                        Text(Effort.short(steps[i])).font(.system(size: 10.5 * Theme.scale, weight: steps[i] == value ? .semibold : .regular))
+                        Text(Effort.label(steps[i])).font(.system(size: 10.5 * Theme.scale, weight: steps[i] == value ? .semibold : .regular))
                             .foregroundStyle(steps[i] == value ? Theme.text : Theme.faint).fixedSize()
                             .position(x: knob / 2 + usable * CGFloat(i) / last, y: 7)
                     }
@@ -511,7 +511,6 @@ struct StepSlider: View {
 struct ModelList: View {
     let models: [ModelInfo]
     let current: String?
-    var checks: [String: ModelCheck] = [:]
     /// Models picked lately, shown first under "Recent".
     var recent: [String] = []
     let pick: (ModelInfo) -> Void
@@ -567,12 +566,8 @@ struct ModelList: View {
     }
 
     private func row(_ model: ModelInfo) -> some View {
-        // The same row as every other menu, with what is known about the model on the right.
-        let check = checks[model.id]
-        let notes = [model.readsImages ? nil : "text only", check.map { $0.ok ? "tested" : "failed test" }].compactMap { $0 }
-        return MenuRow(entry: MenuEntry(title: model.name, note: notes.isEmpty ? nil : notes.joined(separator: " · "),
-                                        warn: check?.ok == false, checked: model.id == current)) { pick(model) }
-            .help(check.map { $0.ok ? "Answered a test message\($0.effort.map { " at \(Effort.label($0))" } ?? "")." : $0.message } ?? "")
+        // The same row as every other menu, with what the model list says about the model on the right.
+        MenuRow(entry: MenuEntry(title: model.name, note: model.readsImages ? nil : "text only", checked: model.id == current)) { pick(model) }
     }
 }
 
@@ -581,7 +576,6 @@ struct ModelPicker: View {
     let title: String
     let models: [ModelInfo]
     let current: String?
-    var checks: [String: ModelCheck] = [:]
     let pick: (ModelInfo) -> Void
     @State private var open = false
 
@@ -597,7 +591,7 @@ struct ModelPicker: View {
         }
         .buttonStyle(.plain)
         .popover(isPresented: $open, arrowEdge: .bottom) {
-            ModelList(models: models, current: current, checks: checks) { model in
+            ModelList(models: models, current: current) { model in
                 pick(model)
                 open = false
             }

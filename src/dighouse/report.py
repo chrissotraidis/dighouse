@@ -13,6 +13,7 @@ from . import ledger, record
 from .project import Project, commit
 
 ADVICE = "**The agent adds:** "
+LIMIT = 400  # words in a report, however many finds there are
 PUBLISHERS = {"usgs": "USGS 3DEP", "ot": "OpenTopography", "uk": "the Environment Agency (England)", "nl": "AHN (Netherlands)",
               "fr": "IGN (France)", "own": "a file added by a person"}
 
@@ -28,7 +29,10 @@ def _first(text: str, limit: int) -> str:
     if cut and cut.start() <= limit:
         text = text[: cut.start()]
     if len(text) > limit:
-        return text[:limit].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+        # Stop at the end of a clause when one is near, so the cut does not fall in the middle of a thought.
+        whole = text[:limit].rsplit(" ", 1)[0]
+        clause = max(whole.rfind(", "), whole.rfind("; "), whole.rfind(": "))
+        return (whole[:clause] if clause > limit * 0.6 else whole).rstrip(",;:") + "…"
     return text.rstrip(".;") + "." if text else ""
 
 
@@ -39,38 +43,55 @@ def _short(text: str, limit: int) -> str:
 
 
 def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
-    """What the checks on a find showed, as one sentence. With maps off, the map check is left for a line of its own."""
+    """What the checks on a find showed, in a few words each. With maps off, the map check is left for a line of its own."""
     c, parts = m["checks"], []
     sec = c.get("section")
     if isinstance(sec, dict):
-        parts.append(f"a section through the laser points measured {sec.get('feature_height_m', '?')} m, "
+        parts.append(f"Slice: {sec.get('feature_height_m', '?')} m high, "
                      + ("in the ground" if sec.get("in_ground") else "not clearly in the ground"))
     else:
-        parts.append("no section yet")
+        parts.append("Slice: not cut yet")
     second = c.get("second_look")
     if isinstance(second, dict):
-        parts.append(f"a second model ({record._clean(second.get('model', ''), 40)}) "
-                     + ("agreed it looks built" if second.get("agrees") else "did not agree it looks built"))
+        parts.append("Second model: " + ("agreed it looks built" if second.get("agrees") else "did not agree it looks built"))
     else:
-        parts.append("no second model has looked yet")
+        parts.append("Second model: has not looked")
     modern = c.get("modern")
     if not maps:
         pass
     elif isinstance(modern, dict):
-        parts.append("open maps show modern features close by" if modern.get("likely_modern") else "open maps show nothing modern on it")
+        near = " and ".join(modern.get("near") or []) or "modern features"
+        parts.append("Open maps: " + (f"{near} within {modern.get('radius_m', 150)} m" if modern.get("likely_modern")
+                                      else "nothing modern on it"))
     elif m["id"] in failed_maps:
-        parts.append("open maps could not be checked, because the map service did not answer")
+        parts.append("Open maps: did not answer")
     else:
-        parts.append("open maps not checked yet")
-    text = "; ".join(parts) + "."
-    return text[0].upper() + text[1:]
+        parts.append("Open maps: not checked")
+    return ". ".join(parts) + "."
+
+
+def _fewer(text: str) -> str:
+    """A long run of find numbers cut to the first two and a count."""
+    def cut(run: re.Match) -> str:
+        ids = run.group(0).split(", ")
+        return run.group(0) if len(ids) <= 3 else f"{ids[0]}, {ids[1]} and {len(ids) - 2} more"
+    return re.sub(r"C-\d+(?:, C-\d+)+", cut, text)
+
+
+def count(text: str) -> int:
+    """Words a person reads: link addresses do not count."""
+    return len(re.findall(r"[\w'’-]+", re.sub(r"\]\([^)]*\)", "]", text)))
 
 
 def write(p: Project, advice: str = "") -> dict:
-    """Write today's search report in reports/ and link it from the research record."""
+    """Write today's search report in reports/ and link it from the research record.
+
+    The report stays under LIMIT words however many finds there are. The finds that wait for a decision come first,
+    as many as fit, and the rest are counted and left to the research record.
+    """
     advice = " ".join(advice.split())
     if record.COORD.search(advice):
-        raise ValueError("The advice looks like it holds coordinates. Refer to places by candidate id instead.")
+        raise ValueError("The advice looks like it holds coordinates. Refer to places by find number instead.")
     f = p.path("reports", f"{dt.date.today().isoformat()}-search-report.md")
     if not advice and f.exists():
         # Rebuilt after more work the same day: keep what the agent advised.
@@ -85,50 +106,52 @@ def write(p: Project, advice: str = "") -> dict:
     unreadable = sum(t["status"] == "unreadable" for t in tiles.values())
     counts = {v: sum(t.get("verdict") == v for t in screened) for v in record.VERDICT_WORDS}
     open_ = [m for m in records if m["status"] in ("flagged", "ground_confirmed")]
+    decided = [m for m in records if m not in open_]
 
-    L = [f"# Search report: {name}", "",
-         f"{dt.datetime.now():%Y-%m-%d %H:%M}. Written by Dighouse from the project's records. Nothing here is called new, "
-         "and locations are left out.", ""]
+    # Written with room to spare when there is room, and cut short when there are many finds.
+    tight = {"finding": 100, "advice": 200, "question": 160, "sources": 1}
+    for cut in ({"reason": 190, "finding": 170, "advice": 320, "question": 220, "sources": 2}, {"reason": 190, **tight},
+                {"reason": 150, **tight}, {"reason": 100, **tight}):
+        text, shown = _build(p, name, terrains, tiles, records, open_, decided, counts, screened, unreadable, failed_maps, advice, cut)
+        if shown == len(open_):
+            break
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(text)
+    p.note(f"Wrote the search report {f.name}")
+    record.document(p, commit_it=False)
+    commit(p.root, f"Search report {dt.date.today().isoformat()}")
+    return {"written": f"reports/{f.name}", "words": count(text), "waiting_for_a_person": [m["id"] for m in open_]}
 
-    L += ["## What was asked", "", record.question(p) or "No question was written down for this project.", ""]
 
-    L += ["## The data used", ""]
-    for t in sorted(terrains.values(), key=lambda t: t.get("dataset") or ""):
+def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, unreadable, failed_maps, advice, cut) -> tuple[str, int]:
+    """The report's text and how many of the waiting finds it names, with notes cut to the lengths given."""
+    top = [f"# Search report: {_short(name, 80)}", "",
+           f"{dt.datetime.now():%Y-%m-%d %H:%M}. Written by Dighouse from the project's records. Nothing here is called new, "
+           "and locations are left out.", ""]
+
+    # Everything after the decisions is built first, so the finds can take the words that are left.
+    L = ["## What was asked", "", _short(record.question(p), cut["question"]) or "No question was written down for this project.", ""]
+
+    L += ["## What was done", ""]
+    for t in sorted(terrains.values(), key=lambda t: t.get("dataset") or "")[:1]:
         dataset = t.get("dataset") or ""
         kind = dataset.split(":")[0]
         where = "a file a person added" if kind == "own" else f"open lidar from {t.get('source') or PUBLISHERS.get(kind, 'an open archive')}"
-        L.append(f"- {dataset.split(':', 1)[-1]}, {where}: {(t.get('area_km2') or 0):.2f} sq km, "
+        L.append(f"- {_short(dataset.split(':', 1)[-1], 50)}, {_short(where, 70)}: {(t.get('area_km2') or 0):.2f} sq km, "
                  + (f"{record.density(t)} laser points per square metre reached the ground."
                     if isinstance(t.get("ground_points_per_m2"), (int, float)) else "a ground model that was already built."))
-    if not terrains:
-        L.append("None yet: no terrain was fetched.")
-    L.append("")
-
-    L += ["## What was looked at", ""]
+    if len(terrains) > 1:
+        L.append(f"- And {_s(len(terrains) - 1, 'more survey')}.")
     if tiles:
         parts = [f"{counts[v]} {w}" for v, w in record.VERDICT_WORDS.items() if counts[v]]
-        L.append(f"The ground was cut into {_s(len(tiles), 'tile')}, each a square of ground. {len(screened)} of {len(tiles)} "
-                 f"{'was' if len(screened) == 1 else 'were'} looked at, each in two views"
-                 + (f": {', '.join(parts)}." if parts else ".")
-                 + (f" {_s(unreadable, 'tile')} could not be read, because the laser did not reach the ground there." if unreadable else ""))
         left = sum(t["status"] == "unscreened" for t in tiles.values())
-        if left:
-            L.append(f"{_s(left, 'tile')} {'has' if left == 1 else 'have'} not been looked at yet.")
-    else:
-        L.append("Nothing yet.")
-    L.append("")
-
-    L += ["## What was flagged, and why", ""]
-    # When the map service was down for every find, that is said once, under the finds.
-    no_maps = bool(records) and all("modern" not in m["checks"] and m["id"] in failed_maps for m in records)
-    for m in records:
-        why = _first(m["evidence"][0], 150) if m.get("evidence") else "No note was left."
-        L += [f"- **[{m['id']} {_short(m['name'], 60)}](../candidates/{m['id']}.md).** {why} {_checks(m, failed_maps, not no_maps)}"]
-    if not records:
-        L += ["Nothing was flagged as looking built."]
-    if no_maps:
-        L += ["", "Open maps could not be checked for modern features near "
-              + ("it" if len(records) == 1 else "any of them") + ": the map service did not answer."]
+        L.append(f"- The ground was cut into {_s(len(tiles), 'square tile')}. {len(screened)} of {len(tiles)} "
+                 f"{'was' if len(screened) == 1 else 'were'} looked at"
+                 + (f": {', '.join(parts)}." if parts else ".")
+                 + (f" {_s(unreadable, 'tile')} could not be read, because the laser did not reach the ground." if unreadable else "")
+                 + (f" {_s(left, 'tile')} {'is' if left == 1 else 'are'} still to look at." if left else ""))
+    elif not terrains:
+        L.append("Nothing yet: no ground has been fetched.")
     L.append("")
 
     L += ["## What is already published", ""]
@@ -140,65 +163,70 @@ def write(p: Project, advice: str = "") -> dict:
             if s["status"] == "read":
                 entry.update(status="read", finding=s["finding"], link=s.get("link") or entry.get("link", ""))
     read = [s for s in sources.values() if s["status"] == "read"]
-    for s in read[:3]:
+    for s in read[:cut["sources"]]:
         link = f" ([link]({s['link']}))" if s.get("link") else ""
-        L.append(f"- **{_short(s['title'], 90)}**{link}. {_first(s.get('finding', ''), 170)}")
-    if len(read) > 3:
-        L.append(f"- And {len(read) - 3} more that were read, listed in the research record.")
+        L.append(f"- **{_short(s['title'], 70)}**{link}. {_first(s.get('finding', ''), cut["finding"])}")
     unopened = sum(s["status"] == "could_not_open" for s in sources.values())
+    rest = [_s(len(read) - cut["sources"], "more source") + " read"] if len(read) > cut["sources"] else []
+    rest += [f"{unopened} could not be opened by the agent"] if unopened else []
     if not read:
-        L.append("No source has been read yet, so nothing can be said about what is published." if records
-                 else "Nothing was flagged, so no source was read against a find.")
-    if unopened:
-        L.append(f"- {_s(unopened, 'source')} could not be opened by the agent. You can open {'it' if unopened == 1 else 'them'} "
-                 "in the Sources tab and hand the page over.")
+        L.append("No source has been read yet." if records else "Nothing was marked, so no source was read against a find.")
+    if rest:
+        text = " and ".join(rest)
+        L.append(f"- {text[0].upper() + text[1:]}. The Sources tab lists them.")
     L.append("")
 
-    L += ["## What was ruled out", ""]
-    ruled = []
-    for v, words in (("natural", "natural ground"), ("modern", "modern features"), ("nothing", "nothing built")):
-        if counts[v]:
-            ruled.append(f"- {_s(counts[v], 'tile')} showed {words}.")
-    for m in records:
-        last = m["decisions"][-1] if m.get("decisions") else None
-        if last and last["status"] in ("modern", "natural"):
-            ruled.append(f"- {m['id']} was decided to be a {last['status']} feature by {last['by']}: {_first(last.get('reason', ''), 150)}")
-    L += ruled or ["Nothing was ruled out."]
-    L.append("")
+    ruled = [f"{_s(counts[v], 'tile')} showed {words}" for v, words in
+             (("natural", "natural ground"), ("modern", "modern features"), ("nothing", "nothing built")) if counts[v]]
+    if decided:
+        if len(decided) <= 2:
+            shown = "; ".join(f"{m['id']}, {ledger.LABELS.get(m['status'], m['status']).lower()}"
+                              + (f", by {_short(m['decisions'][-1]['by'], 30)}" if m.get("decisions") else "") for m in decided)
+        else:
+            labels = [ledger.LABELS.get(m["status"], m["status"]).lower() for m in decided]
+            shown = ", ".join(f"{labels.count(l)} {l}" for l in dict.fromkeys(labels))
+        ruled.append(f"{_s(len(decided), 'find')} {'has' if len(decided) == 1 else 'have'} been decided: {shown}")
+    L += ["## What was ruled out or decided", "", (". ".join(r[0].upper() + r[1:] for r in ruled) + ".") if ruled else "Nothing yet.", ""]
 
-    L += ["## What needs your decision", ""]
+    L += ["## What to try next", ""]
+    # The decisions have their own heading, and the record's "listed below" does not hold here.
+    todo = [f"- {_short(_fewer(t), 90)}" for t in record.still_to_do(p) if not t.startswith(("Decide ", "Try the "))][:2]
+    L += todo
+    if advice:
+        L += ([""] if todo else []) + [ADVICE + _first(advice, cut["advice"])]
+    elif not todo:
+        L.append("Nothing more: the decisions are what is left.")
+    L += ["", "The full record of this project is in [RESEARCH.md](../RESEARCH.md).", ""]
+
+    D = ["## What needs your decision", ""]
+    # When the map service was down for every find, that is said once, under the finds.
+    no_maps = bool(open_) and all("modern" not in m["checks"] and m["id"] in failed_maps for m in open_)
+    closing = ["", "You decide each one, in the review. The agent only suggests."]
+    if no_maps:
+        closing = ["", "Open maps could not be checked for modern features near "
+                   + ("it" if len(open_) == 1 else "any of them") + ": the map service did not answer."] + closing
+    room = LIMIT - count("\n".join(top + L + closing)) - 20  # 20 words for the heading and the line that counts the rest
+    lines = []
     for m in open_:
         sug = m.get("suggestion")
         if sug:
-            L.append(f"- **{m['id']}.** The agent suggests: {ledger.LABELS.get(sug['status'], sug['status']).lower()}. "
-                     f"{_first(sug.get('reason', ''), 190)}")
+            say = f"The agent suggests: {ledger.LABELS.get(sug['status'], sug['status']).lower()}. {_first(sug.get('reason', ''), cut["reason"])}"
         else:
-            L.append(f"- **{m['id']}.** No suggestion yet.")
-    decided = [m for m in records if m.get("decisions")]
+            say = "No suggestion yet. " + (_first(m["evidence"][0], cut["reason"]) if m.get("evidence") else "")
+        line = f"- **[{m['id']} {_short(m['name'], 45)}](../candidates/{m['id']}.md).** {say} {_checks(m, failed_maps, not no_maps)}"
+        if lines and count("\n".join(lines + [line])) > room:
+            break
+        lines.append(line)
+    D += lines
+    if len(open_) > len(lines):
+        D += ["", f"{_s(len(open_) - len(lines), 'more find')} wait{'s' if len(open_) - len(lines) == 1 else ''} for your decision. "
+              "The research record and the review list every one."]
     if open_:
-        L.append("")
-        L.append("You decide each one, in the review. The agent only suggests.")
-    elif decided:
-        L.append(f"Nothing. {_s(len(decided), 'find')} {'has' if len(decided) == 1 else 'have'} been decided: "
-                 + "; ".join(f"{m['id']}, {ledger.LABELS.get(m['decisions'][-1]['status'], '').lower()}, by {m['decisions'][-1]['by']}" for m in decided) + ".")
+        D += closing
+    elif records:
+        D.append("Nothing. Every find has been decided.")
     else:
-        L.append("Nothing is waiting for a decision.")
-    L.append("")
+        D.append("Nothing. No tile was marked as looking built.")
+    D.append("")
 
-    L += ["## What to try next", ""]
-    # The decisions have their own heading above, and the record's "listed below" does not hold here.
-    L += [f"- {t}" for t in record.still_to_do(p) if not t.startswith(("Decide ", "Try the "))][:3]
-    if advice:
-        L += ["", ADVICE + record._clean(advice, 320)]
-    L += ["", "The full record of this project is in [RESEARCH.md](../RESEARCH.md).", ""]
-
-    text = "\n".join(L)
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(text)
-    p.note(f"Wrote the search report {f.name}")
-    record.document(p, commit_it=False)
-    commit(p.root, f"Search report {dt.date.today().isoformat()}")
-    # Words a person reads: link addresses do not count.
-    words = len(re.findall(r"[\w'’-]+", re.sub(r"\]\([^)]*\)", "]", text)))
-    return {"written": f"reports/{f.name}", "words": words, "waiting_for_a_person": [m["id"] for m in open_]}
-
+    return "\n".join(top + D + L), len(lines)

@@ -174,7 +174,11 @@ final class Engine: ObservableObject {
                     readsImages: inputs.contains("image"), hearsAudio: inputs.contains("audio"),
                     isDefault: m["isDefault"] as? Bool ?? false,
                     efforts: (m["supportedReasoningEfforts"] as? [JSON] ?? []).compactMap { $0["reasoningEffort"] as? String },
-                    defaultEffort: m["defaultReasoningEffort"] as? String))
+                    defaultEffort: m["defaultReasoningEffort"] as? String,
+                    effortNotes: Dictionary((m["supportedReasoningEfforts"] as? [JSON] ?? []).compactMap { step in
+                        guard let id = step["reasoningEffort"] as? String, let note = step["description"] as? String else { return nil }
+                        return (id, note)
+                    }, uniquingKeysWith: { first, _ in first })))
             }
             cursor = page["nextCursor"] as? String
         } while cursor != nil

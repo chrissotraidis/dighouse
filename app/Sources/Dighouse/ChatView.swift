@@ -637,37 +637,17 @@ struct StartTile: View {
 
 // MARK: - Message box
 
+/// The names of the thinking steps. The steps on offer, what each is for and which is the default come from the model list.
 enum Effort {
     static func label(_ id: String) -> String {
         id == "xhigh" ? "Extra high" : id.prefix(1).uppercased() + id.dropFirst()
     }
 
-    static func short(_ id: String) -> String {
-        id == "xhigh" ? "X-high" : id == "medium" ? "Med" : label(id)
-    }
-
-    static func note(_ id: String) -> String {
-        switch id {
-        case "low", "minimal": return "Quick answers. Good for lookups and questions."
-        case "medium": return "A balance of speed and care. Good for most runs."
-        case "high": return "More careful. Good for screening and checks."
-        default: return "Slowest and most thorough. For hard judgement calls."
-        }
-    }
-}
-
-/// Whether the chosen step was tested with this model, so a step on the list is not taken as working.
-private struct EffortTestLine: View {
-    @EnvironmentObject var app: AppState
-    let model: ModelInfo, effort: String
-
-    var body: some View {
-        if let check = app.modelChecks[model.id], check.effort == effort {
-            Text(check.ok ? "Tested at this step: it answered." : "Failed its test at this step. See Settings.")
-                .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(check.ok ? Theme.faint : Theme.amber)
-        } else {
-            Text("Not tested at this step. Settings can test it.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
-        }
+    /// The model list's own line about a step, with a mark on the model's default.
+    static func note(_ id: String, for model: ModelInfo) -> String {
+        let note = model.effortNotes[id] ?? ""
+        let standard = id == model.defaultEffort ? "The default for \(model.name)." : ""
+        return [note.isEmpty || note.hasSuffix(".") ? note : note + ".", standard].filter { !$0.isEmpty }.joined(separator: " ")
     }
 }
 
@@ -707,13 +687,13 @@ struct ModelControl: View {
                             Text(Effort.label(effort)).font(.system(size: 13 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.accent)
                         }
                         StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: false)
-                        Text(Effort.note(effort)).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                        Text(Effort.note(effort, for: model)).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 10)
                     Hairline()
                 }
-                ModelList(models: engine.models, current: app.model?.id, checks: app.modelChecks, recent: app.recentModels) { model in
+                ModelList(models: engine.models, current: app.model?.id, recent: app.recentModels) { model in
                     app.modelID = model.id
                     open = false
                 }
