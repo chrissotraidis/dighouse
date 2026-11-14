@@ -8,7 +8,7 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. His standing complaint is that it is "not there yet": he wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-The third loop is finished. Goals U1 to U12, F1 to F11 and P1 are done. The next loop should start from Chris's next review.
+The third loop is finished (U1 to U12, F1 to F11, P1). The next loop is [POLISH_LOOP.md](POLISH_LOOP.md): register it as your goal. Suggested objective: "Finish the Dighouse loop in docs/POLISH_LOOP.md: goals A1 to A8 are met, each check verified in the running macOS app with the cheap model, logged, committed and merged."
 
 ## Rules
 
