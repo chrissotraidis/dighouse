@@ -20,6 +20,7 @@ Other people, many of them new to archaeology, and other agents will continue th
 - Literature searches are logged by the tool; search with specific queries so the log is useful to the next person.
 - When you learn something about this place or this survey, add it under Lessons in `METHODOLOGY.md`.
 - End with `write_summary`. It rebuilds `RESEARCH.md`; call `document_project` yourself after other work the record should show, and read the "still to do" it returns.
+- When you were asked to report back, call `write_report` after `write_summary`. It builds the search report from the records, so it can say only what they hold: finish the records first. Pass as advice two or three plain sentences on what you would try next.
 
 ## Choosing where to look
 

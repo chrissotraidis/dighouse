@@ -43,6 +43,9 @@ struct MainView: View {
         // On the window, not the sidebar, so they open when the sidebar is hidden too.
         .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
         .sheet(isPresented: $app.jumping) { CommandPalette().withApp(app) }
+        .sheet(isPresented: Binding(get: { app.reportShown != nil }, set: { if !$0 { app.reportShown = nil } })) {
+            if let file = app.reportShown { ReportSheet(file: file).withApp(app) }
+        }
         .modifier(RenameChat())
         // The tutorial moves on when the project or the page changes in the way its step asked for.
         .onChange(of: "\(app.tab.rawValue) \(store.tiles.count) \(store.tiles.filter { $0.status == "unscreened" }.count) \(store.candidates.count) \(store.candidates.filter { !$0.decisions.isEmpty }.count) \(chat.running) \(store.current?.path ?? "")") { _, _ in
@@ -138,7 +141,8 @@ struct TopBar: View {
                 Button { app.settingsSection = .engine; app.show(.settings) } label: { Badge(text: problem, color: Theme.amber) }
                     .buttonStyle(.plain)
             } else if inProject {
-                if chat.running { DigIndicator().padding(.trailing, 2) }
+                // A whole search shows the trowel in the strip, beside its stage.
+                if chat.running, app.runningSearch == nil || width <= 640 { DigIndicator().padding(.trailing, 2) }
                 if !s.needsPerson.isEmpty {
                     Button { app.reviewing = true } label: {
                         Badge(text: "\(s.needsPerson.count) need\(s.needsPerson.count == 1 ? "s" : "") you", color: Theme.accent)
@@ -166,6 +170,22 @@ struct TopBar: View {
 
     @ViewBuilder private func stats(_ s: RunStatus) -> some View {
         HStack(spacing: 8) {
+            if let search = app.runningSearch {
+                // A whole search: the stage it is on, and a way to stop it.
+                let stage = app.stage(of: search)
+                Text("·").foregroundStyle(Theme.faint)
+                DigIndicator(size: 13)
+                Text("Stage \(stage.number) of \(ToolGuide.stages.count): \(stage.title)").foregroundStyle(Theme.text).fontWeight(.medium)
+                    .accessibilityLabel("The search is on stage \(stage.number) of \(ToolGuide.stages.count): \(stage.title)")
+                Button("Stop") { Task { await chat.stop(chat: search) } }
+                    .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.accent)
+                    .help("Stop the search. What it has done is kept, and the research record says where it stopped.")
+            } else if app.reportAfterLooks != nil, app.reportAfterLooks == store.current?.path {
+                // The agent is done; a second model is being asked about each find before the report is shown.
+                Text("·").foregroundStyle(Theme.faint)
+                DigIndicator(size: 13)
+                Text("Asking a second model, then the report").foregroundStyle(Theme.text).fontWeight(.medium)
+            }
             if let d = store.download {
                 let name = d.dataset.split(separator: ":").last.map(String.init) ?? d.dataset
                 piece(d.total > 0 ? "Downloading \(name): \(d.done) of \(d.total) parts" + (d.left.map { ", \($0)" } ?? "") : "Downloading \(name)")

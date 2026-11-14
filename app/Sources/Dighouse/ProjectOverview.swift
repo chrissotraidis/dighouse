@@ -76,7 +76,7 @@ struct ProjectOverview: View {
         // In the tutorial the steps are taken one at a time, so the card offers the step the tutorial is on.
         let stepwise = app.tutorialStep != nil
         if store.terrains.isEmpty, !stepwise, let flow = ToolGuide.workflows.first(where: { $0.id == "full" }) {
-            return ("Run the search", "The agent fetches the open lidar for this area, looks at every tile, checks what it flags and searches what is published. It stops for you at the decisions. It takes about 10 to 20 minutes.", { app.run(flow) }, "Run the whole search", flow.icon)
+            return (flow.title, "One press. The agent gets the open lidar for this area, looks at every tile, checks what it flags and searches what is published. It comes back with a report and the decisions that are yours. It takes about 10 to 20 minutes.", { app.run(flow) }, flow.title, flow.icon)
         }
         if !open.isEmpty, open.allSatisfy({ $0.suggestion != nil || Review_hasSuggestion($0) }) {
             return ("Decide what the finds are", "The agent has looked at \(open.count) find\(open.count == 1 ? "" : "s") and suggests what each one is, with its reason. Look at the pictures and agree or change each suggestion.", { app.reviewing = true }, "Review \(open.count)", "dig.brush")
@@ -115,16 +115,27 @@ struct ProjectOverview: View {
                     }
                     let button = Button(next.label, action: next.action).buttonStyle(PrimaryButton())
                         .coach(next.label == "Get the terrain" && app.layout != .workspace ? .getTerrain : nil)
+                    // Part-way through a search, the rest can also be done in one go.
+                    let whole = ToolGuide.workflows.first { $0.id == "full" }
+                    let offerWhole = whole != nil && next.label != whole?.title && app.tutorialStep == nil
+                        && whole.map { app.state(of: $0).ready } == true && !store.terrains.isEmpty && !next.label.hasPrefix("Review")
+                    let buttons = HStack(spacing: 8) {
+                        button
+                        if offerWhole, let whole {
+                            Button(whole.title) { app.run(whole) }.buttonStyle(SecondaryButton())
+                                .help("Do everything that is left in one go, and come back with a report.")
+                        }
+                    }
                     // In a narrow chat the button goes under the words, so they are never squeezed into a thin column.
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .center, spacing: 14) {
                             words.frame(minWidth: 280, alignment: .leading)
                             Spacer(minLength: 0)
-                            button
+                            if offerWhole { VStack(alignment: .trailing, spacing: 8) { buttons } } else { button }
                         }
                         VStack(alignment: .leading, spacing: 12) {
                             words
-                            button.padding(.leading, 52)
+                            buttons.padding(.leading, 52)
                         }
                     }
                     .padding(16).frame(maxWidth: .infinity, alignment: .leading)
@@ -158,6 +169,10 @@ struct ProjectOverview: View {
                         Text("Everything looked at, read and decided here is kept in the research record, so you or anyone you share the project with can pick it up without starting again.")
                             .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
+                        if let report = app.latestReport {
+                            Button { app.reportShown = report } label: { Label("Search report", glyph: "dig.trowel") }
+                                .buttonStyle(SecondaryButton()).help("The two-minute report of what the last whole search found.")
+                        }
                         Button { app.showNotes("record") } label: { Label("Research record", systemImage: "book.closed") }
                             .buttonStyle(SecondaryButton())
                     }

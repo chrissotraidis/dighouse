@@ -102,6 +102,7 @@ enum ToolGuide {
                      Tool(name: "list_candidates", title: "List candidates", does: "Lists candidates and what each still lacks."),
                      Tool(name: "run_status", title: "Report the run", does: "Reports coverage, candidates, controls, and what is waiting for you."),
                      Tool(name: "write_summary", title: "Write the run summary", does: "Writes what a run did and what is left as a note in the project."),
+                     Tool(name: "write_report", title: "Write the search report", does: "Writes the two-minute report a search ends with, from the project's records: what was looked at, flagged, read and ruled out, and what needs you."),
                      Tool(name: "document_project", title: "Update the research record", does: "Rebuilds RESEARCH.md: everything looked at, read and decided, and what is left, so anyone can carry the project on."),
                      Tool(name: "export_finds", title: "Export for mapping software", does: "Saves the candidates as a GeoJSON file for QGIS, ArcGIS or Google Earth, kept with the other locations under private.")]),
     ]
@@ -122,8 +123,20 @@ enum ToolGuide {
 
     /// The workflow a message was sent by, so the chat can show its name rather than its full instructions.
     static func workflow(sentAs text: String) -> Workflow? {
-        (workflows + [carryOn]).filter { !$0.prompt.isEmpty && text.hasPrefix($0.prompt) }.max { $0.prompt.count < $1.prompt.count }
+        // A whole search, as it is asked for now and as it was asked for before it ended with a report.
+        if text.hasPrefix("Run the whole search for this project") { return workflows.first { $0.id == "full" } }
+        return (workflows + [carryOn]).filter { !$0.prompt.isEmpty && text.hasPrefix($0.prompt) }.max { $0.prompt.count < $1.prompt.count }
     }
+
+    /// The six stages of a whole search, by the tools that belong to each, so a run can say which stage it is on.
+    static let stages: [(title: String, icon: String, tools: Set<String>)] = [
+        ("Getting the bare ground", "dig.mound", ["find_data", "fetch_terrain", "import_terrain", "view_terrain", "make_tiles"]),
+        ("Looking at the tiles", "dig.grid", ["next_tiles", "view_tile", "render_tiles", "record_verdict", "flag_candidate"]),
+        ("Checking the finds", "dig.layers", ["cut_section", "check_modern", "add_evidence", "second_look"]),
+        ("Searching what is published", "dig.sieve", ["search_literature", "search_records", "read_source", "log_source"]),
+        ("Suggesting decisions", "dig.brush", ["suggest_decision", "list_candidates"]),
+        ("Writing the report", "doc.richtext", ["write_summary", "write_report", "document_project"]),
+    ]
 
     /// What the agent is asked when a shared project is picked up: say what was done, then do what needs no download.
     /// It is offered on the overview of such a project only, so it is not in the list of workflows.
@@ -154,13 +167,14 @@ enum ToolGuide {
                  summary: "Tell the agent a place name and it reports the open lidar and the recorded sites there.",
                  prompt: "I have a place in mind. Ask me its name, then tell me which open lidar covers it and which sites are already recorded there.",
                  scope: .general, steps: [Handoff(who: "You", does: "Name the place"), Handoff(who: "Agent", does: "Checks lidar coverage and recorded sites")]),
-        Workflow(id: "full", title: "Run the whole search", icon: "dig.trowel",
-                 summary: "Everything from fetching the terrain to the literature search, stopping for you at the second look and at each decision.",
-                 prompt: "Run the whole search for this project and finish it. Fetch the terrain if it is missing and cut it into tiles. Screen every tile in two styles, handing batches to helper agents when more than 12 are left. Flag what looks built, then cut a section and check for modern features for each flag. Search the literature with search_literature and search_records, open what you can with read_source, and log every source on its records with log_source as soon as you know its outcome. Add the section measurements as evidence. For each candidate, call suggest_decision with the decision the evidence points to and the reason, naming where it is published if it is. Keep a plan as you go. End with write_summary, even if something stopped you early. Do not set statuses or record a second look; tell me what is waiting for me.",
+        Workflow(id: "full", title: "Find and report back", icon: "dig.trowel",
+                 summary: "One press. The agent gets the ground, looks at every tile, checks what it flags and searches what is published, then comes back with a report and the decisions that are yours.",
+                 prompt: "Run the whole search for this project from start to finish without stopping to ask me anything, then report back. Fetch the terrain if it is missing and cut it into tiles. Screen every tile in two styles, handing batches to helper agents when more than 12 are left. Flag what looks built, then cut a section and check for modern features for each flag. If the map service does not answer, say so and carry on. Search the literature with search_literature and search_records, open what you can with read_source, and log every source on its records with log_source as soon as you know its outcome. Add the section measurements as evidence. For each candidate, call suggest_decision with the decision the evidence points to and the reason, naming where it is published if it is. Keep a plan as you go. Do not set statuses or record a second look: Dighouse asks a second model itself when you are done, and I make the decisions, so leave both out of your advice. End with write_summary and then write_report, passing as advice two plain sentences on what you would try next. Once write_report has answered, the goal is met: mark it complete and tell me in two lines what the report says. If something stops you early, still end with write_summary and write_report.",
                  scope: .project,
                  steps: [Handoff(who: "Agent", does: "Fetches lidar, builds the bare ground"), Handoff(who: "Agent and helpers", does: "Screen every tile"),
-                         Handoff(who: "Agent", does: "Sections and modern-feature checks"), Handoff(who: "Second model", does: "Independent second look"),
-                         Handoff(who: "Agent", does: "Literature search, every source logged"), Handoff(who: "You", does: "Decide each candidate")]),
+                         Handoff(who: "Agent", does: "Sections and modern-feature checks"), Handoff(who: "Agent", does: "Literature search, every source logged"),
+                         Handoff(who: "Second model", does: "Independent second look"), Handoff(who: "Dighouse", does: "The search report"),
+                         Handoff(who: "You", does: "Decide each candidate")]),
         Workflow(id: "terrain", title: "Get the terrain", icon: "dig.mound",
                  summary: "Finds open lidar for the project's area, builds the bare ground and cuts it into tiles.",
                  prompt: "Find open lidar for this project's area, fetch it, and cut it into tiles. Tell me how good the ground data is.",
@@ -322,6 +336,7 @@ enum ToolGuide {
         case "list_candidates": return ("list.bullet", "Reviewed the candidates")
         case "add_control": return ("scope", "Registered a control: \(s("name"))")
         case "write_summary": return ("doc.richtext", "Wrote the run summary")
+        case "write_report": return ("doc.richtext", "Wrote the search report")
         case "document_project": return ("book.closed", "Updated the research record")
         case "run_status": return ("gauge", "Checked the run status")
         default: return ("dig.trowel", tool)

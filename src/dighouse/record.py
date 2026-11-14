@@ -18,6 +18,8 @@ from .project import INDEX_MD, METHODOLOGY_MD, RECORD_SECTION, Project, commit
 COORD = re.compile(r"(?<![\w/.])-?\d{1,3}\.\d{4,}(?![\w/.])")
 VERDICT_WORDS = {"built": "looked built", "possible": "possible", "natural": "natural", "modern": "modern", "nothing": "nothing"}
 SOURCE_WORDS = {"read": "Read", "could_not_open": "Could not be opened", "not_relevant": "Not relevant"}
+# How a stop by the person is written in the dated notes. The stage the run was on follows it.
+STOPPED = "A person stopped the run during: "
 
 
 def _clean(text: str, limit: int = 0) -> str:
@@ -63,6 +65,21 @@ def _map_failures(p: Project) -> dict[str, str]:
         for cid in re.findall(r"Could not check for modern features near (C-\d+)", f.read_text()):
             out[cid] = f.stem
     return out
+
+
+def _last_stop(p: Project) -> tuple[str, str, str] | None:
+    """The day, time and stage of the last stop by a person, unless a run has finished or a report been written since."""
+    last = None
+    for f in sorted(p.path("notes").glob("20??-??-??.md")):
+        for line in f.read_text().splitlines():
+            m = re.match(r"- (\d\d:\d\d) (.*)", line)
+            if not m:
+                continue
+            if m.group(2).startswith(STOPPED):
+                last = (f.stem, m.group(1), m.group(2)[len(STOPPED):])
+            elif m.group(2).startswith(("Wrote the run summary", "Wrote the search report")):
+                last = None
+    return last
 
 
 def facts(p: Project) -> tuple[dict, dict]:
@@ -220,6 +237,13 @@ def document(p: Project, commit_it: bool = True) -> dict:
           f"- **Candidates:** {len(records)}, of which {len(decided)} decided by a person.",
           f"- **Sources:** {n_status['read']} read, {n_status['could_not_open']} could not be opened, {n_status['not_relevant']} not relevant.",
           f"- **Literature searches:** {len(searches)}.", ""]
+    stop = _last_stop(p)
+    if stop:
+        L[-1:] = [f"- **The last run was stopped** by a person on {stop[0]} at {stop[1]}, during: {stop[2]}. "
+                  "Everything it did up to then is in this record. Start a run again to carry on from here.", ""]
+    reports = sorted(p.path("reports").glob("*-search-report.md"), reverse=True)
+    if reports:
+        L[-1:] = [f"- **Search report:** [{reports[0].stem[:10]}](reports/{reports[0].name}), a two-minute read of what was found.", ""]
     if todo:
         L += ["## Still to do", ""] + [f"- {t}" for t in todo] + [""]
 

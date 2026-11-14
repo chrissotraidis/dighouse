@@ -40,6 +40,15 @@ final class AppState: ObservableObject {
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
     @Published var jumping = false
+    /// Whole searches under way ("Find and report back"): the chat each runs in, and its project's folder.
+    @Published var investigating: [String: String] = [:]
+    /// The search report on show, as a file, or nil.
+    @Published var reportShown: String?
+    /// A place typed on Home that is being looked up for a whole search, and what went wrong if it could not be found.
+    @Published var placeBusy: String?
+    @Published var placeProblem: String?
+    /// The project whose report waits for its second looks to come back. The strip says so while it waits.
+    @Published private(set) var reportAfterLooks: String?
     /// The first-project tutorial: whether its bar is showing, the project it made, how far past the automatic steps
     /// the person has got (4, 5 or 6), and whether it has been finished. Kept between launches.
     @Published var tutorialOn = UserDefaults.standard.bool(forKey: "tutorialOn") {
@@ -148,8 +157,14 @@ final class AppState: ObservableObject {
         chat.modelID = { [weak self] in self?.modelID }
         chat.onUntitled = { [weak self] chat, text in self?.nameLater(chat, text) }
         // A run that ends, however it ends, leaves the research record up to date. No model is used.
-        chat.onRunEnded = { [weak self] folder, _ in
-            Task { @MainActor in await self?.updateRecord(of: folder) }
+        // When the person stopped it, the record also says which stage it was on.
+        chat.onRunEnded = { [weak self] thread, folder, stopped in
+            guard let self else { return }
+            let stage = stopped ? self.stage(of: thread).title : nil
+            Task { @MainActor in await self.updateRecord(of: folder, stoppedDuring: stage) }
+        }
+        chat.onGoalEnded = { [weak self] thread, status in
+            Task { @MainActor in await self?.searchEnded(thread, status) }
         }
         chat.effort = { [weak self] in
             guard let self, let effort = self.effort, self.model?.efforts.contains(effort) == true else { return nil }
@@ -216,6 +231,7 @@ final class AppState: ObservableObject {
                 self.store.reloadIfChanged()
                 if let path = self.store.current?.path { Task { @MainActor in await self.updateRecord(of: path) } }
                 self.nextSecondLook()
+                self.afterSecondLooks()
             }
             self.chat.handle(method, params)
         }
@@ -277,8 +293,10 @@ final class AppState: ObservableObject {
 
     /// Rebuild a project's research record through the tools. It also says whether the project was handed over
     /// without its downloads, which the overview needs to know.
-    func updateRecord(of path: String) async {
-        guard engine.ready, let reply = try? await engine.callTool("document_project", ["project": path]),
+    func updateRecord(of path: String, stoppedDuring stage: String? = nil) async {
+        var arguments: JSON = ["project": path]
+        if let stage { arguments["stopped_during"] = stage }
+        guard engine.ready, let reply = try? await engine.callTool("document_project", arguments),
               let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON else { return }
         if store.current?.path == path {
             store.screenedBefore = info["handed_over"] as? Bool == true ? info["screened_before"] as? Int ?? 0 : nil
@@ -465,6 +483,7 @@ final class AppState: ObservableObject {
     func state(of flow: ToolGuide.Workflow) -> (ready: Bool, note: String) {
         guard flow.scope == .project else { return (true, "") }
         guard store.current != nil else { return (false, "Needs a project") }
+        if flow.id == "full", runningSearch != nil { return (false, "Running now") }
         let s = store.status, all = store.candidates
         let open = all.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
         func count(_ n: Int, _ noun: String) -> String { n == 0 ? "Done" : "\(n) \(noun)" }
@@ -505,13 +524,103 @@ final class AppState: ObservableObject {
                 await chat.send(flow.prompt, title: flow.title)
             }
         } else if flow.id == "full" {
-            // A whole search runs as a goal, so the engine keeps taking turns until it is done or needs the person.
+            // A whole search runs as a goal, so the engine keeps taking turns until the report is written.
             route = .chat
             if layout == .workspace { layout = .split }
             chat.newChat()
-            Task { @MainActor in await chat.setGoal(flow.prompt, title: flow.title) }
+            let path = store.current?.path
+            Task { @MainActor in
+                await chat.setGoal(flow.prompt, title: flow.title)
+                if let id = chat.active, let path, chat.running { investigating[id] = path }
+            }
         } else {
             ask(flow.prompt, title: flow.title)
+        }
+    }
+
+    // MARK: find and report back
+
+    /// The whole search running in the open project, if there is one: the chat it runs in.
+    var runningSearch: String? {
+        guard let path = store.current?.path else { return nil }
+        // A goal takes turn after turn, so it counts as running between turns too.
+        return investigating.first { $0.value == path && (chat.goals.contains($0.key) || chat.live[$0.key] != nil) }?.key
+    }
+
+    /// The stage a run is on: from the last tool its agent called, or else from what the project still lacks.
+    func stage(of thread: String) -> (number: Int, title: String, icon: String) {
+        var index = store.tiles.isEmpty ? 0 : store.tiles.contains { $0.status == "unscreened" } ? 1 : 2
+        if let tool = chat.lastTool[thread], let known = ToolGuide.stages.firstIndex(where: { $0.tools.contains(tool) }) { index = known }
+        return (index + 1, ToolGuide.stages[index].title, ToolGuide.stages[index].icon)
+    }
+
+    /// The newest search report in the open project.
+    var latestReport: String? {
+        guard let root = store.current?.path else { return nil }
+        let files = ((try? FileManager.default.contentsOfDirectory(atPath: root + "/reports")) ?? []).filter { $0.hasSuffix("-search-report.md") }
+        return files.sorted().last.map { root + "/reports/" + $0 }
+    }
+
+    /// Find and report back from a place typed by name: look it up, make a project around it, and start the whole search.
+    func investigate(at place: String) {
+        let name = place.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, placeBusy == nil, let flow = ToolGuide.workflows.first(where: { $0.id == "full" }) else { return }
+        placeBusy = name
+        placeProblem = nil
+        Task { @MainActor in
+            defer { placeBusy = nil }
+            do {
+                let found = Engine.rows(try await engine.callTool("find_place", ["query": name]))
+                guard let first = found.first, let lat = first["lat"] as? Double, let lon = first["lon"] as? Double else {
+                    placeProblem = "No place called \(name) was found. Add the region or country, or pick the area on the map."
+                    return
+                }
+                // A square 600 m across around the place: nine tiles or so, which a first search finishes in minutes.
+                let north = 300 / 110_540.0, east = 300 / (111_320.0 * max(cos(lat * .pi / 180), 0.2))
+                try await createProject(name: name, question: "What built features show in the ground at \(name), and which of them are already published?",
+                                        box: [lon - east, lat - north, lon + east, lat + north], fetch: false)
+                chat.draft = ""
+                try? await Task.sleep(for: .milliseconds(400))   // let the project's chat list open first
+                run(flow)
+            } catch {
+                placeProblem = error.localizedDescription
+            }
+        }
+    }
+
+    /// A whole search's goal has stopped being worked on. Unless the person stopped it, report what there is.
+    private func searchEnded(_ thread: String, _ status: String) async {
+        guard let path = investigating.removeValue(forKey: thread), status != "paused" else { return }
+        if status != "complete", chat.active == thread {
+            let why = ["usageLimited": "the account's usage ran out", "budgetLimited": "it reached its limit"][status] ?? "the agent could not go on"
+            chat.note("The search stopped before it finished: \(why). The report covers what was done up to here.")
+        }
+        store.reloadIfChanged()
+        // The second look has to come from a different model, so Dighouse asks for it itself, then writes the report.
+        if store.current?.path == path, secondModelID != nil, let flow = ToolGuide.workflows.first(where: { $0.id == "second" }), state(of: flow).ready {
+            reportAfterLooks = path
+            run(flow)
+        } else {
+            await writeReport(path)
+        }
+    }
+
+    /// When the last second look is back, write the report that was waiting for it.
+    private func afterSecondLooks() {
+        guard secondLookBusy == nil, secondLookQueue.isEmpty, let path = reportAfterLooks else { return }
+        reportAfterLooks = nil
+        Task { @MainActor in await writeReport(path) }
+    }
+
+    /// Rebuild the search report from the project's records and show it, when its project is the one open.
+    /// The agent's own advice in it is kept.
+    func writeReport(_ path: String) async {
+        guard engine.ready, let reply = try? await engine.callTool("write_report", ["project": path]),
+              let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON, let file = info["written"] as? String else { return }
+        store.reloadIfChanged()
+        if store.current?.path == path {
+            tab = .map
+            reportShown = path + "/" + file
         }
     }
 
@@ -644,6 +753,7 @@ final class AppState: ObservableObject {
                 secondLookBusy = nil
                 secondLookQueue = []
                 secondLookProblem[c.id] = error.localizedDescription
+                afterSecondLooks()
             }
         }
     }
@@ -794,6 +904,11 @@ private struct ProjectMenu: View {
             if none { Text("Needs a project") }
         }
         .keyboardShortcut("r", modifiers: [.command, .shift]).disabled(none)
+        Button { app.reportShown = app.latestReport } label: {
+            Text("Search Report")
+            if app.latestReport == nil { Text(none ? "Needs a project" : "No report yet") }
+        }
+        .disabled(app.latestReport == nil)
         Divider()
         Button { if let path = store.current?.path { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path) } } label: {
             Text("Show in Finder")

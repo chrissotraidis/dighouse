@@ -883,6 +883,8 @@ struct NotesView: View {
                 let path = url.relativePath
                 if path.hasPrefix("candidates/"), path.hasSuffix(".md") {
                     app.showRecords(URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent)
+                } else if path.hasPrefix("reports/"), path.hasSuffix("-search-report.md") {
+                    app.reportShown = root + "/" + path
                 } else if FileManager.default.fileExists(atPath: root + "/" + path) {
                     let part = path.hasPrefix("notes/") ? (path.contains("-run-") ? "runs" : "log") : path == "RESEARCH.md" ? "record" : "method"
                     app.notesPart = part

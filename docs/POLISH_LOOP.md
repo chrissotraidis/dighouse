@@ -344,6 +344,32 @@ System symbols stay where they already fit: people for the second opinion, an en
 
 **Not checked:** the ring's slow pulse with Reduce Motion on (the code leaves it still), and a tutorial run in which the agent flags nothing (the bar then says what to type).
 
+### 2026-11-14, A7: "Find and report back"
+
+One button runs the whole search as a goal and comes back with a report. It is on Home's place box, on a project's overview, in the Workflows menu and the Project menu, and as **/investigate** (which takes the place of /run).
+
+- **On Home,** typing a place gives two buttons beside its name: **Find and report back**, which looks the place up, makes a project 600 m across around it and starts, and **Choose the area**, which opens New project as before.
+- **The run** is a goal, so the engine keeps taking turns until the report is written. The agent does everything but the second look and the decisions. When it is done, Dighouse asks the second-look model about each find itself, then shows the report.
+- **The strip** shows the trowel, "Stage 2 of 6: Looking at the tiles" and **Stop**. The stage comes from the last tool the agent called, so it is what the agent is doing, and it can step back (to cut another section, say).
+- **The report** is a new tool, `write_report` (33 tools now), built only from the project's records, so it cannot say more than they do. Eight short parts: what was asked, the data used, what was looked at, what was flagged and why, what is already published, what was ruled out, what needs your decision, what to try next. The agent's own words in it are one short paragraph of advice. No coordinates; a note that holds one is refused. It is written to `reports/`, linked from the research record's "Where things stand", and opens from the overview and Project › Search Report.
+- **In the app** the report opens when the run ends, with one button per decision waiting ("Decide C-001"). Each opens the review on that find with the suggestion filled in.
+- **Stop** pauses the goal and ends the turn. The research record then says "The last run was stopped by a person on (day) at (time), during: (stage)", until a run finishes after it.
+
+| Check | Seen |
+|---|---|
+| One press, on a known site, with primary / 6.1 Terra | Typed "Serpent Mound, Ohio" on Home and pressed Find and report back (loop4/a7-01-home-place.jpg). Nothing else was typed or pressed. The project was made, the goal set, and the strip read Stage 1 of 6 within 15 s (loop4/a7-02-started.jpg, a7-03-stage2.jpg, a7-04-stage4.jpg). |
+| It ends with the report on screen | At 6 min 50 s the agent finished: 9 of 9 tiles, 3 finds, 33 sources logged, a summary and the report. Dighouse then asked Gemini 3.8 Flash for a second look at each find, and at 8 min 4 s the report opened with Decide C-001, Decide C-002 and Decide C-003 (loop4/a7-07-report.jpg). |
+| The report's claims match the records | Checked line by line against the project's files: 9 tiles with 3 built, 1 possible, 3 natural, 2 modern; USGS OH_StatewideP3_2_B21, 0.36 sq km, 6.9 ground returns per sq m; the three sections at 2.47 m, 2.32 m and 0.33 m, each in the ground; a second look that agrees on each, by Gemini 3.8 Flash; no modern-features check on any, because the map service did not answer; 3 sources read and 16 that could not be opened; suggestions of already published, already published and modern; no decision yet. No coordinate, and nothing called new. |
+| Two minutes to read | The first report ran to about 700 words, because it repeated each find's checks and quoted each source at length. It now gives one sentence per find and per source and says a failed map check once: 546 words for this project. |
+| A decision button | Decide C-002 opened the review at "2 of 3" with the agent's suggestion and reason filled in (loop4/a7-13-decide-from-report.jpg). No decision was recorded. |
+| From a project's overview and as /investigate | A second known site, Mound City Group, made as a scratch project. Its overview's main button is Find and report back (loop4/a7-08-overview-button.jpg). Typing /inv and Return started the search (loop4/a7-09-slash-investigate.jpg). |
+| Stop | Pressed Stop in the strip at 96 s, during stage 2 (loop4/a7-10-before-stop.jpg). The run ended within 6 s and did not start again. All 4 tiles had verdicts and C-001 had its record; nothing was half-written, and the project's history had no uncommitted change. The research record read: "The last run was stopped by a person on 2026-11-14 at 14:15, during: Looking at the tiles", and Still to do listed the section, the map check, the second look, the literature and the decision for C-001. The overview then offered Check the flags and, beside it, Find and report back to finish in one go (loop4/a7-11-after-stop.jpg, a7-12-overview-after-stop.jpg). |
+
+`uv run pytest`: 10 passed. Two new tests: the report says what the records say and refuses coordinates; a stopped run is on the record until a run finishes.
+
+**Not checked:** a search that runs out of usage part-way (the app then notes it in the chat and still reports), a place name that cannot be found (the box says so), finishing a stopped search with the second button, and a search on a place outside the United States.
+
+
 
 
 

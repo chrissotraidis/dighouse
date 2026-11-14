@@ -22,7 +22,7 @@ enum SlashCommands {
     static let all: [SlashCommand] = [
         SlashCommand(id: "research", summary: "Find where a search is worth doing, and get three proposals", group: .search, workflow: "research"),
         SlashCommand(id: "new-project", summary: "Start a project on a place", group: .search),
-        SlashCommand(id: "run", summary: "Run the whole search, stopping for you at the second look and decisions", group: .search, workflow: "full"),
+        SlashCommand(id: "investigate", summary: "Find and report back: the whole search in one go, ending with a report", group: .search, workflow: "full"),
         SlashCommand(id: "terrain", summary: "Find open lidar for the project and build the bare ground", group: .search, workflow: "terrain"),
         SlashCommand(id: "screen", summary: "Look at every tile nobody has screened yet", group: .search, workflow: "screen"),
         SlashCommand(id: "check", summary: "Cut a section and look for modern features on each flag", group: .search, workflow: "check"),

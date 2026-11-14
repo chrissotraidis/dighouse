@@ -246,3 +246,52 @@ def test_the_record_survives_a_handover(tmp_path):
     text = q.path("RESEARCH.md").read_text()
     assert not after["handed_over"] and "usgs:TEST_2020" in text and "usgs:TEST_2024" in text
     assert any("Screen 1 tile" in t for t in after["still_to_do"])
+
+
+def test_the_search_report_says_what_the_records_say(tmp_path):
+    """The report a search ends with: built from the records, linked from the research record, and without coordinates."""
+    from dighouse import ledger
+
+    root = str(tmp_path / "report")
+    p = Project.create(root, "Report check", "Is the bank built?", [0.0, 51.0, 0.01, 51.01])
+    p.save("terrains", {"t1": {"dataset": "usgs:TEST_2020", "area_km2": 0.5, "ground_points_per_m2": 6.2, "res": 0.5}})
+    p.save("tiles", {"t1-r000c000": {"terrain": "t1", "window": [0, 0, 500, 500], "status": "screened", "verdict": "built",
+                                     "note": "A straight bank", "model": "model-a"},
+                     "t1-r000c001": {"terrain": "t1", "window": [0, 500, 500, 500], "status": "screened", "verdict": "natural",
+                                     "note": "A stream channel", "model": "model-a"}})
+    cid = ledger.create(p, "Low bank", "t1-r000c000", (0.005, 51.005), "A straight low bank across the slope", "model-a")["id"]
+    ledger.set_check(p, cid, "section", {"feature_height_m": 0.8, "in_ground": True, "ground_returns_within_5m_of_peak": 40})
+    ledger.add_source(p, cid, "A county survey, 1998", "read", "Lists a boundary bank on this hill", "https://example.org/survey")
+    ledger.suggest(p, cid, "already_published", "A county survey, 1998, lists a boundary bank here.", "model-a")
+
+    with pytest.raises(ValueError, match="coordinates"):
+        server.write_report(root, "Look again near 51.00512, 0.00498.")
+    got = server.write_report(root, "Try the sky view on the next tile north.")
+    text = p.path(got["written"]).read_text()
+    assert got["waiting_for_a_person"] == [cid] and got["words"] < 500
+    for heading in ("What was asked", "The data used", "What was looked at", "What was flagged, and why", "What is already published",
+                    "What was ruled out", "What needs your decision", "What to try next"):
+        assert f"## {heading}" in text
+    assert "Is the bank built?" in text and "TEST_2020" in text and "2 of 2" in text and "1 looked built, 1 natural" in text
+    assert "A straight low bank across the slope" in text and "measured 0.8 m, in the ground" in text and "no second model has looked yet" in text
+    assert "A county survey, 1998" in text and "https://example.org/survey" in text
+    assert "1 tile showed natural ground." in text
+    assert "The agent suggests: already published." in text and "Try the sky view on the next tile north." in text
+    assert "51.00" not in text and "new" not in text.lower().replace("nothing here is called new", "")
+    assert f"reports/{p.path(got['written']).name}" in p.path("RESEARCH.md").read_text()
+
+    # A decision changes the report, and rebuilding it the same day keeps the agent's advice.
+    server.set_status(root, cid, "already_published", decided_by="Chris", reason="In the county survey.")
+    again = p.path(server.write_report(root)["written"]).read_text()
+    assert "Nothing. 1 find has been decided" in again and "Try the sky view on the next tile north." in again
+
+
+def test_a_stopped_run_is_on_the_record(tmp_path):
+    """When a person stops a run, the record says when and during what, until a run finishes after it."""
+    root = str(tmp_path / "stop")
+    p = Project.create(root, "Stop check", "Does a stop leave a trace?", [0.0, 51.0, 0.01, 51.01])
+    server.document_project(root, stopped_during="Looking at the tiles")
+    assert "The last run was stopped** by a person" in p.path("RESEARCH.md").read_text()
+    assert "during: Looking at the tiles." in p.path("RESEARCH.md").read_text()
+    server.write_summary(root, "Finished the screening.")
+    assert "The last run was stopped" not in p.path("RESEARCH.md").read_text()

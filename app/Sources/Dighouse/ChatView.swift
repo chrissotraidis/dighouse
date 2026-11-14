@@ -774,19 +774,24 @@ struct Composer: View {
             if !commands.isEmpty { commandList }
             else if !mentions.isEmpty { mentionList }
             else if let place = typedPlace {
-                // On Home, short text that looks like a place can start a project there.
-                Button { chat.draft = ""; app.startProject(at: place) } label: {
-                    HStack(spacing: 8) {
+                // On Home, short text that looks like a place can be searched in one press, or set up by hand first.
+                HStack(spacing: 8) {
+                    if app.placeBusy != nil { DigIndicator(size: 13) } else {
                         Image(systemName: "mappin.and.ellipse").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.tan)
-                        Text("Start a project at \(place)").font(.system(size: 13 * Theme.scale, weight: .medium))
-                        Spacer()
-                        Text("or press Return to ask the agent").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                     }
-                    .padding(.horizontal, 10).frame(height: 30)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
-                    .contentShape(Rectangle())
+                    Text(app.placeBusy.map { "Looking up \($0)" } ?? app.placeProblem ?? place)
+                        .font(.system(size: 13 * Theme.scale, weight: .medium)).foregroundStyle(app.placeProblem == nil ? Theme.text : Theme.amber)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    Button("Choose the area") { chat.draft = ""; app.startProject(at: place) }.buttonStyle(SecondaryButton())
+                        .help("Open the New project page at \(place), to set the area and the question yourself.")
+                    Button { app.investigate(at: place) } label: { Label("Find and report back", glyph: "dig.trowel") }
+                        .buttonStyle(PrimaryButton())
+                        .help("Starts a project at \(place) and runs the whole search: the ground, every tile, the checks and what is published. It ends with a report. Return asks the agent instead.")
                 }
-                .buttonStyle(.plain)
+                .disabled(app.placeBusy != nil)
+                .padding(.leading, 10).padding(.trailing, 4).padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.06)))
             }
             if !chat.attachments.isEmpty || !shownMentions.isEmpty { chips }
             TextField(placeholder, text: $chat.draft, axis: .vertical)
@@ -812,6 +817,7 @@ struct Composer: View {
         }
         .onAppear { focused = true }
         .onChange(of: chat.draft) { _, draft in
+            if app.placeProblem != nil { app.placeProblem = nil }
             if Mentions.query(draft) != nil, pool.isEmpty { pool = Mentions.pool(store: store) }
             if Mentions.query(draft) == nil, commands.isEmpty { pool = [] }
             selected = commands.isEmpty ? 0 : commands.firstIndex { app.unavailable($0) == nil } ?? 0

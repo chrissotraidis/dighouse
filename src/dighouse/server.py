@@ -15,7 +15,7 @@ from pathlib import Path
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from . import checks, discover, ledger, national, record, section, sources, tiles
+from . import checks, discover, ledger, national, record, report, section, sources, tiles
 from . import terrain as T
 from .project import Project
 
@@ -26,7 +26,8 @@ mcp = MCPServer(
         "survey_area; they need no project. Everything else works inside one project folder. "
         "Order of work: init_project, find_data, fetch_terrain, make_tiles, then for each tile view_tile and "
         "record_verdict; flag_candidate for anything that looks built; then cut_section, second_look, "
-        "check_modern, search_literature and log_source for every flag; set_status last. "
+        "check_modern, search_literature and log_source for every flag; set_status last. End a run with "
+        "write_summary, and with write_report when asked to report back. "
         "Never call a site new and never write coordinates into Markdown or messages."
     ),
 )
@@ -593,11 +594,28 @@ def write_summary(project: str, text: str) -> dict:
 
 
 @tool
-def document_project(project: str) -> dict:
+def write_report(project: str, advice: str = "") -> dict:
+    """Write the search report, the two-minute read a person gets when a search ends: what was asked, the data used,
+    what was looked at, what was flagged and why, what is already published, what was ruled out, what needs their
+    decision and what to try next. It is built from the project's records, so finish the records first.
+
+    Call it last, after write_summary. Pass advice: two or three plain sentences on what you would try next and why.
+    No coordinates. It returns the candidates waiting for a person.
+    """
+    return report.write(Project(project).check(), advice)
+
+
+@tool
+def document_project(project: str, stopped_during: str = "") -> dict:
     """Rebuild RESEARCH.md, the project's research record: data used, every tile looked at, every candidate's
     checks and decision, every source and literature search, and what is still to do. Read it before a run;
-    call this after work that the record should show. It returns what is still to do."""
-    return record.document(Project(project).check())
+    call this after work that the record should show. It returns what is still to do.
+
+    stopped_during is for the app: when a person stops a run, it names the stage the run was on, so the record says so."""
+    p = Project(project).check()
+    if stopped_during.strip():
+        p.note(f"{record.STOPPED}{' '.join(stopped_during.split())[:80]}")
+    return record.document(p)
 
 
 @tool

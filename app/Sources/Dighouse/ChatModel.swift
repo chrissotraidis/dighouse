@@ -56,6 +56,8 @@ final class ChatModel: ObservableObject {
     @Published private(set) var usage: [String: (used: Int, window: Int?)] = [:]
     /// Chats whose goal is still being worked on.
     @Published private(set) var goals: Set<String> = []
+    /// The last Dighouse tool each chat's agent called, so a run can say which stage it is on.
+    @Published private(set) var lastTool: [String: String] = [:]
     /// The share of the account's usage left, as the engine last reported it.
     @Published var usageLeft: Int?
 
@@ -68,7 +70,10 @@ final class ChatModel: ObservableObject {
     var onUntitled: ((String, String) -> Void)?
     var onToolFinished: ((String, JSON) -> Void)?
     /// Called when a run in a project ends, with the project's folder and whether the person stopped it.
-    var onRunEnded: ((String, Bool) -> Void)?
+    var onRunEnded: ((String, String, Bool) -> Void)?
+    /// Called when a chat's goal stops being worked on, with the chat and how it ended: complete, paused, blocked,
+    /// usageLimited or budgetLimited.
+    var onGoalEnded: ((String, String) -> Void)?
 
     private(set) var project: String?
     private var turn: String?
@@ -556,6 +561,13 @@ final class ChatModel: ObservableObject {
         _ = try? await engine.request("turn/interrupt", ["threadId": active, "turnId": turn])
     }
 
+    /// Stop the run in one chat, whichever chat is on screen.
+    func stop(chat thread: String) async {
+        guard let engine, let turn = live[thread] else { return }
+        if goals.contains(thread) { _ = try? await engine.request("thread/goal/set", ["threadId": thread, "status": "paused"]) }
+        if !turn.isEmpty { _ = try? await engine.request("turn/interrupt", ["threadId": thread, "turnId": turn]) }
+    }
+
     /// Stop every run, in whichever chat it is, such as a download started from another chat.
     func stopAll() async {
         guard let engine else { return }
@@ -601,15 +613,23 @@ final class ChatModel: ObservableObject {
             // The chat on screen belongs to the open project; a run elsewhere is found by the list its chat is in.
             let folder = thread == active ? project : known.first { $0.value.contains { $0.id == thread } }?.key
             if let folder, folder != Paths.general.path {
-                onRunEnded?(folder, ((params["turn"] as? JSON)?["status"] as? String) == "interrupted")
+                onRunEnded?(thread, folder, ((params["turn"] as? JSON)?["status"] as? String) == "interrupted")
             }
+        }
+        if method == "item/started", let item = params["item"] as? JSON, item["type"] as? String == "mcpToolCall",
+           item["server"] as? String == "dighouse", let tool = item["tool"] as? String {
+            lastTool[thread] = tool
         }
         if method == "thread/tokenUsage/updated", let use = params["tokenUsage"] as? JSON {
             let used = (use["last"] as? JSON)?["totalTokens"] as? Int ?? (use["total"] as? JSON)?["totalTokens"] as? Int ?? 0
             usage[thread] = (used, use["modelContextWindow"] as? Int)
         }
         if method == "thread/goal/updated" {
-            if ((params["goal"] as? JSON)?["status"] as? String) == "active" { goals.insert(thread) } else { goals.remove(thread) }
+            let status = (params["goal"] as? JSON)?["status"] as? String ?? ""
+            if status == "active" { goals.insert(thread) } else {
+                goals.remove(thread)
+                onGoalEnded?(thread, status)
+            }
         }
         if method == "thread/goal/cleared" { goals.remove(thread) }
         guard thread == active else { return }
