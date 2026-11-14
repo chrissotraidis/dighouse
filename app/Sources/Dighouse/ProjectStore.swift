@@ -13,6 +13,9 @@ final class ProjectStore: ObservableObject {
     @Published var selectedCandidate: String?
     /// A download in progress, from the file the tools write while they fetch terrain.
     @Published var download: Download?
+    /// How many tiles were screened before this project was handed over, when it arrived without its downloads.
+    /// Nil for a project that has its own data, or none yet.
+    @Published var screenedBefore: Int?
 
     struct Download: Equatable {
         let dataset: String
@@ -52,13 +55,17 @@ final class ProjectStore: ObservableObject {
     func register(path: String) {
         guard FileManager.default.fileExists(atPath: path + "/PROJECT.md"), !projects.contains(where: { $0.path == path }) else { return }
         let state = json(path + "/private/state/project.json") as? JSON
-        projects.append(ProjectRef(path: path, name: state?["name"] as? String ?? URL(fileURLWithPath: path).lastPathComponent))
+        // A project someone shared has no private state, so its name comes from the heading of PROJECT.md.
+        let heading = (try? String(contentsOfFile: path + "/PROJECT.md", encoding: .utf8))?.split(separator: "\n").first
+            .flatMap { $0.hasPrefix("# ") ? String($0.dropFirst(2)).trimmingCharacters(in: .whitespaces) : nil }
+        projects.append(ProjectRef(path: path, name: state?["name"] as? String ?? heading ?? URL(fileURLWithPath: path).lastPathComponent))
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
     }
 
     /// Leave the open project, back to the general chat.
     func close() {
         current = nil
+        screenedBefore = nil
         selectedTile = nil
         selectedCandidate = nil
         UserDefaults.standard.removeObject(forKey: "currentProject")
@@ -74,6 +81,7 @@ final class ProjectStore: ObservableObject {
 
     func open(_ ref: ProjectRef) {
         current = ref
+        screenedBefore = nil
         selectedTile = nil
         selectedCandidate = nil
         UserDefaults.standard.set(ref.path, forKey: "currentProject")

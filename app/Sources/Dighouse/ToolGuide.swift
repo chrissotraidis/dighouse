@@ -122,8 +122,16 @@ enum ToolGuide {
 
     /// The workflow a message was sent by, so the chat can show its name rather than its full instructions.
     static func workflow(sentAs text: String) -> Workflow? {
-        workflows.filter { !$0.prompt.isEmpty && text.hasPrefix($0.prompt) }.max { $0.prompt.count < $1.prompt.count }
+        (workflows + [carryOn]).filter { !$0.prompt.isEmpty && text.hasPrefix($0.prompt) }.max { $0.prompt.count < $1.prompt.count }
     }
+
+    /// What the agent is asked when a shared project is picked up: say what was done, then do what needs no download.
+    /// It is offered on the overview of such a project only, so it is not in the list of workflows.
+    static let carryOn = Workflow(
+        id: "carry", title: "Carry on", icon: "arrow.right.circle",
+        summary: "The agent reads the research record, says what was done, and does what is left that needs no download.",
+        prompt: "This project was shared with me. Read RESEARCH.md and the candidates' records, then tell me in a few lines what was already done here and what is left. Then do what is left that needs no download and no location: try the sources listed as could not be opened and log each one, and call suggest_decision for any candidate that has no suggestion. Do not fetch terrain or screen again: the ground listed in the record was already looked at. End with write_summary.",
+        scope: .project, steps: [])
 
     static let workflows: [Workflow] = [
         Workflow(id: "research", title: "What should I research?", icon: "sparkle.magnifyingglass",

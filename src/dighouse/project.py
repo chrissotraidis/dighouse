@@ -91,8 +91,9 @@ and that someone else can pick the project up and add to it.
   A decision carries the person's name, the date and the reason.
 - **Each run ends with a summary** in notes/, listed in notes/INDEX.md. The dated notes log every step.
 - **Lessons** below are for what this place teaches: surveys that build badly, common false flags.
-- **Sharing:** Data, then Export project, gives everything except private/ and data/, so the project can be
-  handed to another person, who opens it in Dighouse and carries on from RESEARCH.md.
+- **Sharing:** File, then Export Project, gives everything except private/ and data/, so the project can be
+  handed to another person, who opens the folder in Dighouse and carries on from RESEARCH.md. The downloads and
+  the locations do not travel. The record of what was looked at and read does, so that ground is not screened twice.
 """
 METHODOLOGY_MD = METHODOLOGY_MD.replace("{record}", RECORD_SECTION)
 

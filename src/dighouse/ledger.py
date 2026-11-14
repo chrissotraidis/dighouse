@@ -65,7 +65,11 @@ def create(p: Project, name: str, tile: str, lonlat: tuple[float, float], note: 
 
 
 def location(p: Project, cid: str) -> tuple[float, float]:
-    loc = p.load("locations", {})[cid]
+    places = p.load("locations", {}) or {}
+    if cid not in places:
+        raise ValueError(f"{cid}'s location is not on this Mac. Locations stay under private/, which is not part of a shared "
+                         "project. Ask whoever shared the project for it, or flag the feature again on terrain fetched here.")
+    loc = places[cid]
     return loc["lon"], loc["lat"]
 
 

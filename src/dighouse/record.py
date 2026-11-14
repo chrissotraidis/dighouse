@@ -8,6 +8,7 @@ so the next person or agent builds on it instead of repeating it. It never holds
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 
 from . import ledger
@@ -55,6 +56,44 @@ def _searches(p: Project) -> list[tuple[str, str, str]]:
     return sorted(seen.values(), reverse=True)
 
 
+def _map_failures(p: Project) -> dict[str, str]:
+    """Candidates whose check for modern features was tried and got no answer, with the last day it was tried."""
+    out: dict[str, str] = {}
+    for f in sorted(p.path("notes").glob("20??-??-??.md")):
+        for cid in re.findall(r"Could not check for modern features near (C-\d+)", f.read_text()):
+            out[cid] = f.stem
+    return out
+
+
+def facts(p: Project) -> tuple[dict, dict]:
+    """The surveys used and the tiles looked at: what is on this Mac, plus what came with the project.
+
+    A shared project arrives without private/ and data/, so the state that says which ground was looked at is
+    gone. notes/record.json keeps a copy of those facts with no locations in it, and it travels with the project.
+    Anything in it that this Mac does not have is marked as earlier work, so the record survives a handover.
+    """
+    f = p.path("notes", "record.json")
+    try:
+        kept = json.loads(f.read_text()) if f.exists() else {}
+    except ValueError:
+        kept = {}
+    terrains = {k: {x: v.get(x) for x in ("dataset", "source", "collected", "area_km2", "ground_points_per_m2", "res")}
+                for k, v in (p.load("terrains", {}) or {}).items()}
+    tiles = {k: {"terrain": v.get("terrain"), "status": v.get("status"), "verdict": v.get("verdict"),
+                 "note": _clean(v.get("note") or ""), "model": v.get("model")}
+             for k, v in (p.load("tiles", {}) or {}).items()}
+    for name, here in (("terrains", terrains), ("tiles", tiles)):
+        for k, v in (kept.get(name) or {}).items():
+            if k not in here:
+                here[k] = {**v, "earlier": True}
+    if terrains or tiles:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        text = json.dumps({"terrains": terrains, "tiles": tiles}, indent=1, ensure_ascii=False)
+        if not f.exists() or f.read_text() != text:
+            f.write_text(text)
+    return terrains, tiles
+
+
 def question(p: Project) -> str:
     q = p.load("project", {}).get("question", "")
     if not q and p.path("PROJECT.md").exists():
@@ -71,11 +110,17 @@ def density(t: dict) -> str:
 
 
 def still_to_do(p: Project) -> list[str]:
-    tiles = p.load("tiles", {})
+    terrains, tiles = facts(p)
     records = ledger.everything(p)
     out = [] if question(p) else ["Write the project's question under \"## Question\" in PROJECT.md, so everyone knows what the search is for."]
-    left = sum(t["status"] == "unscreened" for t in tiles.values())
-    if not p.load("terrains", {}):
+    left = sum(t["status"] == "unscreened" and not t.get("earlier") for t in tiles.values())
+    earlier = sum(t["status"] == "screened" and bool(t.get("earlier")) for t in tiles.values())
+    notice = ""
+    if terrains and all(t.get("earlier") for t in terrains.values()):
+        notice = ("To look at the ground yourself, fetch the terrain again: the downloads and the locations stayed on the Mac "
+                  f"this project came from. {earlier} tile{'s were' if earlier != 1 else ' was'} already screened, "
+                  "and each is listed below with what it showed, so this is not needed to carry on.")
+    elif not terrains:
         out.append("Fetch terrain for the area: nothing has been downloaded yet.")
     if left:
         out.append(f"Screen {left} tile{'s' if left != 1 else ''} nobody has looked at yet.")
@@ -100,6 +145,8 @@ def still_to_do(p: Project) -> list[str]:
         out.append("Every tile is screened and nothing was flagged. Screen again in another view (sky view shows low banks best), "
                    "widen the area, or try another survey. Search the literature for the area too: it is worth knowing what is "
                    "published here even when the lidar shows nothing.")
+    if notice:
+        out.append(notice)
     return out
 
 
@@ -107,8 +154,9 @@ def document(p: Project, commit_it: bool = True) -> dict:
     """Rebuild RESEARCH.md and save it in the project's history."""
     _upgrade(p)
     info = p.load("project", {})
-    terrains = p.load("terrains", {})
-    tiles = p.load("tiles", {})
+    terrains, tiles = facts(p)
+    # Handed over: the record lists ground that this Mac holds no data for.
+    handed = any(t.get("earlier") for t in terrains.values()) and not any(not t.get("earlier") for t in terrains.values())
     records = ledger.everything(p)
     sources: dict[str, dict] = {}
     for m in records:
@@ -119,7 +167,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
                 entry.update(status="read", finding=s["finding"], link=s.get("link") or entry.get("link", ""))
     searches = _searches(p)
     todo = still_to_do(p)
-    name = info.get("name") or p.root.name
+    name = info.get("name") or _title(p) or p.root.name
     question_text = question(p)
     now = dt.datetime.now()
 
@@ -130,15 +178,40 @@ def document(p: Project, commit_it: bool = True) -> dict:
         models[t.get("model") or "unnamed"] = models.get(t.get("model") or "unnamed", 0) + 1
     decided = [m for m in records if m.get("decisions")]
     n_status = {k: sum(s["status"] == k for s in sources.values()) for k in SOURCE_WORDS}
+    failed_maps = _map_failures(p)
 
-    L = [f"# Research record: {name}", "",
-         "This is the project's memory. Dighouse rebuilds it from the records, notes and logs whenever a run ends, "
-         "a decision is recorded or the project is opened, so do not edit it by hand: write in notes/ or in a "
-         "candidate's Notes instead. Anyone continuing this work, a person or an agent, reads it first and builds "
-         "on it rather than repeating it. It holds no coordinates; those stay in private/ on the Mac that made them.", "",
-         f"Updated {now:%Y-%m-%d %H:%M}. Started {info.get('created', 'unknown')}.", ""]
-    if question_text:
-        L += ["## The question", "", question_text, ""]
+    # The top is for someone who has never seen the project: what it asks, how far it got, the finds, and how to carry on.
+    short = [f"This project asks: {question_text}" if question_text else "This project has no question written down yet."]
+    if tiles:
+        flagged = (f"{len(records)} feature{'s' if len(records) != 1 else ''} that looked built "
+                   f"{'were' if len(records) != 1 else 'was'} flagged" if records else "nothing that looks built was flagged")
+        short.append(f"So far {len(screened)} of {len(tiles)} squares of ground (tiles) have been looked at, and {flagged}.")
+    else:
+        short.append("No ground has been looked at yet.")
+    if records:
+        short.append(f"A person has decided {len(decided)} of {len(records)}.")
+    if sources:
+        short.append(f"{n_status['read']} published source{'s' if n_status['read'] != 1 else ''} "
+                     f"{'were' if n_status['read'] != 1 else 'was'} read"
+                     + (f", and {n_status['could_not_open']} could not be opened" if n_status["could_not_open"] else "") + ".")
+    else:
+        short.append("Nothing published has been read yet.")
+    if handed:
+        short.append("The project was handed over without its downloaded data and its locations, which stay on the Mac "
+                     "that made them. What is written here still stands.")
+    L = [f"# Research record: {name}", "", "**In short.** " + " ".join(short), ""]
+    if records:
+        L += ["**The finds.**", ""]
+        for m in records:
+            last = m["decisions"][-1] if m.get("decisions") else None
+            state = (f"{ledger.LABELS.get(last['status'], last['status']).lower()}, decided by {last['by']}" if last
+                     else "waiting for a person's decision")
+            L.append(f"- [{m['id']} {_clean(m['name'], 70)}](candidates/{m['id']}.md): {state}.")
+        L.append("")
+    L += ["**How to continue.** Open this folder in Dighouse (File, then Open Project Folder) and ask the agent to carry on. "
+          "It reads this record first, so nothing listed here is done twice."
+          + (f" Next: {todo[0][0].lower() + todo[0][1:]}" if todo else ""), "",
+          f"Updated {now:%Y-%m-%d %H:%M}. Started {info.get('created') or 'on another Mac'}.", ""]
     area = sum(t.get("area_km2") or 0 for t in terrains.values())
     L += ["## Where things stand", "",
           f"- **Terrain:** {len(terrains)} survey download{'s' if len(terrains) != 1 else ''}, {area:.2f} sq km.",
@@ -172,10 +245,13 @@ def document(p: Project, commit_it: bool = True) -> dict:
         if models:
             L.append("")
             L.append("Looked at by " + ", ".join(f"{k} ({v})" for k, v in sorted(models.items(), key=lambda kv: -kv[1])) + ".")
+        if any(t.get("earlier") for t in tiles.values()):
+            L += ["", "Tiles marked \"earlier\" were looked at before the project was handed over. Their pictures are not on "
+                  "this Mac, but what each showed is."]
         L += ["", "| Tile | Verdict | Note |", "|---|---|---|"]
         for tid, t in sorted(tiles.items()):
             verdict = VERDICT_WORDS.get(t.get("verdict"), t["status"].replace("unscreened", "not yet"))
-            L.append(f"| {tid} | {verdict} | {_clean(t.get('note', ''), 220)} |")
+            L.append(f"| {tid} | {verdict}{' (earlier)' if t.get('earlier') else ''} | {_clean(t.get('note') or '', 220)} |")
     else:
         L.append("No tiles yet.")
     L.append("")
@@ -192,7 +268,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
             second_t = (("agrees" if second.get("agrees") else "disagrees") + f" ({second.get('model', '')})"
                         if isinstance(second, dict) else "not yet")
             modern = c.get("modern")
-            modern_t = ("modern features nearby" if modern.get("likely_modern") else "none nearby") if isinstance(modern, dict) else "not yet"
+            modern_t = (("modern features nearby" if modern.get("likely_modern") else "none nearby") if isinstance(modern, dict)
+                        else f"not yet: the map service did not answer on {failed_maps[m['id']]}" if m["id"] in failed_maps else "not yet")
             read = sum(s["status"] == "read" for s in m["sources"])
             if m.get("decisions"):
                 d = m["decisions"][-1]
@@ -232,11 +309,16 @@ def document(p: Project, commit_it: bool = True) -> dict:
     L += ["## History", ""] + (runs[:8] or ["No runs yet."])
     L += ["", "The full history is in [notes/INDEX.md](notes/INDEX.md), the dated notes, and the project's git log.", ""]
     L += ["## How this project keeps its record", "",
+          "Dighouse rebuilds this file from the records, notes and logs whenever a run ends, a decision is recorded or the "
+          "project is opened, so do not edit it by hand: write in notes/ or in a candidate's Notes instead. "
+          "It holds no coordinates; those stay in private/ on the Mac that made them.", "",
           "- [PROJECT.md](PROJECT.md): the question and the rules.",
           "- [METHODOLOGY.md](METHODOLOGY.md): how the search is done here, and lessons learned.",
           "- RESEARCH.md: this file.",
           "- candidates/: one record per feature, with its pictures, checks, sources and decisions.",
           "- notes/: a summary of each run, listed in notes/INDEX.md, and a dated log of every step.",
+          "- notes/record.json: which surveys were used and which tiles were looked at, without locations, so the record "
+          "survives when the project is shared.",
           "- sources/: the log of every source, and pages a person saved for the agent.",
           "- reports/: drafts for a heritage authority, sent only by a person.",
           "- private/ and data/ hold locations and downloads. They stay on this Mac and out of the history.", ""]
@@ -249,5 +331,13 @@ def document(p: Project, commit_it: bool = True) -> dict:
         f.write_text(text)
         if commit_it:
             commit(p.root, "Update the research record")
-    return {"written": "RESEARCH.md", "changed": changed, "still_to_do": todo}
+    return {"written": "RESEARCH.md", "changed": changed, "still_to_do": todo, "handed_over": handed,
+            "screened_before": sum(t["status"] == "screened" and bool(t.get("earlier")) for t in tiles.values())}
+
+
+def _title(p: Project) -> str:
+    """The project's name from the first heading of PROJECT.md, for a project that arrived without its private state."""
+    f = p.path("PROJECT.md")
+    first = f.read_text().splitlines()[0] if f.exists() and f.read_text().strip() else ""
+    return first.lstrip("# ").strip() if first.startswith("#") else ""
 

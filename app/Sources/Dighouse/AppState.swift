@@ -133,6 +133,10 @@ final class AppState: ObservableObject {
         chat.model = { [weak self] in self?.model }
         chat.modelID = { [weak self] in self?.modelID }
         chat.onUntitled = { [weak self] chat, text in self?.nameLater(chat, text) }
+        // A run that ends, however it ends, leaves the research record up to date. No model is used.
+        chat.onRunEnded = { [weak self] folder, _ in
+            Task { @MainActor in await self?.updateRecord(of: folder) }
+        }
         chat.effort = { [weak self] in
             guard let self, let effort = self.effort, self.model?.efforts.contains(effort) == true else { return nil }
             return effort
@@ -196,6 +200,7 @@ final class AppState: ObservableObject {
                     self.secondLookQueue = []
                 }
                 self.store.reloadIfChanged()
+                if let path = self.store.current?.path { Task { @MainActor in await self.updateRecord(of: path) } }
                 self.nextSecondLook()
             }
             self.chat.handle(method, params)
@@ -253,7 +258,17 @@ final class AppState: ObservableObject {
         tab = .map
         Task { @MainActor in await chat.open(project: project.path) }
         // Bring the research record up to date (and give an older project its method and history). No model is used.
-        if engine.ready { Task { _ = try? await engine.callTool("document_project", ["project": project.path]) } }
+        Task { @MainActor in await updateRecord(of: project.path) }
+    }
+
+    /// Rebuild a project's research record through the tools. It also says whether the project was handed over
+    /// without its downloads, which the overview needs to know.
+    func updateRecord(of path: String) async {
+        guard engine.ready, let reply = try? await engine.callTool("document_project", ["project": path]),
+              let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON else { return }
+        if store.current?.path == path {
+            store.screenedBefore = info["handed_over"] as? Bool == true ? info["screened_before"] as? Int ?? 0 : nil
+        }
     }
 
     func showNotes(_ part: String) {

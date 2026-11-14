@@ -7,6 +7,10 @@ description: Run an archaeological search over open lidar with the Dighouse tool
 
 Work inside one project folder and pass its absolute path to every tool. Read `RESEARCH.md` first: it is the project's research record, listing the data used, every tile looked at and its verdict, every candidate's checks and decision, every source and literature search, and what is still to do. Build on it; do not redo work it lists unless you say why (a better survey, another view, a source that has since become readable). Then read `METHODOLOGY.md` (the project's method: follow it) and the newest run summary, so a run continues where the last one stopped. When a run teaches something the next run should know, such as a survey that builds badly or a kind of false flag common here, add a dated line under Lessons in `METHODOLOGY.md`.
 
+Begin your first message in a project by saying, in a sentence or two, what the research record shows is already done, and then what you will do now. The person may be new to the project and should not have to ask.
+
+A project can be handed from one person to another. The downloads and the locations stay on the first Mac; the record of what was looked at and read travels. So if `RESEARCH.md` lists tiles as "earlier" and says the project was handed over, that ground has been screened: do not fetch or screen it again unless the person asks to look at it themselves. Carry on from "Still to do": sources that could not be opened, checks that need no location, decisions and the report. A wider or different area needs the person to say where, because locations are never shared.
+
 ## Keeping the record
 
 Other people, many of them new to archaeology, and other agents will continue this work from what you leave. Novel research depends on knowing what was already looked at and read, so every step has to leave a trace:

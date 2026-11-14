@@ -43,11 +43,16 @@ struct ProjectOverview: View {
         let checked = all.filter { $0.checks["section"] != nil && $0.checks["modern"] != nil }.count
         let second = all.filter { $0.checks["second_look"] != nil }.count
         let sourced = all.filter { !$0.sources.isEmpty }.count
+        // A shared project: its ground was fetched and screened on the Mac it came from.
+        let before = store.terrains.isEmpty ? store.screenedBefore : nil
         return [
             Stage(id: "terrain", title: "Bare ground", plain: "Download the laser scans and strip the trees away.",
-                  done: !store.terrains.isEmpty, detail: store.terrains.isEmpty ? "Not yet" : "\(store.terrains.count) terrain, \(s.tiles) tiles"),
+                  done: !store.terrains.isEmpty || before != nil,
+                  detail: before != nil ? "Done on the other Mac" : store.terrains.isEmpty ? "Not yet" : "\(store.terrains.count) terrain, \(s.tiles) tiles"),
             Stage(id: "screen", title: "Screening", plain: "Look at every tile for shapes people built.",
-                  done: s.tiles > 0 && s.unscreened == 0, detail: s.tiles == 0 ? "Waiting for terrain" : "\(s.screened) of \(s.readable) tiles, \(s.candidates) flagged"),
+                  done: (s.tiles > 0 && s.unscreened == 0) || before != nil,
+                  detail: before.map { "\($0) tile\($0 == 1 ? "" : "s") before the handover, \(all.count) flagged" }
+                    ?? (s.tiles == 0 ? "Waiting for terrain" : "\(s.screened) of \(s.readable) tiles, \(s.candidates) flagged")),
             Stage(id: "check", title: "Checks", plain: "Slice through each flag, and look for roads and buildings.",
                   done: !all.isEmpty && checked == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(checked) of \(all.count) checked"),
             Stage(id: "second", title: "Second opinion", plain: "A different AI model looks at each flag on its own.",
@@ -62,6 +67,12 @@ struct ProjectOverview: View {
     /// The next thing to do, in plain words, with the button that does it.
     private var next: (title: String, why: String, action: () -> Void, label: String)? {
         let open = store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
+        // A project someone shared: the ground was looked at on their Mac, and what is left needs no download.
+        if store.terrains.isEmpty, let before = store.screenedBefore {
+            return ("Pick up where it was left",
+                    "This project was shared with you. Its downloads and locations stayed on the other Mac, but the research record says what was done: \(before) tile\(before == 1 ? "" : "s") screened and \(store.candidates.count) find\(store.candidates.count == 1 ? "" : "s"). The agent reads it and tells you what is left.",
+                    { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }, "Carry on")
+        }
         if store.terrains.isEmpty, let flow = ToolGuide.workflows.first(where: { $0.id == "full" }) {
             return ("Run the search", "The agent fetches the open lidar for this area, looks at every tile, checks what it flags and searches what is published. It stops for you at the decisions. It takes about 10 to 20 minutes.", { app.run(flow) }, "Run the whole search")
         }

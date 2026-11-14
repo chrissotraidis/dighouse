@@ -461,7 +461,12 @@ def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     """Check OpenStreetMap around a candidate for roads, buildings and land use, and for sites already mapped nearby."""
     p = Project(project).check()
     lon, lat = ledger.location(p, candidate)
-    found = checks.modern_features(lon, lat, radius_m)
+    try:
+        found = checks.modern_features(lon, lat, radius_m)
+    except RuntimeError:
+        # A check that was tried and got no answer leaves a trace too, so the record can say why it is still open.
+        p.note(f"Could not check for modern features near {candidate}: the open map services did not answer")
+        raise
     n = found["mapped_features_within_radius"]
     summary = f"{n} mapped modern feature(s) within {radius_m} m" if n else f"nothing modern mapped within {radius_m} m"
     if found["historic_within_2km"]:

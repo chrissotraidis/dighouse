@@ -134,6 +134,9 @@ def test_a_map_service_that_is_down_leaves_the_check_open(tmp_path, monkeypatch)
         server.check_modern(root, "C-001")
     assert "modern" not in ledger.get(p, "C-001")[0]["checks"]
     assert "modern features have not been checked" in server.list_candidates(root)[0]["open_items"]
+    # The try that got no answer is in the research record, so the next person knows why the check is open.
+    server.document_project(root)
+    assert "the map service did not answer on" in p.path("RESEARCH.md").read_text()
 
     # When a server answers, what it maps is counted and written on the record.
     class Reply:
@@ -202,3 +205,44 @@ def test_research_record_covers_what_was_done(tmp_path):
     assert any("Screen 1 tile" in t for t in out["still_to_do"])
     assert any("could not be opened" in t for t in out["still_to_do"])
     assert "How this project keeps its record" in p.path("METHODOLOGY.md").read_text()
+    # The top is written for a newcomer: what the project asks, a link to each find, and how to carry on.
+    assert "**In short.** This project asks: Is the bank built?" in text
+    assert f"- [{cid} Low bank](candidates/{cid}.md): waiting for a person's decision." in text
+    assert "**How to continue.** Open this folder in Dighouse" in text
+
+
+def test_the_record_survives_a_handover(tmp_path):
+    """A shared project arrives without private/ and data/. Its record must still say what was looked at."""
+    import shutil
+    from dighouse import ledger, record
+
+    p = Project.create(tmp_path / "first", "Handover check", "Is the bank built?", [0.0, 51.0, 0.01, 51.01])
+    p.save("terrains", {"t1": {"dataset": "usgs:TEST_2020", "area_km2": 0.5, "ground_points_per_m2": 6.2, "res": 0.5,
+                               "box": [500000.0, 5650000.0, 500700.0, 5650700.0]}})
+    p.save("tiles", {"t1-r000c000": {"terrain": "t1", "window": [0, 0, 500, 500], "status": "screened", "verdict": "natural",
+                                     "note": "A stream channel and nothing built", "model": "test-model"}})
+    cid = ledger.create(p, "Low bank", "t1-r000c000", (0.005, 51.005), "A straight low bank", "test-model")["id"]
+    record.document(p)
+
+    # What Export project hands over: everything but private/ and data/.
+    second = tmp_path / "second"
+    shutil.copytree(p.root, second, ignore=shutil.ignore_patterns("private", "data"))
+    q = Project(second).check()
+    out = record.document(q)
+    text = q.path("RESEARCH.md").read_text()
+
+    assert out["handed_over"] and out["screened_before"] == 1
+    assert "# Research record: Handover check" in text and "handed over" in text
+    assert "usgs:TEST_2020" in text and "A stream channel and nothing built" in text and "natural (earlier)" in text
+    assert "already screened" in out["still_to_do"][-1]
+    assert "5650000" not in q.path("notes", "record.json").read_text()   # the terrain's corner is a location
+    # A tool that needs a location says why it cannot run here.
+    with pytest.raises(ValueError, match="not on this Mac"):
+        server.check_modern(str(second), cid)
+    # Work done after the handover is added to the earlier work, not put in its place.
+    q.save("terrains", {"t2": {"dataset": "usgs:TEST_2024", "area_km2": 0.2, "ground_points_per_m2": 9.0, "res": 0.5}})
+    q.save("tiles", {"t2-r000c000": {"terrain": "t2", "window": [0, 0, 500, 500], "status": "unscreened"}})
+    after = record.document(q)
+    text = q.path("RESEARCH.md").read_text()
+    assert not after["handed_over"] and "usgs:TEST_2020" in text and "usgs:TEST_2024" in text
+    assert any("Screen 1 tile" in t for t in after["still_to_do"])

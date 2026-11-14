@@ -146,6 +146,12 @@ struct MapView: View {
                 }
                 .buttonStyle(PrimaryButton())
             }
+        } else if store.tiles.isEmpty, store.screenedBefore != nil {
+            // A shared project: nothing to draw, and the record is the place to look.
+            EmptyPane(icon: "mountain.2", title: "The terrain stayed on the other Mac",
+                      text: "A shared project comes without its downloads and locations. The research record says what the ground showed, tile by tile. Get the terrain again only if you want to look at it yourself.") {
+                Button("Research record") { app.showNotes("record") }.buttonStyle(PrimaryButton())
+            }
         } else if store.tiles.isEmpty {
             EmptyPane(icon: "mountain.2", title: "No terrain yet",
                       text: "Ask the agent to find open lidar for the project's area. The bare ground appears here as it is fetched.") {
@@ -844,11 +850,13 @@ struct NotesView: View {
             Hairline()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(part == "record" ? "The research record: what has been looked at, read and decided here, and what is left. Dighouse keeps it up to date from the project's files, so share it with anyone who picks the project up."
-                         : part == "runs" ? "What each run did and found, newest first."
-                         : part == "method" ? "How searches in this project are done. The agent reads this before every run and follows it; edit it to change the method."
-                         : "The running log the tools write as work happens, the sources read, and report drafts.")
-                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                    // The record introduces itself, so it needs no line from the app above it.
+                    if part != "record" {
+                        Text(part == "runs" ? "What each run did and found, newest first."
+                             : part == "method" ? "How searches in this project are done. The agent reads this before every run and follows it; edit it to change the method."
+                             : "The running log the tools write as work happens, the sources read, and report drafts.")
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                    }
                     if let file, let text = try? String(contentsOfFile: root + "/" + file, encoding: .utf8) {
                         MarkdownText(text: text)
                     } else if part == "record" {
@@ -867,6 +875,19 @@ struct NotesView: View {
                 }
                 .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
             }
+            // A link to a candidate opens its record here; a link to another of the project's files opens that file.
+            .environment(\.openURL, OpenURLAction { url in
+                guard url.scheme == nil || url.isFileURL else { return .systemAction }
+                let path = url.relativePath
+                if path.hasPrefix("candidates/"), path.hasSuffix(".md") {
+                    app.showRecords(URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent)
+                } else if FileManager.default.fileExists(atPath: root + "/" + path) {
+                    let part = path.hasPrefix("notes/") ? (path.contains("-run-") ? "runs" : "log") : path == "RESEARCH.md" ? "record" : "method"
+                    app.notesPart = part
+                    picked = path
+                }
+                return .handled
+            })
         }
     }
 }

@@ -67,6 +67,8 @@ final class ChatModel: ObservableObject {
     /// Called for a chat that has no name yet, with the text it began with.
     var onUntitled: ((String, String) -> Void)?
     var onToolFinished: ((String, JSON) -> Void)?
+    /// Called when a run in a project ends, with the project's folder and whether the person stopped it.
+    var onRunEnded: ((String, Bool) -> Void)?
 
     private(set) var project: String?
     private var turn: String?
@@ -594,7 +596,14 @@ final class ChatModel: ObservableObject {
         guard let thread = params["threadId"] as? String else { return }
         // Runs carry on while another chat is on screen, so keep track of every chat's turn.
         if method == "turn/started" { live[thread] = (params["turn"] as? JSON)?["id"] as? String ?? "" }
-        if method == "turn/completed" { live[thread] = nil }
+        if method == "turn/completed" {
+            live[thread] = nil
+            // The chat on screen belongs to the open project; a run elsewhere is found by the list its chat is in.
+            let folder = thread == active ? project : known.first { $0.value.contains { $0.id == thread } }?.key
+            if let folder, folder != Paths.general.path {
+                onRunEnded?(folder, ((params["turn"] as? JSON)?["status"] as? String) == "interrupted")
+            }
+        }
         if method == "thread/tokenUsage/updated", let use = params["tokenUsage"] as? JSON {
             let used = (use["last"] as? JSON)?["totalTokens"] as? Int ?? (use["total"] as? JSON)?["totalTokens"] as? Int ?? 0
             usage[thread] = (used, use["modelContextWindow"] as? Int)

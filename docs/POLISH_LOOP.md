@@ -246,6 +246,39 @@ All 32 tools were called once from Python against the real services, on a scratc
 - **Two offline tests added** (7 now): a map service that is down leaves the modern-features check open and writes nothing on the record, and counts what is mapped once it answers; a page that a publisher refuses says to log it as could not open. `uv run pytest`: 7 passed.
 - **Not tried:** a search that would return the Environment Agency, AHN or IGN ground models (their services answered the status check; building from them is in the live tests).
 
+### 2026-11-14, A4: the research record holds up when a project changes hands
+
+**What was wrong.** A shared project arrives without private/ and data/, and the record was rebuilt from the state kept there. So the first time the other person opened the project, RESEARCH.md was rewritten to say no ground had been looked at. The record did not survive the handover it was written for.
+
+**What changed**
+
+- **The record survives.** `notes/record.json` keeps which surveys were used and what each tile showed, with no locations, and it travels with the project. The record is built from this Mac's state plus whatever that file lists that this Mac lacks, marked "earlier".
+- **A newcomer can read the top.** RESEARCH.md opens with **In short** (the question, how much ground was looked at, how many finds, how much was read), **The finds** (a link to each record with its decision) and **How to continue** (open the folder, ask the agent, and the next thing to do). The paragraph about the file itself moved to the bottom. In the app the Record tab no longer puts its own explanation above the file's, and a link to a find opens its record.
+- **Rebuilt at every point it should be.** It was already rebuilt at a run summary, a decision, on opening the project and by document_project. A run that ended without a summary, or that the person stopped, left it stale. The app now rebuilds it whenever a run in a project ends, and after a second look. No model is used.
+- **A check that got no answer leaves a trace.** When the map service is down, the dated notes say so, and the record's Candidates table reads "not yet: the map service did not answer on" that day.
+- **The app knows a shared project.** Its overview says "Pick up where it was left", with how many tiles were screened before and one button, **Carry on**. The stages read "Done on the other Mac". The map pane says the terrain stayed on the other Mac. A tool that needs a location says the location is not on this Mac, where it used to say "Unknown id".
+- **The agent is told.** It begins its first message by saying what the record shows is done. In a shared project it does not fetch or screen the ground again unless asked (skills/dighouse/SKILL.md and the method file of new projects).
+- **Export refreshes the record first**, and is now also in the File menu and a project's menu.
+
+**Checked on a real run.** The scratch project at Serpent Mound, run on Terra: terrain, screening, section, second look (Gemini 3.8 Flash), literature search, a decision in the review.
+
+| Check | Seen |
+|---|---|
+| The record against the project's files | 4 tiles in the state and 4 rows; verdicts 1 built, 1 natural, 2 modern in both; 1 candidate with its decision by Chris Sotraidis in both; 1 source, could not be opened, in both; 2 literature searches in the notes and 2 listed; 2 run summaries and 2 in History; no coordinates. |
+| Rebuilt when a run ends | Moved RESEARCH.md out of the project, then asked the agent for one word with no tools. The file was back within four seconds of the reply. |
+| Rebuilt on a decision and on opening | The decision was in the record at 12:57, the minute it was recorded. Opening the project at 13:16 rewrote it with the new top (loop4/a4-record-top.jpg). |
+| The link to a find | Clicking "C-001 Serpent Mound effigy" in the record opened its record. |
+| Export | File › Export Project…, saved as a zip of 707 KB. Unzipped into another folder: no private/, no data/, and no coordinate in any file or in the git history it carries. |
+| Open the copy | File › Open Project Folder… The project took its name from PROJECT.md. Overview: "Pick up where it was left… 4 tiles screened and 1 find", stages "Done on the other Mac" (loop4/a4-handover-overview.jpg). |
+| Start a run there | Pressed Carry on. First lines of the chat: "I'll use the Dighouse research record to trace the handover, then check the unopened sources and any missing candidate suggestions. I'll leave the previously screened ground alone and finish by updating the summary." Then: "The earlier run screened all four tiles and identified Serpent Mound as C-001; Chris already decided it was published. Its ground section and independent second look are recorded, while one source remained unopened and the modern-features check was not completed." (loop4/a4-handover-chat.jpg) |
+| It skipped what the record lists | No terrain was fetched and no tile screened: the copy still has no data/ or private/. It opened the one source that had not been read (Garner 2023), logged it as read, and wrote a run summary that begins "Continued the handed-over project without downloading terrain or rescreening." |
+| The copy's record afterwards | Still lists the survey and the 4 tiles, each marked "earlier", and now "1 published source was read". |
+
+`uv run pytest`: 8 passed. The new test hands a project over, checks the record keeps its tiles and survey, that a tool needing a location says why it cannot run, and that work done afterwards is added to the earlier work.
+
+**Not checked:** a handover between two real Macs, and a receiver who then fetches terrain for the same place.
+
+
 
 
 

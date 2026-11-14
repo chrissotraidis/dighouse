@@ -173,7 +173,8 @@ struct TopBar: View {
                     .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.accent)
                     .help("Stop the download and the agent. Nothing half-downloaded is added to the project.")
             } else if s.tiles == 0 {
-                piece(store.terrains.isEmpty ? "No terrain yet" : "Terrain ready, not cut into tiles")
+                piece(store.terrains.isEmpty ? (store.screenedBefore.map { "Shared with you, \($0) tile\($0 == 1 ? "" : "s") screened before" } ?? "No terrain yet")
+                      : "Terrain ready, not cut into tiles")
             } else {
                 piece("Screened \(s.screened) of \(s.readable) tiles")
                 if s.unreadable > 0, width > 900 { piece("\(s.unreadable) unreadable") }
