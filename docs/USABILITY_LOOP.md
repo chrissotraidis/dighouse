@@ -365,3 +365,8 @@ Checked Home, a project, the Toolbox, Settings and the review at full screen (17
 - **The map's toolbar and colour key overlapped** when the map pane was narrow. The key now drops under the toolbar.
 
 Left for part 2: new README screenshots and bringing the docs into line, after the project method (P1) that Chris put first.
+
+
+### 2026-11-14, the model is easy to change
+
+Chris found the model hard to change: the button in the message box opened the effort panel, and the model list hid behind a small link. The button now opens one panel with the model list and a search box, with the thinking slider at its top. The last five models picked show first under "Recent". Checked in the app: typed "terra" and picked primary / 6.1 Terra, which is now the default, and the button reads "primary / 6.1 Terra, Medium". Tests now use that model (rule added to HANDOFF.md).

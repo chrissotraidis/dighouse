@@ -70,7 +70,14 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(sidebarWidth, forKey: "sidebarWidth") }
     }
     @Published var modelID: String? = UserDefaults.standard.string(forKey: "model") {
-        didSet { UserDefaults.standard.set(modelID, forKey: "model") }
+        didSet {
+            UserDefaults.standard.set(modelID, forKey: "model")
+            if let modelID { recentModels = Array(([modelID] + recentModels.filter { $0 != modelID }).prefix(5)) }
+        }
+    }
+    /// The last models picked, newest first, so switching back to a cheaper one is one click.
+    @Published var recentModels: [String] = UserDefaults.standard.stringArray(forKey: "recentModels") ?? [] {
+        didSet { UserDefaults.standard.set(recentModels, forKey: "recentModels") }
     }
     @Published var secondModelID: String? = UserDefaults.standard.string(forKey: "secondModel") {
         didSet { UserDefaults.standard.set(secondModelID, forKey: "secondModel") }

@@ -404,12 +404,17 @@ struct ModelList: View {
     let models: [ModelInfo]
     let current: String?
     var checks: [String: ModelCheck] = [:]
+    /// Models picked lately, shown first under "Recent".
+    var recent: [String] = []
     let pick: (ModelInfo) -> Void
     @State private var query = ""
     @FocusState private var searching: Bool
 
     private var shown: [ModelInfo] {
         query.isEmpty ? models : models.filter { $0.name.localizedCaseInsensitiveContains(query) }
+    }
+    private var recentShown: [ModelInfo] {
+        query.isEmpty ? recent.compactMap { id in models.first { $0.id == id } } : []
     }
 
     var body: some View {
@@ -426,7 +431,34 @@ struct ModelList: View {
             }
             ScrollView {
                 LazyVStack(spacing: 1) {
-                    ForEach(shown) { model in
+                    if recentShown.count > 1 {
+                        section("Recent")
+                        ForEach(recentShown.map { ($0, "recent-" + $0.id) }, id: \.1) { model, _ in row(model) }
+                        section("All models")
+                    }
+                    ForEach(shown) { model in row(model) }
+                    if shown.isEmpty { Text("No model matches.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(12) }
+                }
+                .padding(.horizontal, 6)
+            }
+            .frame(height: min(max(CGFloat(shown.count + (recentShown.count > 1 ? recentShown.count + 2 : 0)), 1) * 39, 340))
+        }
+        .padding(.vertical, 8)
+        .frame(width: 300)
+        .foregroundStyle(Theme.text)
+        .task {
+            // The popover has to finish opening before it can take the keyboard.
+            try? await Task.sleep(for: .milliseconds(150))
+            searching = models.count > 12
+        }
+    }
+
+    private func section(_ title: String) -> some View {
+        Text(title).font(.system(size: 11.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.faint)
+            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 6).padding(.top, 6).padding(.bottom, 2)
+    }
+
+    private func row(_ model: ModelInfo) -> some View {
                         Button { pick(model) } label: {
                             HStack(spacing: 8) {
                                 Text(model.name).font(.system(size: 14 * Theme.scale)).lineLimit(1)
@@ -442,21 +474,6 @@ struct ModelList: View {
                             .padding(.vertical, 3)
                         }
                         .buttonStyle(RowButton(selected: model.id == current))
-                    }
-                    if shown.isEmpty { Text("No model matches.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(12) }
-                }
-                .padding(.horizontal, 6)
-            }
-            .frame(height: min(max(CGFloat(shown.count), 1) * 39, 340))
-        }
-        .padding(.vertical, 8)
-        .frame(width: 300)
-        .foregroundStyle(Theme.text)
-        .task {
-            // The popover has to finish opening before it can take the keyboard.
-            try? await Task.sleep(for: .milliseconds(150))
-            searching = models.count > 12
-        }
     }
 }
 

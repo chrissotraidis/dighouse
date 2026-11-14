@@ -700,13 +700,9 @@ struct ModelControl: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
     @State private var open = false
-    @State private var listing = false
 
     var body: some View {
-        Button {
-            listing = app.activeEffort == nil
-            open = true
-        } label: {
+        Button { open = true } label: {
             HStack(spacing: 6) {
                 Text(app.modelName).foregroundStyle(Theme.text).lineLimit(1)
                 if let effort = app.activeEffort { Text(Effort.label(effort)).foregroundStyle(Theme.faint).lineLimit(1) }
@@ -720,39 +716,33 @@ struct ModelControl: View {
         .buttonStyle(.plain)
         .help("Choose the model and how hard it thinks")
         .onChange(of: app.pickerRequest) { _, request in
-            guard let request else { return }
-            listing = request == .model || app.activeEffort == nil
+            guard request != nil else { return }
             open = true
             app.pickerRequest = nil
         }
         .popover(isPresented: $open, arrowEdge: .top) {
-            Group {
-                if listing {
-                    ModelList(models: engine.models, current: app.model?.id, checks: app.modelChecks) { model in
-                        app.modelID = model.id
-                        if model.efforts.isEmpty { open = false } else { listing = false }
-                    }
-                } else if let model = app.model, let effort = app.activeEffort {
-                    VStack(spacing: 16) {
-                        VStack(spacing: 5) {
-                            Text(Effort.label(effort)).font(.system(size: 22 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.accent)
-                            Button { listing = true } label: {
-                                HStack(spacing: 5) {
-                                    Text(model.name)
-                                    Image(systemName: "chevron.right").font(.system(size: 10 * Theme.scale, weight: .semibold))
-                                }
-                                .font(.system(size: 14.5 * Theme.scale)).foregroundStyle(Theme.dim).contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain).help("Choose another model")
+            // The model list comes first; how hard the chosen model thinks is set at the top of the same panel.
+            VStack(spacing: 0) {
+                if let model = app.model, let effort = app.activeEffort {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Thinking").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
+                            Spacer()
+                            Text(Effort.label(effort)).font(.system(size: 13 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.accent)
                         }
-                        StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: true)
-                        Text(Effort.note(effort)).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-                        EffortTestLine(model: model, effort: effort)
-                        Text("The steps are the ones your model list gives for this model.").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint.opacity(0.8))
+                        StepSlider(steps: model.efforts, value: Binding(get: { effort }, set: { app.effort = $0 }), showLabels: false)
+                        Text(Effort.note(effort)).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.horizontal, 20).padding(.vertical, 18).frame(width: 340)
+                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 10)
+                    Hairline()
+                }
+                ModelList(models: engine.models, current: app.model?.id, checks: app.modelChecks, recent: app.recentModels) { model in
+                    app.modelID = model.id
+                    open = false
                 }
             }
+            .frame(width: 300)
             .foregroundStyle(Theme.text)
             .popoverSurface()
         }

@@ -17,6 +17,7 @@ The third loop is paused. To resume it, register it as your goal. Suggested obje
 - The repository stays private and nothing is released until Chris says so. Licence is Apache 2.0 for now.
 - Nothing is ever called new. Locations stay under `private/`. A person decides and sends.
 - Write "lidar" in lowercase. Plain words in the app: a first-time user must understand every label.
+- Tests that send a message to a model use a cheap one: primary / 6.1 Terra (Chris, 2026-11-14). Never test with Opus.
 - Say only what was checked. Do not claim a model, a service or a control works unless you saw it work.
 - Final replies to Chris link only files under `/Users/chrissotraidis/Documents/Codex/2026-11-12/vb/outputs`.
 
