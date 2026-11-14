@@ -2,6 +2,8 @@
 
 Last updated: 2026-11-14
 
+**Status: finished on 2026-11-14.** All eight goals are checked, in pull requests #22 to #29. The Log below says what was seen for each, and what was not verified.
+
 Read [HANDOFF.md](HANDOFF.md) first, then the end of [USABILITY_LOOP.md](USABILITY_LOOP.md), whose Log says what loop 3 did. Loop 3 made Dighouse easy to use. This loop makes it look and feel like a finished archaeology product. The menus and buttons should be professional, every tool should work, and the research record should hold up when a project changes hands. A newcomer should be able to start a first project with a short tutorial, or press one button and have the agent go, search and report back.
 
 ## Who this is for
@@ -40,19 +42,21 @@ Each goal is done when its check passes in the running app. Record the date and 
 ## How to build, check and drive the app
 
 - **Build and open:** cd app && (pkill -x Dighouse || true) && ./scripts/bundle.sh && open -n build/Dighouse.app --args -ApplePersistenceIgnoreState YES. Building takes 1 to 3 minutes; poll the session and don't block.
-- **Tests:** uv run pytest -q (5 offline). uv run pytest -m live talks to real services.
+- **Tests:** uv run pytest -q (10 offline by the end of this loop). uv run pytest -m live talks to real services.
 - **Driving the app** with Computer Use (cua_repl):
   - Prefer accessibility element indices from getAXState.
   - Coordinate clicks are in full-resolution pixels: take a point from a screenshot and divide by 0.696, so (36, 923) in the screenshot is about (52, 1329).
   - Keep each call under 30 seconds, or the session resets. ⌘K is the fastest way to any project, chat or candidate.
+  - Menus in the menu bar can be opened and clicked through accessibility but are not drawn, so they cannot be photographed. A right-click works; hover does not.
+  - Start the app with a clean environment when launching it from an agent's shell (see HANDOFF.md), or the engine inherits the Codex app's settings.
   - Opening a project unfolds its chats; the fold arrow is at the left of the project's row.
 - **Window size:** quit the app, write the frame (for example "0 0 1440 900 0 0 1728 1084 ") to the NSWindow Frame main key and the long NSWindow Frame SwiftUI…AppWindow-1 key in the com.chrissotraidis.dighouse defaults, then relaunch with -ApplePersistenceIgnoreState YES.
 - **README pictures:**
   - Back up ~/Library/Preferences/com.chrissotraidis.dighouse.plist first.
   - Hide the test projects (Serpent Mound goal run, Fort Ancient Ohio, Mound City review test) by editing the projects key, which is JSON, while the app is closed. Afterwards, restore only that key.
   - Bring Dighouse to the front before screencapture -o -x -l<window id>, or macOS may hand back a stale image. Find the window id with CGWindowListCopyWindowInfo.
-  - Cover the Computer Use indicator, a violet pill in the top-left corner of the capture.
-- **Engine:** Dighouse's engine is a child codex app-server of the Dighouse process. Stop that one to test a stopped engine, never the Codex app's own.
+  - screencapture -l gives the window alone, with no Computer Use pill and no pointer. Computer Use's own screenshots have both, and the pill then needs covering.
+- **Engine:** Dighouse's engine is a child codex app-server of the Dighouse process. Stop that one to test a stopped engine, never the Codex app's own. Since A2 Dighouse starts the newest copy of Codex on the Mac; 0.146 is refused the cheap model.
 
 ## Where things stand at the start
 
@@ -368,6 +372,58 @@ One button runs the whole search as a goal and comes back with a report. It is o
 `uv run pytest`: 10 passed. Two new tests: the report says what the records say and refuses coordinates; a stopped run is on the record until a run finishes.
 
 **Not checked:** a search that runs out of usage part-way (the app then notes it in the chat and still reports), a place name that cannot be found (the box says so), finishing a stopped search with the second button, and a search on a place outside the United States.
+
+### 2026-11-14, A8: one product, then docs
+
+**A1's screenshots were taken again** in the finished build: every page in Earth at 1440 × 900, and Home and a project in Canopy and Graphite (loop4/a8-*.jpg, 33 pictures). The menu bar was read through accessibility again.
+
+**The A1 list is closed.**
+
+| # | Rough edge | Now | Picture |
+|---|---|---|---|
+| 1 | Canopy: "Looks built" and "Possible" the same orange | Fixed in A2: green and amber in every look | loop4/a8-33-canopy-project.jpg |
+| 2 | "Not yet checked" on a checked candidate | Fixed in A2: "Needs your decision" | loop4/a8-13-records.jpg, a8-17-review.jpg |
+| 3 | Gaps in the menu bar | Fixed in A2, with the tutorial added to Help in A6 and Search Report to Project in A7 | read through accessibility |
+| 4 | A tooltip that said a service had replied while it was still being checked | Fixed in A3 | loop4/a8-18-toolbox-open-data.jpg |
+| 5 | A one-item menu on the + button | Fixed in A2: it opens the file panel directly | loop4/a2-menu-attach.jpg |
+| 6, 7 | Three looks for in-app menus; Workflows cut its descriptions | Fixed in A2: one panel, full descriptions | loop4/a8-07-workflows-menu.jpg, a8-08-model-panel.jpg |
+| 8 | Two search panels that looked different | Fixed in A2 | loop4/a8-10-jump-palette.jpg, a8-32-find-a-chat.jpg |
+| 9 | Three kinds of arrow | Fixed in A2: one, → | loop4/a8-04-home-open-surveys.jpg, a8-05-new-chat.jpg |
+| 10 | Sidebar and Settings labels not lined up | Fixed in A5: the icons have a column of their own | loop4/a8-22-settings-general.jpg |
+| 11 | The Toolbox shifting sideways between tabs | Fixed in A2 | loop4/a8-19-toolbox-how.jpg, a8-21-toolbox-more-tools.jpg |
+| 12 | A text link among buttons on Home | Fixed in A2: "Open a project folder…" | loop4/a8-04-home-open-surveys.jpg |
+| 13 | The review's relief picture floating in its column | Fixed in A2 | loop4/a8-17-review.jpg |
+| 14 | "Could Not Open" in title case | Fixed in A2. A source with no link still has no arrow, because there is nothing to open | loop4/a8-15-sources.jpg |
+| 15 | The Data tab starting further left | Fixed in A2 | loop4/a8-16-data.jpg |
+| 16 | Buttons over four words | Fixed in A2. "Find and report back", added in A7, is four | loop4/a8-12-project-overview.jpg |
+| 17 | System spinners everywhere | Fixed in A5: none left in the code | loop4/a5-earth-indicator.jpg |
+| 18 | Stages with no picture of their own | Fixed in A5 | loop4/a8-12-project-overview.jpg, a8-19-toolbox-how.jpg |
+| 19 | Generic system icons | Fixed in A5 for the aeroplane, the bank, the light bulb, the arrow in a circle and the wrench beside each tool. **Left, and why:** the chip stays for "the model", in Settings and on "Choose another model", because a model is the one thing here that is a piece of computing and none of the six drawings stands for it | loop4/a8-24-settings-models.jpg |
+| 20 | Empty states of one grey line | Fixed in A5 | loop4/a8-32-find-a-chat.jpg, a5-earth-empty.jpg |
+| 21 | Raw plugin names in the Toolbox | Fixed in A2: under Technical details | loop4/a8-21-toolbox-more-tools.jpg |
+| 22 | The research record explaining itself twice | Fixed in A4 | loop4/a8-14-notes.jpg |
+| 23 | Three chats with the same name | Fixed in A2 for new chats. **Left, and why:** Chris's three older chats are his, so they keep their names | loop4/a8-01-home.jpg |
+
+Nothing new was found in the second pass that is wrong. Two things read as unfinished and are noted in HANDOFF.md: the strip's stage can step back during a whole search, and a search report grows with the number of finds.
+
+**README pictures** were retaken at 1440 × 900 in Earth, with the three test projects and loop 4's scratch projects out of the sidebar: Home, New project (Mound City Group), Maiden Castle, Angel Mounds, a record, the Toolbox and Open data. This time each is the window alone, taken with `screencapture -l`, so there is no Computer Use pill to cover and no pointer over the words. Open data shows OpenStreetMap as Partly online, which was true when it was taken; the caption says so.
+
+**Docs brought into line:** README (33 tools, the tutorial, Find and report back, the look, the menus, handing a project over, the engine it needs, 10 offline tests), concept.md (five tabs, the search report, the newest engine, the project folder as it is now), HANDOFF.md (rewritten for whoever comes next) and this file.
+
+**Chris's things, as found:**
+
+- His settings were exported before the loop began and put back at its end; the two were compared key by key.
+- His projects list is the ten projects he had. Loop 4's scratch projects are in `~/Documents/Codex/2026-11-14/dighouse-loop4/work` and not in the list.
+- The model is primary / 6.1 Terra and the second-look model Gemini 3.8 Flash, as before. Every message sent to a model in this loop went to Terra, and every second look to Gemini 3.8 Flash.
+- The chats made for testing were archived.
+- **Changed, by design:** opening his projects in the new build rebuilt each one's RESEARCH.md in the new form and added `notes/record.json`, each as a commit in that project's own history. Angel Mounds and Maiden Castle were opened; the others catch up when he opens them.
+
+`uv run pytest`: 10 passed. main is pushed and clean.
+
+### Where loop 4 stopped
+
+All eight goals are checked. Nothing is half done. What was not verified, and what waits on Chris, is listed in [HANDOFF.md](HANDOFF.md).
+
 
 
 

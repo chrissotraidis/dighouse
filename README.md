@@ -13,7 +13,7 @@
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
   <img alt="Native SwiftUI app" src="https://img.shields.io/badge/app-SwiftUI-FF9F0A?logo=swift&logoColor=white">
   <img alt="Python 3.11 or later" src="https://img.shields.io/badge/tools-Python%203.11%2B-3776AB?logo=python&logoColor=white">
-  <img alt="32 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-32%20tools-8B5E3C">
+  <img alt="33 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-33%20tools-8B5E3C">
   <img alt="Runs the Codex engine" src="https://img.shields.io/badge/engine-Codex%20app--server-5E5CE6">
   <img alt="Any model through OpenCodex" src="https://img.shields.io/badge/models-any%2C%20via%20OpenCodex-5E5CE6">
   <img alt="Open lidar from four countries" src="https://img.shields.io/badge/lidar-US%20%C2%B7%20England%20%C2%B7%20NL%20%C2%B7%20France-6B8E23">
@@ -34,9 +34,9 @@
 
 ![Angel Mounds, Indiana, opened in Dighouse: the project's overview with the next step and how far the search has got on the left, five flagged candidates on the bare-ground map on the right](docs/images/angel-mounds-run.png)
 
-<sub>A search at Angel Mounds, Indiana, from open USGS lidar. The agent screened 9 tiles, flagged 5 candidates, cut a section through each, got a second model's opinion and searched the literature. The overview names the next step, and the research record keeps everything looked at and read.</sub>
+<sub>A search at Angel Mounds, Indiana, from open USGS lidar. The agent screened 9 tiles, flagged 5 candidates, cut a section through each, got a second model's opinion and searched the literature. The overview names the next step and shows each stage with its own drawing, and the research record keeps everything looked at and read.</sub>
 
-**AI disclosure:** Dighouse uses substantial AI assistance for code, tests, documentation, debugging and maintenance. There is no audited percentage of AI-generated code; the [run logs](docs/NEXT_LOOP.md#log) state what has actually been checked and how.
+**AI disclosure:** Dighouse uses substantial AI assistance for code, tests, documentation, debugging and maintenance. There is no audited percentage of AI-generated code; the [run logs](docs/POLISH_LOOP.md#log) state what has actually been checked and how.
 
 > [!IMPORTANT]
 > **Dighouse is not a download yet.** You build it from source on your own Mac. The build is signed for local use only and is not notarized. The tools work today, in the app or in any harness that speaks the Model Context Protocol.
@@ -64,33 +64,39 @@ A dig house is the building where an excavation team lives, works and keeps its 
 5. **Read.** The agent searches the literature and Open Context, opens what it can, and logs every source as read, could not open, or not relevant. Pages that refuse a program can be opened by you in the Sources tab and handed to the agent.
 6. **Record.** Every candidate is a Markdown page with its pictures, measurements, checks and sources. You decide what it is, and your name and reason go into the record.
 
+You can take the stages one at a time, or press **Find and report back** and get all of them in one go, ending with a report.
+
 ## The app
 
 `app/` holds Dighouse for macOS: a native SwiftUI app that runs the [Codex](https://github.com/openai/codex) engine with the archaeology tools attached. If the [OpenCodex](https://github.com/lidge-jun/opencodex) router is running, every model in its roster appears in the model menu, so a different maker's model can give the second opinion.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.png" alt="Home: drag between treetops and bare ground at Serpent Mound, a message box, and two ways in"><br><sub><b>Home.</b> Drag between the treetops and the bare ground, ask about a place, or take one of two ways in.</sub></td>
+    <td width="50%"><img src="docs/images/home.png" alt="Home: drag between treetops and bare ground at Serpent Mound, a message box, and two ways in"><br><sub><b>Home.</b> Drag between the treetops and the bare ground, type a place to search it in one press, or take one of two ways in.</sub></td>
     <td width="50%"><img src="docs/images/new-project.png" alt="New project at Mound City Group: name, question, a search area drawn on the map, and the open lidar that covers it"><br><sub><b>New project.</b> Place the search area on the map and see which open lidar covers it before you start.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/maiden-castle.png" alt="Maiden Castle in England from Environment Agency lidar: the project overview with the next step beside the tiled map of the ramparts and five flagged candidates"><br><sub><b>A project.</b> Maiden Castle from the Environment Agency's 1 m ground model: 42 tiles screened, five candidates flagged on the ramparts and entrances, and the next step named.</sub></td>
+    <td width="50%"><img src="docs/images/maiden-castle.png" alt="Maiden Castle in England from Environment Agency lidar: the project overview with the next step beside the tiled map of the ramparts and five flagged candidates"><br><sub><b>A project.</b> Maiden Castle from the Environment Agency's 1 m ground model: 42 tiles screened, five candidates flagged on the ramparts and entrances, the next step named, and Find and report back to finish in one go.</sub></td>
     <td width="50%"><img src="docs/images/record.png" alt="A candidate record at Angel Mounds with its relief, its section, and checks for ground returns, a second look and modern features"><br><sub><b>Records.</b> Each candidate with its relief, its section and every check. The decision is yours.</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/toolbox.png" alt="The Toolbox walking through the Check stage of a real search at Cahokia, with the section through Monks Mound"><br><sub><b>Toolbox.</b> One real search at Cahokia in six stages, each with its tools and a Run button.</sub></td>
-    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: services grouped by where they work, each with its status, and USGS 3DEP opened to show a picture made from its data"><br><sub><b>Open data.</b> Every service the tools read, grouped by where it works, what Dighouse takes from it, and whether it answers right now.</sub></td>
+    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: services grouped by where they work, each with its status, and USGS 3DEP opened to show a picture made from its data"><br><sub><b>Open data.</b> Every service the tools read, grouped by where it works, what Dighouse takes from it, and whether it answers right now. Here OpenStreetMap's map servers were down, and the page says so.</sub></td>
   </tr>
 </table>
 
+- **A first project in ten minutes.** "Start your first project" on Home is a tutorial at Serpent Mound: six steps, one sentence each, with the control to press ringed. Leave it and it resumes at the same step.
+- **Find and report back.** Type a place on Home and press one button, or press it on a project's overview, or type /investigate. The agent runs the whole search as a goal, Dighouse asks a second model about each find, and a report opens: what was asked, the data used, what was looked at, flagged, already published and ruled out, and a button for each decision waiting for you. The top bar shows the stage it is on and a Stop.
 - **Chat** works with or without a project. It shows the agent's plan, each step it takes, helper agents, and long runs folded into one line. One button opens the model list, with recent models first and the thinking effort above it, and the message box takes images, video, audio and other files.
-- **Like Codex:** type / for commands (/screen, /review, /undo, /fork, /compact, /goal and more) and @ to point at a candidate, tile, source or file. ⌘K jumps to any project, chat, candidate, page or command. When something fails, the chat says what happened and offers Try again or another model.
-- **A project** opens on an overview: its question, the next step explained, how far the search has got, and its research record. Beside the chat is a workspace with the map of tiles and candidates (views, toggles, and a line you draw to cut a section), the records, the notes, the sources with a browser to open them, and the project's data. The review goes through the finds one at a time, with the agent's suggested decision filled in.
+- **Like Codex:** type / for commands (/investigate, /screen, /review, /undo, /fork, /compact, /goal and more) and @ to point at a candidate, tile, source or file. ⌘K jumps to any project, chat, candidate, page or command. When something fails, the chat says what happened and offers Try again or another model.
+- **A project** opens on an overview: its question, the next step explained, how far the search has got, and its research record and search report. Beside the chat is a workspace with the map of tiles and candidates (views, toggles, and a line you draw to cut a section), the records, the notes, the sources with a browser to open them, and the project's data. The review goes through the finds one at a time, with the agent's suggested decision filled in.
+- **Its own look.** Six drawings made in SwiftUI (a trowel, a brush, a sieve, soil layers, a mound in section and a survey grid) mark the stages, the workflows and the places with nothing in them yet. While the agent works, a trowel scrapes along a line of soil; it holds still with Reduce Motion.
+- **Menus.** The menu bar has File (with Export Project), View (layouts, sidebar, Jump To, text size), Project (every workflow, the review, the research record, the search report) and Help (the guide, the tutorial, the shortcuts). Menus inside the app share one look, with a tick on the current choice.
 - **Settings** explains in plain words how the model, the agent engine, the tools and the optional router fit together. It has three colour looks (Earth, the default, is the soil brown, tan and green of the icon), a text size switch, a Test button for each model that marks which ones answered, every tool by stage, and a page on what data goes where.
 
 ## Build and run
 
-You need an Apple silicon Mac with macOS 14 or later, [Codex](https://github.com/openai/codex) (tested with 0.146.0) signed in, and [uv](https://docs.astral.sh/uv/).
+You need an Apple silicon Mac with macOS 14 or later, [Codex](https://github.com/openai/codex) signed in, and [uv](https://docs.astral.sh/uv/). Dighouse uses the newest copy of Codex it finds on the Mac, including the one inside the Codex app, because providers refuse their newer models to an older engine. It was last checked with 0.167; with 0.146 the model list loads but GPT-6.1 Terra is refused.
 
 ~~~sh
 git clone https://github.com/chrissotraidis/dighouse.git
@@ -116,7 +122,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 ### Tests
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (5 tests)
+uv run pytest            # offline, on a synthetic survey (10 tests)
 uv run pytest -m live    # the same chain against the real data services (8 tests)
 ~~~
 
@@ -130,8 +136,8 @@ uv run pytest -m live    # the same chain against the real data services (8 test
 | Look at the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `next_tiles`, `view_tile` |
 | Screen | `record_verdict`, `flag_candidate` |
 | Check each flag | `cut_section`, `second_look`, `check_modern`, `add_control` |
-| Prior art | `search_literature`, `read_source`, `log_source` |
-| Records and run | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `document_project`, `export_finds` |
+| Search what is published | `search_literature`, `read_source`, `log_source` |
+| Records and run | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `write_report`, `document_project`, `export_finds` |
 
 Terrain renders in four styles: `composite`, `hillshade`, `local_relief` and `sky_view`. `export_finds` writes the candidates as GeoJSON for QGIS, ArcGIS or Google Earth, under `private/` because it holds coordinates.
 
@@ -174,23 +180,25 @@ my-project/
   PROJECT.md      the question and the rules agents follow
   METHODOLOGY.md  how the search and the record are kept, and lessons learned here
   candidates/     one Markdown record per candidate, with its images
-  notes/          a dated log the tools write as work happens, and run summaries
+  notes/          a dated log the tools write as work happens, run summaries, and record.json (what was looked at, without locations)
   sources/        what was read, what could not be opened, and pages you saved
-  reports/        drafts for the heritage authority
+  reports/        the search report, and drafts for the heritage authority
   data/           downloaded points, ground models, tiles (not versioned)
   private/        locations, exports and run state (not versioned)
 ~~~
 
 Markdown is the record of truth, so a project works offline and can be shared or handed to an archaeologist like any folder. Each project keeps its own git history, which leaves out data/ and private/.
 
-Every project documents itself the same way, so work adds up. Dighouse rebuilds RESEARCH.md from the project's files whenever a run ends, a person decides or the project is opened. It lists:
+Every project documents itself the same way, so work adds up. Dighouse rebuilds RESEARCH.md from the project's files whenever a run ends, a person decides or the project is opened. It opens with a few plain lines for a newcomer (what the project asks, how far it got, a link to each find, and how to continue), then lists:
 
 - the data used, and every tile looked at with its verdict (including the ones that showed nothing);
 - every candidate's checks and decision;
 - every source read or not opened, and every literature search;
 - what is still to do.
 
-The agent reads it before it starts and builds on it, and whoever you hand the project to (a friend, an archaeologist, another agent) can see what has already been done.
+The agent reads it before it starts, says what is already done, and builds on it.
+
+**Handing a project over.** File › Export Project makes a zip without data/ or private/, so it holds no locations. The other person unzips it and opens the folder with File › Open Project Folder. The record still lists every tile and what it showed, marked as earlier work, and the overview offers one button, Carry on. The agent does not fetch or screen that ground again unless asked.
 
 ## Checked against known sites
 
@@ -200,11 +208,12 @@ Finding a known site again is the right answer for a test.
 - **Angel Mounds, Indiana.** A run flagged five mounds. The largest, C-001, matches the published description of Mound A in the sources the agent read, and a second model agreed it looks built.
 - **Maiden Castle, England.** From the Environment Agency's ground model, the agent described the four lines of rampart and both entrances.
 - **Mound City Group, Ohio.** A run counted 22 mounds inside the enclosure from the lidar; the thesis it read gives 24, and it matched the hollows outside the wall to the published borrow pits.
+- **Serpent Mound, Ohio.** One press of Find and report back screened 9 tiles, flagged the effigy, the conical mound south of it and a pair of curved lines, read three sources, and suggested that the first two are already published (Squier and Davis 1848; Schwarz 2020), in about eight minutes. The decisions were left to a person.
 - **Perry Mesa, Arizona.** Proposed by "What should I research?", it built into 66 readable tiles at 4 ground returns per square metre.
 
 ## Status
 
-Working: everything in the tables above, and the macOS app as shown. The run logs in [docs/NEXT_LOOP.md](docs/NEXT_LOOP.md) and [docs/GOAL_LOOP.md](docs/GOAL_LOOP.md) say what was checked in the running app and what was not.
+Working: everything in the tables above, and the macOS app as shown. The run logs say what was checked in the running app and what was not: the newest is [docs/POLISH_LOOP.md](docs/POLISH_LOOP.md), and [docs/USABILITY_LOOP.md](docs/USABILITY_LOOP.md), [docs/NEXT_LOOP.md](docs/NEXT_LOOP.md) and [docs/GOAL_LOOP.md](docs/GOAL_LOOP.md) came before it.
 
 Not built yet: the agent driving a browser of its own, bulk screening through the model router, a button that pushes records to Notion, a notarized download, and sections that show canopy for datasets published as ground points only. The design is in [docs/concept.md](docs/concept.md), and the state of the work is in [docs/HANDOFF.md](docs/HANDOFF.md).
 
