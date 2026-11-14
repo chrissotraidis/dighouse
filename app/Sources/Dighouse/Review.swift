@@ -229,10 +229,10 @@ struct ReviewSheet: View {
         let cut = c.checks["section"] as? JSON, look = c.checks["second_look"] as? JSON, modern = c.checks["modern"] as? JSON
         let read = c.sources.filter { $0.status == "read" }.count
         let rows: [(Bool?, String)] = [
-            (cut?["in_ground"] as? Bool, cut.map { "In the ground: \($0["feature_height_m"] ?? "?") m high" } ?? "No slice yet"),
+            (cut?["in_ground"] as? Bool, cut.map { ($0["from_ground_model_only"] as? Bool == true ? "On a ready-made ground model" : "In the ground") + ": \($0["feature_height_m"] ?? "?") m high" } ?? "No slice yet"),
             (look?["agrees"] as? Bool, look.map { ($0["agrees"] as? Bool == true ? "A second model agrees" : "A second model disagrees") + " (\($0["model"] as? String ?? ""))" } ?? "No second opinion yet"),
             (modern.map { $0["likely_modern"] as? Bool != true }, modern == nil ? "Open maps not checked"
-                : (modern?["likely_modern"] as? Bool == true ? "Open maps: \(((modern?["near"] as? [String]) ?? []).joined(separator: " and ").isEmpty ? "modern features" : ((modern?["near"] as? [String]) ?? []).joined(separator: " and ")) close by" : "Open maps: nothing modern on it")),
+                : (modern?["likely_modern"] as? Bool == true ? "Open maps: \(((modern?["near"] as? [String]) ?? []).isEmpty ? "modern features" : ListFormatter.localizedString(byJoining: (modern?["near"] as? [String]) ?? [])) close by" : "Open maps: nothing modern on it")),
             (c.sources.isEmpty ? nil : read > 0, c.sources.isEmpty ? "Nothing published read yet" : "\(read) source\(read == 1 ? "" : "s") read"),
         ]
         return VStack(alignment: .leading, spacing: 6) {

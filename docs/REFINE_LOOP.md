@@ -156,3 +156,19 @@ Words on each page at 1440 × 900, counted the same way as R3:
 - **Archaeoastronomy** (how ancient sites line up with the sky) is a real, small addition to the archaeology tools: a horizon profile and an alignment check, a few hundred lines.
 - **Checked a second time here:** the OpenAlex notice (keyless requests share $0.10 a day for each network address, which is 100 searches), the CDS notice of a cybersecurity incident dated 9 November 2026, and five of the cited arXiv records, whose titles matched.
 - **Not checked,** as the report says itself: nothing behind a key, none of the five searches was run, and whether vision models read faint features in sky images is untested.
+
+### R5, more of the world: done 2026-11-14
+
+- **Four national ground models added,** each needing no account: Flanders (Digitaal Vlaanderen, 1 m), Norway (Kartverket, 1 m), Estonia (Land and Spatial Development Board, 1 m) and Switzerland (swisstopo, 0.5 m). With England, the Netherlands and France that makes seven, and eight countries with the United States.
+- **How each is read.** Flanders and Estonia answer the same kind of request as England. Flanders wraps its picture in a description, which is now unwrapped. Norway's server wanted the older form of the request. Switzerland has no such service: its model is one file for each square km, so the tools ask its catalog which files cover the box, take the newest of each, and read only the part needed.
+- **Each fetched and tiled live on a known site,** by the live test (fetch, tiles, a slice): Hill 60 near Ypres, the Borre mounds, Varbola stronghold, and the Vindonissa amphitheatre. The six national models pass in two minutes.
+- **A whole search in Norway, in the app:** a scratch project at Borre, Find and report back pressed at 23:08, [the report on screen at 23:14](loop5/r5-borre-report.jpg). The agent chose Kartverket's model itself, looked at 9 tiles, marked 3 finds on the mounds, checked open maps, read the county's page on Borrehaugene and suggested "already published" for each. [The overview](loop5/r5-borre-overview.jpg) and [a record](loop5/r5-borre-record.jpg).
+- **Fixed on the way:** a slice through a ready-made ground model was reported as "not clearly in the ground". Such a model has no treetops in it, so the slice can measure a shape but cannot place it. The record, the review and the report now say "measured on a ready-made ground model".
+- **Open data** shows the seven countries on [its map](loop5/r5-data.jpg) and has a page with a picture for each new service: [Flanders](loop5/r5-page-be.jpg), [Norway](loop5/r5-page-no.jpg), [Estonia](loop5/r5-page-ee.jpg), [Switzerland](loop5/r5-page-ch.jpg).
+- **Tried and not added** (the "Not read yet" list in Open data says the same):
+  - **Spain:** the open service gives a 5 m model, too coarse for most earthworks.
+  - **Scotland, Wales and Slovenia:** open lidar, published as files by map sheet; no service was found that hands over an area. Slovenia's portal said parts of it were down.
+  - **Poland:** its service did not answer from here (connection timed out).
+  - **Luxembourg:** its service answered but listed no ground model.
+  - **Denmark, Finland and Sweden** ask for an account or a key, and were not tried.
+- **Not checked:** the second opinion on the Norway finds (the provider refused, as in R2). The licence wording for Flanders and Estonia was taken as "open data" and not read in full. Norway north of the Arctic Circle and the Swiss high Alps were not fetched.

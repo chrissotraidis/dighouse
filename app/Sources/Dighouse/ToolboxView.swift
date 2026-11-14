@@ -620,7 +620,7 @@ struct CoverageMap: View {
         Canvas { context, size in
             let gap: CGFloat = 10, inset = size.height * 1.05
             let world = Frame(west: -168, east: 180, south: -57, north: 76, rect: CGRect(x: 0, y: 0, width: size.width - inset - gap, height: size.height))
-            let europe = Frame(west: -11.5, east: 27, south: 41, north: 62.5, rect: CGRect(x: size.width - inset, y: 0, width: inset, height: size.height))
+            let europe = Frame(west: -12, east: 33, south: 41.5, north: 66, rect: CGRect(x: size.width - inset, y: 0, width: inset, height: size.height))
             for frame in [world, europe] {
                 var layer = context
                 layer.clip(to: Path(roundedRect: frame.rect, cornerRadius: 10))
@@ -678,6 +678,11 @@ enum Reach {
         ("the Netherlands", [3.3, 51.4, 3.4, 51.2, 5.8, 51.0, 6.0, 50.75, 6.2, 51.4, 6.9, 51.9, 7.25, 53.2, 6.9, 53.6, 4.8, 53.4, 4.5, 52.5, 3.9, 51.9]),
         ("France", [-4.9, 48.4, -1.6, 48.7, -1.4, 49.75, 1.6, 50.95, 2.55, 51.1, 4.2, 49.95, 6.4, 49.5, 8.25, 48.95, 7.6, 47.55, 6.9, 47.35, 6.0, 46.2,
                     7.05, 45.9, 6.6, 45.1, 7.6, 43.8, 6.2, 43.05, 3.1, 43.0, 3.2, 42.4, -1.8, 43.35, -1.2, 46.0, -2.6, 47.3]),
+        ("Flanders", [2.55, 51.09, 3.37, 51.37, 4.24, 51.37, 5.04, 51.49, 5.85, 51.16, 5.9, 50.75, 5.1, 50.71, 4.3, 50.69, 3.2, 50.71, 2.6, 50.8]),
+        ("Norway", [4.6, 58.0, 7.0, 57.9, 11.8, 58.9, 12.6, 60.0, 12.2, 63.5, 14.5, 65.5, 16.5, 68.5, 20.5, 69.0, 26.0, 69.9, 31.2, 70.4, 28.0, 71.2,
+                    20.0, 70.3, 13.5, 68.3, 10.5, 64.5, 4.8, 62.0]),
+        ("Estonia", [21.7, 57.9, 23.3, 57.5, 26.5, 57.5, 27.4, 57.5, 28.2, 59.4, 26.0, 59.7, 23.4, 59.5, 21.7, 58.9]),
+        ("Switzerland", [5.95, 46.13, 6.8, 45.83, 7.9, 45.9, 9.0, 45.82, 10.5, 46.5, 10.45, 46.95, 9.5, 47.55, 8.6, 47.82, 7.5, 47.6, 6.0, 46.6]),
     ]
 }
 

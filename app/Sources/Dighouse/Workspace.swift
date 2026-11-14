@@ -644,7 +644,9 @@ struct RecordsView: View {
         let unread = c.sources.filter { $0.status == "could_not_open" }.count
         VStack(spacing: 0) {
             CheckRow(done: cut?["in_ground"] as? Bool, title: "In the ground",
-                     detail: cut.map { "\($0["feature_height_m"] ?? "?") m high. \($0["ground_returns_within_5m_of_peak"] ?? "?") laser points reached the ground at its top." }
+                     detail: cut.map { $0["from_ground_model_only"] as? Bool == true
+                        ? "\($0["feature_height_m"] ?? "?") m high, measured on a ready-made ground model. It has no treetops to compare."
+                        : "\($0["feature_height_m"] ?? "?") m high. \($0["ground_returns_within_5m_of_peak"] ?? "?") laser points reached the ground at its top." }
                         ?? "A slice, straight down through the laser points, shows whether the shape is ground or treetops.") {
                 Button(cut == nil ? "Cut a slice" : "Cut again") {
                     app.ask("Cut a slice through \(c.id), starting and ending on the ground around it, and file it on its record.")

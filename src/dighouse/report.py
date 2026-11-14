@@ -15,7 +15,8 @@ from .project import Project, commit
 ADVICE = "**The agent adds:** "
 LIMIT = 400  # words in a report, however many finds there are
 PUBLISHERS = {"usgs": "USGS 3DEP", "ot": "OpenTopography", "uk": "the Environment Agency (England)", "nl": "AHN (Netherlands)",
-              "fr": "IGN (France)", "own": "a file added by a person"}
+              "fr": "IGN (France)", "be": "Digitaal Vlaanderen (Flanders)", "no": "Kartverket (Norway)",
+              "ee": "the Estonian Land Board", "ch": "swisstopo (Switzerland)", "own": "a file added by a person"}
 
 
 def _s(n: int, word: str, plural: str = "") -> str:
@@ -47,8 +48,10 @@ def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
     c, parts = m["checks"], []
     sec = c.get("section")
     if isinstance(sec, dict):
+        # A ready-made ground model has no treetops in it, so its slice can measure a shape but cannot place it.
         parts.append(f"Slice: {sec.get('feature_height_m', '?')} m high, "
-                     + ("in the ground" if sec.get("in_ground") else "not clearly in the ground"))
+                     + ("in the ground" if sec.get("in_ground") else "on a ready-made ground model" if sec.get("from_ground_model_only")
+                        else "not clearly in the ground"))
     else:
         parts.append("Slice: not cut yet")
     second = c.get("second_look")
@@ -60,7 +63,7 @@ def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
     if not maps:
         pass
     elif isinstance(modern, dict):
-        near = " and ".join(modern.get("near") or []) or "modern features"
+        near = record.listed(modern.get("near") or []) or "modern features"
         parts.append("Open maps: " + (f"{near} within {modern.get('radius_m', 150)} m" if modern.get("likely_modern")
                                       else "nothing modern on it"))
     elif m["id"] in failed_maps:

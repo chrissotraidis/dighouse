@@ -169,7 +169,9 @@ def _body(meta: dict) -> str:
     out += ["## Checks", ""]
     s = checks.get("section")
     out.append(_tick(s and s.get("in_ground"), "In the ground",
-                     f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} laser points reached the ground at its top" if s else ""))
+                     "" if not s else f"{s['feature_height_m']} m high, measured on a ready-made ground model, which has no treetops to compare"
+                     if s.get("from_ground_model_only")
+                     else f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} laser points reached the ground at its top"))
     look = checks.get("second_look")
     out.append(_tick(look and look.get("agrees"), "A second model agrees it looks built", f"{look['model']}: {look['note']}" if look else ""))
     m = checks.get("modern")

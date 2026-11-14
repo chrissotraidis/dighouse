@@ -70,7 +70,11 @@ def test_map_sites_come_from_qlever_without_overpass():
 
 def test_national_ground_models_build(tmp_path):
     for name, dataset, box in [("ginkel", "nl:ahn-dtm-05m", [5.728, 52.027, 5.732, 52.030]),
-                               ("gergovie", "fr:lidarhd-mnt", [3.118, 45.707, 3.122, 45.710])]:
+                               ("gergovie", "fr:lidarhd-mnt", [3.118, 45.707, 3.122, 45.710]),
+                               ("hill60", "be:dhmv-dtm-1m", [2.927, 50.822, 2.931, 50.825]),
+                               ("borre", "no:nhm-dtm-1m", [10.467, 59.382, 10.471, 59.385]),
+                               ("varbola", "ee:dtm-1m", [24.512, 59.039, 24.516, 59.042]),
+                               ("vindonissa", "ch:swissalti3d-05m", [8.211, 47.475, 8.215, 47.478])]:
         root = str(tmp_path / name)
         server.init_project(root, name, "Does the national ground model build?", *box)
         assert dataset in [d.get("id") for d in server.find_data(*box)]

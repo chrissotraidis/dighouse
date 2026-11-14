@@ -120,6 +120,11 @@ def question(p: Project) -> str:
     return q
 
 
+def listed(items: list[str]) -> str:
+    """Words in a row, as a person would say them: a, b and c."""
+    return " and ".join(([", ".join(items[:-1])] if len(items) > 1 else []) + items[-1:])
+
+
 def density(t: dict) -> str:
     """Ground returns per square metre, or why there are none: a national ground model is built already, with no points."""
     d = t.get("ground_points_per_m2")
@@ -252,7 +257,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
         L += ["| Survey | From | Flown | Area | Ground returns per sq m | Cell |", "|---|---|---|---|---|---|"]
         for t in sorted(terrains.values(), key=lambda t: t.get("dataset", "")):
             publisher = {"usgs": "USGS 3DEP", "ot": "OpenTopography", "uk": "Environment Agency (England)", "nl": "AHN (Netherlands)",
-                         "fr": "IGN (France)", "own": "Imported by a person"}
+                         "fr": "IGN (France)", "be": "Digitaal Vlaanderen (Flanders)", "no": "Kartverket (Norway)",
+              "ee": "the Estonian Land Board", "ch": "swisstopo (Switzerland)", "own": "Imported by a person"}
             prefix = t.get("dataset", "").split(":")[0]
             L.append(f"| {t.get('dataset', '')} | {t.get('source') or publisher.get(prefix, prefix)} | {t.get('collected') or 'not stated'} "
                      f"| {(t.get('area_km2') or 0):.2f} sq km | {density(t)} | {t.get('res') or 0.5} m |")
@@ -286,14 +292,15 @@ def document(p: Project, commit_it: bool = True) -> dict:
         for m in records:
             c = m["checks"]
             sec = c.get("section")
-            sec_t = (f"{sec.get('feature_height_m', '?')} m high, " + ("in the ground" if sec.get("in_ground") else "not in the ground")
+            sec_t = (f"{sec.get('feature_height_m', '?')} m high, " + ("in the ground" if sec.get("in_ground")
+                                                                      else "on a ready-made ground model" if sec.get("from_ground_model_only") else "not in the ground")
                      if isinstance(sec, dict) else "not yet")
             second = c.get("second_look")
             second_t = (("agrees" if second.get("agrees") else "disagrees") + f" ({second.get('model', '')})"
                         if isinstance(second, dict) else "not yet")
             modern = c.get("modern")
             if isinstance(modern, dict):
-                modern_t = ((" and ".join(modern.get("near") or []) or "modern features") + " nearby" if modern.get("likely_modern")
+                modern_t = ((listed(modern.get("near") or []) or "modern features") + " nearby" if modern.get("likely_modern")
                             else "nothing modern nearby")
             else:
                 modern_t = (f"not yet: the map service did not answer on {failed_maps[m['id']]}" if m["id"] in failed_maps else "not yet")
