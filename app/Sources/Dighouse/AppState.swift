@@ -213,8 +213,11 @@ final class AppState: ObservableObject {
                 if let read = try? await engine.request("account/rateLimits/read"), let limits = read["rateLimits"] as? JSON {
                     chat.usageLeft = ChatModel.left(limits)
                 }
+                // After a restart, come back to the chat that was open.
+                let open = (chat.threads + chat.generalThreads).first { $0.id == chat.active }
                 await chat.open(project: store.current?.path)
                 if let project = store.current { store.open(project) }
+                if let open { await chat.select(open) }
             }
         }
         starting = false

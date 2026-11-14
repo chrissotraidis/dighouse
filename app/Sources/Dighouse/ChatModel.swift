@@ -269,6 +269,23 @@ final class ChatModel: ObservableObject {
     }
 
     /// Take back the last message and send it again, edited or as it was.
+    /// The failure the chat ended on, if the last thing in it is one.
+    var lastProblem: ChatItem? {
+        guard !running, let last = items.last, last.kind == .step, last.state == .failed, last.icon == "exclamationmark.triangle" else { return nil }
+        return last
+    }
+
+    /// Send the last message again after a failure. When there is no answer to take back, the failure is cleared and the message sent again.
+    func retry() async {
+        guard let question = items.last(where: { $0.kind == .user }) else { return }
+        let text = question.result ?? question.text
+        if await undo() == nil {
+            if let problem = lastProblem { items.removeAll { $0.id == problem.id } }
+            items.removeAll { $0.id == question.id }
+        }
+        await send(text)
+    }
+
     func resend(_ text: String) async {
         guard await undo() != nil else { return }
         await send(text)

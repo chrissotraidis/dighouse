@@ -8,6 +8,7 @@ import json
 import re
 import time
 
+import httpx
 import numpy as np
 from pathlib import Path
 
@@ -42,11 +43,35 @@ def tool(fn):
             return fn(*args, **kwargs)
         except KeyError as exc:
             raise ToolError(f"Unknown id {exc}. Check the terrain, tile or candidate id.") from exc
+        except httpx.HTTPError as exc:
+            raise ToolError(plain_network_error(exc)) from exc
         except Exception as exc:
             raise ToolError(str(exc)) from exc
 
     mcp.tool()(safe)
     return fn
+
+
+def plain_network_error(exc: httpx.HTTPError) -> str:
+    """Say which service failed and what the person can do, in place of the library's message."""
+    try:
+        host = exc.request.url.host
+    except RuntimeError:
+        host = "an open data service"
+    if isinstance(exc, httpx.TimeoutException):
+        return f"{host} did not answer in time. It may be busy or down; try again in a few minutes."
+    if isinstance(exc, httpx.ConnectError):
+        return f"Could not reach {host}. Check that this Mac is online; if it is, the service may be down, so try again later."
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code == 429:
+            return f"{host} asked for fewer requests (429). Wait a few minutes, then try again."
+        if code in (401, 403):
+            return f"{host} refused the request ({code}). The page may need a sign-in; open it yourself from the Sources tab."
+        if code >= 500:
+            return f"{host} had a problem of its own ({code}). Try again later."
+        return f"{host} answered with an error ({code})."
+    return f"The connection to {host} failed: {exc}. Try again."
 
 
 def _reply(info: dict, image=None) -> list:

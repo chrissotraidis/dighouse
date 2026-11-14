@@ -338,3 +338,19 @@ The loop resumed at Chris's request.
 | ⌘K, "report" | /report, greyed, "Needs a decided candidate". |
 | ⌘K, "southern ohio", Return | The general chat Southern Ohio Site Gaps opened. |
 | Help › Commands and Shortcuts | The commands, then 14 shortcuts, in the chat. |
+
+### 2026-11-14, U11: failures say what to do
+
+- **A failed reply.** When a chat ends on a failure, a bar above the message box gives a heading in plain words and what to do, with **Try again** and **Choose another model**. Headings cover a missing model, the usage limit, a dropped connection, a chat too long for the model and a refused key. Try again resends the last message, first taking back the failed attempt.
+- **The engine stopping.** Every page already gives way to a status page when the engine is down. That page used to read "Dighouse needs a few things" with only Check again. It now reads **The Codex engine stopped**, says the projects and chats are safe, and offers **Restart the engine**. After a restart, the chat that was open comes back.
+- **A service that fails.** A tool that cannot reach a service now names it and says what to do. Example: "Could not reach nonexistent.invalid. Check that this Mac is online; if it is, the service may be down, so try again later." The same goes for timeouts, rate limits (429), refusals (401, 403) and server errors (5xx). A refused page already had "Open the page yourself" in the Sources tab.
+
+| Check | Seen |
+|---|---|
+| Stopped Dighouse's engine process (its own child, not the Codex app's) | Every page showed "The Codex engine stopped" with Restart the engine; the top bar and sidebar flagged it too. |
+| Restart the engine | The engine came back in about ten seconds and the open chat, Southern Ohio Site Gaps, was on screen again. |
+| Set the model to "test/no-such-model" and sent "Reply with the single word ok." | The failure line, then the bar: "This model could not run the request", Try again, Choose another model. |
+| Choose another model, Opus 5.5, Try again | The model list opened; after picking Opus 5.5, Try again answered "ok" and the bar went away. The test chat was archived and the saved model is Opus 5.5 again. |
+| The service messages, from Python | An unreachable host and a 503 each gave the sentences above. |
+
+Not verified: turning the network off in the middle of a fetch. That would cut this Mac off for everything else running on it. The fetch's error passes through the same service messages, which were checked on their own.

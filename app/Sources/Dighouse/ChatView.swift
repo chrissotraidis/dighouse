@@ -14,6 +14,7 @@ struct ChatView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if chat.items.isEmpty { EmptyChat() } else { Messages() }
+            RecoveryBar()
             if let approval = chat.approval {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(approval.message).font(.system(size: 13 * Theme.scale))
@@ -30,6 +31,63 @@ struct ChatView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
+    }
+}
+
+/// When the engine has stopped, or the chat ended on a failure, say in plain words what happened and offer the next step.
+private struct RecoveryBar: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var chat: ChatModel
+
+    var body: some View {
+        // When the engine stops, the whole page says so and offers a restart, so this bar only covers failures in the chat.
+        if let failed = chat.lastProblem {
+            let (title, advice) = Self.explain(failed.text)
+            bar(title, advice) {
+                if chat.items.contains(where: { $0.kind == .user }) {
+                    Button { Task { @MainActor in await chat.retry() } } label: { Label("Try again", systemImage: "arrow.clockwise") }
+                        .buttonStyle(PrimaryButton())
+                }
+                Button { app.pickerRequest = .model } label: { Label("Choose another model", systemImage: "cpu") }
+                    .buttonStyle(SecondaryButton())
+            }
+        }
+    }
+
+    private func bar(_ title: String, _ advice: String, @ViewBuilder buttons: () -> some View) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.amber)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text(advice).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            buttons()
+        }
+        .panel(padding: 12)
+        .frame(maxWidth: 760).padding(.horizontal, 16).padding(.bottom, 6)
+    }
+
+    /// A heading and the advice for an error message from the engine or the model's provider.
+    static func explain(_ raw: String) -> (String, String) {
+        let text = raw.lowercased()
+        func has(_ words: String...) -> Bool { words.contains { text.contains($0) } }
+        if has("rate limit", "usage limit", "quota", "429", "too many requests") {
+            return ("The usage limit was reached", "Wait until it resets (/status says when), or choose a model that runs through another provider.")
+        }
+        if has("model") && has("not found", "not supported", "does not exist", "unsupported", "unknown model", "no access", "not available") {
+            return ("This model could not run the request", "Choose another model. Models that read images are needed for screening.")
+        }
+        if has("network", "connection", "timed out", "timeout", "offline", "disconnected", "unreachable", "dns") {
+            return ("The connection dropped", "Check that this Mac is online, then try again.")
+        }
+        if has("context", "too long", "maximum length", "token limit") {
+            return ("The chat is too long for this model", "Type /compact to shorten it, start a new chat, or choose a model with more room.")
+        }
+        if has("unauthorized", "401", "403", "api key", "sign in", "login") {
+            return ("The provider refused the request", "Check the model's account or key, or choose another model.")
+        }
+        return ("That did not work", "The message above says what went wrong. Try again, or choose another model.")
     }
 }
 

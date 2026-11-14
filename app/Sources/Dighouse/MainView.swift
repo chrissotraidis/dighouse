@@ -41,8 +41,18 @@ struct MainView: View {
         if !engine.ready {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(app.starting ? "Starting Dighouse" : "Dighouse needs a few things").font(.system(size: 22 * Theme.scale, weight: .semibold))
-                    if app.starting {
+                    let stopped = !app.starting && setup.codex != nil && setup.toolsReady && engine.problem != nil
+                    Text(app.starting ? "Starting Dighouse" : stopped ? "The Codex engine stopped" : "Dighouse needs a few things")
+                        .font(.system(size: 22 * Theme.scale, weight: .semibold))
+                    if stopped {
+                        Text("Dighouse runs every chat through the Codex engine, and it is not running now. Your projects, records and chats are safe on this Mac. Restart it to carry on; a run that was going will need to be started again.")
+                            .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                        if let problem = engine.problem, problem != "The Codex engine stopped." {
+                            Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                        }
+                        Button { Task { await app.boot() } } label: { Label("Restart the engine", systemImage: "arrow.clockwise") }
+                            .buttonStyle(PrimaryButton())
+                    } else if app.starting {
                         ProgressView().controlSize(.small)
                         if setup.toolsBusy {
                             Text("Preparing the archaeology tools. This takes about a minute the first time and after an update.")
