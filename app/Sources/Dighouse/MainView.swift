@@ -260,6 +260,7 @@ struct Sidebar: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.side)
         .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
+        .sheet(isPresented: $app.jumping) { CommandPalette().withApp(app) }
         .onChange(of: app.renameRequest) { _, thread in
             guard let thread else { return }
             newName = thread.title

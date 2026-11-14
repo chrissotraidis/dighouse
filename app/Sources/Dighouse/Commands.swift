@@ -41,7 +41,7 @@ enum SlashCommands {
         SlashCommand(id: "goal", summary: "Keep working, turn after turn, until this is done", group: .chat, argument: "what to finish", needsArgument: true),
         SlashCommand(id: "status", summary: "Show the model, how full the chat is, and your usage left", group: .chat),
         SlashCommand(id: "archive", summary: "Archive this chat", group: .chat),
-        SlashCommand(id: "help", summary: "List every command", group: .chat),
+        SlashCommand(id: "help", summary: "List every command and shortcut", group: .chat),
     ]
 
     /// The command name being typed and the text after it, or nil when the draft is not a command.
@@ -74,8 +74,20 @@ enum SlashCommands {
                 lines.append("- `\(c.name)\(c.argument.map { " " + $0 } ?? "")` \(c.summary)")
             }
         }
+        lines.append("")
+        lines.append("**Shortcuts**")
+        for (keys, what) in shortcuts { lines.append("- \(keys) \(what)") }
         return lines.joined(separator: "\n")
     }
+
+    static let shortcuts: [(String, String)] = [
+        ("⌘K", "Jump to a project, chat, candidate, page or command"),
+        ("⌘N", "New chat"), ("⇧⌘N", "New project"), ("⌘O", "Open a project folder"),
+        ("⌘0", "Home"), ("⌘T", "Toolbox"), ("⌘,", "Settings"), ("⇧⌘F", "Find a chat by its words"),
+        ("⌃⌘S", "Show or hide the sidebar"), ("⌘1, ⌘2, ⌘3", "Chat only, chat and workspace, workspace only"),
+        ("⌘.", "Stop the run"), ("/", "Commands, in the message box"), ("@", "Mention a candidate, tile, source or file"),
+        ("1 to 4, ← →", "Decide and move between finds, in the review"),
+    ]
 }
 
 extension AppState {

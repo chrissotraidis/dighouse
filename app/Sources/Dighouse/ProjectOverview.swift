@@ -14,8 +14,10 @@ struct ProjectOverview: View {
     private var question: String {
         guard let root = store.current?.path, let text = try? String(contentsOfFile: root + "/PROJECT.md", encoding: .utf8),
               let range = text.range(of: "## Question") else { return "" }
-        return text[range.upperBound...].split(separator: "\n").first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        // The first line under the heading, unless the section is empty and the next heading comes first.
+        let line = text[range.upperBound...].split(separator: "\n").first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             .map { String($0).trimmingCharacters(in: .whitespaces) } ?? ""
+        return line.hasPrefix("#") ? "" : line
     }
 
     /// The newest run summary's first paragraph under "What was done", or its first lines.

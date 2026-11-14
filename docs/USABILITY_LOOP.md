@@ -320,3 +320,21 @@ The loop resumed at Chris's request.
   - **Folder paths:** shown with ~ for the home folder.
   - **Data and privacy:** says each project keeps a git history that leaves out the private folder and the downloaded data. "QLever" became "a copy of Wikidata for faster searches".
   - **About:** opens with the same plain description as Home. "Agent harness" is gone. The repeated Welcome guide row became **Versions** (Dighouse 0.2.0, engine codex-cli 0.146.0), to quote when reporting a problem. Personalize, Models, How it runs and Tools were rechecked and needed nothing.
+
+### 2026-11-14, U10: find anything fast
+
+- **⌘K** (View › Jump To…) opens a palette covering four kinds of item. Typing narrows the list, the arrow keys move, Return opens and Escape closes. A command that cannot run shows its reason in amber and does not run.
+  - **Every project and every candidate in every project:** candidates are read from each project's records.
+  - **Every chat** Dighouse has listed.
+  - **The pages:** Home, New chat, New project, Toolbox, Find a chat, each Settings page, and each tab of the open project.
+  - **Every slash command.**
+- **Shortcuts:** /help and Help › Commands and Shortcuts now end with every keyboard shortcut.
+- **A fix:** a project whose question section was empty showed its next heading ("## Rules for agents") as the question on its overview. It now shows nothing there.
+
+| Check | Seen |
+|---|---|
+| From Settings, ⌘K, "angel c-001", Return | Angel Mounds east plaza opened on Records with C-001 selected. Passed. |
+| ⌘K, "mound", ↓ ↓ | The highlight moved down two rows. |
+| ⌘K, "report" | /report, greyed, "Needs a decided candidate". |
+| ⌘K, "southern ohio", Return | The general chat Southern Ohio Site Gaps opened. |
+| Help › Commands and Shortcuts | The commands, then 14 shortcuts, in the chat. |

@@ -36,6 +36,7 @@ final class AppState: ObservableObject {
     @Published var renameRequest: ChatThread?
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
+    @Published var jumping = false
     /// Whether the one-at-a-time review of candidates is open.
     @Published var reviewing = false
     @Published var starting = true
@@ -615,6 +616,7 @@ struct DighouseApp: App {
             CommandGroup(after: .sidebar) {
                 Button("Home") { app.goHome() }.keyboardShortcut("0")
                 Button("Toolbox") { app.show(.toolbox) }.keyboardShortcut("t")
+                Button("Jump To…") { app.jumping = true }.keyboardShortcut("k")
                 Button("Find a Chat…") { app.findingChat = true }.keyboardShortcut("f", modifiers: [.command, .shift])
                 Divider()
                 Button(app.sidebarVisible ? "Hide Sidebar" : "Show Sidebar") { app.sidebarVisible.toggle() }
@@ -633,6 +635,7 @@ struct DighouseApp: App {
                     .keyboardShortcut(".").disabled(!app.chat.running)
             }
             CommandGroup(replacing: .help) {
+                Button("Commands and Shortcuts") { app.route = .chat; app.chat.note(SlashCommands.help) }
                 Button("Welcome Guide") { app.showWelcome = true }
                 Button("Toolbox: Tools and Workflows") { app.show(.toolbox) }
                 Divider()

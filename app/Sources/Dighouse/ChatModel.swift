@@ -82,6 +82,14 @@ final class ChatModel: ObservableObject {
     private var known: [String: [ChatThread]] = UserDefaults.standard.data(forKey: "chatLists")
         .flatMap { try? JSONDecoder().decode([String: [ChatThread]].self, from: $0) } ?? [:]
 
+    /// Every chat Dighouse has listed, with its folder, for the ⌘K palette.
+    var allChats: [(String, ChatThread)] {
+        var lists = known
+        lists[Paths.general.path] = generalThreads
+        if let project { lists[project] = threads }
+        return lists.sorted { $0.key < $1.key }.flatMap { folder, list in list.map { (folder, $0) } }
+    }
+
     func open(project path: String?) async {
         project = path
         newChat()
