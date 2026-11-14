@@ -6,6 +6,7 @@ struct MainView: View {
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var store: ProjectStore
     @EnvironmentObject var setup: Setup
+    @EnvironmentObject var chat: ChatModel
 
     var body: some View {
         GeometryReader { geo in
@@ -21,6 +22,7 @@ struct MainView: View {
                 }
                 VStack(spacing: 0) {
                     TopBar(inset: !sidebar, narrow: narrow, width: width)
+                    CoachBar()
                     page(width: width)
                 }
             }
@@ -42,6 +44,10 @@ struct MainView: View {
         .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
         .sheet(isPresented: $app.jumping) { CommandPalette().withApp(app) }
         .modifier(RenameChat())
+        // The tutorial moves on when the project or the page changes in the way its step asked for.
+        .onChange(of: "\(app.tab.rawValue) \(store.tiles.count) \(store.tiles.filter { $0.status == "unscreened" }.count) \(store.candidates.count) \(store.candidates.filter { !$0.decisions.isEmpty }.count) \(chat.running) \(store.current?.path ?? "")") { _, _ in
+            app.advanceTutorial()
+        }
     }
 
     @ViewBuilder private func page(width: CGFloat) -> some View {
@@ -190,6 +196,7 @@ struct TopBar: View {
                 }
                 .buttonStyle(.plain).foregroundStyle(Theme.accent).padding(.leading, 6)
                 .help(next.summary)
+                .coach(next.id == "screen" ? .screen : nil, radius: 8)
             }
         }
         .font(.system(size: 12.5 * Theme.scale)).lineLimit(1)

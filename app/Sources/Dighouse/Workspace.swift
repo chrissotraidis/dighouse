@@ -27,6 +27,7 @@ struct WorkspaceView: View {
                         .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .coach(tab == .records ? .records : tab == .notes ? .notes : nil, radius: 15)
                 }
                 Spacer()
             }
@@ -159,6 +160,8 @@ struct MapView: View {
                     if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { app.run(flow) }
                 }
                 .buttonStyle(PrimaryButton())
+                // One control wears the tutorial's ring: the overview's button, or this one when only the workspace shows.
+                .coach(app.layout == .workspace ? .getTerrain : nil)
             }
         } else {
             GeometryReader { geo in
@@ -577,6 +580,7 @@ struct RecordsView: View {
                     Spacer(minLength: 8)
                     Button("Review and decide") { app.reviewing = true }.buttonStyle(SecondaryButton())
                         .help("Go through the candidates one at a time and decide each, from the keyboard")
+                        .coach(.review)
                 }
             }
             HStack(alignment: .top, spacing: 12) {

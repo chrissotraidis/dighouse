@@ -98,6 +98,18 @@ struct ReviewSheet: View {
 
     @ViewBuilder private func content(_ c: Candidate) -> some View {
         VStack(alignment: .leading, spacing: 16) {
+            if let step = app.tutorialStep, step.target == .record {
+                // The tutorial's last step happens in here, so its sentence comes along.
+                HStack(spacing: 10) {
+                    Glyph(name: "dig.trowel", size: 14 * Theme.scale).foregroundStyle(Theme.tan)
+                    Text("First project · Step \(step.number) of \(Tutorial.count). ").fontWeight(.semibold).foregroundColor(Theme.tan)
+                        + Text(choice == nil ? "Look at the pictures and the checks, then pick what you think the find is. Serpent Mound is in every textbook, so Already published fits."
+                               : step.words + " Press Record.")
+                }
+                .font(.system(size: 13 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.tan.opacity(0.1)))
+            }
             HStack(spacing: 10) {
                 Text("\(c.id) \(c.name)").font(.system(size: 22 * Theme.scale, weight: .bold)).lineLimit(2)
                 Badge(text: c.statusLabel, color: c.statusColor)
@@ -197,6 +209,7 @@ struct ReviewSheet: View {
                     Button("Other decision") { self.choice = nil; reason = "" }.buttonStyle(SecondaryButton())
                     Button("Record") { record(c) }.buttonStyle(PrimaryButton())
                         .disabled(busy || reason.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .coach(.record)
                 }
                 Text("Recorded as decided by \(app.userName). Return records it and moves to the next; Escape picks another decision.")
                     .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
@@ -218,6 +231,7 @@ struct ReviewSheet: View {
                     }
                     .buttonStyle(SecondaryButton())
                     .keyboardShortcut(KeyEquivalent(Character(d.key)), modifiers: [])
+                    .coach(d.status == "already_published" ? .record : nil)
                 }
                 Spacer()
                 Button("Previous") { move(-1) }.buttonStyle(SecondaryButton()).disabled(index == 0)

@@ -73,7 +73,9 @@ struct ProjectOverview: View {
                     "This project was shared with you. Its downloads and locations stayed on the other Mac, but the research record says what was done: \(before) tile\(before == 1 ? "" : "s") screened and \(store.candidates.count) find\(store.candidates.count == 1 ? "" : "s"). The agent reads it and tells you what is left.",
                     { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }, "Carry on", "dig.layers")
         }
-        if store.terrains.isEmpty, let flow = ToolGuide.workflows.first(where: { $0.id == "full" }) {
+        // In the tutorial the steps are taken one at a time, so the card offers the step the tutorial is on.
+        let stepwise = app.tutorialStep != nil
+        if store.terrains.isEmpty, !stepwise, let flow = ToolGuide.workflows.first(where: { $0.id == "full" }) {
             return ("Run the search", "The agent fetches the open lidar for this area, looks at every tile, checks what it flags and searches what is published. It stops for you at the decisions. It takes about 10 to 20 minutes.", { app.run(flow) }, "Run the whole search", flow.icon)
         }
         if !open.isEmpty, open.allSatisfy({ $0.suggestion != nil || Review_hasSuggestion($0) }) {
@@ -104,14 +106,26 @@ struct ProjectOverview: View {
                     }
                 }
                 if let next {
-                    HStack(alignment: .center, spacing: 14) {
+                    let words = HStack(alignment: .top, spacing: 14) {
                         IconTile(name: next.icon, size: 38)
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Next: \(next.title)").font(.system(size: 15 * Theme.scale, weight: .semibold))
                             Text(next.why).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
-                        Spacer(minLength: 12)
-                        Button(next.label, action: next.action).buttonStyle(PrimaryButton())
+                    }
+                    let button = Button(next.label, action: next.action).buttonStyle(PrimaryButton())
+                        .coach(next.label == "Get the terrain" && app.layout != .workspace ? .getTerrain : nil)
+                    // In a narrow chat the button goes under the words, so they are never squeezed into a thin column.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .center, spacing: 14) {
+                            words.frame(minWidth: 280, alignment: .leading)
+                            Spacer(minLength: 0)
+                            button
+                        }
+                        VStack(alignment: .leading, spacing: 12) {
+                            words
+                            button.padding(.leading, 52)
+                        }
                     }
                     .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Theme.tan.opacity(0.08)))

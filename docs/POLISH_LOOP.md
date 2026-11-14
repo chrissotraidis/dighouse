@@ -311,6 +311,40 @@ System symbols stay where they already fit: people for the second opinion, an en
 
 **Not checked:** the indicator with the Mac's Reduce Motion setting itself, and how the drawings read on a display that is not Retina.
 
+### 2026-11-14, A6: a tutorial for a first project
+
+**"Start your first project"** is a card on Home for anyone with no project, or only their first. It walks through one real search at Serpent Mound in six steps. Each step is one sentence in a bar under the top bar, and the one control to press wears a green ring. Help › First Project Tutorial and ⌘K start it too. The welcome guide is as it was.
+
+- **Where it stands is read from the project,** so nothing has to be remembered about a run: no terrain means step 2, tiles not looked at means step 3, a find means step 4. The three steps a person takes by looking (Records, Notes, the decision) are kept in the settings. Leaving, going elsewhere or quitting the app all come back to the same step.
+- **Leave** hides the bar. Home's card then reads "Continue your first project".
+- **While the agent works** the bar says what it is doing and shows the trowel; nothing is ringed, because there is nothing to press.
+- **Step 2 is the person's own.** A project made in the tutorial does not start fetching by itself, and its overview offers "Get the terrain", where a project normally offers the whole search.
+- **Also fixed:** the overview's Next card squeezed its words into a column three words wide in a narrow chat; its button now goes under the words.
+
+**Run-through from empty settings.** Chris's settings were saved, Dighouse's settings were emptied (keeping the window size, the cheap model and a scratch projects folder), and the app was started as if for the first time. Afterwards his settings were put back and compared: identical.
+
+| Step | The sentence | The ringed control | Seen |
+|---|---|---|---|
+| Before | (the welcome guide, Skip for now) | **Start your first project**, on Home | loop4/a6-01-home-card.jpg |
+| 1. Choose the place | "Start with a place everyone knows: Serpent Mound in Ohio. Its name, question and area are filled in. Press Create project." | **Create project** | The page had the name, the question, a 300 m area and the USGS survey that covers it (loop4/a6-02-step1-create.jpg). |
+| 2. Get the terrain | "Now get the ground. The agent downloads the laser scans for this spot and strips the trees away. Press Get the terrain." | **Get the terrain** | The agent fetched the survey and cut 4 tiles in about a minute (loop4/a6-03-step2-terrain.jpg, a6-06-step2-working.jpg). |
+| 3. Look at the tiles | "The ground is cut into squares called tiles. The agent looks at each one for shapes people built. Press Next: Screen the tiles, at the top." | **Next: Screen the tiles** | Terra screened 4 of 4 and flagged the serpent as C-001, then cut a section and searched the literature. About three minutes (loop4/a6-07-step3-screen.jpg, a6-08-step3-working.jpg). |
+| 4. Open the find | "The agent flagged a find. Press Records to see its pictures and how it was checked." | **Records** | loop4/a6-09-step4-records.jpg |
+| 5. Read the research record | "Everything looked at and read is written in the research record, so anyone can pick this project up. Press Notes." | **Notes** | The record opened at "In short" (loop4/a6-10-step5-notes.jpg, a6-11-step6-record.jpg). |
+| 6. Make a decision | "Now make the call yourself: a person decides, never the agent. Press Review and decide." Then, in the review: "Check the suggestion against the pictures. Then record what you think the find is. Press Record." | **Records**, then **Review and decide**, then **Record** | Recorded C-001 as already published. The bar read "First project: done" with Finish (loop4/a6-12-step6-review-button.jpg, a6-13-step6-review.jpg, a6-14-done.jpg). |
+
+| Check | Seen |
+|---|---|
+| A decided find without leaving the tutorial | Yes: from the card on Home to "1 decision written into the records" in about nine minutes, pressing only ringed controls. |
+| Every step's control is highlighted | Each ringed control above also carries "The tutorial's next step" for VoiceOver, and that is how each was found and pressed. At every step exactly one control was ringed, except where both the overview and the map offered Get the terrain; now only one of them is. |
+| Quit and reopen | Quit at step 2 and again at step 3. Each time the app reopened on the tutorial's project with the bar at the same step (loop4/a6-04-resumed-after-quit.jpg). |
+| Leave and come back | Leave at step 2: the bar and ring went. Home's card read "Continue your first project" (loop4/a6-05-home-continue.jpg). Pressing it reopened the project at step 2. |
+| After Finish | Home, with no card. Help › First Project Tutorial started it again at step 1. |
+| Chris's settings | Put back and compared with the copy taken before: the same 24 keys and values. |
+
+**Not checked:** the ring's slow pulse with Reduce Motion on (the code leaves it still), and a tutorial run in which the agent flags nothing (the bar then says what to type).
+
+
 
 
 

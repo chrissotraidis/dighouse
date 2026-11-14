@@ -40,6 +40,20 @@ final class AppState: ObservableObject {
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
     @Published var jumping = false
+    /// The first-project tutorial: whether its bar is showing, the project it made, how far past the automatic steps
+    /// the person has got (4, 5 or 6), and whether it has been finished. Kept between launches.
+    @Published var tutorialOn = UserDefaults.standard.bool(forKey: "tutorialOn") {
+        didSet { UserDefaults.standard.set(tutorialOn, forKey: "tutorialOn") }
+    }
+    @Published var tutorialProject = UserDefaults.standard.string(forKey: "tutorialProject") {
+        didSet { UserDefaults.standard.set(tutorialProject, forKey: "tutorialProject") }
+    }
+    @Published var tutorialReached = UserDefaults.standard.integer(forKey: "tutorialReached") {
+        didSet { UserDefaults.standard.set(tutorialReached, forKey: "tutorialReached") }
+    }
+    @Published var tutorialDone = UserDefaults.standard.bool(forKey: "tutorialDone") {
+        didSet { UserDefaults.standard.set(tutorialDone, forKey: "tutorialDone") }
+    }
     /// Which part of the Notes tab is showing: record, runs, method or log.
     @Published var notesPart = "record"
     /// The window's size, so sheets fit inside it.
@@ -690,6 +704,7 @@ struct DighouseApp: App {
             CommandMenu("Project") { ProjectMenu(app: app, store: app.store, chat: app.chat) }
             CommandGroup(replacing: .help) {
                 Button("Welcome Guide") { app.showWelcome = true }
+                Button("First Project Tutorial") { app.startTutorial() }
                 Button("Commands and Shortcuts") { app.route = .chat; app.chat.note(SlashCommands.help) }.keyboardShortcut("/")
                 Button("How a Search Works") { UserDefaults.standard.set(ToolboxView.Tab.how.rawValue, forKey: "toolboxTab"); app.show(.toolbox) }
                 Divider()

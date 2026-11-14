@@ -216,6 +216,7 @@ struct NewProjectView: View {
                 if busy { DigIndicator() }
                 Button("Create project", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
                     .help("Creates the project and starts fetching its open lidar straight away.")
+                    .coach(.create)
             }
         }
         .font(.system(size: 13 * Theme.scale))
@@ -320,9 +321,12 @@ struct NewProjectView: View {
         guard let n = numbers else { return }
         busy = true
         problem = nil
+        // In the tutorial, getting the terrain is the person's own next step, so the project starts without it.
+        let tutorial = app.tutorialOn && point.id == Tutorial.point.id
         Task { @MainActor in
             do {
-                try await app.createProject(name: name.trimmingCharacters(in: .whitespaces), question: question, box: n)
+                try await app.createProject(name: name.trimmingCharacters(in: .whitespaces), question: question, box: n, fetch: !tutorial)
+                if tutorial { app.tutorialProject = app.store.current?.path }
             } catch {
                 problem = error.localizedDescription
             }

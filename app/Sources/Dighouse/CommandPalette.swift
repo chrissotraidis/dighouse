@@ -29,6 +29,7 @@ struct CommandPalette: View {
             Item(id: "newproject", kind: .page, title: "New project", detail: "⇧⌘N", icon: "plus.square") { app.startProject() },
             Item(id: "toolbox", kind: .page, title: "Toolbox", detail: "⌘T", icon: "wrench.and.screwdriver") { app.show(.toolbox) },
             Item(id: "find", kind: .page, title: "Find a chat by its words", detail: "⇧⌘F", icon: "magnifyingglass") { app.findingChat = true },
+            Item(id: "tutorial", kind: .page, title: "First project tutorial", detail: "Six steps at Serpent Mound", icon: "dig.trowel") { app.startTutorial() },
         ]
         out += SettingsSection.allCases.map { section in
             Item(id: "settings-" + section.rawValue, kind: .page, title: "Settings: " + section.rawValue, icon: "gearshape") {

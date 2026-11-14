@@ -81,6 +81,14 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 hero
+                if app.offersTutorial {
+                    // For a first visit, and for anyone part-way through: one real search, a step at a time.
+                    StartTile(icon: "dig.trowel", title: app.tutorialProject == nil ? "Start your first project" : "Continue your first project",
+                              text: "Ten minutes at Serpent Mound, a step at a time: get the ground, look at it, open a find, read the record and make a decision. You can leave and come back.",
+                              strong: true) { app.startTutorial() }
+                        .coach(.start, radius: 14)
+                        .padding(.top, -8)
+                }
                 LazyVGrid(columns: paths, spacing: 12) {
                     PathCard(icon: "sparkle.magnifyingglass", title: "What should I research?",
                              text: "New to this? The agent reads the open archives and proposes three searches worth doing.") {
