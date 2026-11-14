@@ -13,7 +13,7 @@
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
   <img alt="Native SwiftUI app" src="https://img.shields.io/badge/app-SwiftUI-FF9F0A?logo=swift&logoColor=white">
   <img alt="Python 3.11 or later" src="https://img.shields.io/badge/tools-Python%203.11%2B-3776AB?logo=python&logoColor=white">
-  <img alt="31 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-31%20tools-8B5E3C">
+  <img alt="32 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-32%20tools-8B5E3C">
   <img alt="Runs the Codex engine" src="https://img.shields.io/badge/engine-Codex%20app--server-5E5CE6">
   <img alt="Any model through OpenCodex" src="https://img.shields.io/badge/models-any%2C%20via%20OpenCodex-5E5CE6">
   <img alt="Open lidar from four countries" src="https://img.shields.io/badge/lidar-US%20%C2%B7%20England%20%C2%B7%20NL%20%C2%B7%20France-6B8E23">
@@ -130,7 +130,7 @@ uv run pytest -m live    # the same chain against the real data services (8 test
 | Screen | `record_verdict`, `flag_candidate` |
 | Check each flag | `cut_section`, `second_look`, `check_modern`, `add_control` |
 | Prior art | `search_literature`, `read_source`, `log_source` |
-| Records and run | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `export_finds` |
+| Records and run | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `document_project`, `export_finds` |
 
 Terrain renders in four styles: `composite`, `hillshade`, `local_relief` and `sky_view`. `export_finds` writes the candidates as GeoJSON for QGIS, ArcGIS or Google Earth, under `private/` because it holds coordinates.
 
@@ -169,7 +169,9 @@ These are built into the tools, so they hold whichever model is running.
 
 ~~~
 my-project/
+  RESEARCH.md     the research record: everything looked at, read and decided, and what is left
   PROJECT.md      the question and the rules agents follow
+  METHODOLOGY.md  how the search and the record are kept, and lessons learned here
   candidates/     one Markdown record per candidate, with its images
   notes/          a dated log the tools write as work happens, and run summaries
   sources/        what was read, what could not be opened, and pages you saved
@@ -178,7 +180,16 @@ my-project/
   private/        locations, exports and run state (not versioned)
 ~~~
 
-Markdown is the record of truth, so a project works offline and can be shared, versioned or handed to an archaeologist like any folder.
+Markdown is the record of truth, so a project works offline and can be shared or handed to an archaeologist like any folder. Each project keeps its own git history, which leaves out data/ and private/.
+
+Every project documents itself the same way, so work adds up. Dighouse rebuilds RESEARCH.md from the project's files whenever a run ends, a person decides or the project is opened. It lists:
+
+- the data used, and every tile looked at with its verdict (including the ones that showed nothing);
+- every candidate's checks and decision;
+- every source read or not opened, and every literature search;
+- what is still to do.
+
+The agent reads it before it starts and builds on it, and whoever you hand the project to (a friend, an archaeologist, another agent) can see what has already been done.
 
 ## Checked against known sites
 

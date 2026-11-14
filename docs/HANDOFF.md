@@ -26,7 +26,7 @@ The third loop is paused. To resume it, register it as your goal. Suggested obje
 Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) for what was checked and how. In short:
 
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes and Sources tabs. Three looks; Earth is the default. The mark beside "Dighouse" animates.
-- **Tools** (`src/dighouse`, Python, MCP): 31 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain (USGS, OpenTopography, and national ground models for England, the Netherlands and France), `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
+- **Tools** (`src/dighouse`, Python, MCP): 32 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain (USGS, OpenTopography, and national ground models for England, the Netherlands and France), `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Engine**: `codex app-server` (0.146.0) as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse opts into the experimental API, because newer chats are stored page by page and only `thread/turns/list` returns them.
 - **Tests**: 4 offline, 8 live (`uv run pytest`, `uv run pytest -m live`).
 - **README** has screenshots in `docs/images`, taken from the running app at 1440 × 900 with real projects. Retake them when the app changes in a way they show.
@@ -45,6 +45,10 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 - **U8:** a map with views (Composite, Hillshade, Local relief, Sky view, through the `render_tiles` tool), toggles, zoom, click and double-click, and drawing a line to cut a section.
 - **Chris's review (F1 to F11):** the review comes prepared (the `suggest_decision` tool and "Prepare my review"), one button style, /review, a bigger and animated Home, How it runs rewritten around model, engine and tools, Settings › Tools, Open data grouped by region, a project overview, readable section labels, a text size setting, Models warnings and Test both, and each project kept as its own git repository with METHODOLOGY.md and a Notes tab in three parts.
 - **Still open:** the F2 and F5 checks, F6 for General, Data and privacy and About, and U10 to U12. The Log in USABILITY_LOOP.md lists them, with the known problems and the test leftovers on this Mac.
+
+## How a project documents itself (P1, Chris's priority)
+
+Every project is a folder with a git history (data/ and private/ left out) and one method. RESEARCH.md is its research record, rebuilt by `src/dighouse/record.py` when a run ends, a person decides, or the project is opened. METHODOLOGY.md says how the work and the record are kept, and the agent reads both first. Keep this method when changing anything that writes into a project: whatever a run looks at or reads should end up in the record, so the next person or agent can build on it.
 
 ## Waiting on Chris
 

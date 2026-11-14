@@ -120,12 +120,20 @@ struct ProjectOverview: View {
                         }
                     }
                     .panel()
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("Everything looked at, read and decided here is kept in the research record, so you or anyone you share the project with can pick it up without starting again.")
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
+                        Button { app.showNotes("record") } label: { Label("Research record", systemImage: "book.closed") }
+                            .buttonStyle(SecondaryButton())
+                    }
+                    .padding(.top, 4)
                 }
                 if let lastRun {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("The last run, \(lastRun.date)").font(.system(size: 14 * Theme.scale, weight: .semibold))
                         Text(lastRun.text).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                        Button("Read the notes") { app.tab = .notes; if app.layout == .chat { app.layout = .split } }.buttonStyle(SecondaryButton())
+                        Button("Read the run summaries") { app.showNotes("runs") }.buttonStyle(SecondaryButton())
                     }
                 }
                 Text("Or type below to ask the agent anything about this project. Type / for commands.")

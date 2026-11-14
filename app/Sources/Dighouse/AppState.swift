@@ -37,6 +37,8 @@ final class AppState: ObservableObject {
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
     @Published var jumping = false
+    /// Which part of the Notes tab is showing: record, runs, method or log.
+    @Published var notesPart = "record"
     /// The window's size, so sheets fit inside it.
     @Published var windowSize = CGSize(width: 1380, height: 880)
     /// Whether the one-at-a-time review of candidates is open.
@@ -247,6 +249,15 @@ final class AppState: ObservableObject {
         route = .chat
         tab = .map
         Task { @MainActor in await chat.open(project: project.path) }
+        // Bring the research record up to date (and give an older project its method and history). No model is used.
+        if engine.ready { Task { _ = try? await engine.callTool("document_project", ["project": project.path]) } }
+    }
+
+    func showNotes(_ part: String) {
+        notesPart = part
+        tab = .notes
+        route = .chat
+        if layout == .chat { layout = .split }
     }
 
     func openChat(_ thread: ChatThread, in project: ProjectRef?) {

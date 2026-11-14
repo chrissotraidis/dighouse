@@ -50,7 +50,8 @@ Edit it to change how the work is done; the agent adds to "Lessons" when a run t
 
 ## The order of work
 
-1. **Read first.** PROJECT.md, this file, notes/INDEX.md and the newest run summary in notes/.
+1. **Read first.** RESEARCH.md (what has already been looked at, read and decided), this file, and the newest
+   run summary in notes/. Do not repeat work RESEARCH.md lists unless you say why, such as a better survey or view.
 2. **Terrain.** Fetch open lidar for the project's area and build the bare ground. Record the survey,
    when it was flown and how dense the ground returns are.
 3. **Screen every tile** in at least two views (local relief or sky view, plus hillshade). A tile with too
@@ -69,10 +70,31 @@ Edit it to change how the work is done; the agent adds to "Lessons" when a run t
 - No coordinates in any Markdown. Locations live only under private/.
 - Known sites in the area are controls: finding them again shows the method works here.
 
+{record}
 ## Lessons
 
 Things learned in this project that the next run should know. Add a dated line for each.
 """
+
+RECORD_SECTION = """## How this project keeps its record
+
+The point of the record is that nobody, person or agent, has to redo work to know it was done,
+and that someone else can pick the project up and add to it.
+
+- **RESEARCH.md** is the project's memory: the data used, every tile looked at and what it showed,
+  every candidate with its checks and decision, every source and literature search, and what is still to do.
+  Dighouse rebuilds it from the files below; nobody edits it by hand.
+- **Every look leaves a trace.** Each tile gets a verdict, nothing and natural included. Each source is logged
+  as read, could not open, or not relevant, with what it says about this place. A search that finds nothing
+  is still a result.
+- **One record per feature** in candidates/, holding its pictures, measurements, checks and sources.
+  A decision carries the person's name, the date and the reason.
+- **Each run ends with a summary** in notes/, listed in notes/INDEX.md. The dated notes log every step.
+- **Lessons** below are for what this place teaches: surveys that build badly, common false flags.
+- **Sharing:** Data, then Export project, gives everything except private/ and data/, so the project can be
+  handed to another person, who opens it in Dighouse and carries on from RESEARCH.md.
+"""
+METHODOLOGY_MD = METHODOLOGY_MD.replace("{record}", RECORD_SECTION)
 
 INDEX_MD = """# Notes
 
@@ -161,6 +183,8 @@ class Project:
         line = f"- [{today()} {dt.datetime.now():%H:%M}]({f.name}) {first[:200]}\n"
         parts = head.split("\n\n", 2)
         index.write_text(head.rstrip("\n") + "\n\n" + line if len(parts) < 3 else "\n\n".join(parts[:2]) + "\n\n" + line + parts[2])
+        from .record import document  # imported here: record reads the ledger, which imports this module
+        document(self, commit_it=False)
         commit(self.root, f"Run summary {today()} {dt.datetime.now():%H:%M}: {first[:60]}")
         return f.name
 

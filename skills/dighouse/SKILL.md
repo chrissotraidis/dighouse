@@ -5,7 +5,17 @@ description: Run an archaeological search over open lidar with the Dighouse tool
 
 # Running a Dighouse search
 
-Work inside one project folder and pass its absolute path to every tool. Read `PROJECT.md`, `METHODOLOGY.md` (the project's method: follow it), `notes/INDEX.md` and the newest run summary before doing anything, so a run continues where the last one stopped. When a run teaches something the next run should know, such as a survey that builds badly or a kind of false flag common here, add a dated line under Lessons in `METHODOLOGY.md`.
+Work inside one project folder and pass its absolute path to every tool. Read `RESEARCH.md` first: it is the project's research record, listing the data used, every tile looked at and its verdict, every candidate's checks and decision, every source and literature search, and what is still to do. Build on it; do not redo work it lists unless you say why (a better survey, another view, a source that has since become readable). Then read `METHODOLOGY.md` (the project's method: follow it) and the newest run summary, so a run continues where the last one stopped. When a run teaches something the next run should know, such as a survey that builds badly or a kind of false flag common here, add a dated line under Lessons in `METHODOLOGY.md`.
+
+## Keeping the record
+
+Other people, many of them new to archaeology, and other agents will continue this work from what you leave. Novel research depends on knowing what was already looked at and read, so every step has to leave a trace:
+
+- Record a verdict for every tile you look at, including nothing and natural. A blank result is still a result.
+- Log every source you find as read, could not open, or not relevant, with what it says about this place, even when it says nothing.
+- Literature searches are logged by the tool; search with specific queries so the log is useful to the next person.
+- When you learn something about this place or this survey, add it under Lessons in `METHODOLOGY.md`.
+- End with `write_summary`. It rebuilds `RESEARCH.md`; call `document_project` yourself after other work the record should show, and read the "still to do" it returns.
 
 ## Choosing where to look
 

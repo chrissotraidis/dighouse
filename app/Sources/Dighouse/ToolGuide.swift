@@ -99,6 +99,7 @@ enum ToolGuide {
                      Tool(name: "list_candidates", title: "List candidates", does: "Lists candidates and what each still lacks."),
                      Tool(name: "run_status", title: "Report the run", does: "Reports coverage, candidates, controls, and what is waiting for you."),
                      Tool(name: "write_summary", title: "Write the run summary", does: "Writes what a run did and what is left as a note in the project."),
+                     Tool(name: "document_project", title: "Update the research record", does: "Rebuilds RESEARCH.md: everything looked at, read and decided, and what is left, so anyone can carry the project on."),
                      Tool(name: "export_finds", title: "Export for mapping software", does: "Saves the candidates as a GeoJSON file for QGIS, ArcGIS or Google Earth, kept with the other locations under private.")]),
     ]
 
@@ -306,6 +307,7 @@ enum ToolGuide {
         case "list_candidates": return ("list.bullet", "Reviewed the candidates")
         case "add_control": return ("scope", "Registered a control: \(s("name"))")
         case "write_summary": return ("doc.richtext", "Wrote the run summary")
+        case "document_project": return ("book.closed", "Updated the research record")
         case "run_status": return ("gauge", "Checked the run status")
         default: return ("wrench", tool)
         }

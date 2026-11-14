@@ -50,6 +50,12 @@ Chris used the app after U1 to U8 and sent screenshots. His notes are goals F1 t
 | F11 | **Pictures are crisp.** Text inside the section pictures and the map pictures is drawn large enough to read. | A new section picture's labels are readable at normal size. |
 
 
+## Chris's priority, 2026-11-14
+
+| Goal | What | Check |
+|---|---|---|
+| P1 | **Every project documents itself by one method.** A project keeps a research record a person or agent reads first: the data used, every tile looked at and its verdict, every candidate's checks and decision, every source and literature search, and what is still to do. Then nobody redoes work, and amateurs, archaeologists and agents can build on each other's projects. Older projects get the same files when opened. | A new project and an old one both have RESEARCH.md, a method that explains the record, and a git history without data/ or private/. The Notes tab and the overview show the record. |
+
 Still with Chris from loop 2: dragging the two edges and dropping a Finder file (N2), and his review of the N9 screens. Still waiting on decisions, so not goals: a notarized download, a Notion button, bulk screening through the router, the licence, and going public.
 
 ## Rules for this loop
@@ -370,3 +376,29 @@ Left for part 2: new README screenshots and bringing the docs into line, after t
 ### 2026-11-14, the model is easy to change
 
 Chris found the model hard to change: the button in the message box opened the effort panel, and the model list hid behind a small link. The button now opens one panel with the model list and a search box, with the thinking slider at its top. The last five models picked show first under "Recent". Checked in the app: typed "terra" and picked primary / 6.1 Terra, which is now the default, and the button reads "primary / 6.1 Terra, Medium". Tests now use that model (rule added to HANDOFF.md).
+
+
+### 2026-11-14, P1: every project documents itself by one method
+
+Chris asked for this to come first. It builds on F10, which gave projects a method file, a notes index and a git history.
+
+- **RESEARCH.md, the research record.** A new module, `record.py`, rebuilds it from the project's own files whenever a run ends, a person decides, or the project is opened. It covers, without coordinates:
+  - the question and where things stand;
+  - **Still to do**, worked out from the files (tiles not screened, checks missing, sources that could not be opened, decisions waiting, a missing question);
+  - the data used;
+  - every tile with its verdict, who looked and what was seen, nothing and natural included;
+  - every candidate with its section, second look, modern-features check, sources and decision;
+  - every source, grouped as read, could not be opened (the next ones to try) and not relevant;
+  - every literature search run, read from the dated notes so older projects get theirs too;
+  - the run history, and a guide to the project's files.
+- **The method explains the record.** METHODOLOGY.md has a "How this project keeps its record" section: every look leaves a trace, a blank result is a result, one record per feature, decisions carry a name, date and reason, and Export project hands everything but private/ and data/ to someone else to carry on.
+- **The agent reads the record first.** It builds on the record and does not redo work it lists without saying why. A new "Keeping the record" section in the skill covers this, and a new tool, `document_project`, rebuilds the record on request and returns what is still to do. That makes 32 tools. `init_project` now says to read RESEARCH.md first.
+- **Older projects catch up when opened.** The app calls document_project, with no model involved. The project gets a .gitignore, the method (or the record section added to its existing method), a notes index built from its run summaries, a git history and the record.
+- **In the app:** the Notes tab opens on **Record**, and the project overview has a **Research record** button.
+- **Coordinates:** they are stripped from anything copied into the record. DOIs such as 10.2307/503404 are left intact.
+
+| Check | Seen |
+|---|---|
+| A scratch project: create, then a run summary | The method had the record section. RESEARCH.md was written. Two commits: "Start the project", then the run summary. |
+| A copy of Angel Mounds (made before F10) | RESEARCH.md matches the project: 9 tiles with verdicts, 5 candidates with their checks, 1 source read, 17 not opened, 2 not relevant, 16 literature searches. Still to do lists the missing question, the 17 sources and the 5 decisions. |
+| Opened Angel Mounds in the app | The record was rebuilt at 11:18. The project now has METHODOLOGY.md and one commit, with nothing from data/ or private/ tracked. Notes › Record shows it, and the overview button opens it. |

@@ -108,6 +108,8 @@ def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: 
     write(p, meta, notes)
     p.note(f"{cid} marked {status}" + (f" by {decided_by}" if decided_by else ""))
     if decided_by:
+        from .record import document
+        document(p, commit_it=False)
         commit(p.root, f"{cid} marked {LABELS[status].lower()} by {decided_by}")
     return meta
 

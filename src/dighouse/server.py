@@ -15,7 +15,7 @@ from pathlib import Path
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from . import checks, discover, ledger, national, section, sources, tiles
+from . import checks, discover, ledger, national, record, section, sources, tiles
 from . import terrain as T
 from .project import Project
 
@@ -168,7 +168,7 @@ def export_finds(project: str) -> dict:
 def init_project(project: str, name: str, question: str, west: float, south: float, east: float, north: float) -> dict:
     """Create a project folder (or adopt an existing one). The box is the search area in degrees."""
     p = Project.create(project, name, question, [west, south, east, north])
-    return {"project": str(p.root), "read_first": "PROJECT.md"}
+    return {"project": str(p.root), "read_first": ["RESEARCH.md", "METHODOLOGY.md"]}
 
 
 @tool
@@ -585,6 +585,14 @@ def write_summary(project: str, text: str) -> dict:
     if re.search(r"-?\d{1,3}\.\d{4,}", text):
         raise ValueError("The summary looks like it holds coordinates. Refer to places by candidate id instead.")
     return {"written": f"notes/{p.summary(text)}"}
+
+
+@tool
+def document_project(project: str) -> dict:
+    """Rebuild RESEARCH.md, the project's research record: data used, every tile looked at, every candidate's
+    checks and decision, every source and literature search, and what is still to do. Read it before a run;
+    call this after work that the record should show. It returns what is still to do."""
+    return record.document(Project(project).check())
 
 
 @tool

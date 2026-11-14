@@ -774,8 +774,8 @@ private struct DecisionSheet: View {
 struct NotesView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
-    @State private var part = "runs"
     @State private var picked: String?
+    private var part: String { app.notesPart }
 
     /// The project's notes in three parts: the method the agent follows, the run summaries, and the running log.
     private func files(_ part: String) -> [String] {
@@ -783,6 +783,7 @@ struct NotesView: View {
         let fm = FileManager.default
         let notes = ((try? fm.contentsOfDirectory(atPath: root + "/notes")) ?? []).filter { $0.hasSuffix(".md") }.sorted().reversed()
         switch part {
+        case "record": return ["RESEARCH.md"].filter { fm.fileExists(atPath: root + "/" + $0) }
         case "method": return ["METHODOLOGY.md", "PROJECT.md"].filter { fm.fileExists(atPath: root + "/" + $0) }
         case "runs": return notes.filter { $0.contains("-run-") }.map { "notes/" + $0 }
         default:
@@ -795,6 +796,7 @@ struct NotesView: View {
     private func label(_ file: String) -> String {
         let name = URL(fileURLWithPath: file).deletingPathExtension().lastPathComponent
         if name == "METHODOLOGY" { return "Method" }
+        if name == "RESEARCH" { return "Research record" }
         if name == "PROJECT" { return "Question and rules" }
         if name == "read-log" { return "Sources read" }
         if name.contains("-run-") {
@@ -811,8 +813,8 @@ struct NotesView: View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 HStack(spacing: 2) {
-                    ForEach([("runs", "Runs"), ("method", "Method"), ("log", "Log")], id: \.0) { item in
-                        Button { part = item.0; picked = nil } label: {
+                    ForEach([("record", "Record"), ("runs", "Runs"), ("method", "Method"), ("log", "Log")], id: \.0) { item in
+                        Button { app.notesPart = item.0; picked = nil } label: {
                             Text(item.1).font(.system(size: 12.5 * Theme.scale, weight: part == item.0 ? .semibold : .medium))
                                 .foregroundStyle(part == item.0 ? Theme.text : Theme.dim)
                                 .padding(.horizontal, 12).frame(height: 26)
@@ -838,12 +840,16 @@ struct NotesView: View {
             Hairline()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(part == "runs" ? "What each run did and found, newest first."
+                    Text(part == "record" ? "The research record: what has been looked at, read and decided here, and what is left. Dighouse keeps it up to date from the project's files, so share it with anyone who picks the project up."
+                         : part == "runs" ? "What each run did and found, newest first."
                          : part == "method" ? "How searches in this project are done. The agent reads this before every run and follows it; edit it to change the method."
                          : "The running log the tools write as work happens, the sources read, and report drafts.")
                         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
                     if let file, let text = try? String(contentsOfFile: root + "/" + file, encoding: .utf8) {
                         MarkdownText(text: text)
+                    } else if part == "record" {
+                        Text("The record is written the next time this project opens, when a run ends, or when a decision is recorded.")
+                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                     } else if part == "method" {
                         Text("This project was made before projects had a method file.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                         Button { app.ask("Write METHODOLOGY.md for this project: the order of work Dighouse follows (read, terrain, screen, flag, check, search what is published, suggest decisions, summarise), the rules, and a Lessons section with anything the notes so far have taught. No coordinates.") } label: {
