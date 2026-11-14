@@ -215,7 +215,7 @@ enum ToolGuide {
                    gives: "Titles, abstracts and links to open copies for the literature search.",
                    usedFor: "Prior art",
                    url: "https://openalex.org", probe: "https://api.openalex.org/works?per-page=1",
-                   image: "papers", caption: "What a search for Monks Mound returns. Two of these have open copies the agent can read.",
+                   image: "papers", caption: "What a search for Monks Mound returns. Two of them are free to read, and the agent reads those.",
                    ask: "What has been published about lidar and Maya settlement in the Usumacinta region? Give titles, years, and which have open copies."),
     ]
 

@@ -180,7 +180,8 @@ private struct StageWords: View {
                 HStack(spacing: 10) {
                     Button("Run this stage") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(state?.ready != true)
                     Text(state?.ready == true ? (flow.scope == .project ? "Runs on the open project." : "Starts a chat.")
-                         : (state?.note ?? "") == "Needs a project" ? "Open a project from the sidebar first." : (state?.note ?? ""))
+                         : (state?.note ?? "") == "Needs a project" ? "Open a project from the sidebar first."
+                         : "\(app.store.current?.name ?? "This project"): \((state?.note ?? "").lowercased())")
                         .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .padding(.top, 2)
@@ -204,7 +205,7 @@ private struct StageArt: View {
             }
         case 2: TileBoard()
         case 3: ChecksArt()
-        case 4: PapersArt(caption: "What the search returns for Monks Mound. The agent opens the ones with open copies and logs every one.")
+        case 4: PapersArt(caption: "What the search returns for Monks Mound. The agent reads the ones that are free to read and logs every one.")
         default: RecordArt()
         }
     }
@@ -346,7 +347,7 @@ struct PapersArt: View {
         ("Cahokia or Monk's Mound", "Cyrus Thomas · 1907", false),
         ("Antiquities of Cahokia, or Monks' Mound, in Madison County, Illinois", "William McAdams · 1883", true),
     ]
-    var yes = "Open copy", no = "No open copy"
+    var yes = "Free to read", no = "No free copy"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -358,10 +359,13 @@ struct PapersArt: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(paper.0).font(.system(size: 12.5 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                             Text(paper.1).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                            if !(paper.2 ? yes : no).isEmpty {
+                                Label(paper.2 ? yes : no, systemImage: paper.2 ? "checkmark" : "minus")
+                                    .font(.system(size: 11 * Theme.scale, weight: .medium))
+                                    .foregroundStyle(paper.2 ? Theme.green.opacity(0.85) : Theme.faint)
+                            }
                         }
-                        Spacer(minLength: 6)
-                        Text(paper.2 ? yes : no).font(.system(size: 11 * Theme.scale, weight: .medium))
-                            .foregroundStyle(paper.2 ? Theme.green : Theme.faint).fixedSize()
+                        Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 9)
                 }
@@ -579,7 +583,8 @@ private struct DataTab: View {
                     thumb(source).frame(width: 64, height: 44).clipShape(RoundedRectangle(cornerRadius: 6))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(source.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                        Text(source.what).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
+                        Text(source.what).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(expanded ? nil : 1)
+                            .fixedSize(horizontal: false, vertical: expanded).multilineTextAlignment(.leading)
                     }
                     Spacer(minLength: 8)
                     status(source)
@@ -593,13 +598,14 @@ private struct DataTab: View {
                 HStack(alignment: .top, spacing: 16) {
                     art(source).frame(width: 260)
                     VStack(alignment: .leading, spacing: 9) {
-                        Text(source.what).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.9)).fixedSize(horizontal: false, vertical: true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("What Dighouse takes from it").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                             Text(source.gives).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         }
-                        Flow(spacing: 6) {
-                            ForEach(source.usedFor.components(separatedBy: " · "), id: \.self) { Badge(text: $0, color: Theme.tan) }
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text("Used for").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                            Text(source.usedFor.components(separatedBy: " · ").joined(separator: ", "))
+                                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                         }
                         HStack(spacing: 10) {
                             Button { asking = source } label: { Label("Ask the agent…", systemImage: "sparkles") }
@@ -647,7 +653,7 @@ private struct DataTab: View {
             } else if source.image == "records" {
                 PapersArt(papers: [("11Ms136", "Site · Illinois Site Files · Madison County", true), ("11Ms99", "Site · Illinois Site Files · Madison County", true),
                                    ("11S1232", "Site · Illinois Site Files · Saint Clair County", true), ("11Ms1672", "Site · Illinois Site Files · Madison County", true)],
-                          yes: "Open record", no: "")
+                          yes: "Public record", no: "")
             } else if source.image.isEmpty {
                 RoundedRectangle(cornerRadius: 10).fill(Theme.side).frame(height: 120)
                     .overlay(Image(systemName: "building.columns").font(.system(size: 36 * Theme.scale, weight: .light)).foregroundStyle(Theme.tan.opacity(0.8)))
@@ -718,14 +724,15 @@ private struct MoreTab: View {
                             }
                             Spacer(minLength: 0)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
-                        .panel(padding: 12, radius: 12)
+                        .frame(maxWidth: .infinity, minHeight: 52, alignment: .topLeading)
+                        .padding(.vertical, 4)
                     }
                 }
             }
             if !others.isEmpty {
                 Text("Also connected").font(.system(size: 12.5 * Theme.scale, weight: .semibold)).padding(.top, 4)
-                Flow(spacing: 6) { ForEach(others, id: \.self) { Badge(text: $0) } }
+                Text(others.joined(separator: ", ")).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if !engine.connections.isEmpty {
                 Button { showServers.toggle() } label: {

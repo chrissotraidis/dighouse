@@ -359,3 +359,9 @@ extension String {
             ?? AttributedString(self)
     }
 }
+
+
+extension String {
+    /// A path with the home folder shortened to ~, for showing to a person.
+    var tildePath: String { (self as NSString).abbreviatingWithTildeInPath }
+}

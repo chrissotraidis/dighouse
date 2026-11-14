@@ -104,7 +104,7 @@ private struct GeneralSettings: View {
                 TextField("Name", text: $app.userName).field().font(.system(size: 13 * Theme.scale)).frame(width: 220)
             }
             Hairline()
-            SettingRow(title: "Projects folder", note: "New projects are created in \(projectsHome.isEmpty ? Paths.projectsHome.path : projectsHome).") {
+            SettingRow(title: "Projects folder", note: "New projects are created in \((projectsHome.isEmpty ? Paths.projectsHome.path : projectsHome).tildePath).") {
                 HStack(spacing: 8) {
                     Button("Show") { NSWorkspace.shared.open(Paths.projectsHome) }.buttonStyle(SecondaryButton())
                     Button("Choose…") {
@@ -574,8 +574,8 @@ private struct ToolsSettings: View {
 private struct PrivacySettings: View {
     private let rows: [(String, String)] = [
         ("Messages and images", "What you type, and the terrain tiles the agent looks at, go to the provider of the model you chose, through the Codex engine. Dighouse adds no service in between."),
-        ("Locations", "A project's search area and the position of each candidate are kept in its private folder on this Mac. Records, notes and reports carry no coordinates, so they can be shared."),
-        ("Open data services", "The tools ask OpenTopography, USGS, the Environment Agency (England), PDOK (Netherlands), IGN (France), Wikidata, OpenStreetMap and QLever, the National Register, Pleiades, Open Context and OpenAlex for data. Each sees the area or the search words in the request, and nothing else."),
+        ("Locations", "A project's search area and the position of each candidate are kept in its private folder on this Mac. Records, notes and reports carry no coordinates, so they can be shared. Each project keeps a history of its records and notes with git, which leaves out the private folder and the downloaded data."),
+        ("Open data services", "The tools ask OpenTopography, USGS, the Environment Agency (England), PDOK (Netherlands), IGN (France), Wikidata, OpenStreetMap (and a copy of Wikidata for faster searches), the National Register, Pleiades, Open Context and OpenAlex for data. Each sees the area or the search words in the request, and nothing else."),
         ("The map", "The New project page uses Apple Maps, which sees the part of the map you look at."),
         ("Reports", "Dighouse sends nothing to anyone. A report to a heritage authority is a draft in the project until you send it yourself."),
     ]
@@ -589,11 +589,11 @@ private struct PrivacySettings: View {
         }
         .panel()
         VStack(spacing: 0) {
-            SettingRow(title: "Projects", note: Paths.projectsHome.path) {
+            SettingRow(title: "Projects", note: Paths.projectsHome.path.tildePath) {
                 Button("Show") { NSWorkspace.shared.open(Paths.projectsHome) }.buttonStyle(SecondaryButton())
             }
             Hairline()
-            SettingRow(title: "General chats, downloaded catalogs and the tools", note: Paths.support.path) {
+            SettingRow(title: "General chats, downloaded catalogs and the tools", note: Paths.support.path.tildePath) {
                 Button("Show") { NSWorkspace.shared.open(Paths.support) }.buttonStyle(SecondaryButton())
             }
         }
@@ -603,6 +603,7 @@ private struct PrivacySettings: View {
 
 private struct AboutSettings: View {
     @EnvironmentObject var app: AppState
+    @EnvironmentObject var setup: Setup
 
     var body: some View {
         HStack(spacing: 16) {
@@ -613,7 +614,7 @@ private struct AboutSettings: View {
                     .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         }
-        Text("An agent harness with archaeology tools built in. It runs the Codex engine with any model you have, and adds tools that find, fetch and read open lidar, records that carry their own evidence, and workflows that stop for your decision.")
+        Text("A free, open tool for searching public lidar for places people built. An AI agent does the patient work: it fetches the terrain, looks at every tile, checks each find and reads what has been published. You decide what each find is. It runs on the Codex engine with any model you have.")
             .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         VStack(spacing: 0) {
             SettingRow(title: "About the word lidar",
@@ -621,13 +622,11 @@ private struct AboutSettings: View {
             Hairline()
             SettingRow(title: "Source code", note: "Open source under the Apache 2.0 licence.") {
                 if let url = URL(string: "https://github.com/chrissotraidis/dighouse") {
-                    Link("GitHub", destination: url).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.accent)
+                    Button { NSWorkspace.shared.open(url) } label: { Label("GitHub", systemImage: "arrow.up.right") }.buttonStyle(SecondaryButton())
                 }
             }
             Hairline()
-            SettingRow(title: "Welcome guide", note: "What Dighouse is and how a search works.") {
-                Button("Open") { app.showWelcome = true }.buttonStyle(SecondaryButton())
-            }
+            SettingRow(title: "Versions", note: "Dighouse \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""), engine \(setup.codexVersion.isEmpty ? "not found" : setup.codexVersion). Include these when you report a problem.") { EmptyView() }
         }
         .panel()
     }

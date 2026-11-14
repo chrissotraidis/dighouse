@@ -305,3 +305,18 @@ Known problems: the Overpass map servers were down during this run, so the moder
 
 Test leftovers in ~/Documents/Dighouse: mound-city-review-test (a copy of Mound City whose five decisions were recorded in Chris's name for testing only), serpent-mound-goal-run, fort-ancient-ohio and a second cahokia-control-run that is not in the sidebar; archived test chats; five "Environment Agency terrain fetch" chats in Maiden Castle. A backup of Chris's settings is at ~/.codex/worktrees/dighouse-u1/defaults-backup.plist, and a scratch project at /tmp/dh-repo-test.
 
+
+### 2026-11-14, F2, F5, F6 (the rest)
+
+The loop resumed at Chris's request.
+
+- **F2, buttons.** Screenshots of Review, Records, Data, the Toolbox (all four tabs) and every Settings page show the same button style, and no label is over four words ("Review and decide", "Use another survey", "Run this stage" are the longest). About's GitHub link was the one odd control, a bare green word; it is now a button like the rest.
+- **F5, nothing looks clickable that is not.** On Home, the Open surveys / Known sites switch, the six "Why not just ask ChatGPT?" tabs, See how it works (opens the Toolbox) and a known-site card (opens New project filled in for Cahokia) each gave a visible result. In the Toolbox, these were fixed:
+  - **Open data:** an opened service row repeated its first sentence. The row now shows the full sentence once. The stage tags under it looked like buttons, so they became a plain "Used for" line.
+  - **Pictures of search results:** the green "Open copy" and "Open record" labels looked like links but were part of a picture. They now read "Free to read" or "No free copy", with a tick or a dash under the author line.
+  - **More tools:** the cards for the Codex tools had button-like outlines but did nothing when clicked, so the outlines were removed. "Also connected" became a line of text in place of pills.
+  - **How a search works:** a stage that is already done on the open project said only "Done". It now names the project ("Mound City review test: done").
+- **F6, General, Data and privacy, About.**
+  - **Folder paths:** shown with ~ for the home folder.
+  - **Data and privacy:** says each project keeps a git history that leaves out the private folder and the downloaded data. "QLever" became "a copy of Wikidata for faster searches".
+  - **About:** opens with the same plain description as Home. "Agent harness" is gone. The repeated Welcome guide row became **Versions** (Dighouse 0.2.0, engine codex-cli 0.146.0), to quote when reporting a problem. Personalize, Models, How it runs and Tools were rechecked and needed nothing.
