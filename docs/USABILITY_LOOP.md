@@ -402,3 +402,11 @@ Chris asked for this to come first. It builds on F10, which gave projects a meth
 | A scratch project: create, then a run summary | The method had the record section. RESEARCH.md was written. Two commits: "Start the project", then the run summary. |
 | A copy of Angel Mounds (made before F10) | RESEARCH.md matches the project: 9 tiles with verdicts, 5 candidates with their checks, 1 source read, 17 not opened, 2 not relevant, 16 literature searches. Still to do lists the missing question, the 17 sources and the 5 decisions. |
 | Opened Angel Mounds in the app | The record was rebuilt at 11:18. The project now has METHODOLOGY.md and one commit, with nothing from data/ or private/ tracked. Notes › Record shows it, and the overview button opens it. |
+
+
+### 2026-11-14, U12 part 2: README pictures and docs
+
+- **New README pictures** at 1440 × 900 in Earth, with the three test projects hidden from the sidebar while capturing and put back afterwards: Home, Angel Mounds (overview and map), a record, the Toolbox and Open data. A script covered the Computer Use indicator in the window's top-left corner.
+- **Kept the old pictures** for New project and Maiden Castle. While I was capturing, the app twice switched to another chat on its own, so Chris was probably using it, and I stopped driving it.
+- **README** now covers slash commands, @ mentions, ⌘K, failures with Try again, the project overview, the review, the research record, text size and the tools in Settings. The tool count is 32.
+- **Still open:** retake New project and Maiden Castle, and check pinch zoom and two-finger panning with a real trackpad.

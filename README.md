@@ -32,9 +32,9 @@
   <a href="#status">Status</a>
 </p>
 
-![A whole search at Angel Mounds, Indiana: the agent's run summary and what it needs from the person on the left, five flagged candidates on the bare-ground map on the right](docs/images/angel-mounds-run.png)
+![Angel Mounds, Indiana, opened in Dighouse: the project's overview with the next step and how far the search has got on the left, five flagged candidates on the bare-ground map on the right](docs/images/angel-mounds-run.png)
 
-<sub>A search at Angel Mounds, Indiana, from open USGS lidar. The agent screened 9 tiles, flagged 5 candidates, cut a section through each and searched the literature, then stopped for the second look and the decisions.</sub>
+<sub>A search at Angel Mounds, Indiana, from open USGS lidar. The agent screened 9 tiles, flagged 5 candidates, cut a section through each, got a second model's opinion and searched the literature. The overview names the next step, and the research record keeps everything looked at and read.</sub>
 
 **AI disclosure:** Dighouse uses substantial AI assistance for code, tests, documentation, debugging and maintenance. There is no audited percentage of AI-generated code; the [run logs](docs/NEXT_LOOP.md#log) state what has actually been checked and how.
 
@@ -79,13 +79,14 @@ A dig house is the building where an excavation team lives, works and keeps its 
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/toolbox.png" alt="The Toolbox walking through the Check stage of a real search at Cahokia, with the section through Monks Mound"><br><sub><b>Toolbox.</b> One real search at Cahokia in six stages, each with its tools and a Run button.</sub></td>
-    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: OpenTopography and USGS 3DEP cards with pictures made from their data and a live status"><br><sub><b>Open data.</b> Every service the tools read, what Dighouse takes from it, and whether it answers right now.</sub></td>
+    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: services grouped by where they work, each with its status, and USGS 3DEP opened to show a picture made from its data"><br><sub><b>Open data.</b> Every service the tools read, grouped by where it works, what Dighouse takes from it, and whether it answers right now.</sub></td>
   </tr>
 </table>
 
-- **Chat** works with or without a project. It shows the agent's plan, each step it takes, helper agents, and long runs folded into one line. One control picks the model and its thinking effort, and the message box takes images, video, audio and other files.
-- **A project** puts a workspace beside the chat: the map of tiles with candidates on it, the records, the project's notes, and its sources with a browser to open them. The dividers drag.
-- **Settings** explains in plain words how the model, the agent engine, the tools and the optional router fit together. It has three colour looks (Earth, the default, is the soil brown, tan and green of the icon), a Test button for each model that marks which ones answered, and a page on what data goes where.
+- **Chat** works with or without a project. It shows the agent's plan, each step it takes, helper agents, and long runs folded into one line. One button opens the model list, with recent models first and the thinking effort above it, and the message box takes images, video, audio and other files.
+- **Like Codex:** type / for commands (/screen, /review, /undo, /fork, /compact, /goal and more) and @ to point at a candidate, tile, source or file. ⌘K jumps to any project, chat, candidate, page or command. When something fails, the chat says what happened and offers Try again or another model.
+- **A project** opens on an overview: its question, the next step explained, how far the search has got, and its research record. Beside the chat is a workspace with the map of tiles and candidates (views, toggles, and a line you draw to cut a section), the records, the notes, the sources with a browser to open them, and the project's data. The review goes through the finds one at a time, with the agent's suggested decision filled in.
+- **Settings** explains in plain words how the model, the agent engine, the tools and the optional router fit together. It has three colour looks (Earth, the default, is the soil brown, tan and green of the icon), a text size switch, a Test button for each model that marks which ones answered, every tool by stage, and a page on what data goes where.
 
 ## Build and run
 
