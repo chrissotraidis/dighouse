@@ -129,6 +129,11 @@ struct ProjectOverview: View {
                             icon: flow.icon, label: flow.title, action: { app.run(flow) },
                             other: suggested ? (decide.label, "Go to the review without a second opinion.", decide.action) : nil)
             }
+            if flow.id == "decide" {
+                // Only the suggestions are left, so the step itself is the main button, and going straight to the review is the other.
+                return Next(title: "Next: \(words.title)", what: words.what, after: words.after, icon: flow.icon, label: flow.title,
+                            action: { app.run(flow) }, other: (decide.label, "Go to the review without the agent's suggestions.", decide.action))
+            }
             // In the tutorial the steps are taken one at a time. Otherwise the agent carries the search to its end,
             // and doing one step alone is the smaller choice.
             if app.tutorialStep == nil, let whole, app.state(of: whole).ready {

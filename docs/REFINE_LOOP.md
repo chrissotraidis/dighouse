@@ -172,3 +172,30 @@ Words on each page at 1440 × 900, counted the same way as R3:
   - **Luxembourg:** its service answered but listed no ground model.
   - **Denmark, Finland and Sweden** ask for an account or a key, and were not tried.
 - **Not checked:** the second opinion on the Norway finds (the provider refused, as in R2). The licence wording for Flanders and Estonia was taken as "open data" and not read in full. Norway north of the Arctic Circle and the Swiss high Alps were not fetched.
+
+### R7, one product, then docs: done 2026-11-14
+
+**Chris's list, item by item.**
+
+| What Chris said | What changed | Picture |
+|---|---|---|
+| Clicking "Dighouse" at the top should go somewhere | The mark and the name are one button that opens Home | [r1-models.jpg](loop5/r1-models.jpg) (top left) |
+| The Toolbox is too much text, and not interactive enough | Each tab has half the words or fewer, and a picture to press or drag. Counts are under R3 | [r3-how-1.jpg](loop5/r3-how-1.jpg), [r3-how-2.jpg](loop5/r3-how-2.jpg), [r3-how-3.jpg](loop5/r3-how-3.jpg), [r3-how-4-slice.jpg](loop5/r3-how-4-slice.jpg), [r3-how-5.jpg](loop5/r3-how-5.jpg), [r3-how-6.jpg](loop5/r3-how-6.jpg) |
+| How search works and workflows should show more | A slice you cut yourself across Monks Mound; workflows as three lanes showing who does each part | [r3-how-4-slice.jpg](loop5/r3-how-4-slice.jpg), [r3-workflows.jpg](loop5/r3-workflows.jpg) |
+| Open data: "only a couple things… why is there not more?" | A map of where open lidar reaches, and four more countries: Flanders, Norway, Estonia, Switzerland. A list of what is not read yet, and why | [r5-data.jpg](loop5/r5-data.jpg) |
+| "If you try to click them, you can't really see any information" | Each service opens a page with a large picture made from its data, what Dighouse takes, where it reaches, its status and something to try | [r3-data-page.jpg](loop5/r3-data-page.jpg), [r5-page-no.jpg](loop5/r5-page-no.jpg) |
+| More tools needs to be better | A grid with one request to try on each; adding a tool server behind one button | [r3-more.jpg](loop5/r3-more.jpg) |
+| "Next: Check the flags… who knows what that even means?" It should be guiding you | One word for one thing (find, slice, look at, second opinion). The card says what the agent will do, why, and what follows; the main button carries the search to its end | [r2-3-finds-not-checked.jpg](loop5/r2-3-finds-not-checked.jpg), [r2-4-decisions-waiting.jpg](loop5/r2-4-decisions-waiting.jpg) |
+| Thinking effort text is not consistent with the system | The names, the line under the slider and the default come from the model list | [r4-models.jpg](loop5/r4-models.jpg), [r1-model-panel.jpg](loop5/r1-model-panel.jpg) |
+| It is odd that models are "tested or not tested" | Testing is gone. A model that fails says so in the chat | [r4-models.jpg](loop5/r4-models.jpg) |
+| How it runs needs to be more refined | One picture of you, the model, the engine and the tools, each with its state now and one button | [r4-how-it-runs.jpg](loop5/r4-how-it-runs.jpg) |
+| "Essentially everything under Settings needs to be better" | Seven pages on one row style, each with half the words or fewer. Counts are under R4 | [r4-general.jpg](loop5/r4-general.jpg), [r4-personalize.jpg](loop5/r4-personalize.jpg), [r4-tools.jpg](loop5/r4-tools.jpg), [r4-data-and-privacy.jpg](loop5/r4-data-and-privacy.jpg), [r4-about.jpg](loop5/r4-about.jpg) |
+| Research open astronomy in parallel | A report with sources, a recommendation and what was not checked | [research/open-astronomy.md](research/open-astronomy.md) |
+| Fix what is rough, retry the modern-features check, cap the report | Under R1 | [r1-report.jpg](loop5/r1-report.jpg) |
+
+- **Other looks:** a project and the Toolbox in [Canopy](loop5/r7-project-canopy.jpg) ([Toolbox](loop5/r7-toolbox-canopy.jpg)) and [Graphite](loop5/r7-project-graphite.jpg) ([Toolbox](loop5/r7-toolbox-graphite.jpg)). Canopy's accent is tan, which made the national models and the United States the same colour on the map; the national models are now green in every look.
+- **Fixed on the way:** when only the agent's suggestions are left, the card's main button is Suggest decisions and the smaller one goes to the review. It used to offer the whole search for that one step.
+- **README pictures retaken** at 1440 × 900 in Earth: Home, the Angel Mounds project, Maiden Castle, a record, the Toolbox, Open data, and two added, Workflows and How it runs. New project did not change and was kept.
+- **README, concept and HANDOFF** use the new words, list the eight countries, the two fallbacks and the 13 offline tests, and no longer mention a Test button. HANDOFF is rewritten for whoever comes next, with what waits on Chris at the top.
+- **Chris's things:** his settings were put back from the copy taken at the start and compared. The scratch projects were taken out of his list, and the chats this loop made in general chat were archived.
+- **Not done:** the welcome guide still has its older, longer text. A sixth plan was not written; it should come from Chris's notes on this build.

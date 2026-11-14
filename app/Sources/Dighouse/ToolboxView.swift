@@ -632,8 +632,8 @@ struct CoverageMap: View {
                 layer.fill(path(Reach.unitedStates, frame), with: .color(Theme.tan.opacity(0.75 * shade("us"))))
                 for country in Reach.national {
                     let shape = path(country.ring, frame)
-                    layer.fill(shape, with: .color(Theme.accent.opacity(0.8 * shade("national"))))
-                    layer.stroke(shape, with: .color(Theme.accent.opacity(shade("national"))), lineWidth: 1)
+                    layer.fill(shape, with: .color(Theme.green.opacity(0.8 * shade("national"))))
+                    layer.stroke(shape, with: .color(Theme.green.opacity(shade("national"))), lineWidth: 1)
                 }
                 for box in surveys where box.count == 4 {
                     let p = frame.point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
@@ -946,7 +946,7 @@ private struct DataTab: View {
     @ViewBuilder private func mark(_ id: String) -> some View {
         switch id {
         case "us": RoundedRectangle(cornerRadius: 2).fill(Theme.tan).frame(width: 10, height: 10)
-        case "national": RoundedRectangle(cornerRadius: 2).fill(Theme.accent).frame(width: 10, height: 10)
+        case "national": RoundedRectangle(cornerRadius: 2).fill(Theme.green).frame(width: 10, height: 10)
         case "surveys": Circle().fill(Theme.amber).frame(width: 9, height: 9)
         default: RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.dim, style: StrokeStyle(lineWidth: 1.2, dash: [3, 2])).frame(width: 10, height: 10)
         }
