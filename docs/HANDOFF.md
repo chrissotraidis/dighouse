@@ -48,6 +48,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 - **Use this build and say what is still rough.** Loop 4 closed its own audit list; his eye has not been over it.
 - **Real hands:** dragging the sidebar edge and the chat divider with a mouse, dropping a file from Finder onto the message box, pinch zoom and two-finger panning on the map, the "…" button that shows under the pointer on a sidebar row, and how the menus in the menu bar look (test tooling opens them without drawing them).
 - **Decisions:** a notarized download, a Notion button, bulk screening through the model router, the licence, and when the repository goes public.
+- **Open astronomy:** whether to try a sky version, and which first step. The research is in [research/open-astronomy.md](research/open-astronomy.md); it recommends a second field in this app, starting with a tool server run in plain Codex.
 - **His three test chats named "What should I research?"** were left as they are. New chats from the same workflow are numbered.
 
 ## Not verified

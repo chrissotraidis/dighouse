@@ -146,3 +146,13 @@ Words on each page at 1440 × 900, counted the same way as R3:
 - **Fixed on the way:** the line under Models said "from the Codex sign-in" when the router had not answered a check at launch, though its models were listed. It now also looks at the list itself.
 - **Pressed and seen:** the layout menu, the welcome guide (opened and closed), Choose (panel opened, cancelled), the three text sizes, the three looks (in R3), the model lists and the effort slider (in R1), Change, Restart (the button greyed while the engine restarted), See them, the tool search, a tool name, Add tools (went to More tools), Copy on About (the versions were on the clipboard; the earlier clipboard was put back).
 - **Not pressed:** the Show buttons (they open Finder windows), and the links that open a browser (OpenCodex, GitHub).
+
+### R6, open astronomy research: done 2026-11-14
+
+- **The report is [research/open-astronomy.md](research/open-astronomy.md),** about 2,800 words with a source linked for each claim, written by a helper agent beside the other goals and then read through and checked here. No code was written.
+- **Its answer:** the method carries over almost whole. People already do each part of it for the sky as separate projects, and survey teams already run classifiers over most of the data, so the chance of adding something is small and sits in a few places. The best fits are faint companions and tidal features around nearby galaxies in Legacy Survey images, and variable stars in ZTF checked against the AAVSO index.
+- **Where it breaks:** privacy flips (an object's coordinates are its identity), nobody can look at every tile of sky, and confirming most things needs a telescope.
+- **Its recommendation:** a second field inside the one app, built as a separate tool server on the shared record core, about 19 tools. The cheapest first step is to write that tool server and run one search in plain Codex before touching the app.
+- **Archaeoastronomy** (how ancient sites line up with the sky) is a real, small addition to the archaeology tools: a horizon profile and an alignment check, a few hundred lines.
+- **Checked a second time here:** the OpenAlex notice (keyless requests share $0.10 a day for each network address, which is 100 searches), the CDS notice of a cybersecurity incident dated 9 November 2026, and five of the cited arXiv records, whose titles matched.
+- **Not checked,** as the report says itself: nothing behind a key, none of the five searches was run, and whether vision models read faint features in sky images is untested.
