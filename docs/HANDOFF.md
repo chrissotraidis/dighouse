@@ -8,7 +8,7 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. His standing complaint is that it is "not there yet": he wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-The third loop is paused. To resume it, register it as your goal. Suggested objective: "Finish the Dighouse loop in docs/USABILITY_LOOP.md: the remaining F goals (F2, F5, F6) and U10 to U12 are met, each check verified in the running macOS app, logged, committed and merged."
+The third loop is finished. Goals U1 to U12, F1 to F11 and P1 are done. The next loop should start from Chris's next review.
 
 ## Rules
 
@@ -44,7 +44,7 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 
 - **U8:** a map with views (Composite, Hillshade, Local relief, Sky view, through the `render_tiles` tool), toggles, zoom, click and double-click, and drawing a line to cut a section.
 - **Chris's review (F1 to F11):** the review comes prepared (the `suggest_decision` tool and "Prepare my review"), one button style, /review, a bigger and animated Home, How it runs rewritten around model, engine and tools, Settings › Tools, Open data grouped by region, a project overview, readable section labels, a text size setting, Models warnings and Test both, and each project kept as its own git repository with METHODOLOGY.md and a Notes tab in three parts.
-- **Still open:** the F2 and F5 checks, F6 for General, Data and privacy and About, and U10 to U12. The Log in USABILITY_LOOP.md lists them, with the known problems and the test leftovers on this Mac.
+- **Done on 2026-11-14:** F2, F5, F6, U10 (⌘K), U11 (failures say what to do), U12 (every size and look, and the README pictures and docs), the model button opening the model list first, and P1 (every project keeps a research record). **Still open:** retake the New project and Maiden Castle pictures, and check pinch zoom and two-finger panning with a real trackpad. The Log in USABILITY_LOOP.md has the details and the test leftovers.
 
 ## How a project documents itself (P1, Chris's priority)
 
