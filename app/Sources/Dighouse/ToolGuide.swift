@@ -34,6 +34,9 @@ enum ToolGuide {
         let name: String, what: String, gives: String, usedFor: String, url: String, probe: String
         /// A picture made from this source, what it shows, and a question that puts the source to work.
         var image = "", caption = "", ask = ""
+        /// A second part of the service that some tools need, and what stops working when only that part is down.
+        /// The part counts as up when any of its addresses answers.
+        var alsoProbe: [String] = [], alsoNote = ""
         var id: String { name }
     }
 
@@ -210,7 +213,11 @@ enum ToolGuide {
                    usedFor: "Choosing a place · Checks",
                    url: "https://www.openstreetmap.org", probe: "https://nominatim.openstreetmap.org/status?format=json",
                    image: "data-osm", caption: "What OpenStreetMap has around Monks Mound: roads, buildings, and the mounds already mapped.",
-                   ask: "Find Serpent Mound in Ohio and tell me which open lidar covers it."),
+                   ask: "Find Serpent Mound in Ohio and tell me which open lidar covers it.",
+                   // The same servers, in the same order, that the modern-features check asks.
+                   alsoProbe: ["https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%3Bnode%281%29%3Bout%3B",
+                               "https://overpass.private.coffee/api/interpreter?data=%5Bout%3Ajson%5D%3Bnode%281%29%3Bout%3B"],
+                   alsoNote: "Place search answers, but OpenStreetMap's map servers (Overpass) do not. The check for modern features near a find fails until they are back. Everything else works."),
         DataSource(name: "OpenAlex",
                    what: "An open index of scholarly books and papers.",
                    gives: "Titles, abstracts and links to open copies for the literature search.",

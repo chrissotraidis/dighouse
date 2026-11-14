@@ -523,6 +523,8 @@ private struct WorkflowLine: View {
 private struct DataTab: View {
     @EnvironmentObject var app: AppState
     @State private var online: [String: Bool] = [:]
+    /// Services whose main address answers while a second part some tools need does not.
+    @State private var partly: Set<String> = []
     @State private var checked: Date?
     @State private var checking = false
     @State private var open: String?
@@ -547,7 +549,7 @@ private struct DataTab: View {
                     .buttonStyle(SecondaryButton()).disabled(checking)
                     .help("Sends a small test request to each service from this Mac.")
                 if let checked {
-                    let up = online.values.filter { $0 }.count
+                    let up = online.filter { $0.value && !partly.contains($0.key) }.count
                     Text("\(up) of \(ToolGuide.allSources.count) online at \(checked.formatted(date: .omitted, time: .shortened))")
                         .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(up == ToolGuide.allSources.count ? Theme.faint : Theme.amber)
                 }
@@ -630,13 +632,16 @@ private struct DataTab: View {
 
     private func status(_ source: ToolGuide.DataSource) -> some View {
         let state = online[source.name]
+        let part = state == true && partly.contains(source.name)
         return HStack(spacing: 6) {
-            Circle().fill(state == true ? Theme.green : state == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
-            Text(state == true ? "Online" : state == false ? "Not answering" : "Checking")
-                .font(.system(size: 12 * Theme.scale)).foregroundStyle(state == false ? Theme.amber : Theme.dim)
+            Circle().fill(part || state == false ? Theme.amber : state == true ? Theme.green : Theme.faint).frame(width: 7, height: 7)
+            Text(part ? "Partly online" : state == true ? "Online" : state == false ? "Not answering" : "Checking")
+                .font(.system(size: 12 * Theme.scale)).foregroundStyle(part || state == false ? Theme.amber : Theme.dim)
         }
-        .help(state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
-              : "This service replied to a test request from this Mac.")
+        .help(part ? source.alsoNote
+              : state == false ? "This service did not reply. Tools that use it will fail until it is back, or until this Mac is online."
+              : state == true ? "This service replied to a test request from this Mac."
+              : "Waiting for this service to reply to a test request.")
     }
 
     @ViewBuilder private func thumb(_ source: ToolGuide.DataSource) -> some View {
@@ -674,18 +679,30 @@ private struct DataTab: View {
     private func probe() async {
         checking = true
         online = [:]
-        await withTaskGroup(of: (String, Bool).self) { group in
+        partly = []
+        /// Whether an address answers a small request within twelve seconds.
+        @Sendable func answers(_ address: String) async -> Bool {
+            guard let url = URL(string: address) else { return false }
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 12
+            request.setValue("dighouse/0.2 (https://github.com/chrissotraidis/dighouse)", forHTTPHeaderField: "User-Agent")
+            let code = ((try? await URLSession.shared.data(for: request))?.1 as? HTTPURLResponse)?.statusCode ?? 0
+            return (200..<400).contains(code)
+        }
+        await withTaskGroup(of: (String, Bool, Bool).self) { group in
             for source in ToolGuide.allSources {
                 group.addTask {
-                    guard let url = URL(string: source.probe) else { return (source.name, false) }
-                    var request = URLRequest(url: url)
-                    request.timeoutInterval = 12
-                    request.setValue("dighouse/0.2 (https://github.com/chrissotraidis/dighouse)", forHTTPHeaderField: "User-Agent")
-                    let code = ((try? await URLSession.shared.data(for: request))?.1 as? HTTPURLResponse)?.statusCode ?? 0
-                    return (source.name, (200..<400).contains(code))
+                    async let main = answers(source.probe)
+                    // The second part is up when any of its addresses answers.
+                    var second = source.alsoProbe.isEmpty
+                    for address in source.alsoProbe where !second { second = await answers(address) }
+                    return (source.name, await main, second)
                 }
             }
-            for await (name, ok) in group { online[name] = ok }
+            for await (name, ok, second) in group {
+                online[name] = ok
+                if ok, !second { partly.insert(name) }
+            }
         }
         checked = Date()
         checking = false

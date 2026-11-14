@@ -202,5 +202,50 @@ The right-click was made by test tooling, which finds the row by where it sits i
 
 Also changed: "Prior-art sweep" is now "Search what is published", in the app's words everywhere.
 
+### 2026-11-14, A3: every tool, run once
+
+All 32 tools were called once from Python against the real services, on a scratch project of about 200 m at Serpent Mound (`loop4-tools`, outside Chris's projects). Those marked "also in chat" were called by the agent itself, on Terra through engine 0.167, in the A2 run on the other scratch project.
+
+| # | Tool | How it was run | Result |
+|---|---|---|---|
+| 1 | find_place | Python | Passed. "Serpent Mound, Ohio" came back as an archaeological site with its area. |
+| 2 | open_surveys | Python | Passed. The four surveys Home lists. |
+| 3 | survey_area | Python | Passed in 2 to 18 s. 573 sq km, the USGS surveys that cover it, and the recorded sites. |
+| 4 | find_gaps | Python | Passed. A 4 by 4 grid, 5 sites on open record, four sources answered. |
+| 5 | open_resources | Python | Passed. |
+| 6 | search_records | Python | Passed. 19 records for "mound" around Cahokia and 14 for "Serpent Mound"; none inside the small box in Adams County, which is a true answer. |
+| 7 | init_project | Python; also in the app | Passed. The folder, the method file and a git history. |
+| 8 | find_data | Python; also in chat | Passed. USGS OH_StatewideP3_2_B21. |
+| 9 | fetch_terrain | Python; also in chat | Passed in 5 s. 8.18 ground returns per sq m. |
+| 10 | view_terrain | Python | Passed. A picture came back. |
+| 11 | make_tiles | Python; also in chat | Passed. 1 tile here, 4 in the chat run, none unreadable. |
+| 12 | next_tiles | Python; also in chat | Passed. |
+| 13 | view_tile | Python; also in chat (hillshade and local relief for each tile) | Passed. |
+| 14 | render_tiles | Python | Passed. Sky view drawn for the tile. |
+| 15 | record_verdict | Python; also in chat | Passed. |
+| 16 | flag_candidate | Python; also in chat | Passed. C-001 with its record and relief picture. |
+| 17 | cut_section | Python; also in chat | Passed. 122 m long, 449 ground returns near the peak. |
+| 18 | second_look | Python; also from the app, by Gemini 3.8 Flash | Passed. It refuses a second look from the model that flagged the find, which is the rule; that is how the first call in the script failed. |
+| 19 | check_modern | Python; also in chat | **OpenStreetMap's map servers (Overpass) were down.** overpass-api.de, overpass.private.coffee and two other public copies all timed out or answered 502 and 504 for an hour. The tool gave up in 47 s with a plain message and wrote nothing on the record. To try again when they are back. |
+| 20 | add_evidence | Python | Passed. |
+| 21 | search_literature | Python; also in chat | Passed. Five works from OpenAlex. |
+| 22 | read_source | Python; also in chat | Passed for a Wikipedia page (31,808 characters) and a DOI that leads to PLOS (45,878). The first link tried, a book PDF at oapen.org, was refused with 403, and the tool said to log it as could not open. |
+| 23 | log_source | Python; also in chat | Passed. |
+| 24 | suggest_decision | Python; also in chat | Passed. |
+| 25 | set_status | Python; also from the review in the app | Passed. |
+| 26 | list_candidates | Python; also in chat | Passed. It lists what each record still lacks. |
+| 27 | add_control | Python | Passed. |
+| 28 | write_summary | Python; also in chat | Passed. |
+| 29 | document_project | Python; also in chat and on opening the project | Passed. |
+| 30 | run_status | Python; also in chat | Passed. |
+| 31 | export_finds | Python | Passed. The file is under private/exports. |
+| 32 | import_terrain | Python | Passed. The project's own GeoTIFF came back in as a second terrain. |
+
+- **Nothing in Dighouse's own code failed.** The one failure is an outside service.
+- **The Toolbox's Open data page now says so.** OpenStreetMap was shown as Online, because the page asked only its place search. It now also asks the two map servers the modern-features check uses, and reads **Partly online** with the reason when they do not answer: "10 of 11 online" (loop4/a3-open-data.jpg). A service still being checked no longer has the tooltip of one that answered (A1 item 4).
+- **Two offline tests added** (7 now): a map service that is down leaves the modern-features check open and writes nothing on the record, and counts what is mapped once it answers; a page that a publisher refuses says to log it as could not open. `uv run pytest`: 7 passed.
+- **Not tried:** a search that would return the Environment Agency, AHN or IGN ground models (their services answered the status check; building from them is in the live tests).
+
+
 
 

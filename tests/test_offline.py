@@ -114,6 +114,53 @@ def test_records_keep_notes(tmp_path, survey):
     server.add_evidence(root, "C-001", "Second line")
     assert "A person wrote this by hand." in f.read_text() and "- Second line" in f.read_text()
 
+
+def test_a_map_service_that_is_down_leaves_the_check_open(tmp_path, monkeypatch):
+    """When OpenStreetMap's map servers do not answer, the check says so plainly and writes nothing on the record."""
+    import httpx
+    from dighouse import ledger
+
+    root = str(tmp_path / "maps")
+    server.init_project(root, "Maps", "Is the map check honest?", 0, 0, 0.01, 0.01)
+    p = Project(root)
+    ledger.create(p, "A low bank", "t-1", (0.004, 0.006), "seen in two styles", "test")
+
+    def down(*args, **kwargs):
+        raise httpx.ConnectTimeout("no answer")
+
+    monkeypatch.setattr(checks._client, "post", down)
+    monkeypatch.setattr(checks.time, "sleep", lambda seconds: None)
+    with pytest.raises(RuntimeError, match="did not answer"):
+        server.check_modern(root, "C-001")
+    assert "modern" not in ledger.get(p, "C-001")[0]["checks"]
+    assert "modern features have not been checked" in server.list_candidates(root)[0]["open_items"]
+
+    # When a server answers, what it maps is counted and written on the record.
+    class Reply:
+        status_code = 200
+
+        def json(self):
+            return {"elements": [{"tags": {"highway": "track"}}, {"tags": {"historic": "archaeological_site", "name": "Old Fort"}}]}
+
+    monkeypatch.setattr(checks._client, "post", lambda *args, **kwargs: Reply())
+    got = server.check_modern(root, "C-001")
+    assert got["mapped_features_within_radius"] == 1 and got["historic_within_2km"] == ["Old Fort"]
+    assert ledger.get(p, "C-001")[0]["checks"]["modern"]["likely_modern"] is True
+
+
+def test_a_refused_page_says_to_log_it(monkeypatch):
+    """A publisher that refuses a program gives a message the agent can act on, not a stack of library errors."""
+    class Refused:
+        status_code = 403
+        headers = {"content-type": "text/html"}
+        text = "Forbidden"
+        content = b"Forbidden"
+        url = "https://example.org/paper"
+
+    monkeypatch.setattr(checks._client, "get", lambda *args, **kwargs: Refused())
+    with pytest.raises(RuntimeError, match="could_not_open"):
+        checks.read_source("https://example.org/paper")
+
 def test_sky_view_darkens_a_ditch():
     import numpy as np
     from dighouse import terrain as T
