@@ -75,3 +75,52 @@ Each goal is done when its check passes in the running app. Record the date and 
 
 ## Log
 
+### 2026-11-14, A1: the audit
+
+Every screen was captured from the running app in Earth at 1440 × 900, and Home and a project in Canopy and Graphite. The pictures are in [loop4/](loop4/). The menu bar was read through accessibility, because a menu opened by test tooling is not drawn on screen, so there is no picture of it. The list is ranked: wrong first, then inconsistent, then plain.
+
+**Wrong or misleading**
+
+| # | What | Picture | Goal |
+|---|---|---|---|
+| 1 | In Canopy, "Looks built" and "Possible" tiles are outlined in almost the same orange, on the map and in its key. The accent colour is tan in that look. | loop4/a1-33-canopy-project.jpg | A2 |
+| 2 | A candidate with every check on its record still reads "Not yet checked", on its record and in the review. It is waiting for a decision. | loop4/a1-13-records.jpg, loop4/a1-17-review.jpg | A2 |
+| 3 | The menu bar has no Export project, no Review, no research record, no Show in Finder, no text size and no tutorial. The project menu is called Run. Its items are in sentence case while every other menu uses title case. A greyed item does not say why. | read through accessibility | A2 |
+| 4 | Open data: a service still being checked already has the tooltip "This service replied to a test request from this Mac." | loop4/a1-18-toolbox-open-data.jpg | A3 |
+| 5 | The + button in the message box opens a menu with one item, "Attach files…", when nothing is selected. | loop4/a1-09-attach-menu.jpg | A2 |
+
+**Inconsistent**
+
+| # | What | Picture | Goal |
+|---|---|---|---|
+| 6 | In-app menus come in three looks: the system menu (the + button, the map's view menu, the record picker, a chat's or project's menu), a custom panel (Workflows, the model list) and a bare list (slash commands). None marks the current choice the same way. | loop4/a1-06-slash-menu.jpg, loop4/a1-07-workflows-menu.jpg, loop4/a1-08-model-panel.jpg, loop4/a1-09-attach-menu.jpg | A2 |
+| 7 | The Workflows menu cuts each description off with "…". | loop4/a1-07-workflows-menu.jpg | A2 |
+| 8 | Two search panels for the same job look different: ⌘K has a bare field and Close at the bottom right; Find a chat has a boxed field and Close at the top right. | loop4/a1-10-jump-palette.jpg, loop4/a1-32-find-a-chat.jpg | A2 |
+| 9 | "This starts something" is drawn with three arrows: → on cards, ↑ on question rows, ↗ on "Ask the agent for every survey in the catalog". | loop4/a1-04-home-open-surveys.jpg, loop4/a1-05-new-chat.jpg | A5 |
+| 10 | In the sidebar and the Settings list, labels start at different places because the icons have different widths. | loop4/a1-01-home.jpg, loop4/a1-22-settings-general.jpg | A5 |
+| 11 | The Toolbox jumps about 7 points sideways between tabs, as the scroll bar comes and goes. | loop4/a1-18-toolbox-open-data.jpg, loop4/a1-21-toolbox-more-tools.jpg | A2 |
+| 12 | "Open a shared project folder…" on Home is a text link among buttons, and five words long. | loop4/a1-02-home-lower.jpg | A2 |
+| 13 | In the review the relief picture floats in the middle of its column; everything else is aligned left. | loop4/a1-17-review.jpg | A2 |
+| 14 | Sources: the status reads "Could Not Open" in title case, and the first row has no arrow while the others do. | loop4/a1-15-sources.jpg | A2 |
+| 15 | The Data tab starts a few points further left than the other tabs. | loop4/a1-16-data.jpg | A2 |
+| 16 | Buttons over four words: "Ask the agent for every survey in the catalog" and "Next: Search what is published" (Toolbox). | loop4/a1-04-home-open-surveys.jpg, loop4/a1-19-toolbox-how.jpg | A2 |
+
+**Plain, generic, or looks generated**
+
+| # | What | Picture | Goal |
+|---|---|---|---|
+| 17 | Every "working" sign is the system spinner: in chat, the top bar, the sidebar, the review, the map, Open data and more (23 places in the code). | loop4/a1-18-toolbox-open-data.jpg | A5 |
+| 18 | The six stages are ticks in circles with no picture of their own, on the overview and in the Toolbox. | loop4/a1-12-project-overview.jpg, loop4/a1-19-toolbox-how.jpg | A5 |
+| 19 | Generic system icons: an aeroplane for a survey, a bank for an archive, a chip for the model, a light bulb for a suggestion, an arrow in a circle for the next step, a wrench beside each tool. | loop4/a1-04-home-open-surveys.jpg, loop4/a1-05-new-chat.jpg, loop4/a1-17-review.jpg, loop4/a1-20-toolbox-workflows.jpg | A5 |
+| 20 | Empty states are one grey line (Find a chat, "No projects yet") or a system icon on a tile (the Map, Records and Sources with nothing in them). | loop4/a1-32-find-a-chat.jpg | A5 |
+| 21 | Toolbox › More tools lists raw plugin names under "Also connected" (build-macos-apps, codex-app-tools, unified-computer-use…). | loop4/a1-21-toolbox-more-tools.jpg | A2 |
+| 22 | The research record opens with two explanations of itself, one from the app and one from the file, before any fact about the project. | loop4/a1-14-notes.jpg | A4 |
+| 23 | Three chats in the sidebar are all called "What should I research?", so they cannot be told apart. | loop4/a1-01-home.jpg | A2 |
+
+**Looked at and left alone:** Home, New project, the project overview's layout, Records, the model panel, ⌘K, the welcome guide and the seven Settings pages are consistent with each other in spacing, buttons and type. Graphite has no problems of its own (loop4/a1-34-graphite-project.jpg).
+
+**Not captured yet:** a chat while the agent is working, and a project with no terrain. Both come up in A3 and A4 and are added there.
+
+**The goals stand as written.** Nothing on the list is bigger than a goal already covers. Items 1, 2 and 4 are wrong rather than rough, so they are fixed first, with A2.
+
+
