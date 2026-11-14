@@ -1,15 +1,26 @@
 ---
 name: dighouse
-description: Run an archaeological search over open lidar with the Dighouse tools. Use when asked to search an area for unrecorded sites, screen terrain tiles, check a candidate, or continue a Dighouse project.
+description: Run an archaeological search over open lidar with the Dighouse tools. Use when asked to search an area for unrecorded sites, look at tiles of bare ground, check a find, or continue a Dighouse project.
 ---
 
 # Running a Dighouse search
 
-Work inside one project folder and pass its absolute path to every tool. Read `RESEARCH.md` first: it is the project's research record, listing the data used, every tile looked at and its verdict, every candidate's checks and decision, every source and literature search, and what is still to do. Build on it; do not redo work it lists unless you say why (a better survey, another view, a source that has since become readable). Then read `METHODOLOGY.md` (the project's method: follow it) and the newest run summary, so a run continues where the last one stopped. When a run teaches something the next run should know, such as a survey that builds badly or a kind of false flag common here, add a dated line under Lessons in `METHODOLOGY.md`.
+Work inside one project folder and pass its absolute path to every tool. Read `RESEARCH.md` first: it is the project's research record, listing the data used, every tile looked at and its verdict, every find's checks and decision, every source and literature search, and what is still to do. Build on it; do not redo work it lists unless you say why (a better survey, another view, a source that has since become readable). Then read `METHODOLOGY.md` (the project's method: follow it) and the newest run summary, so a run continues where the last one stopped. When a run teaches something the next run should know, such as a survey that builds badly or a kind of shape that fools the eye common here, add a dated line under Lessons in `METHODOLOGY.md`.
 
 Begin your first message in a project by saying, in a sentence or two, what the research record shows is already done, and then what you will do now. The person may be new to the project and should not have to ask.
 
-A project can be handed from one person to another. The downloads and the locations stay on the first Mac; the record of what was looked at and read travels. So if `RESEARCH.md` lists tiles as "earlier" and says the project was handed over, that ground has been screened: do not fetch or screen it again unless the person asks to look at it themselves. Carry on from "Still to do": sources that could not be opened, checks that need no location, decisions and the report. A wider or different area needs the person to say where, because locations are never shared.
+A project can be handed from one person to another. The downloads and the locations stay on the first Mac; the record of what was looked at and read travels. So if `RESEARCH.md` lists tiles as "earlier" and says the project was handed over, that ground has been looked at: do not fetch or look at it again unless the person asks to look at it themselves. Carry on from "Still to do": sources that could not be opened, checks that need no location, decisions and the report. A wider or different area needs the person to say where, because locations are never shared.
+
+
+## Words
+
+Write to the person in the app's words, in chat, notes, summaries and reasons. Tool names keep their older words; do not show a tool name to the person unless they ask.
+
+- A shape you marked is a **find**. Not a flag, not a candidate.
+- A cut straight down through the laser points is a **slice**. Not a section. Say what a slice is the first time you use the word.
+- You **look at** tiles. Not screen.
+- Another model gives a **second opinion**. Not a second look.
+- The bare-ground model is **the ground**. Not terrain.
 
 ## Keeping the record
 
@@ -26,7 +37,7 @@ Other people, many of them new to archaeology, and other agents will continue th
 
 When there is no project yet, help the person choose one. Ask what region, period or kind of site interests them, unless they already said.
 
-- `open_surveys` lists open lidar flown with archaeology in mind. Prefer ones with a `checked_start`, which were fetched and built into terrain in testing, and leave out any with a `known_problem`.
+- `open_surveys` lists open lidar flown with archaeology in mind. Prefer ones with a `checked_start`, which were fetched and built into bare ground in testing, and leave out any with a `known_problem`.
 - `find_place` turns a place name into an area.
 - `survey_area` shows which open lidar covers an area and which sites are already recorded there.
 
@@ -49,27 +60,27 @@ When the person picks one, call `init_project` (for a tested survey, use its `ch
 
 ## Working with other agents
 
-- When more than 12 tiles need screening, hand batches of about 8 tile ids to sub-agents. Tell each to view every tile in two styles and record a verdict, and to flag nothing: flags stay with you so one feature gets one record.
-- The second look is never yours. The person asks a different model for it from the candidate's record.
+- When more than 12 tiles need looking at, hand batches of about 8 tile ids to sub-agents. Tell each to view every tile in two styles and record a verdict, and to mark nothing: marking finds stays with you so one feature gets one record.
+- The second opinion is never yours. The person asks a different model for it from the find's record.
 - Keep a plan and update it as stages finish, so the person can see where the run stands.
 
 ## The loop
 
-Finish what you start. Budget the run so the prior-art step and the summary always happen: if web searches or time run short, log what you have and write the summary before anything else. A run that stops with candidates and no logged sources leaves the person nothing to act on.
+Finish what you start. Budget the run so the prior-art step and the summary always happen: if web searches or time run short, log what you have and write the summary before anything else. A run that stops with finds and no logged sources leaves the person nothing to act on.
 
-1. **Plan.** Call `run_status`. If there are unscreened tiles, continue screening. If not, pick the next part of the search area.
+1. **Plan.** Call `run_status`. If there are tiles nobody has looked at, carry on with them. If not, pick the next part of the search area.
 2. **Acquire.** `find_data` for the area, then `fetch_terrain` in boxes under 6 square km. Read the dataset description: it names earlier studies of the same data. Write those down as the first sources to read.
 3. **Prepare.** `make_tiles`. Unreadable tiles stay unreadable. Report how many there are.
-4. **Screen.** For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief`, `sky_view` or `hillshade`) before deciding on anything doubtful. `sky_view` shows ditches and low banks whatever their direction, where a hillshade can hide a bank that runs parallel to the light.
-5. **Flag.** `flag_candidate` for anything that looks built. One record per feature group.
-6. **Check every flag.**
-   - `cut_section` across the feature, starting and ending on the surrounding ground, with the candidate id.
+4. **Look.** For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief`, `sky_view` or `hillshade`) before deciding on anything doubtful. `sky_view` shows ditches and low banks whatever their direction, where a hillshade can hide a bank that runs parallel to the light.
+5. **Mark finds.** `flag_candidate` for anything that looks built. One record per feature group.
+6. **Check every find.**
+   - `cut_section` across the feature, starting and ending on the surrounding ground, with the find id.
    - `second_look` from a different model, shown the tile without the first model's note.
    - `check_modern`.
-7. **Prior art.** `search_literature`, starting with the dataset's own name and the studies its description cites, then the region and site type. Open the promising ones with `read_source`. `log_source` each one as read, could not open, or not relevant, with what it shows about this place. Log a source as soon as you know its outcome, one at a time, so a run that stops early still leaves its sources on the record. When one source bears on several candidates, pass their ids together, or "all". A source you know only from its abstract is logged as could not open, with what the abstract says.
+7. **Prior art.** `search_literature`, starting with the dataset's own name and the studies its description cites, then the region and site type. Open the promising ones with `read_source`. `log_source` each one as read, could not open, or not relevant, with what it shows about this place. Log a source as soon as you know its outcome, one at a time, so a run that stops early still leaves its sources on the record. When one source bears on several finds, pass their ids together, or "all". A source you know only from its abstract is logged as could not open, with what the abstract says.
 8. **Record.** `add_evidence` for measurements. `set_status` only as far as the checks support.
-9. **Summarise.** End every run, finished or not, with `write_summary`: what was done, what each candidate's checks show, the sources read and not opened, what is left, and what waits for the person.
-10. **Suggest each decision.** For every open candidate, call `suggest_decision` with the decision the evidence points to and a reason the person can check in one read: for already published, where (author, year, title or record id); for modern or natural, what shows it. Suggest "no match in sources read" only when the checks and sources support it. The person's review opens with these filled in.
+9. **Summarise.** End every run, finished or not, with `write_summary`: what was done, what each find's checks show, the sources read and not opened, what is left, and what waits for the person.
+10. **Suggest each decision.** For every open find, call `suggest_decision` with the decision the evidence points to and a reason the person can check in one read: for already published, where (author, year, title or record id); for modern or natural, what shows it. Suggest "no match in sources read" only when the checks and sources support it. The person's review opens with these filled in.
 11. **Stop for the person** when `run_status` lists anything under `needs_a_person`, when controls are being missed, or when data needs an account.
 
 ## What built ground looks like
@@ -85,7 +96,7 @@ Flat dark grey in a tile means the laser did not reach the ground there. Say so;
 ## Rules
 
 - Never say a site is new, undiscovered or unknown. Say how many sources were read and that none matched.
-- Never write coordinates in a message, a Markdown file, or anything pushed to another service. Refer to candidates by id.
-- A person decides before a candidate is marked `no_match_in_sources_read` or `reported`. Ask, then pass their name as `decided_by`.
+- Never write coordinates in a message, a Markdown file, or anything pushed to another service. Refer to finds by id.
+- A person decides before a find is marked `no_match_in_sources_read` or `reported`. Ask, then pass their name as `decided_by`.
 - When pushing records to Notion or elsewhere, push the Markdown record and its images only. Nothing from `private/` or `data/`.
 - Cite each dataset the way `find_data` says its publisher asks.

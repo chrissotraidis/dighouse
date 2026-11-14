@@ -63,12 +63,12 @@ enum Mentions {
         if let root = store.current?.path {
             for c in store.candidates {
                 out.append(Mention(kind: .candidate, label: c.id, detail: c.name,
-                                   reference: "candidate \(c.id) (\(c.name)); its record is candidates/\(c.id).md in this project"))
+                                   reference: "the find \(c.id) (\(c.name)); its record is candidates/\(c.id).md in this project"))
             }
             let shorts = Dictionary(grouping: store.tiles, by: \.short)
             for t in store.tiles {
                 let label = (shorts[t.short]?.count ?? 0) > 1 ? t.id : t.short
-                out.append(Mention(kind: .tile, label: label, detail: t.verdict.map { "Verdict: \($0)" } ?? "Not screened yet",
+                out.append(Mention(kind: .tile, label: label, detail: t.verdict.map { "Verdict: \($0)" } ?? "Not looked at yet",
                                    reference: "tile \(t.id) of terrain \(t.terrain)"))
             }
             var seen = Set<String>()

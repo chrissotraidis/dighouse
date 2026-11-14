@@ -18,8 +18,8 @@ STATUSES = ("flagged", "ground_confirmed", "modern", "natural", "already_publish
             "no_match_in_sources_read", "reported")
 SOURCE_STATUSES = ("read", "could_not_open", "not_relevant")
 LABELS = {
-    "flagged": "Flagged, not yet checked",
-    "ground_confirmed": "Ground feature confirmed, origin not yet checked",
+    "flagged": "Marked, not yet checked",
+    "ground_confirmed": "In the ground, origin not yet checked",
     "modern": "Modern feature",
     "natural": "Natural feature",
     "already_published": "Already published",
@@ -36,7 +36,7 @@ def _file(p: Project, cid: str):
 def get(p: Project, cid: str) -> tuple[dict, str]:
     f = _file(p, cid)
     if not f.exists():
-        raise ValueError(f"No candidate {cid}. Known: {[c['id'] for c in everything(p)]}")
+        raise ValueError(f"No find {cid}. Known: {[c['id'] for c in everything(p)]}")
     _, head, body = f.read_text().split("---\n", 2)
     meta = {k: json.loads(v) for k, v in (line.split(": ", 1) for line in head.strip().splitlines())}
     notes = body.split(NOTES, 1)[1].strip() if NOTES in body else ""
@@ -68,7 +68,7 @@ def location(p: Project, cid: str) -> tuple[float, float]:
     places = p.load("locations", {}) or {}
     if cid not in places:
         raise ValueError(f"{cid}'s location is not on this Mac. Locations stay under private/, which is not part of a shared "
-                         "project. Ask whoever shared the project for it, or flag the feature again on terrain fetched here.")
+                         "project. Ask whoever shared the project for it, or mark the feature again on ground fetched here.")
     loc = places[cid]
     return loc["lon"], loc["lat"]
 
@@ -79,9 +79,9 @@ def blockers(meta: dict, status: str) -> list[str]:
     section = checks.get("section", {})
     if status in ("ground_confirmed", "no_match_in_sources_read", "reported"):
         if not section:
-            missing.append("no section has been cut")
+            missing.append("no slice has been cut")
         elif not section.get("in_ground"):
-            missing.append("the section did not show the feature in the ground returns")
+            missing.append("the slice did not show the feature in the ground")
     if status in ("no_match_in_sources_read", "reported"):
         if not checks.get("second_look", {}).get("agrees"):
             missing.append("no second model has agreed that it looks built")
@@ -102,7 +102,7 @@ def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: 
     missing = blockers(meta, status)
     needs_person = status in ("no_match_in_sources_read", "reported")
     if needs_person and not decided_by:
-        raise ValueError(f"A person must decide before a candidate is marked {status!r}. Ask them, then pass decided_by.")
+        raise ValueError(f"A person must decide before a find is marked {status!r}. Ask them, then pass decided_by.")
     if missing and not decided_by:
         raise ValueError(f"{cid} cannot be marked {status!r} yet: " + "; ".join(missing))
     if decided_by:
@@ -161,22 +161,22 @@ def distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
 def _body(meta: dict) -> str:
     cid, checks, sources = meta["id"], meta["checks"], meta["sources"]
     out = [f"# {cid} {meta['name']}", "",
-           f"Status: {LABELS[meta['status']]} · Flagged {meta['flagged']} by {meta['flagged_by']}", ""]
-    for kind, caption in (("relief", "Bare-ground relief"), ("section", "Section through the feature")):
+           f"Status: {LABELS[meta['status']]} · Marked {meta['flagged']} by {meta['flagged_by']}", ""]
+    for kind, caption in (("relief", "Bare-ground relief"), ("section", "Slice through the feature")):
         if (checks.get(kind) or {}).get("image") or kind == "relief":
             out += [f"![{caption}](img/{cid}-{kind}.png)", ""]
     out += ["## Evidence", ""] + [f"- {e}" for e in meta["evidence"]] + [""]
     out += ["## Checks", ""]
     s = checks.get("section")
-    out.append(_tick(s and s.get("in_ground"), "Feature is in the ground returns",
-                     f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} ground returns at the peak" if s else ""))
+    out.append(_tick(s and s.get("in_ground"), "In the ground",
+                     f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} laser points reached the ground at its top" if s else ""))
     look = checks.get("second_look")
     out.append(_tick(look and look.get("agrees"), "A second model agrees it looks built", f"{look['model']}: {look['note']}" if look else ""))
     m = checks.get("modern")
-    out.append(_tick(m is not None and not m.get("likely_modern"), "Not a modern feature", m["summary"] if m else ""))
+    out.append(_tick(m is not None and not m.get("likely_modern"), "Nothing modern on open maps", m["summary"] if m else ""))
     read = sum(x["status"] == "read" for x in sources)
     unread = sum(x["status"] == "could_not_open" for x in sources)
-    out.append(_tick(read and not unread, "Sources searched", f"{read} read, {unread} could not be opened"))
+    out.append(_tick(read and not unread, "What is published", f"{read} read, {unread} could not be opened"))
     out += ["", "## Sources searched", ""]
     out += [f"- {x['title']} — {x['status'].replace('_', ' ')} — {x['finding']}" for x in sources] or ["None yet."]
     sug = meta.get("suggestion")

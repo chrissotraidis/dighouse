@@ -214,7 +214,7 @@ struct Candidate: Identifiable {
 
     static let labels: [String: String] = [
         "flagged": "Not yet checked",
-        "ground_confirmed": "Ground feature confirmed",
+        "ground_confirmed": "In the ground",
         "modern": "Modern feature",
         "natural": "Natural feature",
         "already_published": "Already published",

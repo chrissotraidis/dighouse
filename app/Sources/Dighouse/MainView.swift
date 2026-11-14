@@ -147,7 +147,7 @@ struct TopBar: View {
                     Button { app.reviewing = true } label: {
                         Badge(text: "\(s.needsPerson.count) need\(s.needsPerson.count == 1 ? "s" : "") you", color: Theme.accent)
                     }
-                    .buttonStyle(.plain).help("Review the candidates waiting for your decision, one at a time")
+                    .buttonStyle(.plain).help("Review the finds waiting for your decision, one at a time")
                 }
                 LayoutSwitch()
             }
@@ -199,14 +199,14 @@ struct TopBar: View {
                     .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.accent)
                     .help("Stop the download and the agent. Nothing half-downloaded is added to the project.")
             } else if s.tiles == 0 {
-                piece(store.terrains.isEmpty ? (store.screenedBefore.map { "Shared with you, \($0) tile\($0 == 1 ? "" : "s") screened before" } ?? "No terrain yet")
-                      : "Terrain ready, not cut into tiles")
+                piece(store.terrains.isEmpty ? (store.screenedBefore.map { "Shared with you, \($0) tile\($0 == 1 ? "" : "s") looked at before" } ?? "No ground yet")
+                      : "Ground ready, not cut into tiles")
             } else {
-                piece("Screened \(s.screened) of \(s.readable) tiles")
+                piece("\(s.screened) of \(s.readable) tiles looked at")
                 if s.unreadable > 0, width > 900 { piece("\(s.unreadable) unreadable") }
                 if s.controls > 0, width > 900 { piece("\(s.controlsFound) of \(s.controls) known sites found again") }
             }
-            piece("\(s.candidates) candidate\(s.candidates == 1 ? "" : "s")")
+            piece("\(s.candidates) find\(s.candidates == 1 ? "" : "s")")
             if let next = app.nextStep, store.download == nil {
                 Button { app.run(next) } label: {
                     HStack(spacing: 6) {

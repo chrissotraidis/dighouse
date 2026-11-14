@@ -104,7 +104,7 @@ private struct GeneralSettings: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SettingRow(title: "Your name", note: "Written into a record when you make a decision on a candidate.") {
+            SettingRow(title: "Your name", note: "Written into a record when you make a decision on a find.") {
                 TextField("Name", text: $app.userName).field().font(.system(size: 13 * Theme.scale)).frame(width: 220)
             }
             Hairline()
@@ -222,9 +222,9 @@ private struct ModelSettings: View {
     /// Plain warnings about the two choices, or none when they are sound.
     private var warnings: [String] {
         var out: [String] = []
-        if let m = app.model, !m.readsImages { out.append("\(m.name) cannot read images, so it cannot screen tiles. Choose a model that reads images.") }
-        if app.secondModelID == nil { out.append("No second-look model is chosen, so candidates cannot get an independent second opinion.") }
-        if app.secondModelID != nil, app.secondModelID == app.model?.id { out.append("The second look uses the same model as the agent. A different model gives a truly independent opinion.") }
+        if let m = app.model, !m.readsImages { out.append("\(m.name) cannot read images, so it cannot look at tiles. Choose a model that reads images.") }
+        if app.secondModelID == nil { out.append("No second opinion model is chosen, so finds cannot get an independent second opinion.") }
+        if app.secondModelID != nil, app.secondModelID == app.model?.id { out.append("The second opinion uses the same model as the agent. A different model gives a truly independent opinion.") }
         else if let a = maker(app.model?.id), let b = maker(app.secondModelID), a == b {
             out.append("Both models come from \(a). A model from a different maker gives a more independent second opinion.")
         }
@@ -251,7 +251,7 @@ private struct ModelSettings: View {
             Hairline()
             effortRow
             Hairline()
-            SettingRow(title: "Second-look model", note: "Gives the second opinion on each find.") {
+            SettingRow(title: "Second opinion model", note: "Gives the second opinion on each find.") {
                 ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
                             current: app.secondModelID) { app.secondModelID = $0.id }
             }
@@ -372,7 +372,7 @@ private struct EngineSettings: View {
         LoopDiagram()
         VStack(spacing: 0) {
             PartRow(icon: "cpu", title: "1. The AI model: the thinker",
-                    text: "The model reads your request, decides each step, and looks at the terrain pictures. You choose it. It can be Claude, GPT, Gemini, Grok or any other model your setup offers; pick one that reads images.",
+                    text: "The model reads your request, decides each step, and looks at the pictures of the ground. You choose it. It can be Claude, GPT, Gemini, Grok or any other model your setup offers; pick one that reads images.",
                     ok: engine.ready ? true : nil,
                     status: engine.ready ? "\(engine.models.count) to choose from" : app.starting ? "Starting" : "Waiting for the engine") {
                 if engine.ready {
@@ -399,7 +399,7 @@ private struct EngineSettings: View {
             }
             Hairline()
             PartRow(icon: "wrench.and.screwdriver", title: "3. The archaeology tools: what it can do",
-                    text: "\(ToolGuide.toolCount) tools that come with Dighouse: they fetch open lidar, build the bare ground, cut sections, check maps and archives, read the literature and keep the records.",
+                    text: "\(ToolGuide.toolCount) tools that come with Dighouse: they fetch open lidar, build the bare ground, cut slices, check maps and archives, read the literature and keep the records.",
                     ok: setup.toolsReady ? true : setup.toolsBusy ? nil : false,
                     status: setup.toolsReady ? "Ready" : setup.toolsBusy ? "Preparing"
                         : setup.uv == nil ? "Needs uv" : (setup.toolsProblem ?? "Not prepared")) {
@@ -507,8 +507,8 @@ private struct ToolsSettings: View {
 
 private struct PrivacySettings: View {
     private let rows: [(String, String)] = [
-        ("Messages and images", "What you type, and the terrain tiles the agent looks at, go to the provider of the model you chose, through the Codex engine. Dighouse adds no service in between."),
-        ("Locations", "A project's search area and the position of each candidate are kept in its private folder on this Mac. Records, notes and reports carry no coordinates, so they can be shared. Each project keeps a history of its records and notes with git, which leaves out the private folder and the downloaded data."),
+        ("Messages and images", "What you type, and the tiles the agent looks at, go to the provider of the model you chose, through the Codex engine. Dighouse adds no service in between."),
+        ("Locations", "A project's search area and the position of each find are kept in its private folder on this Mac. Records, notes and reports carry no coordinates, so they can be shared. Each project keeps a history of its records and notes with git, which leaves out the private folder and the downloaded data."),
         ("Open data services", "The tools ask OpenTopography, USGS, the Environment Agency (England), PDOK (Netherlands), IGN (France), Wikidata, OpenStreetMap (and a copy of Wikidata for faster searches), the National Register, Pleiades, Open Context and OpenAlex for data. Each sees the area or the search words in the request, and nothing else."),
         ("The map", "The New project page uses Apple Maps, which sees the part of the map you look at."),
         ("Reports", "Dighouse sends nothing to anyone. A report to a heritage authority is a draft in the project until you send it yourself."),
@@ -548,7 +548,7 @@ private struct AboutSettings: View {
                     .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         }
-        Text("A free, open tool for searching public lidar for places people built. An AI agent does the patient work: it fetches the terrain, looks at every tile, checks each find and reads what has been published. You decide what each find is. It runs on the Codex engine with any model you have.")
+        Text("A free, open tool for searching public lidar for places people built. An AI agent does the patient work: it fetches the ground, looks at every tile, checks each find and reads what has been published. You decide what each find is. It runs on the Codex engine with any model you have.")
             .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         VStack(spacing: 0) {
             SettingRow(title: "About the word lidar",

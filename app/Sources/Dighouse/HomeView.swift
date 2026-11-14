@@ -166,11 +166,11 @@ struct HomeView: View {
                     .help("Someone shared a project with you? A project is a folder of Markdown records, so it opens like any folder.")
             }
             if startKind == 0 {
-                Text("Lidar flown for archaeology and published openly, read from OpenTopography's live catalog. Each one listed was fetched and built into terrain by Dighouse first.")
+                Text("Lidar flown for archaeology and published openly, read from OpenTopography's live catalog. Dighouse fetched each one and built its bare ground first.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 surveys
             } else {
-                Text("Seven published sites and one strip of Yucatán forest, each with terrain ready to fetch. A run on a known site shows what real earthworks look like, and whether the agents find them again.")
+                Text("Seven published sites and one strip of Yucatán forest, each with lidar ready to fetch. A run on a known site shows what real earthworks look like, and whether the agents find them again.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 LazyVGrid(columns: cards, alignment: .leading, spacing: 12) {
                     ForEach(StartingPoints.all) { point in StartCard(point: point) { app.startProject(from: point) } }

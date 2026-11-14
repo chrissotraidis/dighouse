@@ -141,17 +141,17 @@ struct ReviewSheet: View {
             Spacer()
             if store.candidates.contains(where: { $0.suggestion == nil && ($0.status == "flagged" || $0.status == "ground_confirmed") }),
                let flow = ToolGuide.workflows.first(where: { $0.id == "decide" }) {
-                Button { dismiss(); app.run(flow) } label: { Label("Prepare", glyph: "dig.brush") }
+                Button { dismiss(); app.run(flow) } label: { Label("Suggest decisions", glyph: "dig.brush") }
                     .buttonStyle(SecondaryButton())
-                    .help("Starts a chat in which the agent reads each record and suggests a decision and its reason. Uses your model.")
+                    .help("The agent reads each record and suggests what the find is, with its reason. You still decide.")
             }
             if let flow = ToolGuide.workflows.first(where: { $0.id == "second" }) {
                 let state = app.state(of: flow)
                 Button { app.run(flow) } label: {
-                    Label(app.secondLookBusy != nil ? "Asking…" : "Second looks", systemImage: "person.2")
+                    Label(app.secondLookBusy != nil ? "Asking…" : "Second opinions", systemImage: "person.2")
                 }
                 .buttonStyle(SecondaryButton()).disabled(!state.ready || app.secondLookBusy != nil)
-                .help(state.ready ? "Ask your second-look model about every candidate that has no second look yet (\(state.note)). It sees the tile but not the first opinion."
+                .help(state.ready ? "A different model looks at every find that has no second opinion yet (\(state.note)). It sees the tile but not the first opinion."
                                   : state.note)
             }
             Button("Done") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(choice == nil ? .cancelAction : nil)
@@ -193,7 +193,7 @@ struct ReviewSheet: View {
             }
             HStack(alignment: .top, spacing: 14) {
                 picture(c.relief, "Bare-ground relief")
-                picture(c.section, "Section through the feature")
+                picture(c.section, "Slice through the feature")
             }
             let stacked = app.windowSize.width < 860
             (stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 18)) : AnyLayout(HStackLayout(alignment: .top, spacing: 18))) {
@@ -229,10 +229,11 @@ struct ReviewSheet: View {
         let cut = c.checks["section"] as? JSON, look = c.checks["second_look"] as? JSON, modern = c.checks["modern"] as? JSON
         let read = c.sources.filter { $0.status == "read" }.count
         let rows: [(Bool?, String)] = [
-            (cut?["in_ground"] as? Bool, cut.map { "In the ground: \($0["feature_height_m"] ?? "?") m high" } ?? "No section yet"),
-            (look?["agrees"] as? Bool, look.map { ($0["agrees"] as? Bool == true ? "A second model agrees" : "A second model disagrees") + " (\($0["model"] as? String ?? ""))" } ?? "No second look yet"),
-            (modern.map { $0["likely_modern"] as? Bool != true }, modern == nil ? "Modern features not checked" : (modern?["likely_modern"] as? Bool == true ? "Modern features mapped close by" : "No modern feature on it")),
-            (c.sources.isEmpty ? nil : read > 0, c.sources.isEmpty ? "Literature not searched" : "\(read) source\(read == 1 ? "" : "s") read"),
+            (cut?["in_ground"] as? Bool, cut.map { "In the ground: \($0["feature_height_m"] ?? "?") m high" } ?? "No slice yet"),
+            (look?["agrees"] as? Bool, look.map { ($0["agrees"] as? Bool == true ? "A second model agrees" : "A second model disagrees") + " (\($0["model"] as? String ?? ""))" } ?? "No second opinion yet"),
+            (modern.map { $0["likely_modern"] as? Bool != true }, modern == nil ? "Open maps not checked"
+                : (modern?["likely_modern"] as? Bool == true ? "Open maps: \(((modern?["near"] as? [String]) ?? []).joined(separator: " and ").isEmpty ? "modern features" : ((modern?["near"] as? [String]) ?? []).joined(separator: " and ")) close by" : "Open maps: nothing modern on it")),
+            (c.sources.isEmpty ? nil : read > 0, c.sources.isEmpty ? "Nothing published read yet" : "\(read) source\(read == 1 ? "" : "s") read"),
         ]
         return VStack(alignment: .leading, spacing: 6) {
             ForEach(rows.indices, id: \.self) { i in

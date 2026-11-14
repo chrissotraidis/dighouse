@@ -134,16 +134,16 @@ def still_to_do(p: Project) -> list[str]:
     earlier = sum(t["status"] == "screened" and bool(t.get("earlier")) for t in tiles.values())
     notice = ""
     if terrains and all(t.get("earlier") for t in terrains.values()):
-        notice = ("To look at the ground yourself, fetch the terrain again: the downloads and the locations stayed on the Mac "
-                  f"this project came from. {earlier} tile{'s were' if earlier != 1 else ' was'} already screened, "
+        notice = ("To look at the ground yourself, fetch it again: the downloads and the locations stayed on the Mac "
+                  f"this project came from. {earlier} tile{'s were' if earlier != 1 else ' was'} already looked at, "
                   "and each is listed below with what it showed, so this is not needed to carry on.")
     elif not terrains:
-        out.append("Fetch terrain for the area: nothing has been downloaded yet.")
+        out.append("Fetch the ground for the area: nothing has been downloaded yet.")
     if left:
-        out.append(f"Screen {left} tile{'s' if left != 1 else ''} nobody has looked at yet.")
+        out.append(f"Look at {left} tile{'s' if left != 1 else ''} nobody has looked at yet.")
     open_ = [m for m in records if m["status"] in ("flagged", "ground_confirmed")]
-    for key, what in (("section", "a section through the raw points"), ("modern", "a check for modern features"),
-                      ("second_look", "a second look by another model")):
+    for key, what in (("section", "a slice through the laser points"), ("modern", "a check of open maps for modern features"),
+                      ("second_look", "a second opinion from another model")):
         ids = [m["id"] for m in open_ if key not in m["checks"]]
         if ids:
             out.append(f"Give {', '.join(ids)} {what}.")
@@ -157,9 +157,9 @@ def still_to_do(p: Project) -> list[str]:
     if open_:
         out.append(f"Decide {', '.join(m['id'] for m in open_)}: a person makes each decision.")
     if not out and records:
-        out.append("Every candidate here is decided. Widen the area, try another survey or view, or write up what was found.")
+        out.append("Every find here is decided. Widen the area, try another survey or view, or write up what was found.")
     elif not out and tiles:
-        out.append("Every tile is screened and nothing was flagged. Screen again in another view (sky view shows low banks best), "
+        out.append("Every tile was looked at and nothing was marked. Look again in another view (sky view shows low banks best), "
                    "widen the area, or try another survey. Search the literature for the area too: it is worth knowing what is "
                    "published here even when the lidar shows nothing.")
     if notice:
@@ -201,7 +201,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
     short = [f"This project asks: {question_text}" if question_text else "This project has no question written down yet."]
     if tiles:
         flagged = (f"{len(records)} feature{'s' if len(records) != 1 else ''} that looked built "
-                   f"{'were' if len(records) != 1 else 'was'} flagged" if records else "nothing that looks built was flagged")
+                   f"{'were' if len(records) != 1 else 'was'} marked" if records else "nothing that looks built was marked")
         short.append(f"So far {len(screened)} of {len(tiles)} squares of ground (tiles) have been looked at, and {flagged}.")
     else:
         short.append("No ground has been looked at yet.")
@@ -231,10 +231,10 @@ def document(p: Project, commit_it: bool = True) -> dict:
           f"Updated {now:%Y-%m-%d %H:%M}. Started {info.get('created') or 'on another Mac'}.", ""]
     area = sum(t.get("area_km2") or 0 for t in terrains.values())
     L += ["## Where things stand", "",
-          f"- **Terrain:** {len(terrains)} survey download{'s' if len(terrains) != 1 else ''}, {area:.2f} sq km.",
-          f"- **Ground looked at:** {len(screened)} of {len(tiles)} tiles screened"
+          f"- **Ground:** {len(terrains)} survey download{'s' if len(terrains) != 1 else ''}, {area:.2f} sq km.",
+          f"- **Tiles looked at:** {len(screened)} of {len(tiles)}"
           + (f", {sum(t['status'] == 'unreadable' for t in tiles.values())} unreadable" if tiles else "") + ".",
-          f"- **Candidates:** {len(records)}, of which {len(decided)} decided by a person.",
+          f"- **Finds:** {len(records)}, of which {len(decided)} decided by a person.",
           f"- **Sources:** {n_status['read']} read, {n_status['could_not_open']} could not be opened, {n_status['not_relevant']} not relevant.",
           f"- **Literature searches:** {len(searches)}.", ""]
     stop = _last_stop(p)
@@ -257,15 +257,15 @@ def document(p: Project, commit_it: bool = True) -> dict:
             L.append(f"| {t.get('dataset', '')} | {t.get('source') or publisher.get(prefix, prefix)} | {t.get('collected') or 'not stated'} "
                      f"| {(t.get('area_km2') or 0):.2f} sq km | {density(t)} | {t.get('res') or 0.5} m |")
     else:
-        L.append("No terrain yet.")
+        L.append("No ground yet.")
     L.append("")
 
     L += ["## Ground looked at", ""]
     if tiles:
         parts = [f"{counts[v]} {w}" for v, w in VERDICT_WORDS.items() if counts[v]]
-        L.append(f"Of {len(tiles)} tiles, {len(screened)} were screened" + (f": {', '.join(parts)}" if parts else "") + ". "
+        L.append(f"Of {len(tiles)} tiles, {len(screened)} were looked at" + (f": {', '.join(parts)}" if parts else "") + ". "
                  "A tile marked nothing or natural was looked at and showed nothing built; that is a result too, "
-                 "and it saves the next person from screening it again without a reason.")
+                 "and it saves the next person from looking again without a reason.")
         if models:
             L.append("")
             L.append("Looked at by " + ", ".join(f"{k} ({v})" for k, v in sorted(models.items(), key=lambda kv: -kv[1])) + ".")
@@ -280,9 +280,9 @@ def document(p: Project, commit_it: bool = True) -> dict:
         L.append("No tiles yet.")
     L.append("")
 
-    L += ["## Candidates", ""]
+    L += ["## Finds", ""]
     if records:
-        L += ["| Id | What | Status | Section | Second look | Modern features | Sources read | Decision |", "|---|---|---|---|---|---|---|---|"]
+        L += ["| Id | What | Status | Slice | Second opinion | Open maps | Sources read | Decision |", "|---|---|---|---|---|---|---|---|"]
         for m in records:
             c = m["checks"]
             sec = c.get("section")
@@ -292,8 +292,11 @@ def document(p: Project, commit_it: bool = True) -> dict:
             second_t = (("agrees" if second.get("agrees") else "disagrees") + f" ({second.get('model', '')})"
                         if isinstance(second, dict) else "not yet")
             modern = c.get("modern")
-            modern_t = (("modern features nearby" if modern.get("likely_modern") else "none nearby") if isinstance(modern, dict)
-                        else f"not yet: the map service did not answer on {failed_maps[m['id']]}" if m["id"] in failed_maps else "not yet")
+            if isinstance(modern, dict):
+                modern_t = ((" and ".join(modern.get("near") or []) or "modern features") + " nearby" if modern.get("likely_modern")
+                            else "nothing modern nearby")
+            else:
+                modern_t = (f"not yet: the map service did not answer on {failed_maps[m['id']]}" if m["id"] in failed_maps else "not yet")
             read = sum(s["status"] == "read" for s in m["sources"])
             if m.get("decisions"):
                 d = m["decisions"][-1]
@@ -305,7 +308,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
             L.append(f"| [{m['id']}](candidates/{m['id']}.md) | {_clean(m['name'], 70)} | {ledger.LABELS.get(m['status'], m['status'])} "
                      f"| {sec_t} | {_clean(second_t, 30)} | {modern_t} | {read} | {_clean(dec, 90)} |")
     else:
-        L.append("No candidates yet.")
+        L.append("No finds yet.")
     L.append("")
 
     L += ["## What has been read", ""]
@@ -334,12 +337,12 @@ def document(p: Project, commit_it: bool = True) -> dict:
     L += ["", "The full history is in [notes/INDEX.md](notes/INDEX.md), the dated notes, and the project's git log.", ""]
     L += ["## How this project keeps its record", "",
           "Dighouse rebuilds this file from the records, notes and logs whenever a run ends, a decision is recorded or the "
-          "project is opened, so do not edit it by hand: write in notes/ or in a candidate's Notes instead. "
+          "project is opened, so do not edit it by hand: write in notes/ or in a find's Notes instead. "
           "It holds no coordinates; those stay in private/ on the Mac that made them.", "",
           "- [PROJECT.md](PROJECT.md): the question and the rules.",
           "- [METHODOLOGY.md](METHODOLOGY.md): how the search is done here, and lessons learned.",
           "- RESEARCH.md: this file.",
-          "- candidates/: one record per feature, with its pictures, checks, sources and decisions.",
+          "- candidates/: one record per find, with its pictures, checks, sources and decisions.",
           "- notes/: a summary of each run, listed in notes/INDEX.md, and a dated log of every step.",
           "- notes/record.json: which surveys were used and which tiles were looked at, without locations, so the record "
           "survives when the project is shared.",

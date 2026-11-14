@@ -43,57 +43,116 @@ struct ProjectOverview: View {
         let checked = all.filter { $0.checks["section"] != nil && $0.checks["modern"] != nil }.count
         let second = all.filter { $0.checks["second_look"] != nil }.count
         let sourced = all.filter { !$0.sources.isEmpty }.count
-        // A shared project: its ground was fetched and screened on the Mac it came from.
+        // A shared project: its ground was fetched and looked at on the Mac it came from.
         let before = store.terrains.isEmpty ? store.screenedBefore : nil
+        let finds = "\(all.count) find\(all.count == 1 ? "" : "s")"
+        let none = "No finds yet"
         return [
-            Stage(id: "terrain", icon: "dig.mound", title: "Bare ground", plain: "Download the laser scans and strip the trees away.",
+            Stage(id: "terrain", icon: "dig.mound", title: "Bare ground", plain: "The laser scans, with the trees taken away.",
                   done: !store.terrains.isEmpty || before != nil,
-                  detail: before != nil ? "Done on the other Mac" : store.terrains.isEmpty ? "Not yet" : "\(store.terrains.count) terrain, \(s.tiles) tiles"),
-            Stage(id: "screen", icon: "dig.grid", title: "Screening", plain: "Look at every tile for shapes people built.",
+                  detail: before != nil ? "Done on the other Mac" : store.terrains.isEmpty ? "Not yet" : "\(s.tiles) tile\(s.tiles == 1 ? "" : "s")"),
+            Stage(id: "screen", icon: "dig.grid", title: "A first look", plain: "The agent looks at every tile for shapes people built.",
                   done: (s.tiles > 0 && s.unscreened == 0) || before != nil,
-                  detail: before.map { "\($0) tile\($0 == 1 ? "" : "s") before the handover, \(all.count) flagged" }
-                    ?? (s.tiles == 0 ? "Waiting for terrain" : "\(s.screened) of \(s.readable) tiles, \(s.candidates) flagged")),
-            Stage(id: "check", icon: "dig.layers", title: "Checks", plain: "Slice through each flag, and look for roads and buildings.",
-                  done: !all.isEmpty && checked == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(checked) of \(all.count) checked"),
-            Stage(id: "second", icon: "person.2", title: "Second opinion", plain: "A different AI model looks at each flag on its own.",
-                  done: !all.isEmpty && second == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(second) of \(all.count)"),
-            Stage(id: "prior", icon: "dig.sieve", title: "What is published", plain: "Search the literature to see if each find is already known.",
-                  done: !all.isEmpty && sourced == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(sourced) of \(all.count) searched"),
-            Stage(id: "decide", icon: "dig.brush", title: "Your decisions", plain: "You decide what each one is.",
-                  done: !all.isEmpty && decided == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(decided) of \(all.count) decided"),
+                  detail: before.map { "\($0) tile\($0 == 1 ? "" : "s") on the other Mac, \(finds)" }
+                    ?? (s.tiles == 0 ? "Waiting for the ground" : "\(s.screened) of \(s.readable) tiles, \(finds)")),
+            Stage(id: "check", icon: "dig.layers", title: "Checks", plain: "Is each find in the ground, and is it a road or a building?",
+                  done: !all.isEmpty && checked == all.count, detail: all.isEmpty ? none : "\(checked) of \(all.count) checked"),
+            Stage(id: "second", icon: "person.2", title: "Second opinion", plain: "A different AI model looks at each find on its own.",
+                  done: !all.isEmpty && second == all.count, detail: all.isEmpty ? none : "\(second) of \(all.count)"),
+            Stage(id: "prior", icon: "dig.sieve", title: "What is published", plain: "Books, papers and site records searched for each find.",
+                  done: !all.isEmpty && sourced == all.count, detail: all.isEmpty ? none : "\(sourced) of \(all.count) searched"),
+            Stage(id: "decide", icon: "dig.brush", title: "Your decisions", plain: "You decide what each find is.",
+                  done: !all.isEmpty && decided == all.count, detail: all.isEmpty ? none : "\(decided) of \(all.count) decided"),
         ]
     }
 
-    /// The next thing to do, in plain words, with the button that does it.
-    private var next: (title: String, why: String, action: () -> Void, label: String, icon: String)? {
-        let open = store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
+    /// The card at the top of a project: what happens next, what comes after it, and the button that does it.
+    private struct Next {
+        let title: String, what: String, after: String, icon: String
+        let label: String
+        let action: () -> Void
+        /// A smaller choice beside the main button, such as doing one step alone.
+        var other: (label: String, help: String, action: () -> Void)? = nil
+        var coach: Tutorial.Target? = nil
+    }
+
+    /// What one step of a search does, in words a newcomer has, and what is left after it.
+    static func step(_ id: String, tiles: Int, finds: Int) -> (title: String, what: String, after: String) {
+        let f = "\(finds) find\(finds == 1 ? "" : "s")"
+        switch id {
+        case "terrain":
+            return ("get the ground", "The agent downloads the open laser scans for this area and takes the trees away, leaving the bare ground.",
+                    "After that it looks at the ground, checks what it marks and reports back. About 5 to 15 minutes in all.")
+        case "screen":
+            return ("look at \(tiles) tile\(tiles == 1 ? "" : "s")", "The ground is cut into squares called tiles. The agent looks at each one and marks any shape that looks built.",
+                    "After that it checks each find and reports back. About 5 to 15 minutes in all.")
+        case "check":
+            return ("check \(f)", "The agent cuts a slice, straight down through the laser points, to see if each find is in the ground or only in the treetops. It also looks on open maps for roads and buildings.",
+                    "After that: a second opinion, what is published, and a report. About 5 minutes in all.")
+        case "second":
+            return ("get a second opinion", "A different AI model looks at each find without seeing the first opinion. Two that agree are harder to fool.",
+                    "After that: what is published, and a report. A few minutes.")
+        case "prior":
+            return ("see what is published", "The agent searches books, papers and site records for each find. Most turn out to be known already, and that is a result too.",
+                    "After that: a report, and the decisions are yours. A few minutes.")
+        default:
+            return ("get the agent's suggestions", "The agent reads each find's record and suggests what it is, with a reason you can check.",
+                    "After that the decisions are yours. A minute or two.")
+        }
+    }
+
+    private var next: Next? {
+        let all = store.candidates
+        let open = all.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
+        let finds = "\(open.count) find\(open.count == 1 ? "" : "s")"
+        let whole = ToolGuide.workflows.first { $0.id == "full" }
         // A project someone shared: the ground was looked at on their Mac, and what is left needs no download.
         if store.terrains.isEmpty, let before = store.screenedBefore {
-            return ("Pick up where it was left",
-                    "This project was shared with you. Its downloads and locations stayed on the other Mac, but the research record says what was done: \(before) tile\(before == 1 ? "" : "s") screened and \(store.candidates.count) find\(store.candidates.count == 1 ? "" : "s"). The agent reads it and tells you what is left.",
-                    { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }, "Carry on", "dig.layers")
+            return Next(title: "Pick up where it was left",
+                        what: "This project was shared with you. The agent reads its research record, tells you what was done, and does what is left.",
+                        after: "\(before) tile\(before == 1 ? " was" : "s were") looked at on the other Mac. Nothing needs downloading.",
+                        icon: "dig.layers", label: "Carry on") { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }
         }
-        // In the tutorial the steps are taken one at a time, so the card offers the step the tutorial is on.
-        let stepwise = app.tutorialStep != nil
-        if store.terrains.isEmpty, !stepwise, let flow = ToolGuide.workflows.first(where: { $0.id == "full" }) {
-            return (flow.title, "One press. The agent gets the open lidar for this area, looks at every tile, checks what it flags and searches what is published. It comes back with a report and the decisions that are yours. It takes about 10 to 20 minutes.", { app.run(flow) }, flow.title, flow.icon)
-        }
-        if !open.isEmpty, open.allSatisfy({ $0.suggestion != nil || Review_hasSuggestion($0) }) {
-            return ("Decide what the finds are", "The agent has looked at \(open.count) find\(open.count == 1 ? "" : "s") and suggests what each one is, with its reason. Look at the pictures and agree or change each suggestion.", { app.reviewing = true }, "Review \(open.count)", "dig.brush")
-        }
+        let suggested = !open.isEmpty && open.allSatisfy { $0.suggestion != nil || Review_hasSuggestion($0) }
+        let decide = Next(title: "Your turn: decide \(finds)",
+                          what: suggested ? "The agent checked \(open.count == 1 ? "the find" : "each find") and suggests what it is, with its reason. Look at the pictures, then agree or change it."
+                                          : "Look at each find and decide what it is.",
+                          after: "About a minute each. Nothing is final until you decide.",
+                          icon: "dig.brush", label: "Decide \(finds)") { app.reviewing = true }
         if let flow = app.nextStep {
-            let why: [String: String] = [
-                "terrain": "The project has no bare ground yet. The agent downloads the laser scans for the area and strips the trees away.",
-                "screen": "Some tiles have not been looked at. The agent looks at each and flags shapes that look built.",
-                "check": "Some flags have no section yet. A slice through the laser points shows whether a shape is in the ground or in the trees.",
-                "second": "A second AI model, from a different maker, looks at each flag without seeing the first opinion.",
-                "prior": "Before anything counts as new, the agent searches what is published about each find.",
-                "decide": "The agent reads each record and suggests what each find is, so your review starts prepared.",
-            ]
-            return (flow.title, why[flow.id] ?? flow.summary, { app.run(flow) }, flow.title, flow.icon)
+            let unchecked = open.filter { $0.checks["section"] == nil || $0.checks["modern"] == nil }.count
+            let words = Self.step(flow.id, tiles: store.status.unscreened, finds: unchecked)
+            if flow.id == "second" {
+                // The second opinion is asked by Dighouse itself, of another model, so the whole search is not the way to get it.
+                return Next(title: "Next: \(words.title)", what: words.what,
+                            after: suggested ? "After that the decisions are yours. About a minute a find." : words.after,
+                            icon: flow.icon, label: flow.title, action: { app.run(flow) },
+                            other: suggested ? (decide.label, "Go to the review without a second opinion.", decide.action) : nil)
+            }
+            // In the tutorial the steps are taken one at a time. Otherwise the agent carries the search to its end,
+            // and doing one step alone is the smaller choice.
+            if app.tutorialStep == nil, let whole, app.state(of: whole).ready {
+                let first = store.terrains.isEmpty
+                return Next(title: first ? "Start the search" : "Next: \(words.title)",
+                            what: first ? "The agent downloads the open laser scans for this area, takes the trees away, and looks over the bare ground for shapes people built." : words.what,
+                            after: first ? "You get a short report and the finds to decide. About 5 to 15 minutes for a small area." : words.after,
+                            icon: first ? whole.icon : flow.icon, label: whole.title, action: { app.run(whole) },
+                            other: ("Only \(words.title)", "Do this one step and stop.", { app.run(flow) }))
+            }
+            return Next(title: "Next: \(words.title)", what: words.what, after: "", icon: flow.icon, label: flow.title, action: { app.run(flow) },
+                        coach: flow.id == "terrain" && app.layout != .workspace ? .getTerrain : nil)
         }
-        if !open.isEmpty { return ("Decide what the finds are", "Look at each find and decide what it is.", { app.reviewing = true }, "Review \(open.count)", "dig.brush") }
-        return nil
+        if !open.isEmpty { return decide }
+        guard store.status.tiles > 0, app.chat.running == false else { return nil }
+        let widen: (label: String, help: String, action: () -> Void) =
+            ("Widen the search", "Fetch the ground around this area and look at it too.", { app.ask(ToolGuide.widen, title: "Widen the search") })
+        if all.isEmpty {
+            return Next(title: "Nothing here looked built", what: "The agent looked at every tile and marked nothing. That is a result too: it saves the next person the same search.",
+                        after: "", icon: "dig.grid", label: widen.label, action: widen.action)
+        }
+        return Next(title: "This search is finished", what: "Every find is decided. The report says what was found, and the research record keeps the detail.",
+                    after: "", icon: "dig.trowel", label: app.latestReport == nil ? "Research record" : "Read the report",
+                    action: { if let report = app.latestReport { app.reportShown = report } else { app.showNotes("record") } }, other: widen)
     }
 
     var body: some View {
@@ -108,42 +167,31 @@ struct ProjectOverview: View {
                 if let next {
                     let words = HStack(alignment: .top, spacing: 14) {
                         IconTile(name: next.icon, size: 38)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Next: \(next.title)").font(.system(size: 15 * Theme.scale, weight: .semibold))
-                            Text(next.why).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(next.title).font(.system(size: 16 * Theme.scale, weight: .semibold))
+                            Text(next.what).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.86)).lineSpacing(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if !next.after.isEmpty {
+                                Text(next.after).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
-                    let button = Button(next.label, action: next.action).buttonStyle(PrimaryButton())
-                        .coach(next.label == "Get the terrain" && app.layout != .workspace ? .getTerrain : nil)
-                    // Part-way through a search, the rest can also be done in one go.
-                    let whole = ToolGuide.workflows.first { $0.id == "full" }
-                    let offerWhole = whole != nil && next.label != whole?.title && app.tutorialStep == nil
-                        && whole.map { app.state(of: $0).ready } == true && !store.terrains.isEmpty && !next.label.hasPrefix("Review")
-                    let buttons = HStack(spacing: 8) {
-                        button
-                        if offerWhole, let whole {
-                            Button(whole.title) { app.run(whole) }.buttonStyle(SecondaryButton())
-                                .help("Do everything that is left in one go, and come back with a report.")
+                    VStack(alignment: .leading, spacing: 14) {
+                        words
+                        HStack(spacing: 8) {
+                            Button(next.label, action: next.action).buttonStyle(PrimaryButton()).coach(next.coach)
+                            if let other = next.other {
+                                Button(other.label, action: other.action).buttonStyle(SecondaryButton()).help(other.help)
+                            }
                         }
-                    }
-                    // In a narrow chat the button goes under the words, so they are never squeezed into a thin column.
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .center, spacing: 14) {
-                            words.frame(minWidth: 280, alignment: .leading)
-                            Spacer(minLength: 0)
-                            if offerWhole { VStack(alignment: .trailing, spacing: 8) { buttons } } else { button }
-                        }
-                        VStack(alignment: .leading, spacing: 12) {
-                            words
-                            buttons.padding(.leading, 52)
-                        }
+                        .padding(.leading, 52)
                     }
                     .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Theme.tan.opacity(0.08)))
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.tan.opacity(0.3)))
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("How far the search has got").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                    Text("The search so far").font(.system(size: 14 * Theme.scale, weight: .semibold))
                     VStack(spacing: 0) {
                         ForEach(Array(stages.enumerated()), id: \.element.id) { i, stage in
                             if i > 0 { Hairline() }
@@ -166,15 +214,13 @@ struct ProjectOverview: View {
                     }
                     .panel()
                     HStack(alignment: .center, spacing: 12) {
-                        Text("Everything looked at, read and decided here is kept in the research record, so you or anyone you share the project with can pick it up without starting again.")
-                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 8)
                         if let report = app.latestReport {
                             Button { app.reportShown = report } label: { Label("Search report", glyph: "dig.trowel") }
-                                .buttonStyle(SecondaryButton()).help("The two-minute report of what the last whole search found.")
+                                .buttonStyle(SecondaryButton()).help("The short report of what the last whole search found.")
                         }
                         Button { app.showNotes("record") } label: { Label("Research record", systemImage: "book.closed") }
-                            .buttonStyle(SecondaryButton())
+                            .buttonStyle(SecondaryButton()).help("Everything looked at, read and decided in this project.")
+                        Spacer(minLength: 0)
                     }
                     .padding(.top, 4)
                 }
@@ -185,7 +231,7 @@ struct ProjectOverview: View {
                         Button("Read the run summaries") { app.showNotes("runs") }.buttonStyle(SecondaryButton())
                     }
                 }
-                Text("Or type below to ask the agent anything about this project. Type / for commands.")
+                Text("Or ask the agent anything about this project, below. Type / for commands.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             .padding(24).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)

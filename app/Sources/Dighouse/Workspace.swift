@@ -138,25 +138,25 @@ struct MapView: View {
 
     var body: some View {
         if store.tiles.isEmpty, let ready = store.terrains.max(by: { $0.areaKm2 < $1.areaKm2 }) {
-            EmptyPane(icon: "dig.mound", title: "Terrain ready",
+            EmptyPane(icon: "dig.mound", title: "The ground is ready",
                       text: ready.groundPerM2 > 0
                         ? "The bare ground is built: \(String(format: "%.1f", ready.areaKm2)) sq km at \(String(format: "%.1f", ready.groundPerM2)) ground returns per square metre. Cut it into tiles to look at it here."
                         : "The bare ground is built: \(String(format: "%.1f", ready.areaKm2)) sq km from a national agency's ready-made ground model. Cut it into tiles to look at it here.") {
                 Button("Cut into tiles") {
-                    app.ask("Cut the terrain \(ready.id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
+                    app.ask("Cut \(ready.id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
                 }
                 .buttonStyle(PrimaryButton())
             }
         } else if store.tiles.isEmpty, store.screenedBefore != nil {
             // A shared project: nothing to draw, and the record is the place to look.
-            EmptyPane(icon: "dig.mound", title: "The terrain stayed on the other Mac",
-                      text: "A shared project comes without its downloads and locations. The research record says what the ground showed, tile by tile. Get the terrain again only if you want to look at it yourself.") {
+            EmptyPane(icon: "dig.mound", title: "The ground stayed on the other Mac",
+                      text: "A shared project comes without its downloads and locations. The research record says what the ground showed, tile by tile. Get the ground again only if you want to look at it yourself.") {
                 Button("Research record") { app.showNotes("record") }.buttonStyle(PrimaryButton())
             }
         } else if store.tiles.isEmpty {
-            EmptyPane(icon: "dig.mound", title: "No terrain yet",
+            EmptyPane(icon: "dig.mound", title: "No ground yet",
                       text: "Ask the agent to find open lidar for the project's area. The bare ground appears here as it is fetched.") {
-                Button("Get the terrain") {
+                Button("Get the ground") {
                     if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { app.run(flow) }
                 }
                 .buttonStyle(PrimaryButton())
@@ -169,9 +169,9 @@ struct MapView: View {
                 if tiles.isEmpty, let id = current {
                     // A terrain picked from the menu that has not been cut yet.
                     EmptyPane(icon: "dig.grid", title: "Not cut into tiles yet",
-                              text: "This terrain is built but has no tiles, so there is nothing to show here yet.") {
+                              text: "This ground is built but has no tiles, so there is nothing to show here yet.") {
                         Button("Cut into tiles") {
-                            app.ask("Cut the terrain \(id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
+                            app.ask("Cut \(id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
                         }
                         .buttonStyle(PrimaryButton())
                     }
@@ -247,8 +247,8 @@ struct MapView: View {
             .overlay(alignment: .bottomLeading) { cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard) }
             .overlay(alignment: .top) {
                 if drawing && line == nil && !cutting {
-                    Text(store.selectedCandidate.map { "Drag a line across the ground. The section goes on \($0)'s record." }
-                         ?? "Drag a line across the ground, starting and ending on the surrounding ground.")
+                    Text(store.selectedCandidate.map { "Drag a line across the ground. The slice goes on \($0)'s record." }
+                         ?? "Drag a line across the ground, starting and ending on the ground around the shape.")
                         .font(.system(size: 12.5 * Theme.scale)).padding(.horizontal, 12).frame(height: 30)
                         .background(Capsule().fill(Theme.raised)).overlay(Capsule().strokeBorder(Theme.line))
                         .padding(.top, 56)
@@ -273,17 +273,17 @@ struct MapView: View {
             Button { showTiles.toggle() } label: { Glyph(name: "dig.grid", size: 14 * Theme.scale) }
                 .buttonStyle(IconButton(size: 28, active: showTiles)).help(showTiles ? "Hide the tile outlines" : "Show the tile outlines")
             Button { showPins.toggle() } label: { Image(systemName: "mappin") }
-                .buttonStyle(IconButton(size: 28, active: showPins)).help(showPins ? "Hide the candidates" : "Show the candidates")
+                .buttonStyle(IconButton(size: 28, active: showPins)).help(showPins ? "Hide the finds" : "Show the finds")
             Button {
                 drawing.toggle()
                 line = nil
                 cut = nil
             } label: { Image(systemName: "line.diagonal") }
-                .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a section through the ground")
+                .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a slice through the ground")
             if store.terrains.count > 1 {
-                PillMenu(title: terrain == nil && shownTerrains.count > 1 ? "All terrain"
-                         : store.terrains.first { $0.id == current }?.name ?? "Terrain", quiet: true, width: 340) {
-                    [MenuEntry(title: "All terrain, side by side", icon: "square.grid.2x2", checked: terrain == nil) { terrain = nil }, .divider]
+                PillMenu(title: terrain == nil && shownTerrains.count > 1 ? "All ground"
+                         : store.terrains.first { $0.id == current }?.name ?? "Ground", quiet: true, width: 340) {
+                    [MenuEntry(title: "All of it, side by side", icon: "square.grid.2x2", checked: terrain == nil) { terrain = nil }, .divider]
                         + store.terrains.map { t in
                             MenuEntry(title: label(t), icon: "dig.mound", checked: terrain == t.id) { terrain = t.id }
                         }
@@ -337,12 +337,12 @@ struct MapView: View {
                 if let length { words.append("\(Int(length.rounded())) m long") }
                 if let height { words.append("rises \(String(format: "%.2f", height)) m above the line between its ends") }
                 if let inGround = info["in_ground"] as? Bool { words.append(inGround ? "in the ground returns" : "not dense in the ground returns") }
-                let filed = candidate.map { "Filed on \($0)'s record." } ?? "Not filed on a record; select a candidate first to file it."
+                let filed = candidate.map { "Filed on \($0)'s record." } ?? "Not filed on a record; select a find first to file it."
                 let image = candidate.map { "\(root)/candidates/img/\($0)-section.png" } ?? "\(root)/data/tiles/\(spot.tile.id)-section.png"
                 cut = Cut(image: image, text: (words.isEmpty ? "" : words.joined(separator: ", ").prefix(1).uppercased() + words.joined(separator: ", ").dropFirst() + ". ") + filed)
                 store.reloadIfChanged()
             } catch {
-                cut = Cut(image: "", text: "Could not cut the section: \(error.localizedDescription)")
+                cut = Cut(image: "", text: "Could not cut the slice: \(error.localizedDescription)")
             }
         }
     }
@@ -350,7 +350,7 @@ struct MapView: View {
     @ViewBuilder private var cutCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(cutting ? "Cutting the section…" : "Section").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text(cutting ? "Cutting the slice…" : "Slice").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 if cutting { DigIndicator() }
                 Spacer()
                 Button { cut = nil; line = nil } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22))
@@ -373,7 +373,7 @@ struct MapView: View {
         HStack(spacing: 12) {
             key(Theme.green, "Looks built")
             key(Theme.amber, "Possible")
-            key(Theme.faint, "Not screened")
+            key(Theme.faint, "Not looked at")
         }
         .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.dim)
         .padding(.horizontal, 10).frame(height: 28)
@@ -509,8 +509,8 @@ struct RecordsView: View {
 
     var body: some View {
         if store.candidates.isEmpty {
-            EmptyPane(icon: "dig.brush", title: "No candidates yet",
-                      text: "When the agent flags something that looks built, its record appears here with its evidence and checks.") {
+            EmptyPane(icon: "dig.brush", title: "No finds yet",
+                      text: "When the agent marks something that looks built, its record appears here with its pictures and checks.") {
                 if let next = app.nextStep {
                     Button(next.title) { app.run(next) }.buttonStyle(PrimaryButton())
                 }
@@ -576,16 +576,16 @@ struct RecordsView: View {
                 Text("\(c.id) \(c.name)").font(.system(size: 24 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     Badge(text: c.statusLabel, color: c.statusColor)
-                    Text("Flagged \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
+                    Text("Marked \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
                     Spacer(minLength: 8)
                     Button("Review and decide") { app.reviewing = true }.buttonStyle(SecondaryButton())
-                        .help("Go through the candidates one at a time and decide each, from the keyboard")
+                        .help("Go through the finds one at a time and decide each, from the keyboard")
                         .coach(.review)
                 }
             }
             HStack(alignment: .top, spacing: 12) {
                 figure(c.relief, "Bare-ground relief")
-                figure(c.section, "Section through the feature")
+                figure(c.section, "Slice through the feature")
             }
             if !c.evidence.isEmpty {
                 section("Evidence") {
@@ -643,16 +643,16 @@ struct RecordsView: View {
         let read = c.sources.filter { $0.status == "read" }.count
         let unread = c.sources.filter { $0.status == "could_not_open" }.count
         VStack(spacing: 0) {
-            CheckRow(done: cut?["in_ground"] as? Bool, title: "Feature is in the ground returns",
-                     detail: cut.map { "\($0["feature_height_m"] ?? "?") m high, \($0["ground_returns_within_5m_of_peak"] ?? "?") ground returns at its peak" }
-                        ?? "A slice through the raw points shows whether it is ground or canopy.") {
-                Button(cut == nil ? "Cut section" : "Cut again") {
-                    app.ask("Cut a section through \(c.id), starting and ending on the surrounding ground, and file it on its record.")
+            CheckRow(done: cut?["in_ground"] as? Bool, title: "In the ground",
+                     detail: cut.map { "\($0["feature_height_m"] ?? "?") m high. \($0["ground_returns_within_5m_of_peak"] ?? "?") laser points reached the ground at its top." }
+                        ?? "A slice, straight down through the laser points, shows whether the shape is ground or treetops.") {
+                Button(cut == nil ? "Cut a slice" : "Cut again") {
+                    app.ask("Cut a slice through \(c.id), starting and ending on the ground around it, and file it on its record.")
                 }.buttonStyle(SecondaryButton())
             }
             Hairline()
-            CheckRow(done: look?["agrees"] as? Bool, title: "A second model agrees it looks built",
-                     detail: app.secondLookProblem[c.id].map { "The second look did not run. " + $0 }
+            CheckRow(done: look?["agrees"] as? Bool, title: "Second opinion",
+                     detail: app.secondLookProblem[c.id].map { "The second opinion did not run. " + $0 }
                         ?? look.map { "\($0["model"] as? String ?? ""): \($0["note"] as? String ?? "")" }
                         ?? "A different model looks at the tile without seeing the first opinion.") {
                 HStack(spacing: 6) {
@@ -664,15 +664,16 @@ struct RecordsView: View {
                 }
             }
             Hairline()
-            CheckRow(done: modern.map { $0["likely_modern"] as? Bool != true }, title: "Not a modern feature",
-                     detail: modern?["summary"] as? String ?? "Open maps are checked for roads, buildings and sites already mapped nearby.") {
+            CheckRow(done: modern.map { $0["likely_modern"] as? Bool != true }, title: "Open maps",
+                     detail: modern.map { ($0["summary"] as? String ?? "").prefix(1).uppercased() + ($0["summary"] as? String ?? "").dropFirst() }
+                        ?? "Roads, buildings and sites already mapped nearby.") {
                 Button(modern == nil ? "Check" : "Check again") {
-                    app.ask("Check for modern features near \(c.id) and tell me what the map shows.")
+                    app.ask("Check open maps for modern features near \(c.id) and tell me what they show.")
                 }.buttonStyle(SecondaryButton())
             }
             Hairline()
-            CheckRow(done: c.sources.isEmpty ? nil : (read > 0 && unread == 0), title: "Sources searched",
-                     detail: c.sources.isEmpty ? "The literature is searched, and every source is logged as read or not opened."
+            CheckRow(done: c.sources.isEmpty ? nil : (read > 0 && unread == 0), title: "What is published",
+                     detail: c.sources.isEmpty ? "Books, papers and site records, each logged as read or not opened."
                         : "\(read) read, \(unread) could not be opened") {
                 Button("Search") {
                     app.ask("Search the literature for \(c.id), starting with studies of this dataset. Read what you find and log every source on its record.")
@@ -732,9 +733,9 @@ private struct DecisionSheet: View {
         guard decision.status == "no_match_in_sources_read" else { return [] }
         let c = decision.candidate
         var items: [String] = []
-        if (c.checks["section"] as? JSON)?["in_ground"] as? Bool != true { items.append("No section shows the feature in the ground returns.") }
+        if (c.checks["section"] as? JSON)?["in_ground"] as? Bool != true { items.append("No slice shows the shape in the ground.") }
         if (c.checks["second_look"] as? JSON)?["agrees"] as? Bool != true { items.append("No second model has agreed that it looks built.") }
-        if c.checks["modern"] == nil { items.append("Modern features have not been checked.") }
+        if c.checks["modern"] == nil { items.append("Open maps have not been checked.") }
         if !c.sources.contains(where: { $0.status == "read" }) { items.append("No source has been read.") }
         let unread = c.sources.filter { $0.status == "could_not_open" }.count
         if unread > 0 { items.append("\(unread) source\(unread == 1 ? "" : "s") could not be opened.") }
@@ -867,7 +868,7 @@ struct NotesView: View {
                         EmptyLine(icon: "dig.layers", text: "The record is written the next time this project opens, when a run ends, or when a decision is recorded.")
                     } else if part == "method" {
                         Text("This project was made before projects had a method file.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
-                        Button { app.ask("Write METHODOLOGY.md for this project: the order of work Dighouse follows (read, terrain, screen, flag, check, search what is published, suggest decisions, summarise), the rules, and a Lessons section with anything the notes so far have taught. No coordinates.") } label: {
+                        Button { app.ask("Write METHODOLOGY.md for this project: the order of work Dighouse follows (read, get the ground, look at the tiles, mark finds, check, search what is published, suggest decisions, summarise), the rules, and a Lessons section with anything the notes so far have taught. No coordinates.") } label: {
                             Label("Ask the agent to write it", glyph: "dig.trowel")
                         }
                         .buttonStyle(SecondaryButton())
@@ -964,7 +965,7 @@ struct SourcesView: View {
                 return
             }
             app.ask("I opened \(url.absoluteString) myself and saved the text I could see. Read it with read_source using the name \(name), "
-                    + "say what it shows about this project's candidates, and log it with log_source on the records it bears on, "
+                    + "say what it shows about this project's finds, and log it with log_source on the records it bears on, "
                     + "with its real title and status read. If it was logged before as could not open, logging it again under the same title replaces that entry.")
         }
     }

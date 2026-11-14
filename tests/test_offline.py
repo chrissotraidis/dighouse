@@ -48,7 +48,7 @@ def test_full_chain(tmp_path, survey, monkeypatch):
     assert '"C-001"' in flagged[0] and p.path("candidates", "img", "C-001-relief.png").exists()
 
     # nothing may be claimed before the checks exist
-    with pytest.raises(ValueError, match="no section"):
+    with pytest.raises(ValueError, match="no slice"):
         server.set_status(root, "C-001", "ground_confirmed")
 
     cut = server.cut_section(root, tile, fx - 0.3, fy, fx + 0.3, fy, candidate="C-001")
@@ -203,6 +203,35 @@ def test_the_map_check_has_a_second_way_in(monkeypatch):
 
 
 
+def test_literature_search_falls_back_when_openalex_refuses(monkeypatch):
+    """OpenAlex meters requests that carry no key. When it turns one away, Crossref is asked, and the result says which answered."""
+    asked = []
+
+    class Reply:
+        def __init__(self, status, body):
+            self.status_code, self._body = status, body
+
+        def json(self):
+            return self._body
+
+        def raise_for_status(self):
+            assert self.status_code == 200
+
+    def get(url, params=None, **kwargs):
+        asked.append(url)
+        if url == checks.OPENALEX:
+            return Reply(429, {"error": "Rate limit exceeded", "retryAfter": 3600})
+        return Reply(200, {"message": {"items": [{"title": ["A county survey"], "DOI": "10.1/x", "issued": {"date-parts": [[1998, 5]]},
+                                                  "author": [{"given": "A.", "family": "Digger"}],
+                                                  "abstract": "<jats:p>A boundary  bank.</jats:p>", "is-referenced-by-count": 4}]}})
+
+    monkeypatch.setattr(checks._client, "get", get)
+    got = checks.search_literature("boundary bank", 5)
+    assert asked == [checks.OPENALEX, checks.CROSSREF]  # a spent budget is not waited for
+    assert got == [{"title": "A county survey", "year": 1998, "authors": ["A. Digger"], "doi": "https://doi.org/10.1/x", "open_copy": None,
+                    "cited_by": 4, "abstract": "A boundary bank.", "index": "Crossref"}]
+
+
 def test_a_refused_page_says_to_log_it(monkeypatch):
     """A publisher that refuses a program gives a message the agent can act on, not a stack of library errors."""
     class Refused:
@@ -254,7 +283,7 @@ def test_research_record_covers_what_was_done(tmp_path):
     assert "Environment Agency (England)" in text and "ready-made ground model" in text
     assert "1 nothing" in text and "Plough lines only" in text
     assert "51.00523" not in text and "10.2307/503404" in text
-    assert any("Screen 1 tile" in t for t in out["still_to_do"])
+    assert any("Look at 1 tile" in t for t in out["still_to_do"])
     assert any("could not be opened" in t for t in out["still_to_do"])
     assert "How this project keeps its record" in p.path("METHODOLOGY.md").read_text()
     # The top is written for a newcomer: what the project asks, a link to each find, and how to carry on.
@@ -286,7 +315,7 @@ def test_the_record_survives_a_handover(tmp_path):
     assert out["handed_over"] and out["screened_before"] == 1
     assert "# Research record: Handover check" in text and "handed over" in text
     assert "usgs:TEST_2020" in text and "A stream channel and nothing built" in text and "natural (earlier)" in text
-    assert "already screened" in out["still_to_do"][-1]
+    assert "already looked at" in out["still_to_do"][-1]
     assert "5650000" not in q.path("notes", "record.json").read_text()   # the terrain's corner is a location
     # A tool that needs a location says why it cannot run here.
     with pytest.raises(ValueError, match="not on this Mac"):
@@ -297,7 +326,7 @@ def test_the_record_survives_a_handover(tmp_path):
     after = record.document(q)
     text = q.path("RESEARCH.md").read_text()
     assert not after["handed_over"] and "usgs:TEST_2020" in text and "usgs:TEST_2024" in text
-    assert any("Screen 1 tile" in t for t in after["still_to_do"])
+    assert any("Look at 1 tile" in t for t in after["still_to_do"])
 
 
 def test_the_search_report_says_what_the_records_say(tmp_path):

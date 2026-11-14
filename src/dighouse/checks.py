@@ -15,6 +15,7 @@ OVERPASS = ("https://overpass-api.de/api/interpreter", "https://overpass.private
 OSM_MAP = "https://api.openstreetmap.org/api/0.6/map.json"
 _overpass_back = 0.0  # when to try the Overpass servers again after both failed
 OPENALEX = "https://api.openalex.org/works"
+CROSSREF = "https://api.crossref.org/works"
 logging.getLogger("httpx").setLevel(logging.WARNING)
 _client = httpx.Client(timeout=40, follow_redirects=True,
                        headers={"User-Agent": "dighouse/0.1 (https://github.com/chrissotraidis/dighouse)"})
@@ -159,19 +160,62 @@ def read_source(url: str, start: int = 0, max_chars: int = 12000) -> dict:
             "more_from": start + max_chars if len(text) > start + max_chars else None}
 
 
-def search_literature(query: str, limit: int = 15) -> list[dict]:
-    """Search OpenAlex, a free index of scholarly works."""
-    r = _client.get(OPENALEX, params={"search": query, "per-page": limit})
+def _openalex(query: str, limit: int) -> list[dict] | None:
+    """Search OpenAlex. None when it refuses: without a key, a network address shares a small daily budget, and it is
+    turned away for a few seconds when the service is busy."""
+    r = None
+    for attempt in (0, 1):
+        try:
+            r = _client.get(OPENALEX, params={"search": query, "per-page": limit})
+        except httpx.HTTPError:
+            return None
+        if r.status_code != 429 or attempt:
+            break
+        try:
+            wait = float(r.json().get("retryAfter") or 10)
+        except ValueError:
+            wait = 10
+        if wait > 12:  # the day's budget is spent, not a busy moment
+            break
+        time.sleep(wait)
+    if r.status_code != 200:
+        return None
+    return [{
+        "title": w.get("title"),
+        "year": w.get("publication_year"),
+        "authors": [a["author"]["display_name"] for a in w.get("authorships", [])[:4]],
+        "doi": w.get("doi"),
+        "open_copy": (w.get("open_access") or {}).get("oa_url"),
+        "cited_by": w.get("cited_by_count"),
+        "abstract": _abstract(w.get("abstract_inverted_index")),
+        "index": "OpenAlex",
+    } for w in r.json().get("results", [])]
+
+
+def _crossref(query: str, limit: int) -> list[dict]:
+    """Search Crossref, the publishers' own register of works. It needs no key and has no daily budget."""
+    r = _client.get(CROSSREF, params={"query": query, "rows": limit,
+                                      "select": "title,DOI,issued,author,abstract,is-referenced-by-count"})
     r.raise_for_status()
     out = []
-    for w in r.json().get("results", []):
+    for w in r.json().get("message", {}).get("items", []):
+        year = ((w.get("issued") or {}).get("date-parts") or [[None]])[0][0]
+        names = [" ".join(x for x in (a.get("given"), a.get("family")) if x) or a.get("name", "") for a in w.get("author", [])[:4]]
+        text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", w.get("abstract") or ""))
         out.append({
-            "title": w.get("title"),
-            "year": w.get("publication_year"),
-            "authors": [a["author"]["display_name"] for a in w.get("authorships", [])[:4]],
-            "doi": w.get("doi"),
-            "open_copy": (w.get("open_access") or {}).get("oa_url"),
-            "cited_by": w.get("cited_by_count"),
-            "abstract": _abstract(w.get("abstract_inverted_index")),
+            "title": " ".join(w.get("title") or []) or None,
+            "year": year,
+            "authors": names,
+            "doi": f"https://doi.org/{w['DOI']}" if w.get("DOI") else None,
+            "open_copy": None,
+            "cited_by": w.get("is-referenced-by-count"),
+            "abstract": " ".join(text.split())[:1500],
+            "index": "Crossref",
         })
     return out
+
+
+def search_literature(query: str, limit: int = 15) -> list[dict]:
+    """Search the scholarly literature: OpenAlex first, and Crossref when OpenAlex turns the request away."""
+    found = _openalex(query, limit)
+    return found if found is not None else _crossref(query, limit)

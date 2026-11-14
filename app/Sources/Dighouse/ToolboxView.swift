@@ -285,7 +285,7 @@ private struct TileBoard: View {
 /// The three tests on a flag, one at a time.
 private struct ChecksArt: View {
     @State private var check = 0
-    private let names = ["Section", "Second look", "Open maps"]
+    private let names = ["Slice", "Second opinion", "Open maps"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -314,7 +314,7 @@ private struct ChecksArt: View {
                         .font(.system(size: 13 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.9)).lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                result("A different model agrees", "Gemini 3.8 Flash was shown the tile, without the first model's note. The tools refuse a second look from the model that raised the flag.")
+                result("A different model agrees", "Gemini 3.8 Flash was shown the tile, without the first model's note. The tools refuse a second opinion from the model that marked the find.")
             default:
                 picture("data-osm")
                 result("Already on the map", "OpenStreetMap has 14 modern features within 150 m, and lists Monks Mound among the historic places nearby. So this find is already known.")
@@ -430,8 +430,8 @@ private struct WorkflowsTab: View {
 
     private let roles: [(String, String, String)] = [
         ("dig.trowel", "Agent", "The model you chose. It runs the search, calls the tools and keeps the plan."),
-        ("person.2", "Helper agents", "Copies it starts on long screening runs, each given a batch of tiles."),
-        ("eye", "Second model", "A different model that gives its own opinion on each flag."),
+        ("person.2", "Helper agents", "Copies it starts when there are many tiles, each given a batch to look at."),
+        ("eye", "Second model", "A different model that gives its own opinion on each find."),
         ("person", "You", "You decide what each find is, and you send any report."),
     ]
 

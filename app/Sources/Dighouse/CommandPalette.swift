@@ -89,7 +89,7 @@ struct CommandPalette: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.faint)
-                TextField("Jump to a project, chat, candidate, page or command", text: $term)
+                TextField("Jump to a project, chat, find, page or command", text: $term)
                     .textFieldStyle(.plain).font(.system(size: 16 * Theme.scale)).focused($focused)
                     .onSubmit { run(rows) }
                     .onKeyPress(.downArrow) { picked = min(picked + 1, max(rows.count - 1, 0)); return .handled }
@@ -101,7 +101,7 @@ struct CommandPalette: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 1) {
                         if rows.isEmpty {
-                            EmptyLine(icon: "dig.sieve", text: "Nothing matches. Try a project name, a candidate such as C-001, or a command such as screen.")
+                            EmptyLine(icon: "dig.sieve", text: "Nothing matches. Try a project name, a find such as C-001, or a command such as look.")
                                 .padding(.horizontal, 10)
                         }
                         ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in

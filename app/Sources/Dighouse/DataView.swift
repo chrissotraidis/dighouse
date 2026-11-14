@@ -14,20 +14,20 @@ struct DataView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                section("Terrain in this project") {
+                section("Ground in this project") {
                     if store.terrains.isEmpty {
-                        EmptyLine(icon: "dig.mound", text: store.screenedBefore != nil ? "The terrain stayed on the Mac this project came from. Get it again, or add a file of your own below, only if you want to look at the ground yourself."
-                                  : "None yet. Get the terrain, or add a file of your own below.")
+                        EmptyLine(icon: "dig.mound", text: store.screenedBefore != nil ? "The ground stayed on the Mac this project came from. Get it again, or add a file of your own below, only if you want to look at it yourself."
+                                  : "None yet. Get the ground, or add a file of your own below.")
                     }
                     ForEach(store.terrains) { t in terrainRow(t) }
                     HStack(spacing: 8) {
-                        Button(store.terrains.isEmpty ? "Get the terrain" : "Fetch more") {
+                        Button(store.terrains.isEmpty ? "Get the ground" : "Fetch more") {
                             if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }), store.terrains.isEmpty { app.run(flow) }
-                            else { app.ask("Find open lidar for any part of this project's area that has no terrain yet, fetch it with the same survey where possible, and cut it into tiles. If the whole area is covered, say so.") }
+                            else { app.ask("Find open lidar for any part of this project's area that has no ground yet, fetch it with the same survey where possible, and cut it into tiles. If the whole area is covered, say so.") }
                         }
                         .buttonStyle(SecondaryButton())
                         Button("Widen the area") {
-                            app.ask("Widen this project's search by about 250 m on every side. Fetch terrain for the strips around the current terrain with the same survey, in boxes under 6 square km, then cut the new terrain into tiles. Tell me how many tiles were added. The map shows them beside the old ones.")
+                            app.ask(ToolGuide.widen, title: "Widen the search")
                         }
                         .buttonStyle(SecondaryButton()).disabled(store.terrains.isEmpty)
                         Button("Use another survey") {
@@ -58,13 +58,13 @@ struct DataView: View {
                 }
 
                 section("Take it with you") {
-                    exportRow("Finds for mapping software", "A GeoJSON file of the candidates for QGIS, ArcGIS or Google Earth. It holds their locations, so it is saved under private/ in the project.",
+                    exportRow("Finds for mapping software", "A GeoJSON file of the finds for QGIS, ArcGIS or Google Earth. It holds their locations, so it is saved under private/ in the project.",
                               "Export finds", id: "finds", action: exportFinds)
                     exportRow("The project to share", "A zip of the records, notes, sources and reports, without the downloaded data or anything under private/, so it holds no locations.",
                               "Export project…", id: "zip", action: exportProject)
                     let report = ToolGuide.workflows.first { $0.id == "report" }
                     let ready = report.map { app.state(of: $0) } ?? (ready: false, note: "")
-                    exportRow("A report for the heritage authority", ready.ready ? "A draft from the decided candidates. You read it and send it yourself." : "Needs a candidate you have decided has no match in the sources read.",
+                    exportRow("A report for the heritage authority", ready.ready ? "A draft from the decided finds. You read it and send it yourself." : "Needs a find you have decided has no match in the sources read.",
                               "Draft a report", id: "report", disabled: !ready.ready) { if let report { app.run(report) } }
                 }
 
@@ -105,7 +105,7 @@ struct DataView: View {
             Spacer()
             if tiles.isEmpty {
                 Button("Cut into tiles") {
-                    app.ask("Cut the terrain \(t.id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
+                    app.ask("Cut \(t.id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
                 }
                 .buttonStyle(SecondaryButton())
             }
@@ -153,9 +153,9 @@ struct DataView: View {
             let reply = try await engine.callTool("import_terrain", ["project": root, "file": url.path])
             let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON ?? [:]
             let id = info["terrain"] as? String ?? ""
-            message = "Added \(url.lastPathComponent) as terrain \(id). The agent is cutting it into tiles."
+            message = "Added \(url.lastPathComponent) as \(id). The agent is cutting it into tiles."
             store.reloadIfChanged()
-            app.ask("I added my own file \(url.lastPathComponent) as terrain \(id). Cut it into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
+            app.ask("I added my own file \(url.lastPathComponent) as \(id). Cut it into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
         } catch {
             message = "Could not add \(url.lastPathComponent): \(error.localizedDescription)"
         }
@@ -170,7 +170,7 @@ struct DataView: View {
                 let reply = try await engine.callTool("export_finds", ["project": root])
                 let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON ?? [:]
                 let file = info["file"] as? String ?? ""
-                message = "Saved \(info["candidates"] as? Int ?? 0) candidates to \(file). It holds their locations, so keep it on this Mac."
+                message = "Saved \(info["candidates"] as? Int ?? 0) finds to \(file). It holds their locations, so keep it on this Mac."
                 if !file.isEmpty { NSWorkspace.shared.selectFile(file, inFileViewerRootedAtPath: "") }
             } catch {
                 message = "Could not export the finds: \(error.localizedDescription)"

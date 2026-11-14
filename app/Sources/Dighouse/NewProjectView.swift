@@ -200,7 +200,7 @@ struct NewProjectView: View {
                     }
                 }
                 if let km = areaKm2, km > 6 {
-                    Text("This is a large area. Terrain is fetched in pieces under 6 square km, so a first project is quicker when it is small.")
+                    Text("This is a large area. The ground is fetched in pieces under 6 square km, so a first project is quicker when it is small.")
                         .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
                 }
                 Text("The area is stored privately in the project and stays on this Mac.")

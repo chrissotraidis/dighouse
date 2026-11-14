@@ -47,26 +47,26 @@ extension AppState {
         }
         if store.tiles.isEmpty {
             return working
-                ? .init(number: 2, title: "Get the terrain", words: "The agent is downloading the laser scans and stripping the trees away. It takes about a minute.", working: true)
-                : .init(number: 2, title: "Get the terrain", words: "Now get the ground. The agent downloads the laser scans for this spot and strips the trees away. Press Get the terrain.", target: .getTerrain)
+                ? .init(number: 2, title: "Get the ground", words: "The agent is downloading the laser scans and taking the trees away. It takes about a minute.", working: true)
+                : .init(number: 2, title: "Get the ground", words: "The agent downloads the laser scans for this spot and takes the trees away. Press Get the ground.", target: .getTerrain)
         }
         if working, tutorialReached < 4 {
             return .init(number: 3, title: "Look at the tiles",
                          words: unscreened > 0 || store.candidates.isEmpty ? "The agent is looking at each tile for shapes people built. Its steps show in the chat."
-                            : "The agent flagged a find and is checking it. Wait for it to finish.", working: true)
+                            : "The agent marked a find and is checking it. Wait for it to finish.", working: true)
         }
         if unscreened > 0 {
             return .init(number: 3, title: "Look at the tiles",
-                         words: "The ground is cut into squares called tiles. The agent looks at each one for shapes people built. Press Next: Screen the tiles, at the top.",
+                         words: "The ground is cut into squares called tiles. The agent looks at each one for shapes people built. Press Next: Look at the tiles, at the top.",
                          target: .screen)
         }
         if store.candidates.isEmpty {
             return .init(number: 3, title: "Look at the tiles",
-                         words: "The agent looked at every tile and flagged nothing this time. Type: look at the tiles again and flag the winding bank.")
+                         words: "The agent looked at every tile and marked nothing this time. Type: look at the tiles again and mark the winding bank.")
         }
         switch max(tutorialReached, 4) {
         case 4:
-            return .init(number: 4, title: "Open the find", words: "The agent flagged a find. Press Records to see its pictures and how it was checked.", target: .records)
+            return .init(number: 4, title: "Open the find", words: "The agent marked a find. Press Records to see its pictures and how it was checked.", target: .records)
         case 5:
             return .init(number: 5, title: "Read the research record",
                          words: "Everything looked at and read is written in the research record, so anyone can pick this project up. Press Notes.", target: .notes)

@@ -90,7 +90,7 @@ private struct RecoveryBar: View {
             return ("The usage limit was reached", "Wait until it resets (/status says when), or choose a model that runs through another provider.")
         }
         if has("model") && has("not found", "not supported", "does not exist", "unsupported", "unknown model", "no access", "not available") {
-            return ("This model could not run the request", "Choose another model. Models that read images are needed for screening.")
+            return ("This model could not run the request", "Choose another model. Looking at tiles needs a model that reads images.")
         }
         if has("network", "connection", "timed out", "timeout", "offline", "disconnected", "unreachable", "dns") {
             return ("The connection dropped", "Check that this Mac is online, then try again.")
@@ -522,7 +522,7 @@ private struct EmptyChat: View {
             return ("Where should we start?", "The bare ground is built but not cut into tiles yet. Cut it from the map, or run the whole search.")
         }
         if store.status.tiles == 0 {
-            return ("Where should we start?", "This project has no terrain yet. The agent can find open lidar for its area and build the bare ground.")
+            return ("Where should we start?", "This project has no ground yet. The agent can find open lidar for its area and build the bare ground.")
         }
         return ("What next?", "Tell the agent what to do, or run the next part of the search.")
     }
@@ -1026,7 +1026,7 @@ struct Composer: View {
             out.append(MenuEntry(title: "The selected tile", icon: "dig.grid") { chat.attach("\(root)/data/tiles/\(tile)-composite.png") })
         }
         if let c = store.candidates.first(where: { $0.id == store.selectedCandidate }) {
-            out.append(MenuEntry(title: "The section through \(c.id)", icon: "chart.xyaxis.line") { chat.attach(c.section) })
+            out.append(MenuEntry(title: "The slice through \(c.id)", icon: "chart.xyaxis.line") { chat.attach(c.section) })
         }
         if out.count > 1 { out.insert(.header("Attach"), at: 0); out.insert(.divider, at: 2) }
         return out

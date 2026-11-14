@@ -168,7 +168,7 @@ final class AppState: ObservableObject {
                 return self.setup.skill + "\n\nYou are running inside the Dighouse app. The open project folder is \(project.path). "
                     + "Pass that path as the project argument to every dighouse tool. "
                     + "The person sees the map, the tiles and the records beside this chat, so do not paste images or file contents. "
-                    + "Do not record a second look yourself: the person asks a different model for it from the record. " + shared
+                    + "Do not record a second opinion yourself: the person asks a different model for it from the record. " + shared
             }
             return self.setup.skill + "\n\nYou are running inside the Dighouse app and no project is open. Help the person choose "
                 + "where to look, or answer their question. New projects go inside \(Paths.projectsHome.path): pass a new folder "
@@ -470,22 +470,22 @@ final class AppState: ObservableObject {
         func count(_ n: Int, _ noun: String) -> String { n == 0 ? "Done" : "\(n) \(noun)" }
         switch flow.id {
         case "terrain": return (true, s.tiles > 0 ? "Done" : "")
-        case "screen": return (s.unscreened > 0, s.tiles == 0 ? "Needs terrain" : count(s.unscreened, "tiles left"))
+        case "screen": return (s.unscreened > 0, s.tiles == 0 ? "Needs the ground" : count(s.unscreened, "tiles left"))
         case "check":
             let n = open.filter { $0.checks["section"] == nil || $0.checks["modern"] == nil }.count
-            return (n > 0, all.isEmpty ? "Needs candidates" : count(n, "to check"))
+            return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to check"))
         case "second":
             let n = open.filter { $0.checks["second_look"] == nil }.count
-            return (n > 0 && secondModelID != nil, all.isEmpty ? "Needs candidates" : secondModelID == nil ? "Choose a second model" : count(n, "to ask"))
+            return (n > 0 && secondModelID != nil, all.isEmpty ? "Needs finds" : secondModelID == nil ? "Choose a second model" : count(n, "to ask"))
         case "prior":
             let n = open.filter { $0.sources.isEmpty }.count
-            return (n > 0, all.isEmpty ? "Needs candidates" : count(n, "to search"))
+            return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to search"))
         case "decide":
             let unprepared = open.filter { $0.suggestion == nil }.count
-            return (unprepared > 0, all.isEmpty ? "Needs candidates" : open.isEmpty ? "All decided" : unprepared == 0 ? "Prepared" : "\(unprepared) to prepare")
+            return (unprepared > 0, all.isEmpty ? "Needs finds" : open.isEmpty ? "All decided" : unprepared == 0 ? "Prepared" : "\(unprepared) to prepare")
         case "report":
             let n = all.filter { $0.status == "no_match_in_sources_read" }.count
-            return (n > 0, n == 0 ? "Needs a decided candidate" : "\(n) ready")
+            return (n > 0, n == 0 ? "Needs a decided find" : "\(n) ready")
         default: return (true, "")
         }
     }
@@ -847,7 +847,7 @@ private struct ProjectMenu: View {
         Divider()
         Button { app.reviewing = true } label: {
             Text("Review the Finds…")
-            if store.candidates.isEmpty { Text(none ? "Needs a project" : "Needs candidates") }
+            if store.candidates.isEmpty { Text(none ? "Needs a project" : "Needs finds") }
         }
         .keyboardShortcut("r").disabled(store.candidates.isEmpty)
         Button { app.showNotes("record") } label: {

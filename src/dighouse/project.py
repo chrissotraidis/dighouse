@@ -36,8 +36,9 @@ PROJECT_MD = """# {name}
 - Never write coordinates in these Markdown files or in anything pushed elsewhere.
   Locations live only under private/.
 - A tile with too little ground data is unreadable, not empty.
-- Every flag needs a section, a second look by a different model, a check for
-  modern features and a logged literature search before its status can move on.
+- Every find needs a slice through the laser points, a second opinion from a
+  different model, a check of open maps for modern features and a logged
+  literature search before its status can move on.
 - A person decides before anything is marked as having no match, and a person
   sends any report.
 """
@@ -52,16 +53,16 @@ Edit it to change how the work is done; the agent adds to "Lessons" when a run t
 
 1. **Read first.** RESEARCH.md (what has already been looked at, read and decided), this file, and the newest
    run summary in notes/. Do not repeat work RESEARCH.md lists unless you say why, such as a better survey or view.
-2. **Terrain.** Fetch open lidar for the project's area and build the bare ground. Record the survey,
+2. **Get the ground.** Fetch open lidar for the project's area and build the bare ground. Record the survey,
    when it was flown and how dense the ground returns are.
-3. **Screen every tile** in at least two views (local relief or sky view, plus hillshade). A tile with too
+3. **Look at every tile** in at least two views (local relief or sky view, plus hillshade). A tile with too
    little ground data is unreadable, not empty.
-4. **Flag** only shapes that look built: straight edges, right angles, regular mounds, platforms, banks.
-5. **Check each flag:** a section through the raw points, a check of open maps for modern features,
-   and a second look by a model from a different maker.
-6. **Search what is published** about each flag, starting with studies of the same place and survey.
+4. **Mark a find** only where a shape looks built: straight edges, right angles, regular mounds, platforms, banks.
+5. **Check each find:** a slice through the laser points, a check of open maps for modern features,
+   and a second opinion from a model by a different maker.
+6. **Search what is published** about each find, starting with studies of the same place and survey.
    Log every source as read, could not open, or not relevant.
-7. **Suggest a decision** for each flag with its reason, then stop: a person decides.
+7. **Suggest a decision** for each find with its reason, then stop: a person decides.
 8. **Write the run summary** in notes/, and add a line to notes/INDEX.md.
 
 ## Rules
@@ -82,18 +83,18 @@ The point of the record is that nobody, person or agent, has to redo work to kno
 and that someone else can pick the project up and add to it.
 
 - **RESEARCH.md** is the project's memory: the data used, every tile looked at and what it showed,
-  every candidate with its checks and decision, every source and literature search, and what is still to do.
+  every find with its checks and decision, every source and literature search, and what is still to do.
   Dighouse rebuilds it from the files below; nobody edits it by hand.
 - **Every look leaves a trace.** Each tile gets a verdict, nothing and natural included. Each source is logged
   as read, could not open, or not relevant, with what it says about this place. A search that finds nothing
   is still a result.
-- **One record per feature** in candidates/, holding its pictures, measurements, checks and sources.
+- **One record per find** in candidates/, holding its pictures, measurements, checks and sources.
   A decision carries the person's name, the date and the reason.
 - **Each run ends with a summary** in notes/, listed in notes/INDEX.md. The dated notes log every step.
-- **Lessons** below are for what this place teaches: surveys that build badly, common false flags.
+- **Lessons** below are for what this place teaches: surveys that build badly, shapes that often fool the eye.
 - **Sharing:** File, then Export Project, gives everything except private/ and data/, so the project can be
   handed to another person, who opens the folder in Dighouse and carries on from RESEARCH.md. The downloads and
-  the locations do not travel. The record of what was looked at and read does, so that ground is not screened twice.
+  the locations do not travel. The record of what was looked at and read does, so that ground is not looked at twice.
 """
 METHODOLOGY_MD = METHODOLOGY_MD.replace("{record}", RECORD_SECTION)
 

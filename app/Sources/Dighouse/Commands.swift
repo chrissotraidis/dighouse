@@ -23,12 +23,12 @@ enum SlashCommands {
         SlashCommand(id: "research", summary: "Find where a search is worth doing, and get three proposals", group: .search, workflow: "research"),
         SlashCommand(id: "new-project", summary: "Start a project on a place", group: .search),
         SlashCommand(id: "investigate", summary: "Find and report back: the whole search in one go, ending with a report", group: .search, workflow: "full"),
-        SlashCommand(id: "terrain", summary: "Find open lidar for the project and build the bare ground", group: .search, workflow: "terrain"),
-        SlashCommand(id: "screen", summary: "Look at every tile nobody has screened yet", group: .search, workflow: "screen"),
-        SlashCommand(id: "check", summary: "Cut a section and look for modern features on each flag", group: .search, workflow: "check"),
-        SlashCommand(id: "second-look", summary: "Ask your second-look model about each flag", group: .search, workflow: "second"),
+        SlashCommand(id: "ground", summary: "Find open lidar for the project and build the bare ground", group: .search, workflow: "terrain"),
+        SlashCommand(id: "look", summary: "Look at every tile nobody has looked at yet", group: .search, workflow: "screen"),
+        SlashCommand(id: "check", summary: "Cut a slice through each find and check open maps", group: .search, workflow: "check"),
+        SlashCommand(id: "second-opinion", summary: "Ask a different model about each find", group: .search, workflow: "second"),
         SlashCommand(id: "sources", summary: "Search what is published and log every source", group: .search, workflow: "prior"),
-        SlashCommand(id: "decide", summary: "Have the agent suggest a decision on each find, ready for your review", group: .search, workflow: "decide"),
+        SlashCommand(id: "decide", summary: "Have the agent suggest what each find is", group: .search, workflow: "decide"),
         SlashCommand(id: "review", summary: "Go through the finds one at a time and decide each", group: .search),
         SlashCommand(id: "report", summary: "Draft a report for the heritage authority", group: .search, workflow: "report"),
         SlashCommand(id: "new", summary: "Start a new chat", group: .chat),
@@ -81,13 +81,13 @@ enum SlashCommands {
     }
 
     static let shortcuts: [(String, String)] = [
-        ("⌘K", "Jump to a project, chat, candidate, page or command"),
+        ("⌘K", "Jump to a project, chat, find, page or command"),
         ("⌘N", "New chat"), ("⇧⌘N", "New project"), ("⌘O", "Open a project folder"), ("⇧⌘E", "Export the project to share"),
         ("⌘0", "Home"), ("⌘T", "Toolbox"), ("⌘,", "Settings"), ("⇧⌘F", "Find a chat by its words"),
         ("⌃⌘S", "Show or hide the sidebar"), ("⌘1, ⌘2, ⌘3", "Chat only, chat and workspace, workspace only"),
         ("⌘+, ⌘−", "Bigger or smaller text"),
         ("⌘R", "Review the finds"), ("⇧⌘R", "The research record"),
-        ("⌘.", "Stop the run"), ("⌘/", "This list"), ("/", "Commands, in the message box"), ("@", "Mention a candidate, tile, source or file"),
+        ("⌘.", "Stop the run"), ("⌘/", "This list"), ("/", "Commands, in the message box"), ("@", "Mention a find, tile, source or file"),
         ("1 to 4, ← →", "Decide and move between finds, in the review"),
     ]
 }
@@ -110,7 +110,7 @@ extension AppState {
             if chat.running { return "Stop the run first" }
             return chat.items.contains { $0.kind == .user } ? nil : "Nothing to take back"
         case "goal": return chat.running ? "Wait for the run to finish" : nil
-        case "review": return store.candidates.isEmpty ? "Needs candidates" : nil
+        case "review": return store.candidates.isEmpty ? "Needs finds" : nil
         default: return nil
         }
     }

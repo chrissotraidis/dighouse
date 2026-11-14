@@ -408,7 +408,7 @@ def flag_candidate(project: str, tile: str, x: float, y: float, name: str, note:
     meta = ledger.create(p, name, tile, tiles.tile_lonlat(p, tile, x, y), note, model, at=(x, y))
     f = p.path("candidates", "img", f"{meta['id']}-relief.png")
     tiles.tile_image(p, tile, "composite", mark=(x, y)).save(f)
-    p.note(f"{meta['id']} flagged on {tile} by {model}: {name}")
+    p.note(f"{meta['id']} marked on {tile} by {model}: {name}")
     return _reply({"candidate": meta["id"], "record": f"candidates/{meta['id']}.md", "status": meta["status"]}, f)
 
 

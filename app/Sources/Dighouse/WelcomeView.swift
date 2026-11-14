@@ -93,7 +93,7 @@ struct WelcomeView: View {
                 point("dig.grid", "Agents do the patient part",
                       "They fetch public lidar surveys, strip the trees away, and look at every tile of ground.")
                 Rectangle().fill(Theme.line).frame(height: 1)
-                point("dig.layers", "Every flag is checked",
+                point("dig.layers", "Every find is checked",
                       "A slice through the raw laser points, a second model's opinion, a search for modern features, and a literature search.")
                 Rectangle().fill(Theme.line).frame(height: 1)
                 point("person", "You decide",
@@ -227,7 +227,7 @@ struct SetupChecklist: View {
                     setup.codex != nil ? setup.codexVersion : "Not found. Install Codex, then check again.",
                     link: setup.codex == nil ? ("Get Codex", "https://github.com/openai/codex") : nil)
                 Rectangle().fill(Theme.line).frame(height: 1)
-                row(setup.toolsReady, "Archaeology tools", "\(ToolGuide.toolCount) tools that fetch lidar, build the bare ground, cut sections, check maps, read the literature and keep records.",
+                row(setup.toolsReady, "Archaeology tools", "\(ToolGuide.toolCount) tools that fetch lidar, build the bare ground, cut slices, check maps, read the literature and keep records.",
                     setup.toolsReady ? "Ready"
                     : setup.toolsSource == nil ? "The tools are missing from this copy of Dighouse."
                     : setup.uv == nil ? "Needs uv, a small program that runs the tools. Install it, then check again."
@@ -257,7 +257,7 @@ struct SetupChecklist: View {
                 Button("Check again") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
                 if app.starting { DigIndicator() }
                 if engine.ready {
-                    Text("Screening tiles needs a model that reads images. You can change the model at any time from the chat.")
+                    Text("Looking at tiles needs a model that reads images. You can change the model at any time from the chat.")
                         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
                 }
             }
