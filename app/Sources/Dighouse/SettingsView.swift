@@ -24,8 +24,9 @@ struct SettingsPage: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         if !wide {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 4) {
+                            // Wraps onto a second line when narrow, so no section is cut off.
+                            Flow(spacing: 4) {
+                                Group {
                                     ForEach(SettingsSection.allCases, id: \.self) { section in
                                         Button { app.settingsSection = section } label: {
                                             Text(section.rawValue).font(.system(size: 13 * Theme.scale, weight: .medium))

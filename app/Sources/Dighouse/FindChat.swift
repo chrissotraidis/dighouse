@@ -75,7 +75,7 @@ struct FindChatSheet: View {
             }
             .frame(minHeight: 280)
         }
-        .padding(18).frame(width: 600, height: 480)
+        .padding(18).frame(width: min(600, app.windowSize.width - 40), height: min(480, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .onAppear { focused = true }
         .onChange(of: term) { _, value in

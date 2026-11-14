@@ -37,6 +37,8 @@ final class AppState: ObservableObject {
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
     @Published var jumping = false
+    /// The window's size, so sheets fit inside it.
+    @Published var windowSize = CGSize(width: 1380, height: 880)
     /// Whether the one-at-a-time review of candidates is open.
     @Published var reviewing = false
     @Published var starting = true

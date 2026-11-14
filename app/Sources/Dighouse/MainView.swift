@@ -34,7 +34,14 @@ struct MainView: View {
             }
         }
         .ignoresSafeArea(edges: .top)
+        .background(GeometryReader { geo in
+            Color.clear.onAppear { app.windowSize = geo.size }.onChange(of: geo.size) { _, size in app.windowSize = size }
+        })
         .sheet(isPresented: $app.reviewing) { ReviewSheet().withApp(app) }
+        // On the window, not the sidebar, so they open when the sidebar is hidden too.
+        .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
+        .sheet(isPresented: $app.jumping) { CommandPalette().withApp(app) }
+        .modifier(RenameChat())
     }
 
     @ViewBuilder private func page(width: CGFloat) -> some View {
@@ -218,8 +225,6 @@ struct Sidebar: View {
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var engine: Engine
     @State private var collapsed: Set<String> = []
-    @State private var renaming: ChatThread?
-    @State private var newName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -269,21 +274,6 @@ struct Sidebar: View {
         .padding(.horizontal, 8).padding(.bottom, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.side)
-        .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
-        .sheet(isPresented: $app.jumping) { CommandPalette().withApp(app) }
-        .onChange(of: app.renameRequest) { _, thread in
-            guard let thread else { return }
-            newName = thread.title
-            renaming = thread
-            app.renameRequest = nil
-        }
-        .alert("Rename chat", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField("Name", text: $newName)
-            Button("Rename") {
-                if let thread = renaming { Task { await chat.rename(thread, to: newName) } }
-            }
-            Button("Cancel", role: .cancel) {}
-        }
     }
 
     private func header(_ title: String) -> some View {
@@ -310,10 +300,7 @@ struct Sidebar: View {
         .buttonStyle(RowButton(selected: selected))
         .padding(.leading, indent)
         .contextMenu {
-            Button("Rename…") {
-                newName = thread.title
-                renaming = thread
-            }
+            Button("Rename…") { app.renameRequest = thread }
             Button("Archive") { Task { await chat.archive(thread) } }
         }
     }
@@ -348,5 +335,31 @@ struct Sidebar: View {
         if open {
             ForEach(chat.threads) { thread in chatRow(thread, in: project, indent: 18) }
         }
+    }
+}
+
+
+/// The rename box for a chat, asked for by /rename or a chat's menu in the sidebar.
+private struct RenameChat: ViewModifier {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var chat: ChatModel
+    @State private var renaming: ChatThread?
+    @State private var newName = ""
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: app.renameRequest) { _, thread in
+                guard let thread else { return }
+                newName = thread.title
+                renaming = thread
+                app.renameRequest = nil
+            }
+            .alert("Rename chat", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+                TextField("Name", text: $newName)
+                Button("Rename") {
+                    if let thread = renaming { Task { await chat.rename(thread, to: newName) } }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
     }
 }

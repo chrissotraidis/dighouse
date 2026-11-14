@@ -120,7 +120,7 @@ struct CommandPalette: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
         }
-        .frame(width: 620, height: 440)
+        .frame(width: min(620, app.windowSize.width - 40), height: min(440, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .onAppear { focused = true }
         .onChange(of: term) { _, _ in picked = 0 }

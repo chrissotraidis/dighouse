@@ -226,8 +226,14 @@ struct MapView: View {
                     zoom = min(8, max(1, (pinchStart ?? 1) * g.magnification))
                 }
                 .onEnded { _ in pinchStart = nil })
-            .overlay(alignment: .topLeading) { controls.padding(12) }
-            .overlay(alignment: .topTrailing) { legend.padding(12) }
+            .overlay(alignment: .top) {
+                // The key sits beside the controls when there is room, and under them when the pane is narrow.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 12) { controls; Spacer(minLength: 0); legend }
+                    VStack(alignment: .leading, spacing: 8) { controls; legend }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(12)
+            }
             .overlay(alignment: .bottomLeading) { cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard) }
             .overlay(alignment: .top) {
                 if drawing && line == nil && !cutting {

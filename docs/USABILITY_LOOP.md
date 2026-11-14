@@ -354,3 +354,14 @@ The loop resumed at Chris's request.
 | The service messages, from Python | An unreachable host and a 503 each gave the sentences above. |
 
 Not verified: turning the network off in the middle of a fetch. That would cut this Mac off for everything else running on it. The fetch's error passes through the same service messages, which were checked on their own.
+
+### 2026-11-14, U12 part 1: every size and look
+
+Checked Home, a project, the Toolbox, Settings and the review at full screen (1728 × 1084), half width (864) and narrow (600). Earth, Canopy and Graphite were also checked at 1440 × 900. Fixed:
+
+- **Find a chat, ⌘K and the rename box did not open when the sidebar was hidden** (any window under 860 wide), because they hung off the sidebar. They now hang off the window.
+- **The review, Find a chat and ⌘K panels** were wider than a narrow window and hung off its edge. They now fit inside it, and the review stacks its checks under the pictures.
+- **Settings at half width**: the section tabs ran off the side ("Data ar…"). They now wrap onto a second line.
+- **The map's toolbar and colour key overlapped** when the map pane was narrow. The key now drops under the toolbar.
+
+Left for part 2: new README screenshots and bringing the docs into line, after the project method (P1) that Chris put first.

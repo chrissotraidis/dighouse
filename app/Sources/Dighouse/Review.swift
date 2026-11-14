@@ -58,7 +58,7 @@ struct ReviewSheet: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(width: 900, height: 720)
+        .frame(width: min(900, app.windowSize.width - 40), height: min(720, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .onAppear {
             let open = store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
@@ -120,12 +120,13 @@ struct ReviewSheet: View {
                 picture(c.relief, "Bare-ground relief")
                 picture(c.section, "Section through the feature")
             }
-            HStack(alignment: .top, spacing: 18) {
+            let stacked = app.windowSize.width < 860
+            (stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 18)) : AnyLayout(HStackLayout(alignment: .top, spacing: 18))) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Checks").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                     checks(c)
                 }
-                .frame(width: 330, alignment: .leading)
+                .frame(width: stacked ? nil : 330, alignment: .leading)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("What the agent saw").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                     ForEach(c.evidence.prefix(3), id: \.self) { line in
