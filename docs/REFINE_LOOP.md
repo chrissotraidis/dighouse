@@ -124,3 +124,25 @@ Words on each tab at 1440 × 900, counted from the accessibility text of the pag
 - **Fixed on the way:** Run on a workflow that needs no project now always starts a chat of its own from the Toolbox, Home or Settings. Before, it went into whichever general chat was open.
 - **Looks:** [Canopy](loop5/r3-how-canopy.jpg) and [Graphite](loop5/r3-how-graphite.jpg) seen on How a search works; all four tabs seen in a narrow window (864 wide), where the pictures stack and the lanes scroll sideways.
 - **Not checked:** the slice was dragged by the test tooling, not a hand on a trackpad. Links to the services' own websites were not pressed. Find and report back was not pressed from this tab (it was in R2, from the overview).
+
+### R4, Settings gone over page by page: done 2026-11-14
+
+Words on each page at 1440 × 900, counted the same way as R3:
+
+| Page | Before | After |
+|---|---|---|
+| General | 62 | 24 |
+| Personalize | 78 | 17 |
+| Models | about 175 at the start of the loop, 82 after R1 | 82 |
+| How it runs | 416 | 119 |
+| Tools | 622 | 138 |
+| Data and privacy | 196 | 90 |
+| About | 127 | 49 |
+
+- **One row on every page:** a name, at most one short line, and one control on the right. Notes that repeated the name are gone.
+- **How it runs is [one picture](loop5/r4-how-it-runs.jpg):** you, the model, the engine and the tools in a row, each with what it does in three or four words, its state now (your name, the chosen model, the engine's version, "33 ready"), and the one thing to do about it (Change, Restart, See them; Get Codex, Get uv or Prepare when something is missing). Under it: where the models come from with a count for each maker, the account, and the web. The three long paragraphs and the second box are gone.
+- **Tools is [a searchable list](loop5/r4-tools.jpg):** the tools of each stage as names. Press a name for its one line and the name the agent calls it by. Typing "slice" left one tool; "zzzz" said "No tool matches".
+- **Pictures:** [General](loop5/r4-general.jpg), [Personalize](loop5/r4-personalize.jpg), [Models](loop5/r4-models.jpg), [Data and privacy](loop5/r4-data-and-privacy.jpg), [About](loop5/r4-about.jpg).
+- **Fixed on the way:** the line under Models said "from the Codex sign-in" when the router had not answered a check at launch, though its models were listed. It now also looks at the list itself.
+- **Pressed and seen:** the layout menu, the welcome guide (opened and closed), Choose (panel opened, cancelled), the three text sizes, the three looks (in R3), the model lists and the effort slider (in R1), Change, Restart (the button greyed while the engine restarted), See them, the tool search, a tool name, Add tools (went to More tools), Copy on About (the versions were on the clipboard; the earlier clipboard was put back).
+- **Not pressed:** the Show buttons (they open Finder windows), and the links that open a browser (OpenCodex, GitHub).

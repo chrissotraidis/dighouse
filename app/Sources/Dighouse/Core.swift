@@ -43,9 +43,9 @@ enum Look: String, CaseIterable {
 
     var note: String {
         switch self {
-        case .earth: return "Soil brown with the green and tan of the Dighouse icon."
-        case .canopy: return "Forest green, with the same accents."
-        case .graphite: return "Neutral grey and blue, like the Codex app."
+        case .earth: return "Soil brown"
+        case .canopy: return "Forest green"
+        case .graphite: return "Neutral grey"
         }
     }
 }

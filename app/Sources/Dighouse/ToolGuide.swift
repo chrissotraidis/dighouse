@@ -86,7 +86,7 @@ enum ToolGuide {
              image: "section", flow: "check",
              tools: [Tool(name: "cut_section", title: "Cut a slice", does: "Cuts a vertical slice through the raw points and measures the feature."),
                      Tool(name: "second_look", title: "Second opinion", does: "Records the opinion of a second, different model."),
-                     Tool(name: "check_modern", title: "Check for modern features", does: "Checks open maps for roads, buildings and sites already mapped nearby."),
+                     Tool(name: "check_modern", title: "Check open maps", does: "Looks on open maps for roads, buildings and sites already mapped nearby."),
                      Tool(name: "add_control", title: "Add a known site", does: "Registers a published site the run should find again, as a test of the run itself.")]),
         Pack(title: "Search what is published", short: "Read", icon: "dig.sieve",
              summary: "The agent searches books and papers, opens what it can, and logs every source.",

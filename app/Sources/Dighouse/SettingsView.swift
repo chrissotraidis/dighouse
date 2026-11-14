@@ -104,11 +104,11 @@ private struct GeneralSettings: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SettingRow(title: "Your name", note: "Written into a record when you make a decision on a find.") {
+            SettingRow(title: "Your name", note: "Signs your decisions.") {
                 TextField("Name", text: $app.userName).field().font(.system(size: 13 * Theme.scale)).frame(width: 220)
             }
             Hairline()
-            SettingRow(title: "Projects folder", note: "New projects are created in \((projectsHome.isEmpty ? Paths.projectsHome.path : projectsHome).tildePath).") {
+            SettingRow(title: "Projects folder", note: (projectsHome.isEmpty ? Paths.projectsHome.path : projectsHome).tildePath) {
                 HStack(spacing: 8) {
                     Button("Show") { NSWorkspace.shared.open(Paths.projectsHome) }.buttonStyle(SecondaryButton())
                     Button("Choose…") {
@@ -122,7 +122,7 @@ private struct GeneralSettings: View {
                 }
             }
             Hairline()
-            SettingRow(title: "A project opens as", note: "You can change this at any time from the top right of a project.") {
+            SettingRow(title: "A project opens as") {
                 PillMenu(title: PaneLayout.names[app.layout] ?? "") {
                     PaneLayout.allCases.map { layout in
                         MenuEntry(title: PaneLayout.names[layout] ?? "", icon: layout.icon, checked: app.layout == layout) { app.layout = layout }
@@ -130,7 +130,7 @@ private struct GeneralSettings: View {
                 }
             }
             Hairline()
-            SettingRow(title: "Welcome guide", note: "What Dighouse is, how a search works, and setting up.") {
+            SettingRow(title: "Welcome guide") {
                 Button("Open") { app.showWelcome = true }.buttonStyle(SecondaryButton())
             }
         }
@@ -144,7 +144,7 @@ private struct LookSettings: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SettingRow(title: "Text size", note: "Makes every word in Dighouse larger. The window redraws when you change it.") {
+            SettingRow(title: "Text size") {
                 HStack(spacing: 2) {
                     ForEach([("standard", "Standard"), ("large", "Large"), ("larger", "Larger")], id: \.0) { item in
                         Button { app.textSize = item.0 } label: {
@@ -162,8 +162,6 @@ private struct LookSettings: View {
         }
         .panel()
         Text("Colours").font(.system(size: 15 * Theme.scale, weight: .semibold)).padding(.top, 4)
-        Text("Dighouse wears the colours of its icon: dark soil, the tan line of the ground, and the green of the canopy above it. Pick another look if you prefer.")
-            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12, alignment: .top)], alignment: .leading, spacing: 12) {
             ForEach(Look.allCases, id: \.self) { look in
                 let p = look.palette
@@ -190,10 +188,9 @@ private struct LookSettings: View {
                             Spacer()
                             if app.look == look { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent) }
                         }
-                        Text(look.note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
-                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                        Text(look.note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                     }
-                    .padding(12).frame(maxWidth: .infinity, minHeight: 176, alignment: .topLeading)
+                    .padding(12).frame(maxWidth: .infinity, alignment: .topLeading)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(0.035)))
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(app.look == look ? Theme.accent : Theme.line, lineWidth: app.look == look ? 1.5 : 1))
                     .contentShape(Rectangle())
@@ -257,7 +254,7 @@ private struct ModelSettings: View {
             }
         }
         .panel()
-        Text(setup.ocxRunning
+        Text(setup.ocxRunning || engine.models.contains { $0.id.contains("/") }
              ? "\(engine.models.count) models, from the OpenCodex router on this Mac. The start of each name is the provider or account it runs through."
              : "\(engine.models.count) models, from the Codex sign-in on this Mac. The OpenCodex router adds models from other providers.")
             .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
@@ -285,233 +282,197 @@ private struct ModelSettings: View {
     }
 }
 
-/// One part of Dighouse: what it is in a sentence, whether it is working, and what you can do about it.
-private struct PartRow<Action: View>: View {
-    let icon: String, title: String, text: String
-    let ok: Bool?
-    let status: String
-    @ViewBuilder let action: () -> Action
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon).font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 22).padding(.top, 1)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                action().padding(.top, 4)
-            }
-            Spacer(minLength: 12)
-            HStack(spacing: 6) {
-                Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
-                Text(status).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(ok == false ? Theme.amber : Theme.text).lineLimit(2)
-                    .multilineTextAlignment(.trailing)
-            }
-            .frame(maxWidth: 210, alignment: .trailing)
-        }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// What happens when a message is sent, drawn as a loop.
-private struct LoopDiagram: View {
-    private let stops: [(String, String, String)] = [
-        ("person", "You ask", "in plain words"),
-        ("cpu", "The model decides", "the next step"),
-        ("bolt", "The engine runs", "the tool it asked for"),
-        ("wrench.and.screwdriver", "The tool reads", "open data"),
-    ]
-
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .top, spacing: 0) {
-                ForEach(Array(stops.enumerated()), id: \.offset) { index, stop in
-                    if index > 0 {
-                        Image(systemName: "arrow.right").font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint).padding(.top, 14)
-                    }
-                    VStack(spacing: 6) {
-                        Image(systemName: stop.0).font(.system(size: 16 * Theme.scale)).foregroundStyle(index == 0 ? Theme.accent : Theme.tan)
-                            .frame(width: 40, height: 40).background(Circle().fill(Theme.ink.opacity(0.07)))
-                        Text(stop.1).font(.system(size: 12.5 * Theme.scale, weight: .semibold)).multilineTextAlignment(.center)
-                        Text(stop.2).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-            HStack(spacing: 7) {
-                Image(systemName: "arrow.uturn.backward").font(.system(size: 10 * Theme.scale, weight: .bold))
-                Text("The result goes back to the model, and the loop repeats until the job is done.")
-            }
-            .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
-        }
-        .padding(16).frame(maxWidth: .infinity).panel()
-    }
-}
-
+/// How Dighouse runs, as one picture: you, the model, the engine and the tools, each with its state now and the one thing to do about it.
 private struct EngineSettings: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var setup: Setup
 
     /// The makers behind the models on offer, read from each model's name, with how many of theirs there are.
-    private var makers: [(maker: String, family: String, count: Int)] {
-        let known: [(String, String, String)] = [("claude", "Anthropic", "Claude"), ("gpt", "OpenAI", "GPT"), ("gemini", "Google", "Gemini"),
-                                                 ("grok", "xAI", "Grok"), ("kimi", "Moonshot", "Kimi"), ("glm", "Zhipu", "GLM"),
-                                                 ("qwen", "Alibaba", "Qwen"), ("deepseek", "DeepSeek", "DeepSeek"), ("llama", "Meta", "Llama")]
+    private var makers: [(family: String, count: Int)] {
+        let known: [(String, String)] = [("claude", "Claude"), ("gpt", "GPT"), ("gemini", "Gemini"), ("grok", "Grok"), ("kimi", "Kimi"),
+                                         ("glm", "GLM"), ("qwen", "Qwen"), ("deepseek", "DeepSeek"), ("llama", "Llama")]
         var counts: [String: Int] = [:]
         for m in engine.models {
             let text = (m.id + " " + m.name).lowercased()
-            if let hit = known.first(where: { text.contains($0.0) }) { counts[hit.1, default: 0] += 1 } else { counts["Other", default: 0] += 1 }
+            counts[known.first { text.contains($0.0) }?.1 ?? "Other", default: 0] += 1
         }
-        return known.compactMap { k in counts[k.1].map { (k.1, k.2, $0) } }.sorted { $0.count > $1.count }
-            + (counts["Other"].map { [("Other makers", "", $0)] } ?? [])
+        return known.map(\.1).compactMap { name in counts[name].map { (name, $0) } }.sorted { $0.count > $1.count }
+            + (counts["Other"].map { [("Other", $0)] } ?? [])
     }
+    private var routed: Bool { setup.ocxRunning || engine.models.contains { $0.id.contains("/") } }
 
     var body: some View {
-        Text("Dighouse is made of three parts that work together. You can change the first one; the other two come with it.")
-            .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-        LoopDiagram()
-        VStack(spacing: 0) {
-            PartRow(icon: "cpu", title: "1. The AI model: the thinker",
-                    text: "The model reads your request, decides each step, and looks at the pictures of the ground. You choose it. It can be Claude, GPT, Gemini, Grok or any other model your setup offers; pick one that reads images.",
-                    ok: engine.ready ? true : nil,
-                    status: engine.ready ? "\(engine.models.count) to choose from" : app.starting ? "Starting" : "Waiting for the engine") {
-                if engine.ready {
-                    HStack(spacing: 8) {
-                        ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
-                        Button("Test and settings") { app.settingsSection = .models }.buttonStyle(SecondaryButton())
-                    }
-                }
+        VStack(spacing: 14) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 0) { parts(arrow: "arrow.right") }
+                VStack(spacing: 6) { parts(arrow: "arrow.down") }
             }
-            Hairline()
-            PartRow(icon: "bolt", title: "2. The agent engine: the hands",
-                    text: "The engine carries out what the model decides: it calls the tools, keeps the plan, starts helper agents and saves every chat. Dighouse uses Codex, a free, open-source engine from OpenAI. The engine is not the model: Codex runs Claude or any other model just as well.",
-                    ok: setup.codex == nil ? false : engine.ready,
-                    status: setup.codex == nil ? "Codex not found" : engine.ready ? setup.codexVersion : app.starting ? "Starting" : (engine.problem ?? "Not running")) {
-                HStack(spacing: 8) {
-                    if setup.codex == nil, let url = URL(string: "https://github.com/openai/codex") {
-                        Link("Get Codex", destination: url).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.accent)
-                    }
-                    Button { Task { await app.boot() } } label: { Label("Restart", systemImage: "arrow.clockwise") }
-                        .buttonStyle(SecondaryButton()).disabled(app.starting)
-                        .help("Use this after signing in to Codex or changing its settings. Running work stops.")
-                    if app.starting { DigIndicator() }
-                }
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.uturn.backward").font(.system(size: 10 * Theme.scale, weight: .bold))
+                Text("Each result goes back to the model, until the job is done.")
             }
-            Hairline()
-            PartRow(icon: "wrench.and.screwdriver", title: "3. The archaeology tools: what it can do",
-                    text: "\(ToolGuide.toolCount) tools that come with Dighouse: they fetch open lidar, build the bare ground, cut slices, check maps and archives, read the literature and keep the records.",
-                    ok: setup.toolsReady ? true : setup.toolsBusy ? nil : false,
-                    status: setup.toolsReady ? "Ready" : setup.toolsBusy ? "Preparing"
-                        : setup.uv == nil ? "Needs uv" : (setup.toolsProblem ?? "Not prepared")) {
-                HStack(spacing: 8) {
-                    Button("See the tools") { app.settingsSection = .tools }.buttonStyle(SecondaryButton())
-                    if !setup.toolsReady, !setup.toolsBusy, setup.uv != nil {
-                        Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }.buttonStyle(PrimaryButton())
-                    }
-                    if setup.uv == nil, let url = URL(string: "https://docs.astral.sh/uv/getting-started/installation/") {
-                        Link("Get uv", destination: url).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.accent)
-                    }
-                }
-            }
+            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
         }
-        .panel()
+        .padding(16).frame(maxWidth: .infinity).panel()
 
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Which models you can use").font(.system(size: 15 * Theme.scale, weight: .semibold))
-            Text(setup.ocxRunning
-                 ? "Your Codex sign-in gives you OpenAI's models. The OpenCodex router is running on this Mac, so models from other makers, Claude among them, are listed too, each through its own account or key. The short code at the start of a model's name (Cl, AG, xAI…) is the account it runs through."
-                 : "Your Codex sign-in gives you OpenAI's models. To use Claude, Gemini or others, run the free OpenCodex router: it adds them to Codex, and Dighouse lists them here.")
-                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: 0) {
+            SettingRow(title: "Models come from",
+                       note: routed ? "Your Codex sign-in, and the OpenCodex router on this Mac." : "Your Codex sign-in. The OpenCodex router adds other makers' models.") {
+                if let url = URL(string: "https://github.com/lidge-jun/opencodex") {
+                    Button { NSWorkspace.shared.open(url) } label: { Label("OpenCodex", systemImage: "arrow.up.right") }.buttonStyle(SecondaryButton())
+                }
+            }
             if engine.ready {
                 Flow(spacing: 8) {
-                    ForEach(makers, id: \.maker) { m in
+                    ForEach(makers, id: \.family) { m in
                         HStack(spacing: 6) {
-                            Text(m.family.isEmpty ? m.maker : "\(m.family)").font(.system(size: 12.5 * Theme.scale, weight: .semibold))
-                            Text(m.family.isEmpty ? "\(m.count)" : "\(m.maker) · \(m.count)").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                            Text(m.family).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
+                            Text("\(m.count)").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                         }
-                        .padding(.horizontal, 10).frame(height: 28)
+                        .padding(.horizontal, 10).frame(height: 26)
                         .background(RoundedRectangle(cornerRadius: 7).fill(Theme.ink.opacity(0.06)))
                     }
                 }
+                .padding(.horizontal, 14).padding(.bottom, 14).frame(maxWidth: .infinity, alignment: .leading)
             }
-            HStack(spacing: 10) {
-                HStack(spacing: 6) {
-                    Circle().fill(setup.ocxRunning ? Theme.green : Theme.faint).frame(width: 7, height: 7)
-                    Text(setup.ocxRunning ? "OpenCodex router running" : "OpenCodex router not running").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                }
-                if let url = URL(string: "https://github.com/lidge-jun/opencodex") {
-                    Link(destination: url) { Label("About OpenCodex", systemImage: "arrow.up.right") }.font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.accent)
-                }
-            }
-            Text("Claude Code, Anthropic's own engine, cannot stand in for Codex yet: Dighouse speaks to the engine through Codex's app-server. Claude the model works fully.")
-                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16).frame(maxWidth: .infinity, alignment: .leading).panel()
-
-        VStack(spacing: 0) {
-            SettingRow(title: "Account",
-                       note: engine.account.map { _ in "Codex on this Mac is signed in\(engine.plan.map { " on a \($0) plan" } ?? ""). OpenAI's models run on that account; models added by the router use their own keys. Dighouse never sees a password or a key." }
-                        ?? "Codex is not signed in. Run codex login in Terminal, then press Restart above.") { EmptyView() }
             Hairline()
-            SettingRow(title: "The web",
-                       note: "The agent can search the web and open pages and PDFs. Pages that need a sign-in or block programs cannot be read; open those yourself in a project's Sources tab and hand them to the agent.") { EmptyView() }
+            SettingRow(title: "Account",
+                       note: engine.account != nil ? "Codex is signed in\(engine.plan.map { ", on a \($0) plan" } ?? ""). Dighouse never sees a password or a key."
+                                                   : "Codex is not signed in. Run codex login in Terminal, then Restart.") { EmptyView() }
+            Hairline()
+            SettingRow(title: "The web", note: "The agent can search the web and read pages and PDFs that need no sign-in.") { EmptyView() }
+        }
+        .panel()
+    }
+
+    @ViewBuilder private func parts(arrow: String) -> some View {
+        part(icon: "person", tint: Theme.accent, title: "You", role: "ask in plain words", ok: true, status: app.userName) { EmptyView() }
+        link(arrow)
+        part(icon: "cpu", tint: Theme.tan, title: "The model", role: "decides each step",
+             ok: engine.ready && !app.starting ? true : nil, status: app.starting ? "Starting" : engine.ready ? app.modelName : "Waiting") {
+            Button("Change") { app.settingsSection = .models }.buttonStyle(SecondaryButton()).disabled(!engine.ready)
+        }
+        link(arrow)
+        part(icon: "bolt", tint: Theme.tan, title: "The engine", role: "runs what it asks for",
+             ok: setup.codex == nil ? false : app.starting ? nil : engine.ready,
+             // The short version here; About has the full one.
+             status: setup.codex == nil ? "Codex not found" : app.starting ? "Starting"
+                : engine.ready ? "Codex " + (setup.codexVersion.split(separator: " ").last?.split(separator: "-").first.map(String.init) ?? "")
+                : (engine.problem ?? "Not running")) {
+            if setup.codex == nil, let url = URL(string: "https://github.com/openai/codex") {
+                Button("Get Codex") { NSWorkspace.shared.open(url) }.buttonStyle(PrimaryButton())
+            } else {
+                Button("Restart") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
+                    .help("Use this after signing in to Codex or changing its settings. Running work stops.")
+            }
+        }
+        link(arrow)
+        part(icon: "wrench.and.screwdriver", tint: Theme.tan, title: "The tools", role: "read open data",
+             ok: setup.toolsReady ? true : setup.toolsBusy ? nil : false,
+             status: setup.toolsReady ? "\(ToolGuide.toolCount) ready" : setup.toolsBusy ? "Preparing" : setup.uv == nil ? "Needs uv" : (setup.toolsProblem ?? "Not prepared")) {
+            if setup.toolsReady || setup.toolsBusy {
+                Button("See them") { app.settingsSection = .tools }.buttonStyle(SecondaryButton())
+            } else if setup.uv == nil, let url = URL(string: "https://docs.astral.sh/uv/getting-started/installation/") {
+                Button("Get uv") { NSWorkspace.shared.open(url) }.buttonStyle(PrimaryButton())
+            } else {
+                Button("Prepare") { Task { await setup.prepareTools(); await app.boot() } }.buttonStyle(PrimaryButton())
+            }
+        }
+    }
+
+    private func link(_ arrow: String) -> some View {
+        Image(systemName: arrow).font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
+            .padding(.top, arrow == "arrow.right" ? 22 : 0).padding(.horizontal, 2)
+    }
+
+    /// One part of the picture: what it is, what it does, how it is now, and the one thing you can do about it.
+    private func part<Action: View>(icon: String, tint: Color, title: String, role: String, ok: Bool?, status: String,
+                                    @ViewBuilder action: () -> Action) -> some View {
+        VStack(spacing: 7) {
+            Glyph(name: icon, size: 17 * Theme.scale).foregroundStyle(tint)
+                .frame(width: 44, height: 44).background(Circle().fill(Theme.ink.opacity(0.07)))
+            VStack(spacing: 1) {
+                Text(title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text(role).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).multilineTextAlignment(.center)
+            }
+            HStack(spacing: 5) {
+                Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
+                Text(status).font(.system(size: 12 * Theme.scale)).foregroundStyle(ok == false ? Theme.amber : Theme.dim).lineLimit(2)
+                    .multilineTextAlignment(.center)
+            }
+            action().frame(height: 28)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Every tool the agent has: a search box, and the tools of each stage as names to press.
+private struct ToolsSettings: View {
+    @EnvironmentObject var app: AppState
+    @State private var query = ""
+    @State private var picked: String?
+
+    private func matches(_ tool: ToolGuide.Tool) -> Bool {
+        query.isEmpty || [tool.title, tool.does, tool.name].contains { $0.localizedCaseInsensitiveContains(query) }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                TextField("Search \(ToolGuide.toolCount) tools", text: $query).textFieldStyle(.plain).font(.system(size: 13 * Theme.scale))
+            }
+            .padding(.horizontal, 10).frame(height: 32)
+            .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ink.opacity(0.06)))
+            Button { UserDefaults.standard.set("More tools", forKey: "toolboxTab"); app.show(.toolbox) } label: { Label("Add tools", systemImage: "plus") }
+                .buttonStyle(SecondaryButton()).help("Other tools the agent can use, and adding a tool server, are in the Toolbox.")
+        }
+        let shown = ToolGuide.packs.map { pack in (pack, pack.tools.filter(matches)) }.filter { !$0.1.isEmpty }
+        if shown.isEmpty {
+            Text("No tool matches.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
+        }
+        VStack(spacing: 0) {
+            ForEach(Array(shown.enumerated()), id: \.element.0.id) { index, group in
+                if index > 0 { Hairline() }
+                HStack(alignment: .top, spacing: 12) {
+                    IconTile(name: group.0.icon, size: 30)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(group.0.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                        Flow(spacing: 6) {
+                            ForEach(group.1) { tool in
+                                Button { picked = picked == tool.name ? nil : tool.name } label: {
+                                    Text(tool.title).font(.system(size: 12.5 * Theme.scale))
+                                        .foregroundStyle(picked == tool.name ? .black : Theme.text.opacity(0.9))
+                                        .padding(.horizontal, 10).frame(height: 26)
+                                        .background(Capsule().fill(picked == tool.name ? Theme.tan : Theme.ink.opacity(0.07)))
+                                        .contentShape(Capsule())
+                                }
+                                .buttonStyle(.plain).help(tool.does)
+                            }
+                        }
+                        if let tool = group.1.first(where: { $0.name == picked }) {
+                            (Text(tool.does).foregroundColor(Theme.dim) + Text("  " + tool.name).font(.system(size: 11.5 * Theme.scale, design: .monospaced)).foregroundColor(Theme.faint))
+                                .font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(14)
+            }
         }
         .panel()
     }
 }
 
-/// The archaeology tools and any other tool servers, in Settings.
-private struct ToolsSettings: View {
-    @EnvironmentObject var app: AppState
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Every tool the agent has, by stage. The agent picks them itself; you never call them by hand.")
-                .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 12)
-            Button { app.show(.toolbox) } label: { Label("Guided tour", systemImage: "map") }.buttonStyle(SecondaryButton())
-                .help("The Toolbox walks through a real search, stage by stage.")
-        }
-        ForEach(ToolGuide.packs) { pack in
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    IconTile(name: pack.icon, size: 28)
-                    Text(pack.title).font(.system(size: 14 * Theme.scale, weight: .semibold))
-                    Spacer()
-                    Text("\(pack.tools.count) tool\(pack.tools.count == 1 ? "" : "s")").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-                }
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                ForEach(pack.tools) { tool in
-                    Hairline()
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(tool.title).font(.system(size: 13 * Theme.scale, weight: .medium)).frame(width: 190, alignment: .leading)
-                        Text(tool.does).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .help("The agent calls this tool \(tool.name)")
-                }
-            }
-            .panel()
-        }
-        VStack(alignment: .leading, spacing: 8) {
-            Text("More tools").font(.system(size: 15 * Theme.scale, weight: .semibold))
-            Text("Tools from your Codex setup work here too, and you can add a tool server of your own (a small program that speaks MCP).")
-                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            Button { UserDefaults.standard.set("More tools", forKey: "toolboxTab"); app.show(.toolbox) } label: { Label("Manage tool servers", systemImage: "puzzlepiece.extension") }
-                .buttonStyle(SecondaryButton())
-        }
-    }
-}
-
-
 private struct PrivacySettings: View {
     private let rows: [(String, String)] = [
-        ("Messages and images", "What you type, and the tiles the agent looks at, go to the provider of the model you chose, through the Codex engine. Dighouse adds no service in between."),
-        ("Locations", "A project's search area and the position of each find are kept in its private folder on this Mac. Records, notes and reports carry no coordinates, so they can be shared. Each project keeps a history of its records and notes with git, which leaves out the private folder and the downloaded data."),
-        ("Open data services", "The tools ask OpenTopography, USGS, the Environment Agency (England), PDOK (Netherlands), IGN (France), Wikidata, OpenStreetMap (and a copy of Wikidata for faster searches), the National Register, Pleiades, Open Context and OpenAlex for data. Each sees the area or the search words in the request, and nothing else."),
-        ("The map", "The New project page uses Apple Maps, which sees the part of the map you look at."),
-        ("Reports", "Dighouse sends nothing to anyone. A report to a heritage authority is a draft in the project until you send it yourself."),
+        ("Messages and images", "Go to the provider of the model you chose, through the engine."),
+        ("Locations", "Stay in each project's private folder on this Mac. Records, notes and reports carry none."),
+        ("Open data services", "Each sees the area or the search words in a request, and nothing else."),
+        ("The map", "New project uses Apple Maps, which sees where you look."),
+        ("Reports", "Nothing is sent. A report is a draft until you send it."),
     ]
 
     var body: some View {
@@ -527,7 +488,7 @@ private struct PrivacySettings: View {
                 Button("Show") { NSWorkspace.shared.open(Paths.projectsHome) }.buttonStyle(SecondaryButton())
             }
             Hairline()
-            SettingRow(title: "General chats, downloaded catalogs and the tools", note: Paths.support.path.tildePath) {
+            SettingRow(title: "Chats, catalogs and the tools", note: Paths.support.path.tildePath) {
                 Button("Show") { NSWorkspace.shared.open(Paths.support) }.buttonStyle(SecondaryButton())
             }
         }
@@ -540,29 +501,32 @@ private struct AboutSettings: View {
     @EnvironmentObject var setup: Setup
 
     var body: some View {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         HStack(spacing: 16) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Dighouse").font(.system(size: 20 * Theme.scale, weight: .bold))
-                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")")
-                    .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+                Text("A free, open tool for searching public lidar for places people built.")
+                    .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
         }
-        Text("A free, open tool for searching public lidar for places people built. An AI agent does the patient work: it fetches the ground, looks at every tile, checks each find and reads what has been published. You decide what each find is. It runs on the Codex engine with any model you have.")
-            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
         VStack(spacing: 0) {
-            SettingRow(title: "About the word lidar",
-                       note: "Lidar maps the ground with laser pulses from an aircraft. The word began as a blend of light and radar, and Dighouse writes it in lowercase, as the US Geological Survey and NOAA do.") { EmptyView() }
+            SettingRow(title: "Versions", note: "Dighouse \(version), engine \(setup.codexVersion.isEmpty ? "not found" : setup.codexVersion)") {
+                Button("Copy") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString("Dighouse \(version), engine \(setup.codexVersion)", forType: .string)
+                }
+                .buttonStyle(SecondaryButton()).help("Copy these to include when you report a problem.")
+            }
             Hairline()
-            SettingRow(title: "Source code", note: "Open source under the Apache 2.0 licence.") {
+            SettingRow(title: "Source code", note: "Open source, Apache 2.0.") {
                 if let url = URL(string: "https://github.com/chrissotraidis/dighouse") {
                     Button { NSWorkspace.shared.open(url) } label: { Label("GitHub", systemImage: "arrow.up.right") }.buttonStyle(SecondaryButton())
                 }
             }
             Hairline()
-            SettingRow(title: "Versions", note: "Dighouse \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""), engine \(setup.codexVersion.isEmpty ? "not found" : setup.codexVersion). Include these when you report a problem.") { EmptyView() }
+            SettingRow(title: "The word lidar", note: "Written in lowercase here, as the US Geological Survey writes it.") { EmptyView() }
         }
         .panel()
     }
 }
-
