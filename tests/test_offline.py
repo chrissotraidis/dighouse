@@ -133,3 +133,25 @@ def test_export_finds_writes_geojson_under_private(tmp_path):
     data = json.loads(Path(got["file"]).read_text())
     assert got["candidates"] == 1 and "/private/exports/" in got["file"]
     assert data["features"][0]["geometry"]["coordinates"] == [0.004, 0.006]
+
+
+def test_research_record_covers_what_was_done(tmp_path):
+    """RESEARCH.md lists the data, tiles, sources and what is left, copes with a ready-made ground model, and holds no coordinates."""
+    from dighouse import ledger, record
+
+    p = Project.create(tmp_path / "rec", "Record check", "Is the bank built?", [0.0, 51.0, 0.01, 51.01])
+    p.save("terrains", {"t1": {"dataset": "uk:ea-dtm-1m", "area_km2": 1.0, "ground_points_per_m2": None, "res": 1.0}})
+    p.save("tiles", {"t1-r000c000": {"terrain": "t1", "window": [0, 0, 500, 500], "status": "screened", "verdict": "nothing",
+                                     "note": "Plough lines only, near 51.00523", "model": "test-model"},
+                     "t1-r000c001": {"terrain": "t1", "window": [0, 500, 500, 500], "status": "unscreened"}})
+    cid = ledger.create(p, "Low bank", "t1-r000c000", (0.005, 51.005), "A straight low bank", "test-model")["id"]
+    ledger.add_source(p, cid, "A county survey", "could_not_open", "Behind a paywall; see doi 10.2307/503404")
+    out = record.document(p)
+
+    text = p.path("RESEARCH.md").read_text()
+    assert "Environment Agency (England)" in text and "ready-made ground model" in text
+    assert "1 nothing" in text and "Plough lines only" in text
+    assert "51.00523" not in text and "10.2307/503404" in text
+    assert any("Screen 1 tile" in t for t in out["still_to_do"])
+    assert any("could not be opened" in t for t in out["still_to_do"])
+    assert "How this project keeps its record" in p.path("METHODOLOGY.md").read_text()

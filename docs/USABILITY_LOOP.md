@@ -410,3 +410,13 @@ Chris asked for this to come first. It builds on F10, which gave projects a meth
 - **Kept the old pictures** for New project and Maiden Castle. While I was capturing, the app twice switched to another chat on its own, so Chris was probably using it, and I stopped driving it.
 - **README** now covers slash commands, @ mentions, ⌘K, failures with Try again, the project overview, the review, the research record, text size and the tools in Settings. The tool count is 32.
 - **Still open:** retake New project and Maiden Castle, and check pinch zoom and two-finger panning with a real trackpad.
+
+
+### 2026-11-14, last pictures and polish
+
+- **README pictures:** retook New project (Mound City Group, with its search area and the USGS lidar found) and Maiden Castle (overview beside the map of the ramparts and five candidates). Earlier captures had come out stale because the window server held an old image of a window in the background, so the capture script now brings Dighouse to the front first. The project-name click that seemed to switch chats on its own was my coordinate clicks landing on another row, not a bug in the app.
+- **The research record failed for national ground models.** They store no ground density, so building RESEARCH.md for Maiden Castle stopped with an error, and the app swallowed it silently. The record now says "none (a ready-made ground model)" there, and the From column names the publisher (USGS 3DEP, Environment Agency (England) and so on). Checked by building the record for copies of all 11 projects on this Mac; each one builds.
+- **Still to do had nothing to say** for a project where every tile was screened and nothing flagged (Middle Usumacinta). It now suggests another view, a wider area or another survey, and a literature search of the area.
+- **Overview:** the last run's time reads "12:08" (it read "1208"), and its excerpt no longer shows Markdown marks such as **Done.**
+- **A test** of the research record (5 offline tests now): tiles, sources, a ready-made ground model, what is left, and that a coordinate is removed while a DOI is kept.
+- **Test leftovers:** archived the five "Environment Agency terrain fetch" chats in Maiden Castle.

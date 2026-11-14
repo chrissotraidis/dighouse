@@ -28,7 +28,7 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes and Sources tabs. Three looks; Earth is the default. The mark beside "Dighouse" animates.
 - **Tools** (`src/dighouse`, Python, MCP): 32 tools. `discover.py` chooses where to look, `sources.py` and `terrain.py` fetch and build terrain (USGS, OpenTopography, and national ground models for England, the Netherlands and France), `tiles.py` and `section.py` screen and cut, `checks.py` reads maps and literature, `ledger.py` keeps records. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Engine**: `codex app-server` (0.146.0) as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse opts into the experimental API, because newer chats are stored page by page and only `thread/turns/list` returns them.
-- **Tests**: 4 offline, 8 live (`uv run pytest`, `uv run pytest -m live`).
+- **Tests**: 5 offline, 8 live (`uv run pytest`, `uv run pytest -m live`).
 - **README** has screenshots in `docs/images`, taken from the running app at 1440 × 900 with real projects. Retake them when the app changes in a way they show.
 
 ## What the third loop added (U1 to U7)
@@ -44,7 +44,7 @@ Read the Logs in [GOAL_LOOP.md](GOAL_LOOP.md) and [NEXT_LOOP.md](NEXT_LOOP.md) f
 
 - **U8:** a map with views (Composite, Hillshade, Local relief, Sky view, through the `render_tiles` tool), toggles, zoom, click and double-click, and drawing a line to cut a section.
 - **Chris's review (F1 to F11):** the review comes prepared (the `suggest_decision` tool and "Prepare my review"), one button style, /review, a bigger and animated Home, How it runs rewritten around model, engine and tools, Settings › Tools, Open data grouped by region, a project overview, readable section labels, a text size setting, Models warnings and Test both, and each project kept as its own git repository with METHODOLOGY.md and a Notes tab in three parts.
-- **Done on 2026-11-14:** F2, F5, F6, U10 (⌘K), U11 (failures say what to do), U12 (every size and look, and the README pictures and docs), the model button opening the model list first, and P1 (every project keeps a research record). **Still open:** retake the New project and Maiden Castle pictures, and check pinch zoom and two-finger panning with a real trackpad. The Log in USABILITY_LOOP.md has the details and the test leftovers.
+- **Done on 2026-11-14:** F2, F5, F6, U10 (⌘K), U11 (failures say what to do), U12 (every size and look, and the README pictures and docs), the model button opening the model list first, and P1 (every project keeps a research record). **Still open:** check pinch zoom and two-finger panning with a real trackpad. The Log in USABILITY_LOOP.md has the details and the test leftovers.
 
 ## How a project documents itself (P1, Chris's priority)
 

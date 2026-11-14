@@ -38,7 +38,10 @@ def _upgrade(p: Project) -> None:
     if not index.exists():
         index.parent.mkdir(parents=True, exist_ok=True)
         runs = sorted(p.path("notes").glob("*-run-*.md"), reverse=True)
-        index.write_text(INDEX_MD + "".join(f"- [{f.stem.replace('-run-', ' ')}]({f.name})\n" for f in runs))
+        def when(stem: str) -> str:
+            day, _, hm = stem.partition("-run-")
+            return f"{day} {hm[:2]}:{hm[2:]}" if len(hm) == 4 else stem
+        index.write_text(INDEX_MD + "".join(f"- [{when(f.stem)}]({f.name})\n" for f in runs))
 
 
 def _searches(p: Project) -> list[tuple[str, str, str]]:
@@ -59,6 +62,12 @@ def question(p: Project) -> str:
         line = next((l.strip() for l in after[1].splitlines() if l.strip()), "") if len(after) > 1 else ""
         q = "" if line.startswith("#") else line
     return q
+
+
+def density(t: dict) -> str:
+    """Ground returns per square metre, or why there are none: a national ground model is built already, with no points."""
+    d = t.get("ground_points_per_m2")
+    return f"{d:.1f}" if isinstance(d, (int, float)) else "none (a ready-made ground model)"
 
 
 def still_to_do(p: Project) -> list[str]:
@@ -87,6 +96,10 @@ def still_to_do(p: Project) -> list[str]:
         out.append(f"Decide {', '.join(m['id'] for m in open_)}: a person makes each decision.")
     if not out and records:
         out.append("Every candidate here is decided. Widen the area, try another survey or view, or write up what was found.")
+    elif not out and tiles:
+        out.append("Every tile is screened and nothing was flagged. Screen again in another view (sky view shows low banks best), "
+                   "widen the area, or try another survey. Search the literature for the area too: it is worth knowing what is "
+                   "published here even when the lidar shows nothing.")
     return out
 
 
@@ -126,7 +139,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
          f"Updated {now:%Y-%m-%d %H:%M}. Started {info.get('created', 'unknown')}.", ""]
     if question_text:
         L += ["## The question", "", question_text, ""]
-    area = sum(t.get("area_km2", 0) for t in terrains.values())
+    area = sum(t.get("area_km2") or 0 for t in terrains.values())
     L += ["## Where things stand", "",
           f"- **Terrain:** {len(terrains)} survey download{'s' if len(terrains) != 1 else ''}, {area:.2f} sq km.",
           f"- **Ground looked at:** {len(screened)} of {len(tiles)} tiles screened"
@@ -141,8 +154,11 @@ def document(p: Project, commit_it: bool = True) -> dict:
     if terrains:
         L += ["| Survey | From | Flown | Area | Ground returns per sq m | Cell |", "|---|---|---|---|---|---|"]
         for t in sorted(terrains.values(), key=lambda t: t.get("dataset", "")):
-            L.append(f"| {t.get('dataset', '')} | {t.get('source') or t.get('dataset', '').split(':')[0]} | {t.get('collected') or 'not stated'} "
-                     f"| {t.get('area_km2', 0):.2f} sq km | {t.get('ground_points_per_m2', 0):.1f} | {t.get('res', 0.5)} m |")
+            publisher = {"usgs": "USGS 3DEP", "ot": "OpenTopography", "uk": "Environment Agency (England)", "nl": "AHN (Netherlands)",
+                         "fr": "IGN (France)", "own": "Imported by a person"}
+            prefix = t.get("dataset", "").split(":")[0]
+            L.append(f"| {t.get('dataset', '')} | {t.get('source') or publisher.get(prefix, prefix)} | {t.get('collected') or 'not stated'} "
+                     f"| {(t.get('area_km2') or 0):.2f} sq km | {density(t)} | {t.get('res') or 0.5} m |")
     else:
         L.append("No terrain yet.")
     L.append("")

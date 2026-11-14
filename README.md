@@ -74,7 +74,7 @@ A dig house is the building where an excavation team lives, works and keeps its 
     <td width="50%"><img src="docs/images/new-project.png" alt="New project at Mound City Group: name, question, a search area drawn on the map, and the open lidar that covers it"><br><sub><b>New project.</b> Place the search area on the map and see which open lidar covers it before you start.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/maiden-castle.png" alt="Maiden Castle in England from Environment Agency lidar: the agent describes the ramparts and entrances beside the tiled map"><br><sub><b>A project.</b> Maiden Castle from the Environment Agency's 1 m ground model. The agent reads the ramparts and both entrances from the views.</sub></td>
+    <td width="50%"><img src="docs/images/maiden-castle.png" alt="Maiden Castle in England from Environment Agency lidar: the project overview with the next step beside the tiled map of the ramparts and five flagged candidates"><br><sub><b>A project.</b> Maiden Castle from the Environment Agency's 1 m ground model: 42 tiles screened, five candidates flagged on the ramparts and entrances, and the next step named.</sub></td>
     <td width="50%"><img src="docs/images/record.png" alt="A candidate record at Angel Mounds with its relief, its section, and checks for ground returns, a second look and modern features"><br><sub><b>Records.</b> Each candidate with its relief, its section and every check. The decision is yours.</sub></td>
   </tr>
   <tr>
@@ -116,7 +116,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 ### Tests
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (4 tests)
+uv run pytest            # offline, on a synthetic survey (5 tests)
 uv run pytest -m live    # the same chain against the real data services (8 tests)
 ~~~
 

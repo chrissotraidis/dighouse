@@ -27,8 +27,13 @@ struct ProjectOverview: View {
         guard let newest = files.filter({ $0.contains("-run-") && $0.hasSuffix(".md") }).sorted().last,
               let text = try? String(contentsOfFile: root + "/notes/" + newest, encoding: .utf8) else { return nil }
         let lines = text.split(separator: "\n").map(String.init).filter { !$0.hasPrefix("#") && !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        // A short excerpt, so Markdown marks are taken out rather than drawn: bold, code and list bullets.
         let body = lines.prefix(4).map { $0.hasPrefix("- ") ? String($0.dropFirst(2)) : $0 }.joined(separator: " ")
-        let date = newest.replacingOccurrences(of: ".md", with: "").replacingOccurrences(of: "-run-", with: " at ")
+            .replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "\u{60}", with: "")
+        // "2026-11-13-run-1430.md" reads "2026-11-13 at 14:30".
+        let parts = newest.replacingOccurrences(of: ".md", with: "").components(separatedBy: "-run-")
+        let time = parts.count > 1 && parts[1].count == 4 ? String(parts[1].prefix(2)) + ":" + String(parts[1].suffix(2)) : (parts.count > 1 ? parts[1] : "")
+        let date = parts[0] + (time.isEmpty ? "" : " at " + time)
         return (date, String(body.prefix(520)) + (body.count > 520 ? "…" : ""))
     }
 
