@@ -170,7 +170,7 @@ struct MenuRow: View {
             HStack(spacing: 10) {
                 if let icon = entry.icon {
                     if second != nil { IconTile(name: icon, size: 30) } else {
-                        Image(systemName: icon).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 18)
+                        Glyph(name: icon, size: 12.5 * Theme.scale).foregroundStyle(Theme.tan).frame(width: 18)
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -276,13 +276,13 @@ struct Badge: View {
     }
 }
 
-/// An icon on a small rounded tile.
+/// An icon on a small rounded tile: one of Dighouse's drawings or a system symbol.
 struct IconTile: View {
     let name: String
     var size: CGFloat = 34
 
     var body: some View {
-        Image(systemName: name).font(.system(size: size * 0.44, weight: .medium)).foregroundStyle(Theme.tan)
+        Glyph(name: name, size: size * 0.44, weight: .medium).foregroundStyle(Theme.tan)
             .frame(width: size, height: size)
             .background(RoundedRectangle(cornerRadius: size * 0.27).fill(Theme.ink.opacity(0.07)))
     }

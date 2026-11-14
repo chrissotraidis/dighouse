@@ -132,15 +132,13 @@ private struct StageRail: View {
                             ZStack {
                                 Circle().fill(index == stage ? Theme.tan : index < stage ? Theme.raised : Theme.bg)
                                 Circle().strokeBorder(index <= stage ? Theme.tan : Theme.line, lineWidth: 1.5)
-                                if index < stage {
-                                    Image(systemName: "checkmark").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.tan)
-                                } else {
-                                    Text("\(index + 1)").font(.system(size: 12.5 * Theme.scale, weight: .bold)).foregroundStyle(index == stage ? .black : Theme.dim)
-                                }
+                                // Each stop carries its stage's drawing: dark on the current stop, tan on the ones behind it.
+                                Glyph(name: pack.icon, size: 14 * Theme.scale, weight: .medium)
+                                    .foregroundStyle(index == stage ? Color.black : index < stage ? Theme.tan : Theme.faint)
                             }
-                            .frame(width: 28, height: 28)
+                            .frame(width: 34, height: 34)
                         }
-                        Text(pack.short).font(.system(size: 12 * Theme.scale, weight: index == stage ? .semibold : .regular))
+                        Text("\(index + 1). \(pack.short)").font(.system(size: 12 * Theme.scale, weight: index == stage ? .semibold : .regular))
                             .foregroundStyle(index == stage ? Theme.text : Theme.dim).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity).contentShape(Rectangle())
@@ -173,7 +171,7 @@ private struct StageWords: View {
                 Text("The tools for this stage").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint).padding(.bottom, 6)
                 ForEach(pack.tools) { tool in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: "wrench.adjustable").font(.system(size: 10 * Theme.scale)).foregroundStyle(Theme.tan)
+                        Circle().fill(Theme.tan.opacity(0.8)).frame(width: 4, height: 4).padding(.horizontal, 3).alignmentGuide(.firstTextBaseline) { $0[.bottom] + 3 }
                         (Text(tool.title).fontWeight(.medium).foregroundColor(Theme.text) + Text("  " + tool.does).foregroundColor(Theme.dim))
                             .font(.system(size: 12.5 * Theme.scale)).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                     }
@@ -431,7 +429,7 @@ private struct WorkflowsTab: View {
     @EnvironmentObject var store: ProjectStore
 
     private let roles: [(String, String, String)] = [
-        ("cpu", "Agent", "The model you chose. It runs the search, calls the tools and keeps the plan."),
+        ("dig.trowel", "Agent", "The model you chose. It runs the search, calls the tools and keeps the plan."),
         ("person.2", "Helper agents", "Copies it starts on long screening runs, each given a batch of tiles."),
         ("eye", "Second model", "A different model that gives its own opinion on each flag."),
         ("person", "You", "You decide what each find is, and you send any report."),
@@ -443,7 +441,7 @@ private struct WorkflowsTab: View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
             ForEach(roles, id: \.1) { role in
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: role.0).font(.system(size: 14 * Theme.scale)).foregroundStyle(role.1 == "You" ? Theme.accent : Theme.tan).frame(width: 20)
+                    Glyph(name: role.0, size: 14 * Theme.scale).foregroundStyle(role.1 == "You" ? Theme.accent : Theme.tan).frame(width: 20)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(role.1).font(.system(size: 13 * Theme.scale, weight: .semibold))
                         Text(role.2).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
@@ -614,7 +612,7 @@ private struct DataTab: View {
                                 .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                         }
                         HStack(spacing: 10) {
-                            Button { asking = source } label: { Label("Ask the agent…", systemImage: "sparkles") }
+                            Button { asking = source } label: { Label("Ask the agent…", glyph: "dig.trowel") }
                                 .buttonStyle(SecondaryButton())
                                 .help("Starts a chat in which the agent uses this service. It asks you first.")
                             if let url = URL(string: source.url) {

@@ -22,7 +22,9 @@ struct Palette {
         text: rgb(0xEAF2E8), dim: rgb(0xAEBFAD), faint: rgb(0x7B8C7A), accent: rgb(0xE2B170), accentDeep: rgb(0x8A6235),
         tan: rgb(0xE2B170), green: rgb(0x7DD666), amber: rgb(0xF2A640), primary: rgb(0xE9F3E4))
     static let graphite = Palette(
-        bg: Color(white: 0.129), side: Color(white: 0.09), raised: Color(white: 0.185), pop: Theme.pop, ink: .white,
+        // Its own colour for menus. It used to borrow the theme's, which the theme was still working out when the app
+        // started in this look, so the app stopped before its window opened.
+        bg: Color(white: 0.129), side: Color(white: 0.09), raised: Color(white: 0.185), pop: Color(white: 0.2), ink: .white,
         text: Color(white: 0.925), dim: Color(white: 0.7), faint: Color(white: 0.52), accent: rgb(0x5CA6FF), accentDeep: rgb(0x2B6EDB),
         tan: rgb(0xDBB075), green: rgb(0x5CC76B), amber: rgb(0xF5AD42), primary: .white)
 }

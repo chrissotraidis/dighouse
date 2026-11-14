@@ -12,7 +12,10 @@ struct SettingsPage: View {
                     VStack(spacing: 2) {
                         ForEach(SettingsSection.allCases, id: \.self) { section in
                             Button { app.settingsSection = section } label: {
-                                Label(section.rawValue, systemImage: icon(section)).font(.system(size: 13.5 * Theme.scale))
+                                HStack(spacing: 9) {
+                                    Glyph(name: icon(section), size: 13.5 * Theme.scale).frame(width: 20)
+                                    Text(section.rawValue).font(.system(size: 13.5 * Theme.scale))
+                                }
                             }
                             .buttonStyle(RowButton(selected: app.settingsSection == section))
                         }
@@ -322,7 +325,7 @@ private struct ModelTest: View {
         if let id {
             HStack(spacing: 8) {
                 if app.testingModel == id {
-                    ProgressView().controlSize(.small)
+                    DigIndicator()
                     Text("Testing").foregroundStyle(Theme.dim)
                 } else if let check = app.modelChecks[id] {
                     Circle().fill(check.ok ? Theme.green : Theme.amber).frame(width: 7, height: 7)
@@ -461,7 +464,7 @@ private struct EngineSettings: View {
                     Button { Task { await app.boot() } } label: { Label("Restart", systemImage: "arrow.clockwise") }
                         .buttonStyle(SecondaryButton()).disabled(app.starting)
                         .help("Use this after signing in to Codex or changing its settings. Running work stops.")
-                    if app.starting { ProgressView().controlSize(.small) }
+                    if app.starting { DigIndicator() }
                 }
             }
             Hairline()

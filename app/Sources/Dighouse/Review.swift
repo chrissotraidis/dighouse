@@ -50,7 +50,7 @@ struct ReviewSheet: View {
                 footer(c).padding(.horizontal, 22).padding(.vertical, 14)
             } else {
                 VStack(spacing: 10) {
-                    Image(systemName: "checkmark.seal").font(.system(size: 34 * Theme.scale)).foregroundStyle(Theme.green)
+                    EmptyDrawing(name: "dig.brush", size: 76)
                     Text(decided > 0 ? "Reviewed. \(decided) decision\(decided == 1 ? "" : "s") written into the records." : "Nothing left to review.")
                         .font(.system(size: 16 * Theme.scale, weight: .semibold))
                     Button("Close") { dismiss() }.buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction)
@@ -78,7 +78,7 @@ struct ReviewSheet: View {
             Spacer()
             if store.candidates.contains(where: { $0.suggestion == nil && ($0.status == "flagged" || $0.status == "ground_confirmed") }),
                let flow = ToolGuide.workflows.first(where: { $0.id == "decide" }) {
-                Button { dismiss(); app.run(flow) } label: { Label("Prepare", systemImage: "lightbulb") }
+                Button { dismiss(); app.run(flow) } label: { Label("Prepare", glyph: "dig.brush") }
                     .buttonStyle(SecondaryButton())
                     .help("Starts a chat in which the agent reads each record and suggests a decision and its reason. Uses your model.")
             }
@@ -104,7 +104,7 @@ struct ReviewSheet: View {
             }
             if let sug = Self.suggestion(for: c), let d = Self.decisions.first(where: { $0.status == sug.status }) {
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "lightbulb").foregroundStyle(Theme.tan).padding(.top, 1)
+                    Glyph(name: "dig.brush", size: 14 * Theme.scale).foregroundStyle(Theme.tan).padding(.top, 1)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Suggested: \(d.title.lowercased())").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                         Text(sug.reason).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)

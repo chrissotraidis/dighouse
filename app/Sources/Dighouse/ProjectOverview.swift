@@ -7,7 +7,7 @@ struct ProjectOverview: View {
     @EnvironmentObject var store: ProjectStore
 
     private struct Stage: Identifiable {
-        let id: String, title: String, plain: String
+        let id: String, icon: String, title: String, plain: String
         let done: Bool, detail: String
     }
 
@@ -46,38 +46,38 @@ struct ProjectOverview: View {
         // A shared project: its ground was fetched and screened on the Mac it came from.
         let before = store.terrains.isEmpty ? store.screenedBefore : nil
         return [
-            Stage(id: "terrain", title: "Bare ground", plain: "Download the laser scans and strip the trees away.",
+            Stage(id: "terrain", icon: "dig.mound", title: "Bare ground", plain: "Download the laser scans and strip the trees away.",
                   done: !store.terrains.isEmpty || before != nil,
                   detail: before != nil ? "Done on the other Mac" : store.terrains.isEmpty ? "Not yet" : "\(store.terrains.count) terrain, \(s.tiles) tiles"),
-            Stage(id: "screen", title: "Screening", plain: "Look at every tile for shapes people built.",
+            Stage(id: "screen", icon: "dig.grid", title: "Screening", plain: "Look at every tile for shapes people built.",
                   done: (s.tiles > 0 && s.unscreened == 0) || before != nil,
                   detail: before.map { "\($0) tile\($0 == 1 ? "" : "s") before the handover, \(all.count) flagged" }
                     ?? (s.tiles == 0 ? "Waiting for terrain" : "\(s.screened) of \(s.readable) tiles, \(s.candidates) flagged")),
-            Stage(id: "check", title: "Checks", plain: "Slice through each flag, and look for roads and buildings.",
+            Stage(id: "check", icon: "dig.layers", title: "Checks", plain: "Slice through each flag, and look for roads and buildings.",
                   done: !all.isEmpty && checked == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(checked) of \(all.count) checked"),
-            Stage(id: "second", title: "Second opinion", plain: "A different AI model looks at each flag on its own.",
+            Stage(id: "second", icon: "person.2", title: "Second opinion", plain: "A different AI model looks at each flag on its own.",
                   done: !all.isEmpty && second == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(second) of \(all.count)"),
-            Stage(id: "prior", title: "What is published", plain: "Search the literature to see if each find is already known.",
+            Stage(id: "prior", icon: "dig.sieve", title: "What is published", plain: "Search the literature to see if each find is already known.",
                   done: !all.isEmpty && sourced == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(sourced) of \(all.count) searched"),
-            Stage(id: "decide", title: "Your decisions", plain: "You decide what each one is.",
+            Stage(id: "decide", icon: "dig.brush", title: "Your decisions", plain: "You decide what each one is.",
                   done: !all.isEmpty && decided == all.count, detail: all.isEmpty ? "Waiting for flags" : "\(decided) of \(all.count) decided"),
         ]
     }
 
     /// The next thing to do, in plain words, with the button that does it.
-    private var next: (title: String, why: String, action: () -> Void, label: String)? {
+    private var next: (title: String, why: String, action: () -> Void, label: String, icon: String)? {
         let open = store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
         // A project someone shared: the ground was looked at on their Mac, and what is left needs no download.
         if store.terrains.isEmpty, let before = store.screenedBefore {
             return ("Pick up where it was left",
                     "This project was shared with you. Its downloads and locations stayed on the other Mac, but the research record says what was done: \(before) tile\(before == 1 ? "" : "s") screened and \(store.candidates.count) find\(store.candidates.count == 1 ? "" : "s"). The agent reads it and tells you what is left.",
-                    { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }, "Carry on")
+                    { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }, "Carry on", "dig.layers")
         }
         if store.terrains.isEmpty, let flow = ToolGuide.workflows.first(where: { $0.id == "full" }) {
-            return ("Run the search", "The agent fetches the open lidar for this area, looks at every tile, checks what it flags and searches what is published. It stops for you at the decisions. It takes about 10 to 20 minutes.", { app.run(flow) }, "Run the whole search")
+            return ("Run the search", "The agent fetches the open lidar for this area, looks at every tile, checks what it flags and searches what is published. It stops for you at the decisions. It takes about 10 to 20 minutes.", { app.run(flow) }, "Run the whole search", flow.icon)
         }
         if !open.isEmpty, open.allSatisfy({ $0.suggestion != nil || Review_hasSuggestion($0) }) {
-            return ("Decide what the finds are", "The agent has looked at \(open.count) find\(open.count == 1 ? "" : "s") and suggests what each one is, with its reason. Look at the pictures and agree or change each suggestion.", { app.reviewing = true }, "Review \(open.count)")
+            return ("Decide what the finds are", "The agent has looked at \(open.count) find\(open.count == 1 ? "" : "s") and suggests what each one is, with its reason. Look at the pictures and agree or change each suggestion.", { app.reviewing = true }, "Review \(open.count)", "dig.brush")
         }
         if let flow = app.nextStep {
             let why: [String: String] = [
@@ -88,9 +88,9 @@ struct ProjectOverview: View {
                 "prior": "Before anything counts as new, the agent searches what is published about each find.",
                 "decide": "The agent reads each record and suggests what each find is, so your review starts prepared.",
             ]
-            return (flow.title, why[flow.id] ?? flow.summary, { app.run(flow) }, flow.title)
+            return (flow.title, why[flow.id] ?? flow.summary, { app.run(flow) }, flow.title, flow.icon)
         }
-        if !open.isEmpty { return ("Decide what the finds are", "Look at each find and decide what it is.", { app.reviewing = true }, "Review \(open.count)") }
+        if !open.isEmpty { return ("Decide what the finds are", "Look at each find and decide what it is.", { app.reviewing = true }, "Review \(open.count)", "dig.brush") }
         return nil
     }
 
@@ -105,7 +105,7 @@ struct ProjectOverview: View {
                 }
                 if let next {
                     HStack(alignment: .center, spacing: 14) {
-                        IconTile(name: "arrow.right.circle", size: 38)
+                        IconTile(name: next.icon, size: 38)
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Next: \(next.title)").font(.system(size: 15 * Theme.scale, weight: .semibold))
                             Text(next.why).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -123,14 +123,18 @@ struct ProjectOverview: View {
                         ForEach(Array(stages.enumerated()), id: \.element.id) { i, stage in
                             if i > 0 { Hairline() }
                             HStack(spacing: 12) {
-                                Image(systemName: stage.done ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 15 * Theme.scale)).foregroundStyle(stage.done ? Theme.green : Theme.faint)
+                                // Each stage has its own drawing; a finished one is in colour with a tick at the end of its row.
+                                Glyph(name: stage.icon, size: 15 * Theme.scale).foregroundStyle(stage.done ? Theme.tan : Theme.faint)
+                                    .frame(width: 30, height: 30)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(stage.done ? 0.07 : 0.03)))
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(stage.title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
                                     Text(stage.plain).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                                 }
                                 Spacer(minLength: 8)
                                 Text(stage.detail).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                Image(systemName: "checkmark").font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(Theme.green)
+                                    .opacity(stage.done ? 1 : 0).accessibilityLabel(stage.done ? "Done" : "Not done yet")
                             }
                             .padding(.horizontal, 14).padding(.vertical, 9)
                         }

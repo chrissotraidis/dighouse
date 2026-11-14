@@ -60,7 +60,7 @@ struct MainView: View {
                         Button { Task { await app.boot() } } label: { Label("Restart the engine", systemImage: "arrow.clockwise") }
                             .buttonStyle(PrimaryButton())
                     } else if app.starting {
-                        ProgressView().controlSize(.small)
+                        DigIndicator()
                         if setup.toolsBusy {
                             Text("Preparing the archaeology tools. This takes about a minute the first time and after an update.")
                                 .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -132,7 +132,7 @@ struct TopBar: View {
                 Button { app.settingsSection = .engine; app.show(.settings) } label: { Badge(text: problem, color: Theme.amber) }
                     .buttonStyle(.plain)
             } else if inProject {
-                if chat.running { ProgressView().controlSize(.small).padding(.trailing, 2) }
+                if chat.running { DigIndicator().padding(.trailing, 2) }
                 if !s.needsPerson.isEmpty {
                     Button { app.reviewing = true } label: {
                         Badge(text: "\(s.needsPerson.count) need\(s.needsPerson.count == 1 ? "s" : "") you", color: Theme.accent)
@@ -183,7 +183,10 @@ struct TopBar: View {
             piece("\(s.candidates) candidate\(s.candidates == 1 ? "" : "s")")
             if let next = app.nextStep, store.download == nil {
                 Button { app.run(next) } label: {
-                    Label("Next: \(next.title)", systemImage: next.icon).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                    HStack(spacing: 6) {
+                        Glyph(name: next.icon, size: 12.5 * Theme.scale, weight: .medium)
+                        Text("Next: \(next.title)").font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                    }
                 }
                 .buttonStyle(.plain).foregroundStyle(Theme.accent).padding(.leading, 6)
                 .help(next.summary)
@@ -257,8 +260,7 @@ struct Sidebar: View {
                     }
                     ForEach(store.projects) { project in projectRows(project) }
                     if store.projects.isEmpty {
-                        Text("No projects yet. Start one from Home.")
-                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).padding(.horizontal, 10).padding(.vertical, 6)
+                        EmptyLine(icon: "dig.grid", text: "No projects yet. Start one from Home.").padding(.horizontal, 10)
                     }
                 }
             }
@@ -324,7 +326,11 @@ struct Sidebar: View {
 
     private func nav(_ icon: String, _ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: icon).font(.system(size: 13.5 * Theme.scale))
+            // The icons differ in width, so each sits in a column of its own and the words line up.
+            HStack(spacing: 9) {
+                Glyph(name: icon, size: 13.5 * Theme.scale).frame(width: 20)
+                Text(title).font(.system(size: 13.5 * Theme.scale))
+            }
         }
         .buttonStyle(RowButton(selected: selected))
     }
@@ -336,7 +342,7 @@ struct Sidebar: View {
             HStack(spacing: 6) {
                 Text(thread.title).font(.system(size: 13 * Theme.scale)).lineLimit(1).foregroundStyle(selected ? Theme.text : Theme.dim)
                 Spacer(minLength: 0)
-                if chat.live[thread.id] != nil { ProgressView().controlSize(.mini) }
+                if chat.live[thread.id] != nil { DigIndicator(size: 13) }
             }
             .padding(.trailing, menu ? 24 : 0)
         }

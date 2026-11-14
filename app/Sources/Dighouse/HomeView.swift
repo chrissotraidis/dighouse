@@ -188,7 +188,7 @@ struct HomeView: View {
     @ViewBuilder private var surveys: some View {
         if app.surveysLoading {
             HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
+                DigIndicator()
                 Text("Reading the catalog").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         } else if let problem = app.surveysProblem {
@@ -201,7 +201,7 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 ForEach(app.surveys) { survey in
                     HStack(alignment: .center, spacing: 12) {
-                        IconTile(name: "airplane", size: 30)
+                        IconTile(name: "dig.grid", size: 30)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(survey.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                             Text((survey.collected.isEmpty ? "" : "Flown \(survey.collected) · ") + "OpenTopography")
@@ -241,13 +241,13 @@ private struct CompareBoard: View {
     }
 
     private let rows = [
-        Row(topic: "Getting the data", icon: "arrow.down.circle", chat: "Can describe lidar, but cannot download a survey.",
+        Row(topic: "Getting the data", icon: "dig.mound", chat: "Can describe lidar, but cannot download a survey.",
             dig: "Downloads the raw laser points from open archives and builds the bare ground itself.", image: "reveal"),
-        Row(topic: "Looking", icon: "square.grid.3x3", chat: "Sees only the pictures you paste in.",
+        Row(topic: "Looking", icon: "dig.grid", chat: "Sees only the pictures you paste in.",
             dig: "Looks at every tile of an area in several renderings, and keeps count of what is left.", image: "tile"),
-        Row(topic: "Checking a find", icon: "checkmark.seal", chat: "One model, one opinion.",
+        Row(topic: "Checking a find", icon: "dig.layers", chat: "One model, one opinion.",
             dig: "Cuts a slice through the raw points, asks a second model, checks open maps, and opens the literature.", image: "section"),
-        Row(topic: "Keeping a record", icon: "doc.text", chat: "A conversation that scrolls away.",
+        Row(topic: "Keeping a record", icon: "dig.brush", chat: "A conversation that scrolls away.",
             dig: "A project folder with a page per find: its pictures, measurements, checks and sources.", image: "record-relief"),
         Row(topic: "Making claims", icon: "hand.raised", chat: "May call something a discovery with nothing behind it.",
             dig: "Cannot mark a find as unmatched until the checks are on its record, and then only you can.", image: nil),
@@ -263,7 +263,7 @@ private struct CompareBoard: View {
                 Flow(spacing: 6) {
                     ForEach(rows.indices, id: \.self) { i in
                         Button { withAnimation(.easeOut(duration: 0.15)) { picked = i } } label: {
-                            Label(rows[i].topic, systemImage: rows[i].icon).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                            Label(rows[i].topic, glyph: rows[i].icon).font(.system(size: 12.5 * Theme.scale, weight: .medium))
                                 .foregroundStyle(picked == i ? .black : Theme.dim)
                                 .padding(.horizontal, 12).frame(height: 30)
                                 .background(Capsule().fill(picked == i ? Theme.tan : Theme.ink.opacity(0.06)))

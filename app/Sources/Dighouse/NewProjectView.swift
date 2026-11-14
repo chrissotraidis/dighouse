@@ -150,7 +150,7 @@ struct NewProjectView: View {
                     Button("Find", action: search).buttonStyle(SecondaryButton())
                         .disabled(searching || query.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-                if searching { ProgressView().controlSize(.small) }
+                if searching { DigIndicator() }
                 if let searchProblem { Text(searchProblem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
                 if !places.isEmpty {
                     VStack(spacing: 0) {
@@ -213,7 +213,7 @@ struct NewProjectView: View {
             HStack(spacing: 8) {
                 Button("Cancel") { app.goHome() }.buttonStyle(SecondaryButton())
                 Spacer()
-                if busy { ProgressView().controlSize(.small) }
+                if busy { DigIndicator() }
                 Button("Create project", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
                     .help("Creates the project and starts fetching its open lidar straight away.")
             }
@@ -257,7 +257,7 @@ struct NewProjectView: View {
             }
         } else {
             HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
+                DigIndicator()
                 Text("Checking the open catalogs").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         }

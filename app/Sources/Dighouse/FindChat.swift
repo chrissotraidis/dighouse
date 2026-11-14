@@ -23,7 +23,7 @@ struct FindChatSheet: View {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.faint)
                 TextField("Find a chat by what was said in it", text: $term).textFieldStyle(.plain).font(.system(size: 16 * Theme.scale))
                     .focused($focused)
-                if searching { ProgressView().controlSize(.small) }
+                if searching { DigIndicator() }
             }
             .padding(.horizontal, 16).frame(height: 52)
             Hairline()
@@ -31,8 +31,10 @@ struct FindChatSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     let rows = showArchive ? archive : results
                     if rows.isEmpty {
-                        Text(showArchive ? "No archived chats." : term.isEmpty ? "Type to search chats in every project." : searching ? "" : "No chat says that.")
-                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(10)
+                        if !searching || term.isEmpty || showArchive {
+                            EmptyLine(icon: "dig.sieve", text: showArchive ? "No archived chats." : term.isEmpty ? "Type to search chats in every project." : "No chat says that.")
+                                .padding(.horizontal, 10)
+                        }
                     }
                     ForEach(rows) { row in
                         HStack(alignment: .top, spacing: 10) {

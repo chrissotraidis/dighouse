@@ -58,7 +58,7 @@ enum ToolGuide {
                      Tool(name: "find_data", title: "Find lidar for an area", does: "Lists every open lidar dataset that overlaps a search area."),
                      Tool(name: "find_gaps", title: "Find the gaps", does: "Ranks the parts of a region by open lidar and by how few sites are on open record."),
                      Tool(name: "open_resources", title: "List open archives", does: "Says which open archives exist, how big they are, and which of them these tools read.")]),
-        Pack(title: "Strip the forest away", short: "Bare ground", icon: "mountain.2",
+        Pack(title: "Strip the forest away", short: "Bare ground", icon: "dig.mound",
              summary: "The agent downloads the raw laser points for the area and keeps only the ones that reached the ground. What is left is the bare ground, as if the trees were gone. In England, the Netherlands and France it can take the national ground model instead, already built by the mapping agency.",
              why: "Low walls, mounds and platforms are hidden in a photograph and plain in the bare ground.",
              image: "reveal", flow: "terrain",
@@ -67,7 +67,7 @@ enum ToolGuide {
                      Tool(name: "view_terrain", title: "View the terrain", does: "Shows the whole terrain at reduced size."),
                      Tool(name: "render_tiles", title: "Render the tiles", does: "Draws every tile in one view (sky view, hillshade, local relief) so the map can show them that way."),
                      Tool(name: "make_tiles", title: "Cut into tiles", does: "Cuts the terrain into overlapping tiles for screening.")]),
-        Pack(title: "Look at every tile", short: "Screen", icon: "square.grid.3x3",
+        Pack(title: "Look at every tile", short: "Screen", icon: "dig.grid",
              summary: "The terrain is cut into tiles about 250 m across. The agent looks at each one in more than one rendering and writes down what it sees: nothing, natural, modern, possible, or built.",
              why: "Nothing is skipped, and a tile the laser never reached is marked unreadable, never empty.",
              image: "tile", flow: "screen",
@@ -75,7 +75,7 @@ enum ToolGuide {
                      Tool(name: "view_tile", title: "Look at a tile", does: "Shows one tile as shaded relief, slope, local relief, or sky view, which darkens ditches and brightens banks whatever their direction."),
                      Tool(name: "record_verdict", title: "Record a verdict", does: "Records what a tile shows: nothing, natural, modern, possible or built."),
                      Tool(name: "flag_candidate", title: "Flag a candidate", does: "Opens a record for something that looks built.")]),
-        Pack(title: "Check every flag", short: "Check", icon: "checkmark.seal",
+        Pack(title: "Check every flag", short: "Check", icon: "dig.layers",
              summary: "Each flag gets three tests. A slice through the raw points shows whether the shape is in the ground or in the trees. A second, different model looks at the same tile without seeing the first opinion. Open maps are checked for roads, buildings and sites already mapped.",
              why: "This is where false finds are caught, and it is the step a lone chatbot skips.",
              image: "section", flow: "check",
@@ -83,7 +83,7 @@ enum ToolGuide {
                      Tool(name: "second_look", title: "Second look", does: "Records the opinion of a second, different model."),
                      Tool(name: "check_modern", title: "Check for modern features", does: "Checks open maps for roads, buildings and sites already mapped nearby."),
                      Tool(name: "add_control", title: "Add a known site", does: "Registers a published site the run should find again, as a test of the run itself.")]),
-        Pack(title: "Search what is published", short: "Read", icon: "book",
+        Pack(title: "Search what is published", short: "Read", icon: "dig.sieve",
              summary: "The agent searches an open index of scholarly work, opens what it finds, and logs each source as read, could not open, or not relevant.",
              why: "Most of what a search turns up is already known. The record says exactly what was read, so a short search is never mistaken for a discovery.",
              image: nil, flow: "prior",
@@ -91,7 +91,7 @@ enum ToolGuide {
                      Tool(name: "search_records", title: "Search published records", does: "Searches Open Context for published excavation and survey records."),
                      Tool(name: "read_source", title: "Open a source", does: "Opens a web page or a PDF and returns its text."),
                      Tool(name: "log_source", title: "Log a source", does: "Logs a source as read, could not open, or not relevant, with what it shows.")]),
-        Pack(title: "Keep the record, and you decide", short: "Record", icon: "doc.text",
+        Pack(title: "Keep the record, and you decide", short: "Record", icon: "dig.brush",
              summary: "Every candidate is a page with its pictures, measurements, checks and sources. The tools refuse a status the evidence does not support, and the last call is yours.",
              why: "A project is a plain folder of Markdown, so it can be shared, reviewed, or handed to an archaeologist.",
              image: "record-relief", flow: "decide",
@@ -146,7 +146,7 @@ enum ToolGuide {
                  scope: .general,
                  steps: [Handoff(who: "You", does: "Say what interests you"), Handoff(who: "Agent", does: "Compares open surveys and recorded sites"),
                          Handoff(who: "You", does: "Pick an area"), Handoff(who: "Agent", does: "Creates the project")]),
-        Workflow(id: "surveys", title: "Show open surveys", icon: "list.bullet.rectangle",
+        Workflow(id: "surveys", title: "Show open surveys", icon: "dig.grid",
                  summary: "Lists the open lidar surveys flown with archaeology in mind.",
                  prompt: "List the open lidar surveys flown with archaeology in mind. For each, say where it is, whether it can be fetched without an account, and what a search there could add.",
                  scope: .general, steps: [Handoff(who: "Agent", does: "Reads the open catalog")]),
@@ -154,22 +154,22 @@ enum ToolGuide {
                  summary: "Tell the agent a place name and it reports the open lidar and the recorded sites there.",
                  prompt: "I have a place in mind. Ask me its name, then tell me which open lidar covers it and which sites are already recorded there.",
                  scope: .general, steps: [Handoff(who: "You", does: "Name the place"), Handoff(who: "Agent", does: "Checks lidar coverage and recorded sites")]),
-        Workflow(id: "full", title: "Run the whole search", icon: "play.circle",
+        Workflow(id: "full", title: "Run the whole search", icon: "dig.trowel",
                  summary: "Everything from fetching the terrain to the literature search, stopping for you at the second look and at each decision.",
                  prompt: "Run the whole search for this project and finish it. Fetch the terrain if it is missing and cut it into tiles. Screen every tile in two styles, handing batches to helper agents when more than 12 are left. Flag what looks built, then cut a section and check for modern features for each flag. Search the literature with search_literature and search_records, open what you can with read_source, and log every source on its records with log_source as soon as you know its outcome. Add the section measurements as evidence. For each candidate, call suggest_decision with the decision the evidence points to and the reason, naming where it is published if it is. Keep a plan as you go. End with write_summary, even if something stopped you early. Do not set statuses or record a second look; tell me what is waiting for me.",
                  scope: .project,
                  steps: [Handoff(who: "Agent", does: "Fetches lidar, builds the bare ground"), Handoff(who: "Agent and helpers", does: "Screen every tile"),
                          Handoff(who: "Agent", does: "Sections and modern-feature checks"), Handoff(who: "Second model", does: "Independent second look"),
                          Handoff(who: "Agent", does: "Literature search, every source logged"), Handoff(who: "You", does: "Decide each candidate")]),
-        Workflow(id: "terrain", title: "Get the terrain", icon: "mountain.2",
+        Workflow(id: "terrain", title: "Get the terrain", icon: "dig.mound",
                  summary: "Finds open lidar for the project's area, builds the bare ground and cuts it into tiles.",
                  prompt: "Find open lidar for this project's area, fetch it, and cut it into tiles. Tell me how good the ground data is.",
                  scope: .project, steps: [Handoff(who: "Agent", does: "Finds, fetches and tiles the terrain")]),
-        Workflow(id: "screen", title: "Screen the tiles", icon: "square.grid.3x3",
+        Workflow(id: "screen", title: "Screen the tiles", icon: "dig.grid",
                  summary: "Looks at every tile nobody has screened and flags what looks built.",
                  prompt: "Screen the tiles nobody has looked at yet, each in two styles. Hand batches to sub-agents when more than 12 are left. Flag what looks built.",
                  scope: .project, steps: [Handoff(who: "Agent and helpers", does: "View each tile, record a verdict"), Handoff(who: "Agent", does: "Opens a record for each flag")]),
-        Workflow(id: "check", title: "Check the flags", icon: "checkmark.seal",
+        Workflow(id: "check", title: "Check the flags", icon: "dig.layers",
                  summary: "Cuts a section through each unchecked candidate and looks for modern features nearby.",
                  prompt: "For every candidate that still lacks them, cut a section through it, starting and ending on the surrounding ground, and check for modern features nearby.",
                  scope: .project, steps: [Handoff(who: "Agent", does: "Section and modern-feature check per candidate")]),
@@ -177,11 +177,11 @@ enum ToolGuide {
                  summary: "Hands each unchecked candidate to your second-look model, which sees the tile but not the first opinion.",
                  prompt: "", scope: .project,
                  steps: [Handoff(who: "Dighouse", does: "Sends the tile to the second model"), Handoff(who: "Second model", does: "Agrees or disagrees, with a reason")]),
-        Workflow(id: "prior", title: "Search what is published", icon: "book",
+        Workflow(id: "prior", title: "Search what is published", icon: "dig.sieve",
                  summary: "Searches the literature for each open candidate and logs every source as read or not opened.",
                  prompt: "Search the literature for each candidate that has no sources yet, starting with studies of this dataset. Open what you find with read_source, and log each source on its record as soon as you have read it or failed to open it.",
                  scope: .project, steps: [Handoff(who: "Agent", does: "Searches, reads and logs sources")]),
-        Workflow(id: "decide", title: "Prepare my review", icon: "person.crop.circle.badge.questionmark",
+        Workflow(id: "decide", title: "Prepare my review", icon: "dig.brush",
                  summary: "The agent suggests a decision on each candidate, with where it is published or why, so your review starts prepared.",
                  prompt: "Prepare my review. For each open candidate, read its record and sources and call suggest_decision with the decision the evidence points to and a reason I can check in one read: for already published, say where (author, year, title or record); for modern or natural, what shows it. If a candidate has no read source that names it, search the literature for it first. Then tell me in a few lines what is waiting for me and what is still missing.",
                  scope: .project, steps: [Handoff(who: "Agent", does: "Summarizes the records"), Handoff(who: "You", does: "Decide")]),
@@ -295,26 +295,26 @@ enum ToolGuide {
         let style = s("style").isEmpty ? "" : ", " + s("style").replacingOccurrences(of: "_", with: " ")
         switch tool {
         case "find_place": return ("mappin.and.ellipse", "Looked up \(s("query"))")
-        case "open_surveys": return ("list.bullet.rectangle", "Read the open survey catalog")
+        case "open_surveys": return ("dig.grid", "Read the open survey catalog")
         case "find_gaps": return ("square.grid.3x3.topleft.filled", "Ranked a region by open lidar and recorded sites")
         case "open_resources": return ("building.columns", "Listed the open archives")
-        case "search_records": return ("tray.full", "Searched published records: \(s("query"))")
+        case "search_records": return ("dig.sieve", "Searched published records: \(s("query"))")
         case "survey_area": return ("binoculars", "Sized up an area: lidar coverage and recorded sites")
         case "init_project": return ("folder.badge.plus", "Created the project \(s("name"))")
         case "find_data": return ("magnifyingglass", "Looked for open lidar over the area")
         case "import_terrain": return ("tray.and.arrow.down", "Added your own file as terrain")
-        case "suggest_decision": return ("lightbulb", "Suggested a decision for \(s("candidate"))")
+        case "suggest_decision": return ("dig.brush", "Suggested a decision for \(s("candidate"))")
         case "fetch_terrain": return ("arrow.down.circle", "Fetched terrain from \(s("dataset").split(separator: ":").last.map(String.init) ?? "")")
-        case "view_terrain": return ("mountain.2", "Looked at the whole terrain")
-        case "make_tiles": return ("square.grid.3x3", "Cut the terrain into tiles")
-        case "next_tiles": return ("square.grid.3x3", "Picked the next tiles")
+        case "view_terrain": return ("dig.mound", "Looked at the whole terrain")
+        case "make_tiles": return ("dig.grid", "Cut the terrain into tiles")
+        case "next_tiles": return ("dig.grid", "Picked the next tiles")
         case "view_tile": return ("eye", "Looked at tile \(tile)\(style)")
         case "record_verdict": return ("checkmark", "Tile \(tile): \(s("verdict"))")
         case "flag_candidate": return ("flag", "Flagged: \(s("name"))")
-        case "cut_section": return ("waveform.path.ecg", "Cut a section" + (s("candidate").isEmpty ? " on tile \(tile)" : " through \(s("candidate"))"))
+        case "cut_section": return ("dig.layers", "Cut a section" + (s("candidate").isEmpty ? " on tile \(tile)" : " through \(s("candidate"))"))
         case "second_look": return ("person.2", "Second look at \(s("candidate")) by \(s("model"))")
         case "check_modern": return ("building.2", "Checked for modern features near \(s("candidate"))")
-        case "search_literature": return ("book", "Searched the literature: \(s("query"))")
+        case "search_literature": return ("dig.sieve", "Searched the literature: \(s("query"))")
         case "read_source": return ("doc.text.magnifyingglass", "Opened a source: \(URL(string: s("url"))?.host ?? s("url"))")
         case "log_source": return ("text.book.closed", "Logged a source (\(s("status").replacingOccurrences(of: "_", with: " "))): \(s("title"))")
         case "add_evidence": return ("plus", "Added evidence to \(s("candidate"))")
@@ -324,7 +324,7 @@ enum ToolGuide {
         case "write_summary": return ("doc.richtext", "Wrote the run summary")
         case "document_project": return ("book.closed", "Updated the research record")
         case "run_status": return ("gauge", "Checked the run status")
-        default: return ("wrench", tool)
+        default: return ("dig.trowel", tool)
         }
     }
 }

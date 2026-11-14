@@ -100,8 +100,8 @@ struct CommandPalette: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 1) {
                         if rows.isEmpty {
-                            Text("Nothing matches. Try a project name, a candidate such as C-001, or a command such as screen.")
-                                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).padding(16)
+                            EmptyLine(icon: "dig.sieve", text: "Nothing matches. Try a project name, a candidate such as C-001, or a command such as screen.")
+                                .padding(.horizontal, 10)
                         }
                         ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
                             Button { picked = index; run(rows) } label: { row(item, selected: index == picked) }
@@ -129,7 +129,7 @@ struct CommandPalette: View {
 
     private func row(_ item: Item, selected: Bool) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: item.icon).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 20)
+            Glyph(name: item.icon, size: 12.5 * Theme.scale).foregroundStyle(Theme.tan).frame(width: 20)
             Text(item.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).lineLimit(1)
             Text(item.blocked ?? item.detail).font(.system(size: 12 * Theme.scale)).foregroundStyle(item.blocked == nil ? Theme.dim : Theme.amber).lineLimit(1)
             Spacer(minLength: 8)

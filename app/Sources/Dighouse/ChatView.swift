@@ -9,7 +9,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             if chat.loading {
                 HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
+                    DigIndicator()
                     Text("Opening the chat").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -191,7 +191,7 @@ private struct Messages: View {
                     }
                     if chat.running {
                         HStack(spacing: 8) {
-                            ProgressView().controlSize(.small)
+                            DigIndicator()
                             Text(working).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
                         }
                         .padding(.top, 2)
@@ -276,7 +276,8 @@ private struct ChatRow: View {
         case .agent:
             VStack(alignment: .leading, spacing: 4) {
                 MarkdownText(text: item.text).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 2)
-                if endsTurn { actions(user: false) }
+                // While the agent is still working, its latest message is not yet the end of the turn.
+                if endsTurn, !(chat.running && item.id == chat.items.last(where: { $0.kind == .agent })?.id) { actions(user: false) }
             }
             .contentShape(Rectangle())
             .onHover { hovering = $0 }
@@ -449,9 +450,9 @@ private struct StepRow: View {
             Button { if expandable { open.toggle() } } label: {
                 HStack(spacing: 8) {
                     Group {
-                        if item.state == .running { ProgressView().controlSize(.mini) } else { Image(systemName: item.icon) }
+                        if item.state == .running { DigIndicator(size: 12) } else { Glyph(name: item.icon, size: 13 * Theme.scale) }
                     }
-                    .frame(width: 18)
+                    .frame(width: 22)
                     Text(item.text).lineLimit(open ? 3 : 1).multilineTextAlignment(.leading)
                     if expandable {
                         Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
@@ -528,10 +529,10 @@ private struct EmptyChat: View {
 
     /// Questions that show what the tools can answer before there is a project.
     private let questions: [(String, String)] = [
-        ("map", "Is there open lidar over the Newark Earthworks in Ohio?"),
-        ("airplane", "Which open surveys cover the Maya lowlands, and what is recorded near each?"),
-        ("building.columns", "Which open archives do archaeologists use, and how big are they?"),
-        ("book", "What has been published about Angel Mounds in Indiana?"),
+        ("dig.mound", "Is there open lidar over the Newark Earthworks in Ohio?"),
+        ("dig.grid", "Which open surveys cover the Maya lowlands, and what is recorded near each?"),
+        ("dig.layers", "Which open archives do archaeologists use, and how big are they?"),
+        ("dig.sieve", "What has been published about Angel Mounds in Indiana?"),
     ]
 
     var body: some View {
@@ -574,7 +575,7 @@ private struct EmptyChat: View {
                         if index > 0 { Hairline().padding(.leading, 40) }
                         Button { app.ask(question.1) } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: question.0).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 18)
+                                Glyph(name: question.0, size: 13 * Theme.scale).foregroundStyle(Theme.tan).frame(width: 18)
                                 Text(question.1).font(.system(size: 13.5 * Theme.scale)).multilineTextAlignment(.leading)
                                 Spacer(minLength: 8)
                                 Image(systemName: "arrow.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
@@ -991,7 +992,7 @@ struct Composer: View {
 
             Button { showFlows.toggle() } label: {
                 HStack(spacing: 5) {
-                    Image(systemName: "point.3.connected.trianglepath.dotted").font(.system(size: 12 * Theme.scale))
+                    Glyph(name: "dig.trowel", size: 12.5 * Theme.scale)
                     if wide { Text("Workflows").font(.system(size: 12.5 * Theme.scale)) }
                 }
                 .foregroundStyle(Theme.dim).padding(.horizontal, 8).frame(height: 30).contentShape(Rectangle())
@@ -1004,7 +1005,7 @@ struct Composer: View {
             Spacer(minLength: 4)
 
             if chat.preparing {
-                ProgressView().controlSize(.small).padding(.trailing, 4).help("Reading the attachments")
+                DigIndicator().padding(.trailing, 4).help("Reading the attachments")
             }
             ModelControl()
             if chat.running && !canSend {
@@ -1036,7 +1037,7 @@ struct Composer: View {
     private var attachChoices: [MenuEntry] {
         var out = [MenuEntry(title: "Files from this Mac…", icon: "paperclip", action: attachFiles)]
         if let tile = store.selectedTile, let root = store.current?.path {
-            out.append(MenuEntry(title: "The selected tile", icon: "square.grid.3x3") { chat.attach("\(root)/data/tiles/\(tile)-composite.png") })
+            out.append(MenuEntry(title: "The selected tile", icon: "dig.grid") { chat.attach("\(root)/data/tiles/\(tile)-composite.png") })
         }
         if let c = store.candidates.first(where: { $0.id == store.selectedCandidate }) {
             out.append(MenuEntry(title: "The section through \(c.id)", icon: "chart.xyaxis.line") { chat.attach(c.section) })

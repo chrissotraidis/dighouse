@@ -52,7 +52,7 @@ private struct EmptyPane<Action: View>: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            IconTile(name: icon, size: 52)
+            EmptyDrawing(name: icon, size: 76)
             Text(title).font(.system(size: 18 * Theme.scale, weight: .semibold)).padding(.top, 4)
             Text(text).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim)
                 .multilineTextAlignment(.center).frame(maxWidth: 380)
@@ -137,7 +137,7 @@ struct MapView: View {
 
     var body: some View {
         if store.tiles.isEmpty, let ready = store.terrains.max(by: { $0.areaKm2 < $1.areaKm2 }) {
-            EmptyPane(icon: "mountain.2", title: "Terrain ready",
+            EmptyPane(icon: "dig.mound", title: "Terrain ready",
                       text: ready.groundPerM2 > 0
                         ? "The bare ground is built: \(String(format: "%.1f", ready.areaKm2)) sq km at \(String(format: "%.1f", ready.groundPerM2)) ground returns per square metre. Cut it into tiles to look at it here."
                         : "The bare ground is built: \(String(format: "%.1f", ready.areaKm2)) sq km from a national agency's ready-made ground model. Cut it into tiles to look at it here.") {
@@ -148,12 +148,12 @@ struct MapView: View {
             }
         } else if store.tiles.isEmpty, store.screenedBefore != nil {
             // A shared project: nothing to draw, and the record is the place to look.
-            EmptyPane(icon: "mountain.2", title: "The terrain stayed on the other Mac",
+            EmptyPane(icon: "dig.mound", title: "The terrain stayed on the other Mac",
                       text: "A shared project comes without its downloads and locations. The research record says what the ground showed, tile by tile. Get the terrain again only if you want to look at it yourself.") {
                 Button("Research record") { app.showNotes("record") }.buttonStyle(PrimaryButton())
             }
         } else if store.tiles.isEmpty {
-            EmptyPane(icon: "mountain.2", title: "No terrain yet",
+            EmptyPane(icon: "dig.mound", title: "No terrain yet",
                       text: "Ask the agent to find open lidar for the project's area. The bare ground appears here as it is fetched.") {
                 Button("Get the terrain") {
                     if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { app.run(flow) }
@@ -165,7 +165,7 @@ struct MapView: View {
                 let tiles = shown
                 if tiles.isEmpty, let id = current {
                     // A terrain picked from the menu that has not been cut yet.
-                    EmptyPane(icon: "square.grid.3x3", title: "Not cut into tiles yet",
+                    EmptyPane(icon: "dig.grid", title: "Not cut into tiles yet",
                               text: "This terrain is built but has no tiles, so there is nothing to show here yet.") {
                         Button("Cut into tiles") {
                             app.ask("Cut the terrain \(id) into tiles with make_tiles, then tell me how many tiles there are and how many have too little ground data to read.")
@@ -266,8 +266,8 @@ struct MapView: View {
                     + Self.styles.map { s in MenuEntry(title: s.name, icon: s.icon, checked: s.id == style) { style = s.id } }
             }
             .help("How the ground is drawn: sky view shows low banks and ditches best")
-            if rendering { ProgressView().controlSize(.small).padding(.horizontal, 4) }
-            Button { showTiles.toggle() } label: { Image(systemName: "square.grid.3x3") }
+            if rendering { DigIndicator().padding(.horizontal, 4) }
+            Button { showTiles.toggle() } label: { Glyph(name: "dig.grid", size: 14 * Theme.scale) }
                 .buttonStyle(IconButton(size: 28, active: showTiles)).help(showTiles ? "Hide the tile outlines" : "Show the tile outlines")
             Button { showPins.toggle() } label: { Image(systemName: "mappin") }
                 .buttonStyle(IconButton(size: 28, active: showPins)).help(showPins ? "Hide the candidates" : "Show the candidates")
@@ -282,7 +282,7 @@ struct MapView: View {
                          : store.terrains.first { $0.id == current }?.name ?? "Terrain", quiet: true, width: 340) {
                     [MenuEntry(title: "All terrain, side by side", icon: "square.grid.2x2", checked: terrain == nil) { terrain = nil }, .divider]
                         + store.terrains.map { t in
-                            MenuEntry(title: label(t), icon: "mountain.2", checked: terrain == t.id) { terrain = t.id }
+                            MenuEntry(title: label(t), icon: "dig.mound", checked: terrain == t.id) { terrain = t.id }
                         }
                 }
             }
@@ -348,7 +348,7 @@ struct MapView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(cutting ? "Cutting the section…" : "Section").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                if cutting { ProgressView().controlSize(.small) }
+                if cutting { DigIndicator() }
                 Spacer()
                 Button { cut = nil; line = nil } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22))
             }
@@ -418,7 +418,7 @@ struct MapView: View {
                     if tile.status != "unreadable" {
                         Button {
                             app.ask("Look at tile \(tile.id) in two renderings and tell me what you see. Record your verdict.")
-                        } label: { Label("Ask the agent", systemImage: "sparkles") }
+                        } label: { Label("Ask the agent", glyph: "dig.trowel") }
                         .buttonStyle(SecondaryButton())
                         .help("Starts a chat in which the agent looks at this tile in two renderings and records a verdict.")
                     }
@@ -506,7 +506,7 @@ struct RecordsView: View {
 
     var body: some View {
         if store.candidates.isEmpty {
-            EmptyPane(icon: "doc.text", title: "No candidates yet",
+            EmptyPane(icon: "dig.brush", title: "No candidates yet",
                       text: "When the agent flags something that looks built, its record appears here with its evidence and checks.") {
                 if let next = app.nextStep {
                     Button(next.title) { app.run(next) }.buttonStyle(PrimaryButton())
@@ -652,7 +652,7 @@ struct RecordsView: View {
                         ?? look.map { "\($0["model"] as? String ?? ""): \($0["note"] as? String ?? "")" }
                         ?? "A different model looks at the tile without seeing the first opinion.") {
                 HStack(spacing: 6) {
-                    if app.secondLookBusy == c.id { ProgressView().controlSize(.small) }
+                    if app.secondLookBusy == c.id { DigIndicator() }
                     ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
                                 current: app.secondModelID) { app.secondModelID = $0.id }
                     Button("Ask") { app.secondLook(c) }.buttonStyle(SecondaryButton())
@@ -860,17 +860,15 @@ struct NotesView: View {
                     if let file, let text = try? String(contentsOfFile: root + "/" + file, encoding: .utf8) {
                         MarkdownText(text: text)
                     } else if part == "record" {
-                        Text("The record is written the next time this project opens, when a run ends, or when a decision is recorded.")
-                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+                        EmptyLine(icon: "dig.layers", text: "The record is written the next time this project opens, when a run ends, or when a decision is recorded.")
                     } else if part == "method" {
                         Text("This project was made before projects had a method file.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                         Button { app.ask("Write METHODOLOGY.md for this project: the order of work Dighouse follows (read, terrain, screen, flag, check, search what is published, suggest decisions, summarise), the rules, and a Lessons section with anything the notes so far have taught. No coordinates.") } label: {
-                            Label("Ask the agent to write it", systemImage: "sparkles")
+                            Label("Ask the agent to write it", glyph: "dig.trowel")
                         }
                         .buttonStyle(SecondaryButton())
                     } else {
-                        Text(part == "runs" ? "No run summaries yet. A run writes one when it ends." : "Nothing logged yet.")
-                            .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+                        EmptyLine(icon: "dig.layers", text: part == "runs" ? "No run summaries yet. A run writes one when it ends." : "Nothing logged yet.")
                     }
                 }
                 .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
@@ -992,7 +990,7 @@ struct SourcesView: View {
                 if let url = app.browserURL {
                     Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.forward.square") }
                         .buttonStyle(IconButton(size: 26)).help("Open in your browser")
-                    if handing { ProgressView().controlSize(.small) }
+                    if handing { DigIndicator() }
                     Button { handOver(url) } label: {
                         Text("Give this page to the agent").font(.system(size: 12 * Theme.scale))
                     }
@@ -1004,10 +1002,17 @@ struct SourcesView: View {
             Hairline()
             if app.browserURL != nil {
                 WebPage(url: app.browserURL, handle: web)
+            } else if all.isEmpty {
+                EmptyPane(icon: "dig.sieve", title: "No sources yet",
+                          text: "Each source the agent logs appears here as read, could not open, or not relevant. You can also open a web address above and give the page to the agent.") {
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "prior" }), app.state(of: flow).ready {
+                        Button(flow.title) { app.run(flow) }.buttonStyle(PrimaryButton())
+                    }
+                }
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(all.isEmpty ? "No sources yet" : "\(all.count) sources on this project's records").font(.system(size: 18 * Theme.scale, weight: .semibold))
+                        Text("\(all.count) source\(all.count == 1 ? "" : "s") on this project's records").font(.system(size: 18 * Theme.scale, weight: .semibold))
                         Text("Each source the agent logs appears here as read, could not open, or not relevant. Click one to open it. Publishers often refuse a program and let a person in, so the ones marked could not open are worth opening yourself.")
                             .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         list(all)

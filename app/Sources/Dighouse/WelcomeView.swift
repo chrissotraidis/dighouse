@@ -90,10 +90,10 @@ struct WelcomeView: View {
             Text("Dighouse works with lidar: laser scans made from aircraft that measure the ground through gaps in the trees. A great deal of it is public. Dighouse gives an AI model the tools to fetch it, search it, and check what it finds, which a chat app cannot do.")
                 .foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 0) {
-                point("square.grid.3x3", "Agents do the patient part",
+                point("dig.grid", "Agents do the patient part",
                       "They fetch public lidar surveys, strip the trees away, and look at every tile of ground.")
                 Rectangle().fill(Theme.line).frame(height: 1)
-                point("checkmark.seal", "Every flag is checked",
+                point("dig.layers", "Every flag is checked",
                       "A slice through the raw laser points, a second model's opinion, a search for modern features, and a literature search.")
                 Rectangle().fill(Theme.line).frame(height: 1)
                 point("person", "You decide",
@@ -175,7 +175,7 @@ struct WelcomeView: View {
             if let flow = ToolGuide.workflows.first(where: { $0.id == "choose" }) { app.run(flow) }
         }
         .buttonStyle(SecondaryButton()).disabled(!engine.ready)
-        if busy { ProgressView().controlSize(.small) }
+        if busy { DigIndicator() }
         Button(choice.kind == .own ? "Pick an area" : "Create project", action: begin)
             .buttonStyle(PrimaryButton()).disabled(busy || !engine.ready)
             .keyboardShortcut(.defaultAction)
@@ -235,7 +235,7 @@ struct SetupChecklist: View {
                     : (setup.toolsProblem ?? "Not prepared yet."),
                     link: setup.uv == nil ? ("Get uv", "https://docs.astral.sh/uv/getting-started/installation/") : nil) {
                     if !setup.toolsReady, setup.uv != nil, setup.toolsSource != nil {
-                        if setup.toolsBusy { ProgressView().controlSize(.small) } else {
+                        if setup.toolsBusy { DigIndicator() } else {
                             Button("Prepare tools") { Task { await setup.prepareTools(); await app.boot() } }
                                 .buttonStyle(PrimaryButton())
                         }
@@ -255,7 +255,7 @@ struct SetupChecklist: View {
 
             HStack(spacing: 12) {
                 Button("Check again") { Task { await app.boot() } }.buttonStyle(SecondaryButton()).disabled(app.starting)
-                if app.starting { ProgressView().controlSize(.small) }
+                if app.starting { DigIndicator() }
                 if engine.ready {
                     Text("Screening tiles needs a model that reads images. You can change the model at any time from the chat.")
                         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)

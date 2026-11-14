@@ -16,7 +16,8 @@ struct DataView: View {
             VStack(alignment: .leading, spacing: 22) {
                 section("Terrain in this project") {
                     if store.terrains.isEmpty {
-                        Text("None yet. Get the terrain, or add a file of your own below.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+                        EmptyLine(icon: "dig.mound", text: store.screenedBefore != nil ? "The terrain stayed on the Mac this project came from. Get it again, or add a file of your own below, only if you want to look at the ground yourself."
+                                  : "None yet. Get the terrain, or add a file of your own below.")
                     }
                     ForEach(store.terrains) { t in terrainRow(t) }
                     HStack(spacing: 8) {
@@ -120,7 +121,7 @@ struct DataView: View {
                 Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
-            if busy == id { ProgressView().controlSize(.small) }
+            if busy == id { DigIndicator() }
             Button(button, action: action).buttonStyle(SecondaryButton()).disabled(disabled || busy != nil)
         }
     }

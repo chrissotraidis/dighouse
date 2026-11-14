@@ -278,6 +278,40 @@ All 32 tools were called once from Python against the real services, on a scratc
 
 **Not checked:** a handover between two real Macs, and a receiver who then fetches terrain for the same place.
 
+### 2026-11-14, A5: an archaeology look, drawn in SwiftUI
+
+**Found on the way: Dighouse could not start in Graphite.** With Graphite saved as the look, the app stopped before its window opened, three times in a row (three crash reports at 13:33). Graphite's menu colour was borrowed from the theme, which was still working itself out at that moment. Switching to Graphite while the app ran had hidden this, and had also given Graphite's menus Earth's brown. Graphite now has its own menu colour, and the app starts in all three looks.
+
+**Six drawings** (app/Sources/Dighouse/Drawings.swift), each a set of lines on a 24-point grid, stroked at the weight of the system symbols beside them. No image files.
+
+| Drawing | Stands for | Where |
+|---|---|---|
+| Trowel | The whole search, and the agent | Run the whole search, the Workflows button, "Ask the agent", the Agent in the Toolbox |
+| Mound in section | The bare ground | Get the terrain, the Bare ground stage, the map with no terrain |
+| Survey grid | Screening, tile by tile | Screen the tiles, the Screening stage, open surveys on Home, no projects yet |
+| Soil layers | Checking a flag with a section | Check the flags, the Checks stage, cut_section in a chat, an empty notes list |
+| Sieve | Searching what is published | Search what is published, that stage, literature searches in a chat, empty searches and Sources |
+| Brush | Deciding what a find is | Prepare my review, the Your decisions stage, a suggestion in the review, no candidates yet |
+
+System symbols stay where they already fit: people for the second opinion, an envelope for the report, binoculars for choosing a place, a book for the research record.
+
+- **Stages.** The overview's six stages each have their drawing, in colour once done, with a green tick at the end of the row. The Next card and the top bar carry the drawing of the stage that is next. The Toolbox's six stops carry them too.
+- **The thinking indicator.** One sign that the agent is at work: a trowel scrapes along a line of soil and the grains hop as it passes, turning green at the top. It replaced every system spinner, 22 places in all. `rg ProgressView app/Sources` now finds none.
+- **Empty states.** A place with nothing in it has its drawing on a round of bare ground: the map (mound or grid), Records (brush), Sources (sieve), the notes lists (layers), Find a chat and ⌘K (sieve), no projects (grid), the end of a review (brush).
+- **Also:** the sidebar's and Settings' icons sit in a column of their own, so the words line up (A1 item 10). The lone copy button that showed under the agent's latest message while it was still working is gone. "Sparkles" for asking the agent became the trowel.
+
+| Check | Seen |
+|---|---|
+| Stage list, Workflows menu, an empty state, in each look | Earth: loop4/a5-earth-stages.jpg, a5-earth-workflows.jpg, a5-earth-empty.jpg. Canopy: a5-canopy-stages.jpg, a5-canopy-workflows.jpg, a5-canopy-empty.jpg. Graphite: a5-graphite-stages.jpg, a5-graphite-workflows.jpg, a5-graphite-empty.jpg. |
+| The indicator, two frames, in each look | Taken 0.4 s apart from the top bar during a run on Terra: loop4/a5-earth-indicator.jpg, a5-canopy-indicator.jpg, a5-graphite-indicator.jpg. In each the trowel has moved and a grain is in the air in one frame. It also showed beside "Working" in the chat and on the running chat's row in the sidebar. |
+| Reduce Motion | With the setting on, two frames a third of a second apart were identical: the trowel at rest, the grains on the ground. With it off they differed. This was checked by drawing the indicator outside the app with SwiftUI's Reduce Motion flag set; the Mac's own setting was not changed. |
+| Every text size | At Larger the menus' drawings grow with the words (loop4/a5-earth-larger-text.jpg). |
+| The Toolbox and a new chat | loop4/a5-toolbox-how.jpg. |
+| ProgressView left in the code | None. |
+
+**Not checked:** the indicator with the Mac's Reduce Motion setting itself, and how the drawings read on a display that is not Retina.
+
+
 
 
 
