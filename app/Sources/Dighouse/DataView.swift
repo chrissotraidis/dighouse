@@ -130,7 +130,7 @@ struct DataView: View {
     private func size(of t: Terrain) -> String {
         guard let root = store.current?.path else { return "" }
         let bytes = [t.file, t.points ?? ""].filter { !$0.isEmpty }.compactMap {
-            (try? FileManager.default.attributesOfItem(atPath: root + "/" + $0)[.size]) as? Int
+            FileInfo.size(root + "/" + $0)
         }.reduce(0, +)
         return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file) + " on disk"
     }

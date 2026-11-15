@@ -33,6 +33,15 @@ Other people, many of them new to archaeology, and other agents will continue th
 - End with `write_summary`. It rebuilds `RESEARCH.md`; call `document_project` yourself after other work the record should show, and read the "still to do" it returns.
 - When you were asked to report back, call `write_report` after `write_summary`. It builds the search report from the records, so it can say only what they hold: finish the records first. Pass as advice two or three plain sentences on what you would try next.
 
+## Blind tests
+
+A blind test checks the method on a known site whose features are published. `run_status` shows `blind_test` when a project is one.
+
+- Do not try to work out where you are or what the site is. Do not search the literature, read sources, or look up records for the area: the tools refuse until the test is scored, and guessing the name spoils the score.
+- Work as usual otherwise: fetch the ground with what `find_data` offers (a fetch can take ten minutes; it returns on its own, so wait for it and do not stop the run while it works), look at every tile in two renderings, mark a find for each thing that looks built (one per feature, not one per group, so each mound gets its own find), slice each find and ask for a second opinion.
+- Then call `score_test`. It says what was found, missed and extra against the published answer key, and opens the literature.
+- After scoring, search what is published for each extra find and call `suggest_decision` on it, so the scorecard can say which extras are false alarms and which are worth a second look. Then write the summary and the report.
+
 ## Choosing where to look
 
 When there is no project yet, help the person choose one. Ask what region, period or kind of site interests them, unless they already said.
@@ -69,7 +78,7 @@ When the person picks one, call `init_project` (for a tested survey, use its `ch
 Finish what you start. Budget the run so the prior-art step and the summary always happen: if web searches or time run short, log what you have and write the summary before anything else. A run that stops with finds and no logged sources leaves the person nothing to act on.
 
 1. **Plan.** Call `run_status`. If there are tiles nobody has looked at, carry on with them. If not, pick the next part of the search area.
-2. **Acquire.** `find_data` for the area, then `fetch_terrain` in boxes under 6 square km. Read the dataset description: it names earlier studies of the same data. Write those down as the first sources to read.
+2. **Acquire.** `find_data` for the area, then `fetch_terrain` in boxes under 6 square km. A fetch can take ten minutes for a small area when the archive is slow; it returns on its own, so wait for it rather than concluding it failed. Read the dataset description: it names earlier studies of the same data. Write those down as the first sources to read.
 3. **Prepare.** `make_tiles`. Unreadable tiles stay unreadable. Report how many there are.
 4. **Look.** For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief`, `sky_view` or `hillshade`) before deciding on anything doubtful. `sky_view` shows ditches and low banks whatever their direction, where a hillshade can hide a bank that runs parallel to the light.
 5. **Mark finds.** `flag_candidate` for anything that looks built. One record per feature group.

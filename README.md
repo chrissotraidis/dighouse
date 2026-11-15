@@ -13,7 +13,7 @@
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
   <img alt="Native SwiftUI app" src="https://img.shields.io/badge/app-SwiftUI-FF9F0A?logo=swift&logoColor=white">
-  <img alt="33 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-33%20tools-8B5E3C">
+  <img alt="36 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-36%20tools-8B5E3C">
   <img alt="Open lidar from eight countries" src="https://img.shields.io/badge/open%20lidar-8%20countries-6B8E23">
   <img alt="No account or key needed for any data service" src="https://img.shields.io/badge/data%20accounts-none-30D158">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
@@ -134,6 +134,7 @@ uv run pytest -m live    # the same chain against the real data services (8 test
 | Draw the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `next_tiles`, `view_tile` |
 | Look at every tile | `record_verdict`, `flag_candidate` |
 | Check each find | `cut_section`, `second_look`, `check_modern`, `add_control` |
+| Test the method on a known site | `list_tests`, `start_test`, `score_test` |
 | Search what is published | `search_literature`, `read_source`, `log_source` |
 | Records and runs | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `write_report`, `document_project`, `export_finds` |
 

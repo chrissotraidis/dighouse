@@ -157,6 +157,8 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
         L.append("Nothing yet: no ground has been fetched.")
     L.append("")
 
+    from .answers import score_lines
+    L += score_lines(p, short=True)
     L += ["## What is already published", ""]
     sources: dict[str, dict] = {}
     for m in records:

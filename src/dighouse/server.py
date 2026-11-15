@@ -15,7 +15,7 @@ from pathlib import Path
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from . import checks, discover, ledger, national, record, report, section, sources, tiles
+from . import answers, checks, discover, ledger, national, record, report, section, sources, tiles
 from . import terrain as T
 from .project import Project
 
@@ -106,6 +106,7 @@ def survey_area(west: float, south: float, east: float, north: float) -> dict:
     Use it on areas up to 2 degrees across. Recorded sites come from Wikidata, OpenStreetMap and the public
     US National Register, and are listed by name, distance and direction from the centre of the area.
     """
+    answers.guard_box([west, south, east, north])
     return discover.survey_area([west, south, east, north])
 
 
@@ -116,6 +117,7 @@ def find_gaps(west: float, south: float, east: float, north: float) -> dict:
     The region (up to 2 degrees across) is cut into a 4 by 4 grid. Cells covered by lidar flown for archaeology
     come first, then cells with the fewest recorded sites. Read how_to_read before telling anyone a cell is empty.
     """
+    answers.guard_box([west, south, east, north])
     return discover.find_gaps([west, south, east, north])
 
 
@@ -136,6 +138,8 @@ def search_records(query: str, west: float = 0, south: float = 0, east: float = 
     Returns how many records match and the first ten, each with its project, place and date range.
     """
     box = [west, south, east, north] if east > west and north > south else None
+    if box:
+        answers.guard_box(box)
     return discover.search_records(query, box)
 
 
@@ -179,7 +183,11 @@ def find_data(west: float, south: float, east: float, north: float) -> list[dict
     Read each dataset's description: it often names earlier studies of the same data,
     which are the first things a literature search must cover.
     """
-    return sources.find_data([west, south, east, north])
+    found = sources.find_data([west, south, east, north])
+    if answers.blind_box([west, south, east, north]):
+        # A blind test: keep what is needed to fetch the data, and drop words that could name the place or its studies.
+        found = [{k: v for k, v in d.items() if k not in ("title", "about", "citation", "landing_page")} for d in found]
+    return found
 
 
 @tool
@@ -473,6 +481,8 @@ def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     near = [f"{what} ({', '.join(x.replace('_', ' ') for x in found[key][:4])})" for key, what in
             (("roads", "paths or roads"), ("buildings", "buildings"), ("land_use", "land in use"), ("structures", "structures")) if found[key]]
     summary = f"within {radius_m} m open maps show {'; '.join(near)}" if near else f"nothing modern mapped within {radius_m} m"
+    if answers.is_blind(p):
+        found = {**found, "historic_within_2km": [], "historic_hidden": "Historic places are not named during a blind test."}
     if found["historic_within_2km"]:
         reach = found.get("historic_searched_within_m", 2000)
         summary += (f"; historic places mapped within {'2 km' if reach == 2000 else f'{reach} m'}: "
@@ -490,6 +500,7 @@ def search_literature(project: str, query: str, limit: int = 15) -> list[dict]:
     Finding a title is not reading it: open the source with read_source, then log it with log_source.
     """
     p = Project(project).check()
+    answers.guard_project(p)
     found = checks.search_literature(query, limit)
     p.note(f"Searched the literature for '{query}': {len(found)} results")
     return found
@@ -504,6 +515,7 @@ def read_source(project: str, url: str, start: int = 0) -> dict:
     A file name starting with "page-" reads a page the person opened and saved from the Sources tab.
     """
     p = Project(project).check()
+    answers.guard_project(p)
     saved = p.path("sources", "pages", url) if url.startswith("page-") and "/" not in url else None
     if saved and saved.exists():
         # A page the person opened in the Sources tab and handed over. Its first line is the address it came from.
@@ -526,6 +538,7 @@ def log_source(project: str, candidate: str, title: str, status: str, finding: s
     several separated by commas, or "all" when the source bears on every candidate in the project.
     """
     p = Project(project).check()
+    answers.guard_project(p)
     ids = [c["id"] for c in ledger.everything(p)] if candidate.strip().lower() == "all" else [c.strip() for c in candidate.split(",") if c.strip()]
     counts = {cid: len(ledger.add_source(p, cid, title, status, finding, link)["sources"]) for cid in ids}
     return {"logged_on": counts}
@@ -612,6 +625,36 @@ def write_report(project: str, advice: str = "") -> dict:
 
 
 @tool
+def list_tests() -> list[dict]:
+    """The known sites a blind test can be run on, each with what its answer key counts and where that comes from."""
+    return [answers.summary(k) for k in answers.keys()]
+
+
+@tool
+def start_test(folder: str, site: str) -> dict:
+    """Start a blind test on a known site: make a project in the folder whose name and question say nothing about the place.
+
+    site is an id from list_tests. Run the search as usual: fetch the ground, look at every tile, mark finds, slice them and
+    get a second opinion. The literature and records for the area stay closed until score_test scores the finds.
+    """
+    return answers.start(folder, site)
+
+
+@tool
+def score_test(project: str) -> dict:
+    """Score a blind test: compare its finds with the published answer key, then open the literature.
+
+    Returns what was found, missed and extra, without coordinates. Afterwards search the literature for each extra find and
+    call suggest_decision on it, so the scorecard can say which extras are false alarms and which are worth a second look.
+    """
+    p = Project(project).check()
+    result = answers.score_project(p)
+    record.document(p)
+    return {k: v for k, v in result.items() if k != "matches"} | {"matched": len(result["matches"]),
+            "next": "Search the literature for each extra find and suggest a decision on it; then write the summary."}
+
+
+@tool
 def document_project(project: str, stopped_during: str = "") -> dict:
     """Rebuild RESEARCH.md, the project's research record: data used, every tile looked at, every candidate's
     checks and decision, every source and literature search, and what is still to do. Read it before a run;
@@ -640,6 +683,7 @@ def run_status(project: str) -> dict:
         "candidates": {s: sum(m["status"] == s for m in records) for s in ledger.STATUSES},
         "controls": {"registered": len(controls), "found_again": len(found), "missed": sorted(set(controls) - set(found))},
         "needs_a_person": waiting,
+        **({"blind_test": answers.BLIND} if answers.is_blind(p) else {}),
     }
 
 

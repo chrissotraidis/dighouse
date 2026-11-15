@@ -363,7 +363,7 @@ enum Images {
     private static let cache = NSCache<NSString, NSImage>()
 
     static func load(_ path: String) -> NSImage? {
-        let stamp = (try? FileManager.default.attributesOfItem(atPath: path)[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        let stamp = FileInfo.modified(path)?.timeIntervalSince1970 ?? 0
         let key = "\(path)#\(stamp)" as NSString
         if let hit = cache.object(forKey: key) { return hit }
         guard stamp > 0, let img = NSImage(contentsOfFile: path) else { return nil }
@@ -384,4 +384,20 @@ extension String {
 extension String {
     /// A path with the home folder shortened to ~, for showing to a person.
     var tildePath: String { (self as NSString).abbreviatingWithTildeInPath }
+}
+
+
+/// A file's modification date and size from stat(2). FileManager.attributesOfItem also reads extended attributes,
+/// which can hang for a long time on a folder kept in iCloud; stat does not.
+enum FileInfo {
+    static func modified(_ path: String) -> Date? {
+        var s = stat()
+        guard stat(path, &s) == 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(s.st_mtimespec.tv_sec) + TimeInterval(s.st_mtimespec.tv_nsec) / 1e9)
+    }
+
+    static func size(_ path: String) -> Int? {
+        var s = stat()
+        return stat(path, &s) == 0 ? Int(s.st_size) : nil
+    }
 }

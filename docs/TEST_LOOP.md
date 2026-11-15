@@ -98,3 +98,37 @@ Each goal is done when its check passes in the running app. Record the date and 
   The automatic keys hold 12 of the 83 counted features. They stay as the backup for other places, marked automatic and incomplete, but a score against one is a lower bound and the scorecard will say so.
 - **Overpass was down** (502 and 504 from three servers) while the keys were built; OpenStreetMap's own map service was used instead.
 - Test: test_answer_keys_are_sourced_and_inside_their_areas. uv run pytest: 14 passed.
+
+### 2026-11-15, T2: the blind test and its score
+
+- **Blind run:** start_test (answers.start) makes a project named "Blind test <date> <n>" with a neutral question. The test area is registered in the tools' cache, and until the test is scored:
+  - search_literature, read_source and log_source refuse in the project;
+  - survey_area, find_gaps and search_records refuse for the area;
+  - find_data drops titles and descriptions that could name the place;
+  - check_modern leaves out historic place names.
+  run_status shows blind_test, and the skill and the "Find and report back" prompt tell the agent what that means.
+- **Scoring:** score_test (answers.score) works as follows.
+  - Each mound in the key takes at most one find, the nearest within half its size plus 15 m.
+  - A find within 20 m of a rampart or wall counts that work once; more finds on it are not extra.
+  - A find on a feature the key does not count is set aside.
+  - Everything else is extra. After the literature step, its decision or suggestion labels it a false alarm (modern or natural), real but not in the key, or worth a second look.
+  - The score goes into private/state/score.json, a "Blind test" section of RESEARCH.md and one sentence in the 400-word report, none with coordinates.
+- **Three tools:** list_tests, start_test and score_test, making 36 in all.
+- **Two fixes found by the live run:**
+  - The agent gave up on a USGS fetch that was still going: 71 of 158 parts after about 5 minutes. A full fetch of this 0.25 sq km area took 421 seconds, so the skill and the "Find and report back" prompt now say a fetch can take ten minutes and to wait.
+  - Fetched points are cached by dataset and area (sources.fetch_points), so a rerun of a blind test or the benchmark takes seconds instead of minutes.
+- **The app froze on launch** while macOS waited for permission to read the Documents folder. Each rebuild has a new signature, so macOS asks again, and file dates were read on the main thread with FileManager.attributesOfItem, which also reads extended attributes. Dates and sizes now come from stat(2) (FileInfo in Core.swift), and Home's greeting card reads the project folders off the main thread. The permission prompt itself waits for Chris.
+
+**The live check (headless):** the in-app run waits on that prompt, so the check ran through the same Codex engine (0.167) and the Dighouse tools from the terminal, with primary / 6.1 Terra at medium effort, on Mound City Group.
+
+| | |
+|---|---|
+| Ground | OH_StatewideP3_7_B21, 0.25 sq km, 5.4 ground returns per sq m, fetched in about 7 minutes |
+| Looked at | 6 of 6 tiles in sky view and hillshade: 4 looked built, 2 modern |
+| Finds | 23, each sliced and checked against open maps; no second opinion (the run had no way to ask the second model) |
+| **Score** | **19 of 19 features in the key found, 0 missed, 3 not in the key** |
+| Extras after the literature step | 3, each suggested "already published" (real, but not in the key): the National Park Service counts 25 mounds, and the key holds 18 |
+
+- **The run stayed blind.** Its shell commands read only the skill, the project's own files and three of its find records, never the keys or the cache. All four searches (3 literature, 1 web) came after score_test.
+- **What the score does not show:** the key is partial (18 of the 23 to 25 mounds), so 19 of 19 says the agent finds the mapped mounds, not that it finds every mound. Matching uses each mound's mapped size plus 15 m; mounds here are 30 m or more apart, so one find cannot take two mounds.
+- **Tests:** test_scoring_counts_found_missed_and_extra and test_blind_test_closes_the_literature_until_scored. uv run pytest: 16 passed.

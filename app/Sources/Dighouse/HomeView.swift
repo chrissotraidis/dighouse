@@ -337,6 +337,7 @@ private struct WelcomeBack: View {
     @EnvironmentObject var store: ProjectStore
     @State private var waiting = ""
     @State private var totals = ""
+    @State private var project: ProjectRef?
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -345,23 +346,34 @@ private struct WelcomeBack: View {
     }
 
     var body: some View {
-        if let project = store.recent {
-            PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
-                .help("Open \(project.name)")
-                .arrives()
-                .onAppear { read(project) }
+        Group {
+            if let project {
+                PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
+                    .help("Open \(project.name)")
+                    .arrives()
+            }
         }
+        // The folders are read off the main thread: a project kept in iCloud can take a long time to answer.
+        .task(id: store.projects.map(\.path)) { await read() }
     }
 
-    private func read(_ project: ProjectRef) {
+    private func read() async {
+        let refs = store.projects
+        let found: (ProjectRef, (tiles: Int, unscreened: Int, finds: Int, undecided: Int), [(tiles: Int, unscreened: Int, finds: Int, undecided: Int)])? = await Task.detached {
+            func written(_ ref: ProjectRef) -> Date {
+                ["/RESEARCH.md", "/PROJECT.md"].lazy.compactMap { FileInfo.modified(ref.path + $0) }.first ?? .distantPast
+            }
+            guard let last = refs.max(by: { written($0) < written($1) }) else { return nil }
+            return (last, ProjectStore.glance(last.path), refs.map { ProjectStore.glance($0.path) })
+        }.value
+        guard let (last, it, all) = found else { project = nil; return }
         func count(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
-        let it = ProjectStore.glance(project.path)
+        project = last
         waiting = it.tiles == 0 && it.finds == 0 ? "Its search has not started."
             : it.unscreened > 0 ? "\(count(it.unscreened, "tile")) \(it.unscreened == 1 ? "is" : "are") still to be looked at."
             : it.undecided > 0 ? "\(count(it.undecided, "find")) \(it.undecided == 1 ? "is" : "are") not decided yet."
             : it.finds == 0 ? "Every tile was looked at and nothing was marked."
             : "Every find is decided."
-        let all = store.projects.map { ProjectStore.glance($0.path) }
         let finds = all.reduce(0) { $0 + $1.finds }
         let decided = finds - all.reduce(0) { $0 + $1.undecided }
         totals = "\(count(all.count, "project")) · \(count(finds, "find")) · \(decided) decided"

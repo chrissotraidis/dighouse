@@ -203,13 +203,27 @@ def _counted(fn, total: int):
 
 
 def fetch_points(dataset: str, bbox: list[float], spacing: float = 0.35) -> tuple[Points, dict]:
-    """Download the points of one dataset inside a lon/lat box."""
+    """Download the points of one dataset inside a lon/lat box.
+
+    The points are kept in the cache by dataset and box, so fetching the same area again (a rerun of a blind test,
+    the benchmark, a second project on the same place) takes seconds instead of minutes.
+    """
     kind, _, name = dataset.partition(":")
+    if kind not in ("usgs", "ot"):
+        raise ValueError(f"Unknown dataset id {dataset!r}. Use an id returned by find_data.")
+    tag = hashlib.sha1(json.dumps([dataset, [round(v, 6) for v in bbox], spacing]).encode()).hexdigest()[:20]
+    kept = cache_dir() / "points" / f"{tag}.npz"
+    about = kept.with_suffix(".json")
+    if kept.exists() and about.exists():
+        return Points.load(kept), json.loads(about.read_text())
     if kind == "usgs":
-        return _fetch_ept(f"https://s3-us-west-2.amazonaws.com/usgs-lidar-public/{name}/ept.json", bbox, spacing)
-    if kind == "ot":
-        return _fetch_opentopography(name, bbox)
-    raise ValueError(f"Unknown dataset id {dataset!r}. Use an id returned by find_data.")
+        pts, info = _fetch_ept(f"https://s3-us-west-2.amazonaws.com/usgs-lidar-public/{name}/ept.json", bbox, spacing)
+    else:
+        pts, info = _fetch_opentopography(name, bbox)
+    kept.parent.mkdir(parents=True, exist_ok=True)
+    pts.save(kept)
+    about.write_text(json.dumps(info))
+    return pts, info
 
 
 def _download(url: str) -> Path:

@@ -93,14 +93,13 @@ final class ProjectStore: ObservableObject {
     /// up to date, so the newest record marks it.
     var recent: ProjectRef? {
         func written(_ ref: ProjectRef) -> Date {
-            let fm = FileManager.default
-            return ["/RESEARCH.md", "/PROJECT.md"].lazy.compactMap { (try? fm.attributesOfItem(atPath: ref.path + $0)[.modificationDate]) as? Date }.first ?? .distantPast
+            return ["/RESEARCH.md", "/PROJECT.md"].lazy.compactMap { FileInfo.modified(ref.path + $0) }.first ?? .distantPast
         }
         return projects.max { written($0) < written($1) }
     }
 
     /// What a project holds, read from its folder without opening it.
-    static func glance(_ root: String) -> (tiles: Int, unscreened: Int, finds: Int, undecided: Int) {
+    nonisolated static func glance(_ root: String) -> (tiles: Int, unscreened: Int, finds: Int, undecided: Int) {
         let fm = FileManager.default
         let tiles = (fm.contents(atPath: root + "/private/state/tiles.json").flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: JSON] ?? [:]).values
         let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }
@@ -122,7 +121,7 @@ final class ProjectStore: ObservableObject {
         let watched = ["terrains", "tiles", "locations", "controls"].map { root + "/private/state/\($0).json" }
             + records.map { root + "/candidates/" + $0 }
         let now = watched.map { path -> String in
-            let date = (try? fm.attributesOfItem(atPath: path)[.modificationDate]) as? Date
+            let date = FileInfo.modified(path)
             return "\(path)@\(date?.timeIntervalSince1970 ?? 0)"
         }.joined(separator: "|")
         guard now != signature else { return }

@@ -140,3 +140,143 @@ def compare(curated: dict, automatic: dict) -> dict:
     return {"site": curated["name"], "curated": len(counted), "automatic_sites": len(automatic["features"]),
             "held": len(held), "missing": [f"{f['id']} {f['what']}" for f in counted if f not in held]}
 
+
+
+# ---------------------------------------------------------------- blind tests
+
+BLIND = ("This is a blind test: the agent is not told what is here, and the literature and records for this area stay closed "
+         "until score_test has scored the finds. Look at the tiles, mark finds, slice them and get a second opinion first.")
+
+
+def _registry_file() -> Path:
+    from .sources import cache_dir
+    return cache_dir() / "blind-tests.json"
+
+
+def _registry() -> dict:
+    f = _registry_file()
+    return json.loads(f.read_text()) if f.exists() else {}
+
+
+def _save_registry(reg: dict) -> None:
+    _registry_file().write_text(json.dumps(reg, indent=1))
+
+
+def start(folder: str | Path, site: str) -> dict:
+    """Create a blind-test project for a key's area. Its name, question and folder say nothing about the place."""
+    from .project import Project, today
+    k = key(site)
+    folder = Path(folder).expanduser()
+    n = 1
+    while (folder / f"blind-test-{today()}-{n}").exists():
+        n += 1
+    root = folder / f"blind-test-{today()}-{n}"
+    p = Project.create(root, f"Blind test {today()} {n}", "What built features show in the ground here?", k["box"])
+    p.save("test", {"key": site, "blind": True, "started": today()})
+    reg = _registry()
+    reg[str(p.root)] = {"key": site, "box": k["box"]}
+    _save_registry(reg)
+    return {"project": str(p.root), "name": f"Blind test {today()} {n}", "question": "What built features show in the ground here?",
+            "box": k["box"]}
+
+
+def test_state(p) -> dict | None:
+    return p.load("test")
+
+
+def is_blind(p) -> bool:
+    t = test_state(p)
+    return bool(t and t.get("blind"))
+
+
+def guard_project(p) -> None:
+    if is_blind(p):
+        raise ValueError(BLIND)
+
+
+def blind_box(box: list[float]) -> bool:
+    """Whether a box overlaps the area of a blind test that has not been scored yet."""
+    w, s, e, n = box
+    for t in _registry().values():
+        bw, bs, be, bn = t["box"]
+        if w < be and e > bw and s < bn and n > bs:
+            return True
+    return False
+
+
+def guard_box(box: list[float]) -> None:
+    if any(box) and blind_box(box):
+        raise ValueError(BLIND)
+
+
+def score_project(p) -> dict:
+    """Score a blind test's finds against its key, write the score into the project, and open the literature."""
+    from . import ledger
+    t = test_state(p)
+    if not t:
+        raise ValueError("This project is not a blind test.")
+    k = key(t["key"])
+    places = p.load("locations", {}) or {}
+    names = {m["id"]: m["name"] for m in ledger.everything(p)}
+    finds = {cid: {"lon": v["lon"], "lat": v["lat"]} for cid, v in places.items() if cid in names}
+    result = score(k, finds)
+    result["key"] = summary(k)
+    result["scored"] = __import__("datetime").date.today().isoformat()
+    result["finds"] = {cid: names[cid] for cid in finds}
+    p.save("score", result)
+    t.update(blind=False, scored=result["scored"])
+    p.save("test", t)
+    reg = _registry()
+    reg.pop(str(p.root), None)
+    _save_registry(reg)
+    p.note(f"Blind test scored against {k['name']}: {result['found']} of {result['known']} found, "
+           f"{len(result['missed'])} missed, {len(result['extra'])} extra")
+    return result
+
+
+def labels(p, result: dict) -> dict[str, str]:
+    """What each extra find turned out to be, from its decision or the agent's suggestion after the literature step."""
+    from . import ledger
+    out = {}
+    for m in ledger.everything(p):
+        if m["id"] not in result.get("extra", []):
+            continue
+        status = (m.get("decisions") or [{}])[-1].get("status") if m.get("decisions") else (m.get("suggestion") or {}).get("status")
+        out[m["id"]] = {"modern": "false alarm (modern)", "natural": "false alarm (natural)",
+                        "already_published": "real, but not in the key", "no_match_in_sources_read": "worth a second look"}.get(status, "not yet labelled")
+    return out
+
+
+def score_lines(p, short: bool = False) -> list[str]:
+    """The blind test's score in plain Markdown for the record, or one sentence for the report, or nothing. No coordinates."""
+    t = test_state(p)
+    if not t:
+        return []
+    if t.get("blind"):
+        return ["## Blind test", "", "This project is a blind test on a known site. What the site is, and the score, are shown once "
+                "score_test has compared the finds with the published answer key.", ""]
+    s = p.load("score")
+    if not s:
+        return []
+    names = s.get("finds", {})
+    lab = labels(p, s)
+    if short:
+        kinds: dict[str, int] = {}
+        for v in lab.values():
+            kinds[v] = kinds.get(v, 0) + 1
+        extra = f", {len(s['extra'])} not in the key" + (f" ({', '.join(f'{n} {k}' for k, n in kinds.items())})" if kinds else "")
+        return ["## Blind test", "", f"Scored against {s['key']['name']}'s published answer key: {s['found']} of {s['known']} found, "
+                f"{len(s['missed'])} missed{extra}. The research record lists each one.", ""]
+    L = ["## Blind test", "", f"Scored {s['scored']} against {s['key']['name']} ({s['key']['place']}): "
+         f"**{s['found']} of {s['known']}** features in the answer key found, {len(s['missed'])} missed, "
+         f"{len(s['extra'])} find{'s' if len(s['extra']) != 1 else ''} not in the key.", ""]
+    if s["missed"]:
+        L.append("Missed: " + "; ".join(f"{m['feature']} {m['what']}" for m in s["missed"][:12])
+                 + (f"; and {len(s['missed']) - 12} more" if len(s["missed"]) > 12 else "") + ".")
+        L.append("")
+    if s["extra"]:
+        L.append("Not in the key:")
+        L += [f"- {cid} {names.get(cid, '')}: {lab.get(cid, 'not yet labelled')}" for cid in s["extra"]]
+        L.append("")
+    L += [s["note"], "", "The key: " + s["key"]["published"] + " Sources: " + "; ".join(s["key"]["sources"]) + ".", ""]
+    return L

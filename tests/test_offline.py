@@ -1,6 +1,7 @@
 """The whole chain on synthetic data: fetch, tile, screen, flag, section, checks, statuses."""
 
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -427,3 +428,65 @@ def test_answer_keys_are_sourced_and_inside_their_areas():
             assert all(w - 0.002 <= x <= e + 0.002 and s - 0.002 <= y <= n + 0.002 for x, y in pts), (k["id"], f["id"])
         shown = json.dumps(answers.summary(k))
         assert '"lon"' not in shown and '"lat"' not in shown
+
+
+def test_scoring_counts_found_missed_and_extra():
+    """A perfect run, a miss, a false find, one find between two mounds, and several finds on one rampart."""
+    from dighouse import answers
+
+    k = {"name": "Test site", "coverage": "register", "features": [
+        {"id": "A", "what": "Mound", "kind": "point", "lon": 10.0, "lat": 59.0, "size_m": 20, "expect": True, "source": "s"},
+        {"id": "B", "what": "Mound", "kind": "point", "lon": 10.0006, "lat": 59.0, "size_m": 20, "expect": True, "source": "s"},
+        {"id": "G", "what": "Gone mound", "kind": "point", "lon": 10.003, "lat": 59.0, "size_m": 10, "expect": False, "source": "s"},
+        {"id": "R", "what": "Rampart", "kind": "work", "lines": [[[10.0, 59.002], [10.002, 59.002]]], "area": False, "expect": True, "source": "s"},
+    ]}
+    east = 1 / (111_320 * math.cos(math.radians(59)))  # one metre east, in degrees
+    perfect = answers.score(k, {"C-1": {"lon": 10.0, "lat": 59.0}, "C-2": {"lon": 10.0006, "lat": 59.0}, "C-3": {"lon": 10.001, "lat": 59.002}})
+    assert (perfect["found"], perfect["known"], perfect["missed"], perfect["extra"]) == (3, 3, [], [])
+
+    # One find halfway between the two mounds (about 17 m from each) takes one of them; the other is missed.
+    between = answers.score(k, {"C-1": {"lon": 10.0003, "lat": 59.0}})
+    assert between["found"] == 1 and len(between["missed"]) == 2 and between["extra"] == []
+
+    # A find far from everything is extra; finds on the rampart count it once and are not extra; the gone mound is not counted.
+    mixed = answers.score(k, {"C-1": {"lon": 10.0 - 20 * east, "lat": 59.0}, "C-2": {"lon": 10.01, "lat": 59.01},
+                              "C-3": {"lon": 10.0005, "lat": 59.002}, "C-4": {"lon": 10.0015, "lat": 59.0021},
+                              "C-5": {"lon": 10.003, "lat": 59.0}})
+    assert mixed["found"] == 2 and mixed["known"] == 3
+    assert [m["feature"] for m in mixed["missed"]] == ["B"]
+    assert mixed["extra"] == ["C-2"]
+    assert any(r["find"] == "C-5" and r["counted"] is False for r in mixed["matches"])
+
+
+def test_blind_test_closes_the_literature_until_scored(tmp_path, monkeypatch):
+    """A blind test hides the place, refuses literature and record lookups for its area, and opens them once scored."""
+    from dighouse import answers, ledger
+
+    monkeypatch.setenv("DIGHOUSE_CACHE", str(tmp_path / "cache"))
+    started = server.start_test(str(tmp_path), "borre")
+    root = started["project"]
+    assert "borre" not in root.lower() and "Borre" not in started["name"] + started["question"]
+    p = Project(root)
+    assert "Borre" not in p.path("PROJECT.md").read_text()
+    assert "blind_test" in server.run_status(root)
+    w, s, e, n = started["box"]
+    for call in (lambda: server.search_literature(root, "burial mounds"), lambda: server.read_source(root, "https://example.org"),
+                 lambda: server.log_source(root, "all", "A book", "read", "x"), lambda: server.survey_area(w, s, e, n),
+                 lambda: server.find_gaps(w, s, e, n), lambda: server.search_records("mound", w, s, e, n)):
+        with pytest.raises(Exception, match="blind test"):
+            call()
+
+    k = answers.key("borre")
+    counted = [f for f in k["features"] if f["expect"]]
+    ledger.create(p, "Large mound", "t", (counted[0]["lon"], counted[0]["lat"]), "round", "model-a")
+    ledger.create(p, "Low rise", "t", (w + 0.0001, s + 0.0001), "low", "model-a")
+    out = server.score_test(root)
+    assert out["found"] == 1 and out["known"] == len(counted) and out["extra"] == ["C-002"]
+    assert not answers.is_blind(p) and "blind_test" not in server.run_status(root)
+    text = p.path("RESEARCH.md").read_text()
+    assert "## Blind test" in text and f"1 of {len(counted)}" in text and "Borre" in text
+    assert str(counted[0]["lat"])[:7] not in text and str(counted[0]["lon"])[:7] not in text
+    assert not answers.blind_box(started["box"])
+    written = server.write_report(root)
+    report = p.path(written["written"]).read_text()
+    assert "1 of" in report and "not in the key" in report and written["words"] <= 400
