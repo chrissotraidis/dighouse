@@ -23,20 +23,23 @@ _READER = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebK
            "Accept": "text/html,application/pdf;q=0.9,*/*;q=0.8"}
 
 
-def _sort(elements: list[dict], near: set | None = None, far: set | None = None) -> dict[str, list[str]]:
-    """Mapped things by kind. near and far say which elements are within the radius and within 2 km; None means all are."""
+def _sort(elements: list[dict], near: set | None = None, far: set | None = None, named: bool = True) -> dict[str, list[str]]:
+    """Mapped things by kind. near and far say which elements are within the radius and within 2 km; None means all are.
+    named=False leaves out the names (a blind test must not learn where it is) and keeps only what kind of thing each is."""
+    def name(tags):
+        return tags.get("name") if named else None
     kinds = {"roads": [], "buildings": [], "land_use": [], "structures": [], "historic_within_2km": []}
     for el in elements:
         tags, key = el.get("tags") or {}, (el.get("type"), el.get("id"))
         if "historic" in tags:
             if far is None or key in far:
-                kinds["historic_within_2km"].append(tags.get("name") or tags["historic"])
+                kinds["historic_within_2km"].append(name(tags) or tags["historic"])
         elif near is not None and (key not in near or el.get("type") == "node" and "man_made" not in tags):
             continue
         elif "highway" in tags:
-            kinds["roads"].append(tags.get("name") or tags["highway"])
+            kinds["roads"].append(name(tags) or tags["highway"])
         elif "building" in tags:
-            kinds["buildings"].append(tags.get("name") or (tags["building"] if tags["building"] != "yes" else "a building"))
+            kinds["buildings"].append(name(tags) or (tags["building"] if tags["building"] != "yes" else "a building"))
         elif "landuse" in tags:
             kinds["land_use"].append(tags["landuse"])
         elif "man_made" in tags:
@@ -100,7 +103,7 @@ def _within(elements: list[dict], lon: float, lat: float, reach_m: float) -> set
     return close
 
 
-def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
+def modern_features(lon: float, lat: float, radius_m: int = 300, named: bool = True) -> dict:
     """What OpenStreetMap has mapped around a point: roads, buildings, land use, and known sites.
 
     There are two ways in. The Overpass servers answer exactly this question, but they are public and often full.
@@ -109,7 +112,7 @@ def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
     historic_m, via = 2000, "the Overpass servers"
     found = _overpass(lon, lat, radius_m)
     if found is not None:
-        kinds = _sort(found)
+        kinds = _sort(found, named=named)
     else:
         via = "OpenStreetMap's map service"
         box = _map_box(lon, lat, 2000)
@@ -119,7 +122,7 @@ def modern_features(lon: float, lat: float, radius_m: int = 300) -> dict:
         if box is None:
             raise RuntimeError("The open map services (OpenStreetMap's Overpass servers and its own map service) did not answer; "
                                "they are busy or down. Leave this check for now and carry on; run it again later.")
-        kinds = _sort(box, _within(box, lon, lat, radius_m), _within(box, lon, lat, historic_m))
+        kinds = _sort(box, _within(box, lon, lat, radius_m), _within(box, lon, lat, historic_m), named=named)
     out = {k: sorted(set(v)) for k, v in kinds.items()}
     out["mapped_features_within_radius"] = sum(len(kinds[k]) for k in ("roads", "buildings", "land_use", "structures"))
     out["radius_m"] = radius_m

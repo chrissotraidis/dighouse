@@ -38,9 +38,20 @@ Other people, many of them new to archaeology, and other agents will continue th
 A blind test checks the method on a known site whose features are published. `run_status` shows `blind_test` when a project is one.
 
 - Do not try to work out where you are or what the site is. Do not search the literature, read sources, or look up records for the area: the tools refuse until the test is scored, and guessing the name spoils the score.
-- Work as usual otherwise: fetch the ground with what `find_data` offers (a fetch can take ten minutes; it returns on its own, so wait for it and do not stop the run while it works), look at every tile in two renderings, mark a find for each thing that looks built (one per feature, not one per group, so each mound gets its own find), slice each find and ask for a second opinion.
+- Work as usual otherwise: fetch the ground with what `find_data` offers (a fetch can take ten minutes; it returns on its own, so wait for it and do not stop the run while it works), look at every tile in two renderings, mark a find for each thing that looks built (one per feature, not one per group, so each mound gets its own find), and slice each find. The score measures the looking, so a second opinion is not needed before `score_test`; in the app Dighouse asks the second model itself.
 - Then call `score_test`. It says what was found, missed and extra against the published answer key, and opens the literature.
 - After scoring, search what is published for each extra find and call `suggest_decision` on it, so the scorecard can say which extras are false alarms and which are worth a second look. Then write the summary and the report.
+
+## Calibration before a search for something new
+
+Before searching an area where nothing is on record, prove the method works on this kind of lidar.
+
+1. `start_calibration` with a folder beside the project, the project, and the dataset `find_data` offers. It starts a blind test on the nearest known site with lidar from the same source, without telling you which; do not try to work it out.
+2. Run that test blind to `score_test`, exactly as a blind test. (`calibration_site` names the site, for proposals to a person; do not call it for a project you are about to calibrate.)
+3. `record_calibration` on the search project with the test's folder.
+4. If it passed, search as usual and say the calibration score in the summary. If it failed, `flag_candidate` refuses: say plainly that the method found too little on the known site to trust it here, and suggest another survey, view or area.
+
+When `flag_candidate` returns `already_on_open_record_nearby`, check that site first: the find is probably already published, so search the literature for it before the slice and the second opinion.
 
 ## Choosing where to look
 
@@ -80,8 +91,8 @@ Finish what you start. Budget the run so the prior-art step and the summary alwa
 1. **Plan.** Call `run_status`. If there are tiles nobody has looked at, carry on with them. If not, pick the next part of the search area.
 2. **Acquire.** `find_data` for the area, then `fetch_terrain` in boxes under 6 square km. A fetch can take ten minutes for a small area when the archive is slow; it returns on its own, so wait for it rather than concluding it failed. Read the dataset description: it names earlier studies of the same data. Write those down as the first sources to read.
 3. **Prepare.** `make_tiles`. Unreadable tiles stay unreadable. Report how many there are.
-4. **Look.** For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief`, `sky_view` or `hillshade`) before deciding on anything doubtful. `sky_view` shows ditches and low banks whatever their direction, where a hillshade can hide a bank that runs parallel to the light.
-5. **Mark finds.** `flag_candidate` for anything that looks built. One record per feature group.
+4. **Look.** Call `feature_guide` once before the first tile and use it. For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief`, `sky_view` or `hillshade`) before deciding on anything doubtful. `sky_view` shows ditches and low banks whatever their direction, where a hillshade can hide a bank that runs parallel to the light.
+5. **Mark finds.** `flag_candidate` for anything that looks built, one record per feature: each mound gets its own find, while a rampart, enclosure or field system is one find. Start the note with the guide entry it matches ("Guide: burial mound."), or "Guide: no entry" with a description.
 6. **Check every find.**
    - `cut_section` across the feature, starting and ending on the surrounding ground, with the find id.
    - `second_look` from a different model, shown the tile without the first model's note.

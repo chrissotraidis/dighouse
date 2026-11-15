@@ -159,6 +159,8 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
 
     from .answers import score_lines
     L += score_lines(p, short=True)
+    from .answers import calibration_lines
+    L += calibration_lines(p)
     L += ["## What is already published", ""]
     sources: dict[str, dict] = {}
     for m in records:

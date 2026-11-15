@@ -252,8 +252,9 @@ def document(p: Project, commit_it: bool = True) -> dict:
     if todo:
         L += ["## Still to do", ""] + [f"- {t}" for t in todo] + [""]
 
-    from .answers import score_lines
+    from .answers import calibration_lines, score_lines
     L += score_lines(p)
+    L += calibration_lines(p)
     L += ["## Data used", ""]
     if terrains:
         L += ["| Survey | From | Flown | Area | Ground returns per sq m | Cell |", "|---|---|---|---|---|---|"]

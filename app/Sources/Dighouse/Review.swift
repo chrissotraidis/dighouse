@@ -25,7 +25,15 @@ struct ReportSheet: View {
             .padding(.horizontal, 22).padding(.vertical, 14)
             Hairline()
             ScrollView {
-                MarkdownText(text: text).padding(22).frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 18) {
+                    // A blind test opens on its scorecard; the report follows.
+                    if let root = store.current?.path, FileManager.default.fileExists(atPath: root + "/private/state/score.json") {
+                        Scorecard(root: root)
+                        Hairline()
+                    }
+                    MarkdownText(text: text)
+                }
+                .padding(22).frame(maxWidth: .infinity, alignment: .leading)
             }
             // A link to a find opens its record; the link to the research record opens it.
             .environment(\.openURL, OpenURLAction { url in

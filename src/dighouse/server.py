@@ -241,7 +241,9 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
         points = None
         summary = f"a ready-made ground model at {resolution_m:g} m, {stats['share_outside_survey']:.0%} of the box outside its coverage"
     else:
-        pts, how = sources.fetch_points(dataset, bbox)
+        # A coarser ground model needs fewer points. At 1 m, a quarter of the density still leaves about two ground returns
+        # in each cell under forest, and the download takes a third of the time (Shawnee State Forest: 146 s, not 400).
+        pts, how = sources.fetch_points(dataset, bbox, spacing=0.35 * max(1.0, resolution_m / 0.5) ** 2)
         if not len(pts):
             raise ValueError("The dataset has no points inside this box. Check the box against the dataset's footprint.")
         epsg = pts.epsg
@@ -413,11 +415,19 @@ def flag_candidate(project: str, tile: str, x: float, y: float, name: str, note:
     x and y give its centre as fractions of the tile image: 0,0 is the top left corner, 1,1 the bottom right.
     """
     p = Project(project).check()
-    meta = ledger.create(p, name, tile, tiles.tile_lonlat(p, tile, x, y), note, model, at=(x, y))
+    answers.guard_calibration(p)
+    lonlat = tiles.tile_lonlat(p, tile, x, y)
+    meta = ledger.create(p, name, tile, lonlat, note, model, at=(x, y))
     f = p.path("candidates", "img", f"{meta['id']}-relief.png")
     tiles.tile_image(p, tile, "composite", mark=(x, y)).save(f)
     p.note(f"{meta['id']} marked on {tile} by {model}: {name}")
-    return _reply({"candidate": meta["id"], "record": f"candidates/{meta['id']}.md", "status": meta["status"]}, f)
+    reply = {"candidate": meta["id"], "record": f"candidates/{meta['id']}.md", "status": meta["status"]}
+    near = answers.on_record_near(p, *lonlat)
+    if near:
+        # The early check: a find already on open record can be said so now, before the slice and the second opinion.
+        reply["already_on_open_record_nearby"] = near
+        reply["hint"] = "This find sits by a site on open record. Check it first; it is probably already published."
+    return _reply(reply, f)
 
 
 @tool
@@ -471,7 +481,7 @@ def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     p = Project(project).check()
     lon, lat = ledger.location(p, candidate)
     try:
-        found = checks.modern_features(lon, lat, radius_m)
+        found = checks.modern_features(lon, lat, radius_m, named=not answers.is_blind(p))
     except RuntimeError:
         # A check that was tried and got no answer leaves a trace too, so the record can say why it is still open.
         p.note(f"Could not check for modern features near {candidate}: the open map services did not answer")
@@ -625,6 +635,63 @@ def write_report(project: str, advice: str = "") -> dict:
 
 
 @tool
+def quick_look(place: str = "", lon: float = 0.0, lat: float = 0.0, size_m: float = 400.0) -> list:
+    """What is this? A quick look at one place, without making a project.
+
+    Give a place name, or a point as lon and lat. Fetches about size_m of ground around it (a national ground model
+    when there is one, which is quickest), returns one picture in sky view and hillshade side by side, and lists what
+    open records hold within 1 km. Describe the shapes in plain words, say what is on record, and offer a full search.
+    """
+    from . import quicklook
+    info, picture = quicklook.look(place, lon, lat, size_m)
+    return _reply(info, picture)
+
+
+@tool
+def calibration_site(west: float, south: float, east: float, north: float, dataset: str = "") -> dict:
+    """The known site to calibrate a search of this area on: the nearest answer key whose lidar comes from the same source
+    as dataset (an id from find_data). Run a blind test there before searching for anything not on record."""
+    return answers.calibration_site([west, south, east, north], dataset)
+
+
+@tool
+def start_calibration(folder: str, project: str, dataset: str) -> dict:
+    """Start the blind calibration test for a search project, without saying which known site it is.
+
+    The site is the nearest answer key whose lidar comes from the same source as dataset (an id from find_data), chosen
+    from the search project's area. Run the test blind to score_test, then call record_calibration."""
+    p = Project(project).check()
+    box = (p.load("project", {}) or {}).get("bbox")
+    if not box:
+        raise ValueError("The search project has no area.")
+    site = answers.calibration_site(box, dataset)
+    out = answers.start(folder, site["site"])
+    p.save("calibrating", {"test": out["project"]})
+    return {"project": out["project"], "name": out["name"],
+            "note": "The site is kept from you until score_test, so the test stays blind. Search it as a blind test, then "
+                    "call record_calibration with this folder."}
+
+
+@tool
+def record_calibration(project: str, test_project: str) -> dict:
+    """Copy a scored calibration test into the search project. Below half the known features found, the search stops:
+    flag_candidate refuses, and the record and report say why."""
+    p = Project(project).check()
+    out = answers.record_calibration(p, test_project)
+    record.document(p)
+    return out
+
+
+@tool
+def feature_guide() -> str:
+    """The feature guide: what built features look like in the bare ground, their usual sizes, and the look-alikes to rule
+    out (sinkholes, tree throws, craters, drainage, plough lines, tracks). Read it before looking at tiles, and start each
+    find's note with the entry it matches, such as "Guide: burial mound."."""
+    from pathlib import Path
+    return (Path(__file__).parent / "FEATURES.md").read_text()
+
+
+@tool
 def list_tests() -> list[dict]:
     """The known sites a blind test can be run on, each with what its answer key counts and where that comes from."""
     return [answers.summary(k) for k in answers.keys()]
@@ -684,6 +751,7 @@ def run_status(project: str) -> dict:
         "controls": {"registered": len(controls), "found_again": len(found), "missed": sorted(set(controls) - set(found))},
         "needs_a_person": waiting,
         **({"blind_test": answers.BLIND} if answers.is_blind(p) else {}),
+        **({"calibration": answers.calibration(p)} if answers.calibration(p) else {}),
     }
 
 

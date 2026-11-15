@@ -46,6 +46,8 @@ final class AppState: ObservableObject {
     @Published var investigating: [String: String] = [:]
     /// The search report on show, as a file, or nil.
     @Published var reportShown: String?
+    /// The list of known sites for a blind test is open.
+    @Published var testPicking = false
     /// A place typed on Home that is being looked up for a whole search, and what went wrong if it could not be found.
     @Published var placeBusy: String?
     @Published var placeProblem: String?

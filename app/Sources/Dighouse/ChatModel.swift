@@ -760,6 +760,11 @@ final class ChatModel: ObservableObject {
             if ours, finished, !failed {
                 s.images = pictures(tool, args)
                 s.showsImage = tool == "cut_section"
+                if tool == "quick_look", let data = s.result?.data(using: .utf8),
+                   let info = (try? JSONSerialization.jsonObject(with: data)) as? JSON, let picture = info["picture"] as? String {
+                    s.images = [picture]
+                    s.showsImage = true
+                }
                 if tool == "init_project" { s.projectPath = args["project"] as? String }
             }
             return s

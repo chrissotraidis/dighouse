@@ -11,5 +11,8 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 rsync -a --delete Resources/starts Resources/tour "$APP/Contents/Resources/"
 rsync -a --delete --exclude '__pycache__' ../src "$APP/Contents/Resources/tools/"
 cp ../pyproject.toml ../uv.lock ../README.md ../skills/dighouse/SKILL.md "$APP/Contents/Resources/tools/"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+# Sign with a stable identity when there is one, so macOS remembers permissions (such as reading the Documents folder)
+# across rebuilds; an ad hoc signature is new on every build and macOS asks again. DIGHOUSE_SIGN overrides the choice.
+IDENTITY="${DIGHOUSE_SIGN:-$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Apple Development/{print $2; exit}')}"
+codesign --force --deep --sign "${IDENTITY:--}" "$APP" >/dev/null 2>&1 || codesign --force --deep --sign - "$APP" >/dev/null 2>&1
 echo "Built $APP"

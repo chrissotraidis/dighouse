@@ -8,7 +8,7 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. He wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-Five loops are finished. The sixth is [TEST_LOOP.md](TEST_LOOP.md): blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration before a search for something new, a benchmark, and an honest README. Register it as your goal. Suggested objective: "Finish the Dighouse loop in docs/TEST_LOOP.md: goals T1 to T8 are met, each check verified in the running macOS app with primary / 6.1 Terra, logged, committed and merged."
+Six loops are finished; the sixth was [TEST_LOOP.md](TEST_LOOP.md), whose Log has the benchmark (44 of 83 across six blind tests; small mounds are the gap) and every check. It added blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration before a search for something new, a benchmark, and an honest README. The next loop should start from Chris's notes; finding small mounds (Borre, 18 of 53) is the clearest technical gap. Rerun scripts/smoke_test.py and the six blind tests after any change to the model, prompt, skill or feature guide.
 
 ## Rules
 
@@ -33,7 +33,7 @@ Five loops are finished. The sixth is [TEST_LOOP.md](TEST_LOOP.md): blind tests 
 ## Where things stand
 
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes, Sources and Data tabs. Three looks; Earth is the default. The mark at the top of the sidebar opens Home.
-- **Tools** (`src/dighouse`, Python, MCP): 36 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
+- **Tools** (`src/dighouse`, Python, MCP): 41 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Open lidar:** the United States (USGS 3DEP), surveys on OpenTopography, and seven national ground models: England, the Netherlands, France, Flanders, Norway, Estonia and Switzerland.
 - **Engine**: `codex app-server` as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse starts the **newest** copy of Codex on the Mac (`Setup.detect`); on Chris's Mac that is 0.167 inside the ChatGPT app, because 0.146 on the PATH is refused GPT-6.1 Terra. Dighouse's own tools are approved at launch (`default_tools_approval_mode`), since newer engines ask before every tool call.
 - **Tests**: 13 offline, 8 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.

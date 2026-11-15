@@ -486,7 +486,11 @@ private struct StepRow: View {
                 .panel(padding: 12, radius: 10)
                 .padding(.leading, 26)
             } else if item.showsImage, let path = item.images.first {
-                picture(path, height: 150).padding(.leading, 26)
+                if item.tool == "quick_look" {
+                    QuickLookCard(item: item, path: path).padding(.leading, 26)
+                } else {
+                    picture(path, height: 150).padding(.leading, 26)
+                }
             }
         }
     }
@@ -763,6 +767,8 @@ struct Composer: View {
                         .font(.system(size: 13 * Theme.scale, weight: .medium)).foregroundStyle(app.placeProblem == nil ? Theme.text : Theme.amber)
                         .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)
+                    Button { app.whatIs(place) } label: { Label("What is this?", systemImage: "eye") }.buttonStyle(SecondaryButton())
+                        .help("A quick look at \(place) in about a minute: the ground in two views and what is on open record. No project is made.")
                     Button("Choose the area") { chat.draft = ""; app.startProject(at: place) }.buttonStyle(SecondaryButton())
                         .help("Open the New project page at \(place), to set the area and the question yourself.")
                     Button { app.investigate(at: place) } label: { Label("Find and report back", glyph: "dig.trowel") }

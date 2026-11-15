@@ -396,6 +396,10 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
         totals[x["source"]] = totals.get(x["source"], 0) + 1
     covered = [c for c in grid if c["open_lidar_datasets"]]
     covered.sort(key=lambda c: (not c["flown_for_archaeology"], c["recorded_sites"]))
+    from .answers import calibration_site
+    for c in covered[:8]:
+        first = (c["open_lidar"] or [""])[0]
+        c["calibration"] = {k: v for k, v in calibration_site([c["west"], c["south"], c["east"], c["north"]], first).items() if k != "how"}
     try:
         published = search_records("", bbox, 1)["total"]
     except Exception:

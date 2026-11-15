@@ -82,11 +82,13 @@ def score(k: dict, finds: dict[str, dict]) -> dict:
     after the literature search a person labels it a false alarm or worth a second look.
     """
     feats = k["features"]
-    pairs = sorted((distance_m(f, v["lon"], v["lat"]), fid, f["id"]) for fid, v in finds.items()
+    # Counted features are matched first, so a find on a mound is never given to an uncounted thing beside it
+    # (at Angel Mounds, the reconstructed house 15 m from a find on Mound A, 36 m away). Then nearest first.
+    pairs = sorted((not f["expect"], distance_m(f, v["lon"], v["lat"]), fid, f["id"]) for fid, v in finds.items()
                    for f in feats if f["kind"] == "point" and distance_m(f, v["lon"], v["lat"]) <= reach_m(f))
     matched: dict[str, str] = {}   # find id -> feature id
     taken: set[str] = set()
-    for _, fid, kid in pairs:
+    for _, _, fid, kid in pairs:
         if fid not in matched and kid not in taken:
             matched[fid] = kid
             taken.add(kid)
@@ -172,7 +174,7 @@ def start(folder: str | Path, site: str) -> dict:
         n += 1
     root = folder / f"blind-test-{today()}-{n}"
     p = Project.create(root, f"Blind test {today()} {n}", "What built features show in the ground here?", k["box"])
-    p.save("test", {"key": site, "blind": True, "started": today()})
+    p.save("test", {"key": site, "blind": True, "started": today(), "started_at": __import__("time").time()})
     reg = _registry()
     reg[str(p.root)] = {"key": site, "box": k["box"]}
     _save_registry(reg)
@@ -223,6 +225,16 @@ def score_project(p) -> dict:
     result["key"] = summary(k)
     result["scored"] = __import__("datetime").date.today().isoformat()
     result["finds"] = {cid: names[cid] for cid in finds}
+    models: dict[str, int] = {}
+    for m in ledger.everything(p):
+        models[m.get("flagged_by") or "unnamed"] = models.get(m.get("flagged_by") or "unnamed", 0) + 1
+    result["model"] = max(models, key=models.get) if models else ""
+    if t.get("started_at"):
+        result["minutes"] = round((__import__("time").time() - t["started_at"]) / 60)
+    try:
+        result["pictures"] = _pictures(p, k, finds, result)
+    except Exception as exc:  # a scorecard without pictures is still a score
+        result["pictures"] = {"problem": str(exc)[:200]}
     p.save("score", result)
     t.update(blind=False, scored=result["scored"])
     p.save("test", t)
@@ -280,3 +292,160 @@ def score_lines(p, short: bool = False) -> list[str]:
         L.append("")
     L += [s["note"], "", "The key: " + s["key"]["published"] + " Sources: " + "; ".join(s["key"]["sources"]) + ".", ""]
     return L
+
+
+def _pictures(p, k: dict, finds: dict, result: dict) -> dict:
+    """Draw the scorecard's pictures under private/: the ground with the key's features (tan) and the finds (green),
+    and a close-up of each missed feature and each extra find. Returns their paths, relative to the project."""
+    from PIL import Image, ImageDraw
+    import pyproj
+    from . import terrain as T
+    terrains = p.load("terrains", {}) or {}
+    if not terrains:
+        return {}
+    meta = max(terrains.values(), key=lambda t: t.get("area_km2") or 0)
+    dtm, gap, outside = T.load_terrain(p.path(meta["file"]))
+    img = T.render(dtm, gap, outside, meta["res"], "composite").convert("RGB")
+    x0, _, _, y1 = meta["box"]
+    res = meta["res"]
+    to_xy = pyproj.Transformer.from_crs(4326, meta["epsg"], always_xy=True)
+
+    def px(lon, lat):
+        x, y = to_xy.transform(lon, lat)
+        return (x - x0) / res, (y1 - y) / res
+
+    out_dir = p.path("private", "state", "score")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    found_ids = {r["feature"] for r in result["matches"]}
+    big = img.copy()
+    d = ImageDraw.Draw(big)
+    w = max(2, round(img.width / 400))
+    for f in k["features"]:
+        colour = (214, 170, 96) if f["id"] in found_ids else (232, 120, 80)
+        if not f["expect"]:
+            colour = (150, 150, 150)
+        if f["kind"] == "point":
+            cx, cy = px(f["lon"], f["lat"])
+            r = max(f["size_m"] / 2 / res, 4 * w)
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=colour, width=w)
+        else:
+            for line in f["lines"]:
+                d.line([px(x, y) for x, y in line], fill=colour, width=w)
+    for fid, v in finds.items():
+        cx, cy = px(v["lon"], v["lat"])
+        r = 3 * w
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(120, 200, 110), outline=(20, 40, 20))
+    big.thumbnail((1400, 1400))
+    big.save(out_dir / "map.png")
+    pics = {"map": "private/state/score/map.png", "close": {}}
+
+    def crop(name, lon, lat, metres=120.0):
+        cx, cy = px(lon, lat)
+        half = metres / 2 / res
+        box = (round(cx - half), round(cy - half), round(cx + half), round(cy + half))
+        c = img.crop(box).resize((360, 360), Image.LANCZOS)
+        dd = ImageDraw.Draw(c)
+        dd.ellipse([172, 172, 188, 188], outline=(232, 120, 80), width=3)
+        c.save(out_dir / f"{name}.png")
+        pics["close"][name] = f"private/state/score/{name}.png"
+
+    by_id = {f["id"]: f for f in k["features"]}
+    for m in result["missed"]:
+        f = by_id[m["feature"]]
+        lon, lat = (f["lon"], f["lat"]) if f["kind"] == "point" else f["lines"][0][len(f["lines"][0]) // 2]
+        crop(m["feature"], lon, lat)
+    for fid in result["extra"]:
+        crop(fid, finds[fid]["lon"], finds[fid]["lat"])
+    return pics
+
+
+# ---------------------------------------------------------------- calibration
+
+PASS_SHARE = 0.5   # a search for something new goes ahead only if the method found at least half of a known site nearby
+SOURCE_OF = {"usgs": "USGS 3DEP", "uk": "Environment Agency", "no": "Kartverket", "nl": "AHN", "fr": "IGN", "ot": "OpenTopography"}
+
+
+def _key_source(k: dict) -> str:
+    d = k["data"].lower()
+    return next((v for v in SOURCE_OF.values() if v.lower().split()[0] in d), k["data"])
+
+
+def calibration_site(box: list[float], dataset: str = "") -> dict:
+    """The known site that will calibrate a search of this area: the nearest key whose lidar comes from the same source."""
+    cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+    want = SOURCE_OF.get(dataset.split(":")[0], "") if dataset else ""
+    rows = []
+    for k in keys():
+        kx, ky = (k["box"][0] + k["box"][2]) / 2, (k["box"][1] + k["box"][3]) / 2
+        km = math.hypot((kx - cx) * 111.32 * math.cos(math.radians(cy)), (ky - cy) * 110.54)
+        rows.append((not want or _key_source(k) == want, -km, k))
+    same = [r for r in rows if r[0]] or rows
+    _, neg_km, k = max(same, key=lambda r: r[1])
+    return {"site": k["id"], "name": k["name"], "place": k["place"], "data": k["data"], "km_away": round(-neg_km),
+            "same_source": _key_source(k) == want if want else None,
+            "how": f"start_test with site {k['id']}, run it blind to score_test, then record_calibration on this project."}
+
+
+def record_calibration(p, test_root: str) -> dict:
+    """Copy a scored calibration test's result into the search project. A poor score stops the search."""
+    from .project import Project
+    test = Project(test_root)
+    s = test.load("score")
+    if not s:
+        raise ValueError("That calibration test has not been scored yet. Finish it with score_test first.")
+    share = s.get("found_share") or 0
+    out = {"site": s["site"], "found": s["found"], "known": s["known"], "missed": len(s["missed"]), "extra": len(s["extra"]),
+           "found_share": share, "passed": share >= PASS_SHARE, "pass_mark": PASS_SHARE, "scored": s.get("scored"),
+           "model": s.get("model", ""), "test": test.root.name}
+    p.save("calibration", out)
+    p.note(f"Calibrated on {s['site']}: {s['found']} of {s['known']} found" + ("" if out["passed"] else ", below the pass mark; the search stops here"))
+    return out
+
+
+def calibration(p) -> dict | None:
+    return p.load("calibration")
+
+
+def guard_calibration(p) -> None:
+    c = calibration(p)
+    if c and not c["passed"]:
+        raise ValueError(f"The calibration on {c['site']} found {c['found']} of {c['known']} known features, below the pass mark "
+                         f"of {int(PASS_SHARE * 100)}%. A search for something new here would not be trusted, so finds are not "
+                         "marked. Say so plainly, write the summary, and suggest another survey, view or area.")
+
+
+def calibration_lines(p) -> list[str]:
+    c = calibration(p)
+    if not c:
+        return []
+    verdict = "passed" if c["passed"] else f"failed (the pass mark is {int(c['pass_mark'] * 100)}%), so the search stopped"
+    return ["## Calibration", "", f"Before searching here, the method was tested blind on {c['site']}: {c['found']} of {c['known']} "
+            f"known features found, {c['missed']} missed, {c['extra']} not in the key. The calibration {verdict}.", ""]
+
+
+# ---------------------------------------------------------------- early check against open records
+
+def on_record_near(p, lon: float, lat: float, reach_m: float = 120) -> list[dict]:
+    """Sites on open record near a new find, from a list read once for the project's area. No coordinates returned."""
+    if is_blind(p):
+        return []
+    sites = p.load("recorded")
+    if sites is None:
+        from .discover import recorded_sites
+        info = p.load("project", {}) or {}
+        box = info.get("bbox")
+        if not box:
+            return []
+        w, s, e, n = box
+        pad = 0.01
+        try:
+            sites, _ = recorded_sites([w - pad, s - pad, e + pad, n + pad])
+        except Exception:
+            return []
+        p.save("recorded", sites)
+    near = []
+    for x in sites:
+        d = math.hypot((x["lon"] - lon) * 111_320 * math.cos(math.radians(lat)), (x["lat"] - lat) * 110_540)
+        if d <= reach_m:
+            near.append({"name": x["name"], "kind": x.get("kind"), "source": x["source"], "metres": round(d)})
+    return sorted(near, key=lambda x: x["metres"])[:5]

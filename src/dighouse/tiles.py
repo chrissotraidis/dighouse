@@ -11,6 +11,7 @@ from .project import Project
 from .sources import to_lonlat
 
 VERDICTS = ("nothing", "natural", "modern", "possible", "built")
+MIN_PIXELS = 1000
 PAD_M = 24  # context around a tile so filters behave at its edges
 
 
@@ -55,6 +56,12 @@ def tile_image(p: Project, tile_id: str, style: str = "composite", mark: tuple[f
     r0, c0 = max(r - pad, 0), max(c - pad, 0)
     layers = T.load_terrain(p.path(meta["file"]), (r0, c0, h + (r - r0) + pad, w + (c - c0) + pad))
     img = T.render(*layers, res, style).crop((c - c0, r - r0, c - c0 + w, r - r0 + h))
+    # A 1 m ground model gives a 250 m tile only 250 pixels, so a 6 m mound is 6 pixels: too small for a model to see.
+    # Draw every tile at least 1000 pixels across. Positions on it are fractions, so nothing else changes.
+    if max(img.size) < MIN_PIXELS:
+        k = -(-MIN_PIXELS // max(img.size))
+        img = img.resize((img.width * k, img.height * k), Image.LANCZOS)
+        w, h = img.width, img.height
     if mark:
         img = img.convert("RGB")
         x, y, rad = mark[0] * w, mark[1] * h, max(w, h) * 0.035

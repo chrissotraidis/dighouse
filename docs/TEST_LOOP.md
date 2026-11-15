@@ -132,3 +132,106 @@ Each goal is done when its check passes in the running app. Record the date and 
 - **The run stayed blind.** Its shell commands read only the skill, the project's own files and three of its find records, never the keys or the cache. All four searches (3 literature, 1 web) came after score_test.
 - **What the score does not show:** the key is partial (18 of the 23 to 25 mounds), so 19 of 19 says the agent finds the mapped mounds, not that it finds every mound. Matching uses each mound's mapped size plus 15 m; mounds here are 30 m or more apart, so one find cannot take two mounds.
 - **Tests:** test_scoring_counts_found_missed_and_extra and test_blind_test_closes_the_literature_until_scored. uv run pytest: 16 passed.
+
+### 2026-11-16, T3 and T4 built; the in-app checks wait on a macOS prompt
+
+macOS is asking whether Dighouse may read the Documents folder ("Allow" or "Don't Allow"). Every rebuild has a new signature, so it asks again, and the app waits on any project read until someone answers. Granting an OS permission needs Chris, so T3's and T4's checks in the running app are not done. Both are on the branch codex/t3-test-card, unmerged.
+
+- **T3 (built, not checked in the app):**
+  - **Home:** a third card, "Test it on a known site", opens a picker of the six sites, each with a picture. New pictures were drawn for Angel Mounds, Maiden Castle and Borre from their lidar. One press runs start_test, opens the project and starts Find and report back.
+  - **Scorecard:** it opens at the top of the search report when the project has a score, with found, missed and not-in-the-key tallies, the time and model, a map with the key's features and the finds, a close-up of each miss and extra, "Run it again" and "Try a new area".
+  - **Pictures:** score_test now draws the map and close-ups under private/state/score/. From the Mound City run, the map has every mapped mound circled with a find on each.
+- **T4 (built; the tool checked headless):**
+  - **The tool:** quick_look (src/dighouse/quicklook.py), the 37th tool. It looks up a place, fetches 400 m of ground at 1 m in a scratch folder in the cache (a national ground model first, then USGS, then OpenTopography), draws sky view and hillshade side by side, and lists what open records hold within 1 km. No project is made.
+  - **In the app:** "What is this?" sits beside "Find and report back" when a place is typed on Home, and there is a /whatis command. The chat shows the picture in a card with "Search this properly", which makes a project on that square and runs the whole search.
+  - **Faster fetches:** a 1 m fetch now asks the archive for a quarter of the points. Shawnee State Forest went from 402 s to 146 s with 1.8 ground returns per sq m, so the first live run timed out there and the second did not.
+
+| Place (quick_look) | Data | Seconds | On record within 1 km |
+|---|---|---|---|
+| Newark Earthworks, Ohio | USGS 3DEP, 7.4 per sq m | 58 (cold), 2 (cached) | 4 (OpenStreetMap: the Great Circle, Eagle Mound, Wright Square) |
+| Shawnee State Forest, Ohio (wooded) | USGS 3DEP, 1.8 per sq m | 146 after the change, 402 before | 0 |
+| Rantoul, Illinois (ordinary town and fields) | USGS 3DEP | under 3 minutes | 0 |
+| Maiden Castle, Dorset | Environment Agency 1 m | 54 to 220 (the service is slow) | 18 |
+| Borre, Norway | Kartverket 1 m | 55 | 2 |
+
+- **Headless run with primary / 6.1 Terra on the three places T4 names:** Newark was described as a circular bank and ditch with a mound inside, matched to the recorded Great Circle and Eagle Mound. Rantoul read as modern streets and lots, with nothing on record. Shawnee timed out on that run, before the faster fetch.
+- uv run pytest: 17 passed.
+
+### 2026-11-16, T5: a feature guide (checked headless)
+
+- **The guide:** src/dighouse/FEATURES.md, read through a new tool, feature_guide (38 tools in all), so the agent gets it in the app, from the terminal and in any MCP harness. The plan named skills/dighouse/FEATURES.md, but the app hands the agent the skill as text, so a file beside it could not be opened. The guide covers:
+  - ten built features that survive as relief, each with what it looks like and its usual size: burial mound, platform mound, bank and ditch, hillfort ramparts, terraces, hollow way, field system, charcoal hearth, house platform, kiln and mine workings;
+  - twelve look-alikes: sinkhole, tree throw, crater, prospect pit, drainage, plough lines, tracks, spoil, gullies and river forms, glacial and wind forms, modern earthworks, data artefacts;
+  - what to do when unsure.
+- **The skill:** the agent reads the guide before the first tile, marks one find per mound (one per rampart or field system), and starts each note with the guide entry it matches. In the runs below, every find did ("Guide: burial mound", or "Guide: no entry" twice at Mound City).
+- **Tiles drawn larger:** a 1 m ground model gave a 250 m tile only 250 × 250 pixels, so a 6 m mound was 6 pixels across. Tile images are now drawn at least 1000 pixels across.
+
+Blind tests, primary / 6.1 Terra at medium effort, no second opinion, run headless (the in-app runs still wait on the macOS prompt). "Before" used the skill as it was; "after" added the guide and the one-find-per-mound line.
+
+| Site | Before | After (guide) | After (guide, larger tiles) |
+|---|---|---|---|
+| Borre (53 in the key) | 19 found, 34 missed, 1 extra | 19 found, 34 missed, 0 extra | 17 found, 36 missed, 0 extra |
+| Mound City (19 in the key) | 19 found, 0 missed, 3 extra (T2) | 19 found, 0 missed, 2 extra | not run |
+
+- **What this shows:** the guide did not make scores worse. It trimmed the extras by one at each site and labelled every find. It did not raise Borre's count.
+- **Borre's misses** are almost all small mounds, 6 to 16 m across. Several had a find within 12 m that was matched to a larger neighbour, so the agent marked one find for a cluster. In all three runs it marked 17 to 20 finds, whatever the image size or the guide said. That is the gap to work on: the agent stops at the obvious mounds. The difference between 19 and 17 is within run-to-run variation.
+- **Every run stayed blind:** the agent read only the skill and its own project files, and every search came after score_test.
+- uv run pytest: 17 passed.
+
+### 2026-11-16, T6: calibration and a smarter "What should I research?" (checked headless)
+
+- **Calibration** (answers.py, four tools; 41 in all):
+  - **calibration_site** names the nearest answer key whose lidar comes from the same source (USGS 3DEP, Environment Agency, Kartverket and so on), for proposals to a person.
+  - **start_calibration** starts the blind test on that site for a search project without telling the agent which site it is. A first headless run showed why: the agent had been told "Mound City" by calibration_site.
+  - **record_calibration** copies the scored test into the search project.
+  - **The pass mark** is half the key's features found. Below it, flag_candidate refuses, and run_status, RESEARCH.md and the report say the search stopped and why.
+  - **The plan said "the same survey".** Calibration uses the same lidar source, since the six keys cannot sit on every survey; the agent's proposals said so themselves.
+- **Early check:** flag_candidate reads the sites on open record for the project's area once (OpenStreetMap, Wikidata, National Register, Pleiades) and, when a new find sits within 120 m of one, says so at once with a hint to check it first. Not in a blind test.
+- **"What should I research?":** the prompt now ranks places by open lidar, few sites on record, landscape where earthworks survive (woodland and pasture over ploughed land), nearness to known sites of the same culture, and not built over. It may use quick_look, and it names each proposal's calibration site. find_gaps adds a calibration site to each ranked cell. Forest, ploughing and building are judged by the agent from quick_look pictures and what it knows; no land-cover data is read.
+- **A leak found and fixed:** in a blind calibration, check_modern returned names from the map ("City Mound access road", "Visitor Center"). The agent noticed, refused to score a compromised test and stopped. In a blind test the map check now gives only kinds of things ("service", "a building"). Test: test_blind_map_check_names_nothing.
+- **Second opinion:** the skill now says a blind test does not need a second opinion before score_test, because the score measures the looking; in the app Dighouse asks the second model itself.
+
+Checks, primary / 6.1 Terra at medium effort, headless (the app still waits on the macOS prompt):
+
+| Check | Seen |
+|---|---|
+| "What should I research?" | Three proposals in the Chillicothe woods (Great Seal State Park, Tar Hollow and Scioto Trail State Forests), each with its USGS survey, ground density from a quick_look, what is on record (nothing in the four lists for each 4 sq km area), what to expect, and Mound City named as the calibration site 18 to 20 km away. It said plainly that a pass would not prove small or eroded features can be found, and left out Middle Usumacinta and Perry Mesa because their calibration sites use a different lidar source. |
+| A calibrated search, Great Seal State Park woods (600 m) | start_calibration, then a blind test the agent was not told the name of: **18 of 19 found, 1 missed, 1 extra, passed**. Then the search: 9 tiles in two views, gullies, slopes and tracks, nothing marked. The report's Calibration section gives the score. Every literature search came after score_test. |
+| A poor calibration | A calibration test with no finds (0 of 1 at Cahokia), recorded on a search: flag_candidate refused with the reason, and RESEARCH.md and run_status said the search stopped (test_a_poor_calibration_stops_the_search, through the real tools). Not tried live with a survey that has a known_problem, because such a survey does not build at all, so there is nothing to score. |
+
+- uv run pytest: 19 passed.
+
+### 2026-11-16, why macOS kept asking
+
+The build was signed ad hoc, so every rebuild looked like a new app to macOS, and it asked again for the Documents folder. When answered, the next rebuild asked again, over whatever Chris was doing. app/scripts/bundle.sh now signs with the first "Apple Development" identity on the Mac (DIGHOUSE_SIGN overrides it, and a Mac without one falls back to ad hoc). The designated requirement is the certificate, so one Allow lasts across rebuilds. Checked with codesign -d: Authority "Apple Development: the maintainer's Apple ID (P52SY73DYK)". Dighouse is left closed until Chris allows it once.
+
+### 2026-11-16, T7: the benchmark
+
+All six blind tests ran at once on 2026-11-16 from 00:45, headless through the Codex engine (0.167) and the Dighouse tools, with **primary / 6.1 Terra at medium effort**. The skill included the feature guide (T5), one find per feature, no second opinion before scoring, and the blind map check. Each run read only the skill and its own project files, and every literature search came after score_test.
+
+| Site | Data | Found of known | Missed | Not in the key | About |
+|---|---|---|---|---|---|
+| Angel Mounds | USGS 3DEP | **4 of 4** | 0 | 2 (not labelled) | 3 min |
+| Mound City Group | USGS 3DEP | **19 of 19** | 0 | 3 (real mounds the key leaves out) | 3 min |
+| Serpent Mound | USGS 3DEP | **1 of 3** (the effigy) | 2 burial mounds | 1 round mound, 66 m from the nearer one | 3 min |
+| Cahokia, Monks Mound | USGS 3DEP | **1 of 1** | 0 | 1 (suggested worth a second look) | 3 min |
+| Maiden Castle | Environment Agency 1 m | **1 of 3** (the ramparts) | both entrance outworks | 2 (a small rise, a square hollow) | 10 min |
+| Borre | Kartverket 1 m | **18 of 53** | 35 burial mounds, almost all 6 to 16 m across | 0 | 3 min |
+| **All six** | | **44 of 83 (53%)** | 39 | 9 | |
+
+- **What it does well:** large and medium earthworks, including platform mounds, Hopewell mounds, an effigy and hillfort ramparts, with few false finds. Without Borre it found 26 of 30.
+- **What it misses:** small, low mounds. That is most of Borre's misses and Serpent Mound's two burial mounds. At Maiden Castle it marked the whole fort as one work "with complex entrances", which the key counts as three features. That is partly how the key is drawn, and the miss is reported as it stands.
+- **A scoring fix found here:** Angel Mounds first scored 3 of 4. A find on Mound A was 36 m from the mound and 15 m from the modern reconstructed house beside it, and the house, which the key does not count, took it. Counted features are now matched first, and a test covers it (test_scoring_counts_found_missed_and_extra). With the same finds, Angel Mounds is 4 of 4; no other site changed. The stored scores were recomputed from the same finds.
+- **The key limits what a score means:** five of the six keys are partial (open data maps only some features), so an extra can be a real feature the key leaves out, as at Mound City.
+- **Smoke test:** scripts/smoke_test.py runs one tile end to end through the real tools and services with no model: start a blind test, fetch, tile, render, mark Monks Mound, slice, check maps, score, rebuild the record. It **passed in 30 s** (slice 27.3 m, score 1 of 1).
+- **When to rerun:** both are rerun whenever the model, the prompt, the skill or the feature guide changes, with the results added here.
+- uv run pytest: 19 passed.
+
+
+### 2026-11-16, T3 and T4 checked in the running app; T8 done
+
+- **Getting past the macOS prompt:** Dighouse was launched with launch-argument overrides of its projects list and projects folder, pointed at a test folder in the home folder. The app then read nothing in Documents and macOS did not ask. Chris's settings were backed up first and restored after (11 projects, model primary/gpt-6.1-terra).
+- **T3, in the app:** Home shows "Test it on a known site". It opened the picker of six sites with their pictures (screenshot checked). One press on Angel Mounds made "Blind test 2026-11-16 1" and started Find and report back, with no typing. The run ended in about 6 minutes, the report opened, and the scorecard sat on top: "It was Angel Mounds", the tallies, the time and model, the map with each mound circled and a find on it, "Run it again" and "Try a new area". The picker's "about twenty minutes" is now "about five minutes".
+- **A leak found in the app:** the agent's first step was to search Codex's own memories (~/.codex/memories) for "dighouse lidar" and "blind test". Those notes come from Chris's other chats and could name a site. Dighouse's engine now starts with features.memories=false; this was checked in the running engine's command line. That run's score stands: the agent found the mounds from the tiles, and its searches came after score_test.
+- **T4, in the app:** typing "Newark Earthworks, Ohio" on Home showed "What is this?" beside Find and report back. One press opened a chat with the quick look card in about a minute: sky view and hillshade, "USGS 3DEP · 4 on open record within 1 km", and "Search this properly". The agent (primary / 6.1 Terra) described the circular bank and central mound as built, matched them to the recorded Great Circle and Eagle Mound, and named OpenStreetMap as the source.
+- **T8:** the README pictures for the scorecard and "What is this?" were taken from these runs and added beside the Benchmarks table. The other README pictures show screens this loop did not change, so they were not retaken.

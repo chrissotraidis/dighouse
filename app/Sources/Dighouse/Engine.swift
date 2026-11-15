@@ -85,6 +85,9 @@ final class Engine: ObservableObject {
         p.executableURL = URL(fileURLWithPath: codex)
         var arguments = [
             "app-server",
+            // Codex's memories hold notes from the person's other chats. A search works from the project's own record,
+            // and a blind test must not learn the site's name from a note, so Dighouse's engine runs without them.
+            "-c", "features.memories=false",
             "-c", "mcp_servers.dighouse.command=\(toml(toolsBinary))",
             "-c", "mcp_servers.dighouse.args=[]",
             "-c", "mcp_servers.dighouse.startup_timeout_sec=60",

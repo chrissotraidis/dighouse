@@ -40,6 +40,7 @@ struct MainView: View {
             Color.clear.onAppear { app.windowSize = geo.size }.onChange(of: geo.size) { _, size in app.windowSize = size }
         })
         .sheet(isPresented: $app.reviewing) { ReviewSheet().withApp(app) }
+        .sheet(isPresented: $app.testPicking) { TestPicker().withApp(app) }
         // On the window, not the sidebar, so they open when the sidebar is hidden too.
         .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
         .sheet(isPresented: $app.jumping) { CommandPalette().withApp(app) }

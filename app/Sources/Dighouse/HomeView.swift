@@ -100,6 +100,10 @@ struct HomeView: View {
                              text: "Pick an area on the map, see which open lidar covers it, and start the project.") {
                         app.startProject()
                     }
+                    PathCard(icon: "dig.grid", title: "Test it on a known site",
+                             text: "The agent looks at a famous site without being told which, then is scored against what is published.") {
+                        app.testPicking = true
+                    }
                 }
                 .padding(.top, -8)
                 .arrives(1)

@@ -66,7 +66,7 @@ def test_full_chain(tmp_path, survey, monkeypatch):
         server.second_look(root, "C-001", True, "model-a", "same model")
     server.second_look(root, "C-001", True, "model-b", "agree: mound and plaza")
 
-    monkeypatch.setattr(checks, "modern_features", lambda lon, lat, r: {
+    monkeypatch.setattr(checks, "modern_features", lambda lon, lat, r, named=True: {
         "roads": [], "buildings": [], "land_use": [], "structures": [], "historic_within_2km": [],
         "mapped_features_within_radius": 0, "radius_m": r})
     server.check_modern(root, "C-001")
@@ -457,6 +457,12 @@ def test_scoring_counts_found_missed_and_extra():
     assert mixed["extra"] == ["C-2"]
     assert any(r["find"] == "C-5" and r["counted"] is False for r in mixed["matches"])
 
+    # A find nearer an uncounted feature but within a counted mound's reach goes to the mound.
+    k["features"].append({"id": "H", "what": "Reconstructed house", "kind": "point", "lon": 10.0 - 30 * east, "lat": 59.0,
+                          "size_m": 10, "expect": False, "source": "s"})
+    near_house = answers.score(k, {"C-1": {"lon": 10.0 - 22 * east, "lat": 59.0}})
+    assert near_house["found"] == 1 and near_house["matches"][0]["feature"] == "A"
+
 
 def test_blind_test_closes_the_literature_until_scored(tmp_path, monkeypatch):
     """A blind test hides the place, refuses literature and record lookups for its area, and opens them once scored."""
@@ -490,3 +496,57 @@ def test_blind_test_closes_the_literature_until_scored(tmp_path, monkeypatch):
     written = server.write_report(root)
     report = p.path(written["written"]).read_text()
     assert "1 of" in report and "not in the key" in report and written["words"] <= 400
+
+
+def test_quick_look_prefers_a_ready_made_ground_model():
+    """A quick look takes a national ground model first, then USGS, then OpenTopography, and its square is the size asked."""
+    from dighouse import quicklook
+
+    rows = [{"id": "ot:X", "source": "OpenTopography"}, {"id": "usgs:Y"}, {"id": "uk:ea-dtm-1m", "ready_made_ground_model": True}, {"errors": ["x"]}]
+    assert quicklook._choose(rows)["id"] == "uk:ea-dtm-1m"
+    assert quicklook._choose(rows[:2])["id"] == "usgs:Y"
+    assert quicklook._choose([{"errors": []}]) is None
+    w, s, e, n = quicklook._box(10.0, 59.0, 200)
+    assert abs((n - s) * 110_540 - 400) < 1 and abs((e - w) * 111_320 * math.cos(math.radians(59)) - 400) < 1
+
+
+def test_a_poor_calibration_stops_the_search(tmp_path, monkeypatch, survey):
+    """A calibration test that finds too little blocks marking finds, and the record says why; a good one does not."""
+    from dighouse import answers, ledger
+
+    monkeypatch.setenv("DIGHOUSE_CACHE", str(tmp_path / "cache"))
+    assert answers.calibration_site([-83.1, 39.3, -83.0, 39.4], "usgs:X")["site"] in ("mound-city", "serpent-mound")
+    root = str(tmp_path / "search")
+    server.init_project(root, "Search", "Anything here?", *survey["bbox"])
+    p = Project(root)
+    monkeypatch.setattr(answers, "on_record_near", lambda *a, **k: [])
+
+    poor = server.start_test(str(tmp_path), "cahokia")["project"]
+    server.score_test(poor)  # no finds at all: 0 of 1
+    out = server.record_calibration(root, poor)
+    assert out["passed"] is False and out["found"] == 0
+    p.save("tiles", {"t-r000c000": {"terrain": "t", "window": [0, 0, 10, 10], "status": "screened"}})
+    with pytest.raises(Exception, match="calibration"):
+        server.flag_candidate(root, "t-r000c000", 0.5, 0.5, "Mound", "Guide: burial mound.", "m")
+    assert "## Calibration" in p.path("RESEARCH.md").read_text() and "stopped" in p.path("RESEARCH.md").read_text()
+    assert server.run_status(root)["calibration"]["passed"] is False
+
+    good = server.start_test(str(tmp_path), "cahokia")["project"]
+    monks = answers.key("cahokia")["features"][0]["lines"][0][0]
+    ledger.create(Project(good), "Big mound", "t", (monks[0], monks[1]), "", "m")
+    server.score_test(good)
+    assert server.record_calibration(root, good)["passed"] is True
+    answers.guard_calibration(p)  # no longer raises
+
+
+def test_blind_map_check_names_nothing():
+    """In a blind test the map check gives kinds of things, never their names."""
+    from dighouse import checks
+
+    els = [{"type": "way", "id": 1, "tags": {"highway": "service", "name": "City Mound access road"}},
+           {"type": "way", "id": 2, "tags": {"building": "yes", "name": "Visitor Center"}},
+           {"type": "node", "id": 3, "tags": {"historic": "archaeological_site", "name": "Mound City Group"}}]
+    named, blind = checks._sort(els), checks._sort(els, named=False)
+    assert "Visitor Center" in named["buildings"] and "City Mound access road" in named["roads"]
+    assert json.dumps(blind).count("Mound") == 0 and "Visitor" not in json.dumps(blind)
+    assert blind["roads"] == ["service"] and blind["buildings"] == ["a building"]

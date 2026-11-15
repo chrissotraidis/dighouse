@@ -5,26 +5,23 @@
 <h1 align="center">Dighouse</h1>
 
 <p align="center">
-  <strong>Agentic archaeology on your Mac.</strong><br>
-  AI agents search public lidar for places people built, check every find, and keep a record an archaeologist can trust.<br>
-  You decide what each find is.
+  <strong>Search public lidar for possible built features, check each one, and record what is already published.</strong><br>
+  You decide what they are.
 </p>
 
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
-  <img alt="Native SwiftUI app" src="https://img.shields.io/badge/app-SwiftUI-FF9F0A?logo=swift&logoColor=white">
-  <img alt="36 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-36%20tools-8B5E3C">
-  <img alt="Open lidar from eight countries" src="https://img.shields.io/badge/open%20lidar-8%20countries-6B8E23">
-  <img alt="No account or key needed for any data service" src="https://img.shields.io/badge/data%20accounts-none-30D158">
+  <img alt="41 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-41%20tools-8B5E3C">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
 </p>
 
 <p align="center">
   <a href="#get-started"><b>Get started</b></a> ·
+  <a href="#benchmarks">Benchmarks</a> ·
   <a href="#how-a-search-works">How a search works</a> ·
   <a href="#the-tools">Tools</a> ·
   <a href="#open-data">Open data</a> ·
-  <a href="#rules-the-tools-enforce">Rules</a> ·
+  <a href="#responsible-use">Responsible use</a> ·
   <a href="docs/ROADMAP.md">Roadmap</a>
 </p>
 
@@ -33,6 +30,39 @@
 <sub>A search at Angel Mounds, Indiana, from open USGS lidar: 9 tiles looked at, 5 finds marked, each one sliced, given a second model's opinion and searched in the literature.</sub>
 
 Lidar is a laser scan from an aircraft that maps the ground through gaps in the trees, and a great deal of it is public. Most of it has never been searched for archaeology. Dighouse gives an AI model the tools to fetch that data, take the trees away, look over every square of ground, and check each thing it marks, then hands the decision to a person.
+
+A **find** in Dighouse is a shape that might be built and is not yet confirmed. Most finds on open lidar turn out to be published already, and a record that says so is a result too.
+
+## What it cannot do
+
+- **It does not confirm sites.** A find is a reason to look, not a discovery. Confirming one takes an archaeologist, and often fieldwork.
+- **It misses things.** In the blind tests below it found large earthworks reliably and missed most small, low mounds: 18 of 53 at Borre.
+- **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are not public, so "no match in the sources read" often means little was readable.
+- **It sees shapes in the ground, not artefacts.** Lidar cannot show buried deposits, pottery scatters, or a feature's date or culture.
+- **It needs a Mac and some setup.** It builds from source on an Apple silicon Mac today; the tools also run on their own in any harness that speaks the Model Context Protocol.
+
+## Benchmarks
+
+Each test is **blind**: the agent is not told the site, looks at every tile, marks what it finds, and is scored against an answer key of published features before it may read any literature. Try one yourself from Home with **Test it on a known site**.
+
+| Site | Data | Found of known | Missed | Not in the key |
+|---|---|---|---|---|
+| Mound City Group, Ohio | USGS 3DEP | 19 of 19 | 0 | 3 (real mounds the key leaves out) |
+| Angel Mounds, Indiana | USGS 3DEP | 4 of 4 | 0 | 2 |
+| Cahokia, Monks Mound, Illinois | USGS 3DEP | 1 of 1 | 0 | 1 |
+| Serpent Mound, Ohio | USGS 3DEP | 1 of 3 (the effigy) | 2 burial mounds | 1 |
+| Maiden Castle, England | Environment Agency 1 m | 1 of 3 (the ramparts) | both entrance outworks | 2 |
+| Borre, Norway | Kartverket 1 m | 18 of 53 | 35 small burial mounds | 0 |
+| **All six** | | **44 of 83** | 39 | 9 |
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/scorecard.png" alt="The scorecard of a blind test at Angel Mounds: 4 of 4 found, 0 missed, 2 not in the key, and the map with each published mound circled and the agent's find on it"><br><sub><b>A blind test's scorecard.</b> The agent was not told it was Angel Mounds. Each published mound is circled; each green dot is a find.</sub></td>
+    <td width="50%"><img src="docs/images/what-is-this.png" alt="What is this? at Newark Earthworks, Ohio: the ground in sky view and hillshade side by side, what is on record within 1 km, and the agent's short description"><br><sub><b>What is this?</b> Type a place and get the ground in two views and what is on record nearby, in about a minute, without making a project.</sub></td>
+  </tr>
+</table>
+
+Run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 minutes a site (10 at Maiden Castle). The answer keys come from Norway's heritage register (Borre) and from OpenStreetMap features with the publications that describe them (the rest). Five of the six keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log). Results will differ with other models.
 
 > [!NOTE]
 > Dighouse builds from source today. The app is signed for local use and is not yet notarized. The archaeology tools also run on their own in Codex or any harness that speaks the Model Context Protocol.
@@ -55,12 +85,13 @@ A chat app can talk about archaeology. It cannot download a survey, look at ever
 
 <p align="center"><sub>Serpent Mound, Ohio, from open USGS lidar. Dighouse keeps only the laser returns that reached the ground.</sub></p>
 
-1. **Choose where to look.** Ask "What should I research?" and the agent weighs where lidar is open against what is already on record, then proposes three searches. Or draw an area on a map and see which open lidar covers it.
-2. **Take the trees away.** The tools download the raw laser points, or a national ground model, and keep the ground.
-3. **Look at every tile.** The ground is cut into squares called tiles, and agents look at each one in two renderings. A tile with too little ground data is marked unreadable, never "nothing found".
-4. **Check every find.** A slice straight down through the laser points shows whether a shape is in the ground or only in the treetops. A second, different model gives its own opinion without seeing the first. Open maps are checked for roads, buildings and sites already mapped.
-5. **Search what is published.** The agent searches books, papers and site records, opens what it can, and logs every source as read, could not open, or not relevant.
-6. **Keep the record, and you decide.** Every find is a Markdown page with its pictures, measurements, checks and sources. You decide what it is, and your name and reason go into the record.
+1. **Choose where to look.** Ask "What should I research?" and the agent weighs open lidar, how little is on record, and where earthworks survive, then proposes three searches. Or draw an area on a map, or type a place and press **What is this?** for a one-minute look.
+2. **Calibrate.** Before searching where nothing is on record, the agent runs a blind test on the nearest known site with the same kind of lidar. If it finds less than half of what is published there, the search stops.
+3. **Take the trees away.** The tools download the raw laser points, or a national ground model, and keep the ground.
+4. **Look at every tile.** The ground is cut into squares called tiles, and agents look at each one in two renderings. A feature guide tells it what mounds, banks and terraces look like, and what to rule out (sinkholes, tree throws, craters, tracks). A tile with too little ground data is marked unreadable, never "nothing found".
+5. **Check every find.** A slice straight down through the laser points shows whether a shape is in the ground or only in the treetops. A second, different model gives its own opinion without seeing the first. Open maps are checked for roads, buildings and sites already mapped.
+6. **Search what is published.** The agent searches books, papers and site records, opens what it can, and logs every source as read, could not open, or not relevant.
+7. **Keep the record, and you decide.** Every find is a Markdown page with its pictures, measurements, checks and sources. You decide what it is, and your name and reason go into the record.
 
 Take the stages one at a time, or press **Find and report back** and the agent carries the search to its end, then returns a report of at most 400 words with your decisions listed first.
 
@@ -85,14 +116,7 @@ Take the stages one at a time, or press **Find and report back** and the agent c
   </tr>
 </table>
 
-**What it does well**
-
-- **Guides a newcomer.** A ten-minute first project at Serpent Mound, one step at a time. Each project's overview says in plain words what happens next, and when finds wait on you it says so by name.
-- **Uses the words of the work, simply.** A shape the agent marked is a *find*, a cut through the points is a *slice*, and another model gives a *second opinion*. The app, the records and the reports all say the same.
-- **Works like an agent app.** A chat that shows the agent's plan and each step, helper agents on long runs, `/` commands, `@` to point at a find or a file, ⌘K to jump anywhere, and images, video, audio or any other file attached to a message.
-- **Puts the evidence beside the chat.** A map of tiles and finds with four renderings and a line you draw to cut a slice, the records, the notes, the sources with a browser to open them, and the project's data. A review goes through the finds one at a time with the agent's suggestion filled in.
-- **Runs any model.** Through the [OpenCodex](https://github.com/lidge-jun/opencodex) router, every model on the Mac appears in one menu, so a different maker's model can give the second opinion.
-- **Feels like its own place.** Hand-drawn SwiftUI marks for each stage (a trowel, a brush, a sieve, soil layers, a mound, a survey grid), three colour looks, five text sizes with ⌘+ and ⌘−, and quiet movement that stops when the Mac is set to reduce motion.
+**Also in the app:** a ten-minute first project at Serpent Mound, a chat with `/` commands, `@` mentions and ⌘K, any model through the [OpenCodex](https://github.com/lidge-jun/opencodex) router (so a different maker's model can give the second opinion), three colour looks and five text sizes.
 
 ## Get started
 
@@ -120,7 +144,8 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (13 tests)
+uv run pytest            # offline, on a synthetic survey (19 tests)
+uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (8 tests)
 ~~~
 
@@ -134,7 +159,9 @@ uv run pytest -m live    # the same chain against the real data services (8 test
 | Draw the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `next_tiles`, `view_tile` |
 | Look at every tile | `record_verdict`, `flag_candidate` |
 | Check each find | `cut_section`, `second_look`, `check_modern`, `add_control` |
-| Test the method on a known site | `list_tests`, `start_test`, `score_test` |
+| Test the method on a known site | `list_tests`, `start_test`, `score_test`, `calibration_site`, `start_calibration`, `record_calibration` |
+| A quick look at one place | `quick_look` |
+| Know what to look for | `feature_guide` |
 | Search what is published | `search_literature`, `read_source`, `log_source` |
 | Records and runs | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `write_report`, `document_project`, `export_finds` |
 
@@ -175,6 +202,13 @@ These live in the tools, so they hold whichever model is running.
 - Nothing is ever called new. A record says how many sources were read and that none matched.
 - Locations are stored only under `private/`. Records, notes and run summaries carry no coordinates, because published coordinates invite looting.
 
+## Responsible use
+
+- **Do not visit or dig.** A find is a desk result. Digging or metal-detecting on a site destroys what it holds, and in many places it is illegal without a permit.
+- **Report, do not post.** Send a find to the heritage authority (in the United States, the state historic preservation office; in England, the local Historic Environment Record), not to social media. Published locations invite looting.
+- **Think of the people connected to a place.** Many sites, including the mound sites in the tests above, matter to descendant communities. Consult them before anything is made public.
+- **Keep locations private.** Dighouse keeps coordinates under `private/`. Export for mapping software writes a GeoJSON file there too; that file holds locations, so treat it as you would the site itself.
+
 ## A project is a folder
 
 ~~~
@@ -194,28 +228,12 @@ Markdown is the record of truth, so a project works offline and can be handed to
 
 **Handing a project over.** File › Export Project makes a zip without `data/` or `private/`, so it holds no locations. The other person opens the folder, the record shows every tile and what it showed as earlier work, and one button, Carry on, picks up what is left.
 
-## Checked against known sites
-
-Finding a known site again is the right answer for a test.
-
-| Site | Data | What the run did |
-|---|---|---|
-| Cahokia, Illinois | USGS 3DEP | Measured Monks Mound at 27.6 m in its slice, with 79 ground returns within 5 m of the peak; the map check found the paths and stairs on it |
-| Angel Mounds, Indiana | USGS 3DEP | Marked five mounds; the largest matches the published description of Mound A, and a second model agreed it looks built |
-| Maiden Castle, England | Environment Agency | Described the four lines of rampart and both entrances |
-| Mound City Group, Ohio | USGS 3DEP | Counted 22 mounds inside the enclosure; the thesis it read gives 24 |
-| Serpent Mound, Ohio | USGS 3DEP | One press of Find and report back: 9 tiles, the effigy and the conical mound marked and matched to Squier and Davis (1848) and Schwarz (2020), in about eight minutes |
-| Borre, Norway | Kartverket | One press: 9 tiles, the burial mounds marked and matched to the county's record, in about six minutes |
-
-In every case the decision was left to a person.
-
 ## Status and limits
 
-The app and the tools in this README work today, and the run logs say exactly what was checked in the running app and what was not: [REFINE_LOOP.md](docs/REFINE_LOOP.md) is the newest, after [POLISH_LOOP.md](docs/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/GOAL_LOOP.md).
+The app and the tools in this README work today, and the run logs say exactly what was checked in the running app and what was not: [TEST_LOOP.md](docs/TEST_LOOP.md) is the newest, after [REFINE_LOOP.md](docs/REFINE_LOOP.md), [POLISH_LOOP.md](docs/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/GOAL_LOOP.md).
 
 - There is no notarized download yet.
-- A vision model's eye is the weak point of any search. The checks exist because a model marks shapes that are not there, and misses some that are.
-- Most finds on open lidar turn out to be published already. A record saying so is a result, and it saves the next person the same search.
+- A vision model's eye is the weak point of any search; the benchmarks above show where it is weak. The checks exist because a model marks shapes that are not there, and misses some that are.
 - Open services go down and rate-limit. The tools say "could not check" rather than guess.
 
 What comes next, including a second field for open astronomy, is in the [roadmap](docs/ROADMAP.md). The design is in [concept.md](docs/concept.md) and the state of the work in [HANDOFF.md](docs/HANDOFF.md).
