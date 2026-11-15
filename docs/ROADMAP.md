@@ -4,6 +4,8 @@ Where Dighouse goes next, in rough order. Nothing here is promised by a date. Wh
 
 ## Next, for archaeology
 
+- **Finding small mounds.** The blind benchmark found 44 of 83 published features across six sites: large earthworks reliably, small low mounds poorly (Borre, 18 of 53). Ideas to test against the same benchmark: tiles cut smaller at 1 m, a local-relief view tuned for 5 to 15 m domes, and a second pass over each tile asking only for small round mounds.
+- **More answer keys.** Six sites today, five of them partial. Official registers like Norway's give complete keys; England's and the Netherlands' would add more.
 - **A download.** A signed, notarized build, so nobody has to compile the app to try it.
 - **An OpenAlex key in Settings.** Without a key, one network address shares about 100 literature searches a day; a free key lifts that to about 1,000. Dighouse falls back to Crossref today.
 - **More of the world.** Scotland, Wales and Slovenia publish open lidar as files by map sheet. A reader that picks the sheets covering an area, as the Swiss reader already does, would add all three.
