@@ -8,7 +8,7 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. He wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-Five loops are finished. There is no sixth plan yet: it should come from Chris's notes on this build, as loop 5 came from his notes on loop 4. "Waiting on Chris" below lists what he has to see or decide first.
+Five loops are finished. The sixth is [TEST_LOOP.md](TEST_LOOP.md): blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration before a search for something new, a benchmark, and an honest README. Register it as your goal. Suggested objective: "Finish the Dighouse loop in docs/TEST_LOOP.md: goals T1 to T8 are met, each check verified in the running macOS app with primary / 6.1 Terra, logged, committed and merged."
 
 ## Rules
 
