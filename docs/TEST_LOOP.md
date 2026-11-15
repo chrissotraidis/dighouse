@@ -68,3 +68,33 @@ Each goal is done when its check passes in the running app. Record the date and 
 
 ## Log
 
+
+### 2026-11-15, T1: answer keys
+
+- **Six launch keys** in src/dighouse/keys/, rebuilt from open data by scripts/build_answer_keys.py. Each feature names where its position comes from (an OpenStreetMap element or a record in Norway's heritage register) and the publication that describes it. A feature is either a point with a size (a mound) or a work drawn as lines (ramparts, an effigy, an enclosure wall). Features the key keeps but does not count (gone, found only by ground radar, low stone footings, a modern reconstruction) say why.
+- **Storage:** the keys hold coordinates, so they stay with the tools' own data. Nothing a person sees from them (answers.summary, the comparison, and later the scorecard) holds any; an offline test checks this.
+
+| Site | Counted | From | Coverage |
+|---|---|---|---|
+| Angel Mounds | 4 mounds (A, B, C, E) | OpenStreetMap; Black (1967) describes 11 mounds at the site | partial |
+| Mound City Group | 18 mounds and the enclosure wall | OpenStreetMap; Squier and Davis (1848) map 23 mounds, the National Park Service counts 25 | partial |
+| Serpent Mound | the effigy and 2 burial mounds | OpenStreetMap; Squier and Davis (1848), Fletcher et al. (1996) | partial |
+| Cahokia | Monks Mound | OpenStreetMap; Fowler (1997) maps more than a hundred mounds at Cahokia | partial |
+| Maiden Castle | the ramparts, the west entrance outworks, the east entrance outworks | OpenStreetMap; Wheeler (1943), Sharples (1991) | partial |
+| Borre | 53 burial mounds, cairns and graves (7 more kept but not counted) | Riksantikvaren's Askeladden register; Myhre (1992) | register |
+
+- **Not in the keys, and said so in each key:** Angel Mounds' other mounds and palisade, Mound City's other 5 to 7 mounds and borrow pits, Cahokia's smaller mounds, Maiden Castle's Neolithic long mound. A partial key means an extra find may be real; the literature step labels each one.
+- **Automatic keys** (answers.auto_key, from OpenStreetMap, Wikidata, the National Register and Pleiades) compared with the curated keys (answers.compare):
+
+| Site | Automatic sites | Curated features held |
+|---|---|---|
+| Angel Mounds | 6 | 4 of 4 |
+| Mound City Group | 2 | 4 of 19 (two site points near the middle, matched generously) |
+| Serpent Mound | 2 | 2 of 3 |
+| Cahokia | 1 | 1 of 1 |
+| Maiden Castle | 11 | 0 of 3 (the sites are points inside the fort; the ramparts are lines) |
+| Borre | 2 | 1 of 53 |
+
+  The automatic keys hold 12 of the 83 counted features. They stay as the backup for other places, marked automatic and incomplete, but a score against one is a lower bound and the scorecard will say so.
+- **Overpass was down** (502 and 504 from three servers) while the keys were built; OpenStreetMap's own map service was used instead.
+- Test: test_answer_keys_are_sourced_and_inside_their_areas. uv run pytest: 14 passed.

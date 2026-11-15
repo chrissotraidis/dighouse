@@ -1,0 +1,95 @@
+{
+ "id": "cahokia",
+ "name": "Cahokia, Monks Mound",
+ "place": "Illinois, United States",
+ "data": "USGS 3DEP",
+ "box": [
+  -90.0652,
+  38.6585,
+  -90.0592,
+  38.6628
+ ],
+ "coverage": "partial",
+ "published": "Fowler (1997) maps more than a hundred mounds at Cahokia. Only Monks Mound is mapped in open data inside this test area, so finds on smaller mounds nearby are listed as not in the key.",
+ "sources": [
+  {
+   "cite": "Fowler, M. L. (1997) The Cahokia Atlas: A Historical Atlas of Cahokia Archaeology. Revised edition. Urbana: University of Illinois."
+  },
+  {
+   "cite": "OpenStreetMap contributors, available under the Open Database Licence",
+   "link": "https://www.openstreetmap.org/copyright"
+  }
+ ],
+ "features": [
+  {
+   "id": "CA-MONKS",
+   "what": "Monks Mound",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      -90.063753,
+      38.660905
+     ],
+     [
+      -90.063309,
+      38.661377
+     ],
+     [
+      -90.062859,
+      38.661608
+     ],
+     [
+      -90.062027,
+      38.661651
+     ],
+     [
+      -90.061485,
+      38.661492
+     ],
+     [
+      -90.061192,
+      38.661153
+     ],
+     [
+      -90.061023,
+      38.660793
+     ],
+     [
+      -90.061436,
+      38.659115
+     ],
+     [
+      -90.061658,
+      38.659048
+     ],
+     [
+      -90.062027,
+      38.659048
+     ],
+     [
+      -90.062594,
+      38.659134
+     ],
+     [
+      -90.063494,
+      38.659221
+     ],
+     [
+      -90.063666,
+      38.659341
+     ],
+     [
+      -90.063753,
+      38.660905
+     ]
+    ]
+   ],
+   "area": true,
+   "expect": true,
+   "source": "OpenStreetMap way 360096331; Fowler (1997)",
+   "note": "Its terraces are part of the one mound."
+  }
+ ],
+ "built": "2026-11-15"
+}

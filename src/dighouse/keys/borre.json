@@ -1,0 +1,637 @@
+{
+ "id": "borre",
+ "name": "Borre mound cemetery",
+ "place": "Vestfold, Norway",
+ "data": "Kartverket 1 m ground model",
+ "box": [
+  10.464,
+  59.38,
+  10.474,
+  59.386
+ ],
+ "coverage": "register",
+ "published": "Norway's heritage register (Askeladden) lists every recorded monument here. 53 burial mounds and cairns are recorded as visible on the ground; those it says are gone or were found only by ground radar are kept in the key but not counted.",
+ "sources": [
+  {
+   "cite": "Riksantikvaren, Askeladden, through Kulturminnesøk, available under the Norwegian Licence for Open Government Data",
+   "link": "https://kulturminnesok.no"
+  },
+  {
+   "cite": "Myhre, B. (1992) Borre: et merovingertidssenter i Øst-Norge. Universitetets Oldsaksamling."
+  }
+ ],
+ "features": [
+  {
+   "id": "BO-01",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471614,
+   "lat": 59.385908,
+   "size_m": 11,
+   "expect": false,
+   "source": "Riksantikvaren, Askeladden record 15348-1 (https://kulturminnesok.no/ra/lokalitet/15348)",
+   "note": "The register says it is gone or not visible on the ground."
+  },
+  {
+   "id": "BO-02",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.46617,
+   "lat": 59.385684,
+   "size_m": 10,
+   "expect": false,
+   "source": "Riksantikvaren, Askeladden record 51130-1 (https://kulturminnesok.no/ra/lokalitet/51130)",
+   "note": "The register says it is gone or not visible on the ground."
+  },
+  {
+   "id": "BO-03",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471598,
+   "lat": 59.385297,
+   "size_m": 6,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 15347-1 (https://kulturminnesok.no/ra/lokalitet/15347)"
+  },
+  {
+   "id": "BO-04",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471983,
+   "lat": 59.38525,
+   "size_m": 6,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 15347-3 (https://kulturminnesok.no/ra/lokalitet/15347)"
+  },
+  {
+   "id": "BO-05",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471905,
+   "lat": 59.385231,
+   "size_m": 6,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 15347-2 (https://kulturminnesok.no/ra/lokalitet/15347)"
+  },
+  {
+   "id": "BO-06",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.468706,
+   "lat": 59.385044,
+   "size_m": 10,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22221-1 (https://kulturminnesok.no/ra/lokalitet/22221)"
+  },
+  {
+   "id": "BO-07",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.468528,
+   "lat": 59.385036,
+   "size_m": 65,
+   "expect": false,
+   "source": "Riksantikvaren, Askeladden record 22228-1 (https://kulturminnesok.no/ra/lokalitet/22228)",
+   "note": "The register says it is gone or not visible on the ground."
+  },
+  {
+   "id": "BO-08",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471762,
+   "lat": 59.384678,
+   "size_m": 15,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-34 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-09",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471991,
+   "lat": 59.384677,
+   "size_m": 9,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-35 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-10",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471316,
+   "lat": 59.38467,
+   "size_m": 56,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-3 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-11",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469933,
+   "lat": 59.384618,
+   "size_m": 43,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-2 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-12",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.472465,
+   "lat": 59.384577,
+   "size_m": 10,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-36 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-13",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.466469,
+   "lat": 59.384516,
+   "size_m": 16,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-46 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-14",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.46609,
+   "lat": 59.384338,
+   "size_m": 12,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-45 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-15",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.472331,
+   "lat": 59.384308,
+   "size_m": 35,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-32 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-16",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.473158,
+   "lat": 59.384291,
+   "size_m": 26,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-33 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-17",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.473519,
+   "lat": 59.384234,
+   "size_m": 12,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-37 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-18",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.466171,
+   "lat": 59.384193,
+   "size_m": 11,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-44 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-19",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.473779,
+   "lat": 59.384158,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-42 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-20",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.473625,
+   "lat": 59.3841,
+   "size_m": 10,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-41 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-21",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.466069,
+   "lat": 59.384093,
+   "size_m": 12,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-43 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-22",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471736,
+   "lat": 59.384001,
+   "size_m": 44,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-5 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-23",
+   "what": "House site",
+   "kind": "point",
+   "lon": 10.468718,
+   "lat": 59.383956,
+   "size_m": 37,
+   "expect": false,
+   "source": "Riksantikvaren, Askeladden record 136448-1 (https://kulturminnesok.no/ra/lokalitet/136448)",
+   "note": "A house site found by ground radar; it leaves no mound."
+  },
+  {
+   "id": "BO-24",
+   "what": "Grave",
+   "kind": "point",
+   "lon": 10.473171,
+   "lat": 59.383955,
+   "size_m": 12,
+   "expect": false,
+   "source": "Riksantikvaren, Askeladden record 22228-55 (https://kulturminnesok.no/ra/lokalitet/22228)",
+   "note": "The register says it is gone or not visible on the ground."
+  },
+  {
+   "id": "BO-25",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469935,
+   "lat": 59.383911,
+   "size_m": 13,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-39 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-26",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469604,
+   "lat": 59.383717,
+   "size_m": 23,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-38 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-27",
+   "what": "House site",
+   "kind": "point",
+   "lon": 10.468253,
+   "lat": 59.383586,
+   "size_m": 31,
+   "expect": false,
+   "source": "Riksantikvaren, Askeladden record 136448-2 (https://kulturminnesok.no/ra/lokalitet/136448)",
+   "note": "A house site found by ground radar; it leaves no mound."
+  },
+  {
+   "id": "BO-28",
+   "what": "Burial cairn",
+   "kind": "point",
+   "lon": 10.472909,
+   "lat": 59.38351,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-48 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-29",
+   "what": "Clearance cairn",
+   "kind": "point",
+   "lon": 10.473873,
+   "lat": 59.383502,
+   "size_m": 6,
+   "expect": false,
+   "source": "Riksantikvaren, Askeladden record 22228-50 (https://kulturminnesok.no/ra/lokalitet/22228)",
+   "note": "Recorded as an uncertain clearance cairn."
+  },
+  {
+   "id": "BO-30",
+   "what": "Burial cairn",
+   "kind": "point",
+   "lon": 10.473064,
+   "lat": 59.383325,
+   "size_m": 6,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-49 (https://kulturminnesok.no/ra/lokalitet/22228)",
+   "note": "Its size is not given; 6 m is assumed."
+  },
+  {
+   "id": "BO-31",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470985,
+   "lat": 59.383275,
+   "size_m": 50,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-6 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-32",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.472574,
+   "lat": 59.382778,
+   "size_m": 14,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-47 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-33",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.472865,
+   "lat": 59.382677,
+   "size_m": 25,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-40 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-34",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.468368,
+   "lat": 59.381909,
+   "size_m": 40,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-8 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-35",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.471528,
+   "lat": 59.38177,
+   "size_m": 49,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-7 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-36",
+   "what": "Burial cairn",
+   "kind": "point",
+   "lon": 10.469719,
+   "lat": 59.381444,
+   "size_m": 42,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-25 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-37",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470824,
+   "lat": 59.381302,
+   "size_m": 7,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-31 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-38",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470058,
+   "lat": 59.381274,
+   "size_m": 19,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-24 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-39",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470341,
+   "lat": 59.381243,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-26 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-40",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470576,
+   "lat": 59.381242,
+   "size_m": 10,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-30 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-41",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470849,
+   "lat": 59.381202,
+   "size_m": 6,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-9 (https://kulturminnesok.no/ra/lokalitet/22228)",
+   "note": "Its size is not given; 6 m is assumed."
+  },
+  {
+   "id": "BO-42",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470237,
+   "lat": 59.381163,
+   "size_m": 12,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-23 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-43",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.47043,
+   "lat": 59.381145,
+   "size_m": 7,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-27 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-44",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469666,
+   "lat": 59.381144,
+   "size_m": 7,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-12 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-45",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470746,
+   "lat": 59.381099,
+   "size_m": 13,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-29 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-46",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469252,
+   "lat": 59.381096,
+   "size_m": 24,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-11 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-47",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.47049,
+   "lat": 59.381072,
+   "size_m": 7,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-28 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-48",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470338,
+   "lat": 59.381041,
+   "size_m": 11,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-21 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-49",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470122,
+   "lat": 59.381034,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-22 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-50",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469597,
+   "lat": 59.381031,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-13 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-51",
+   "what": "Chamber grave",
+   "kind": "point",
+   "lon": 10.469481,
+   "lat": 59.380957,
+   "size_m": 10,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-14 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-52",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.47029,
+   "lat": 59.38094,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-20 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-53",
+   "what": "Grave",
+   "kind": "point",
+   "lon": 10.469363,
+   "lat": 59.380923,
+   "size_m": 6,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-51 (https://kulturminnesok.no/ra/lokalitet/22228)",
+   "note": "Its size is not given; 6 m is assumed."
+  },
+  {
+   "id": "BO-54",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469838,
+   "lat": 59.380899,
+   "size_m": 6,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-52 (https://kulturminnesok.no/ra/lokalitet/22228)",
+   "note": "Its size is not given; 6 m is assumed."
+  },
+  {
+   "id": "BO-55",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469236,
+   "lat": 59.380887,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-15 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-56",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470039,
+   "lat": 59.380878,
+   "size_m": 13,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-18 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-57",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.470473,
+   "lat": 59.380812,
+   "size_m": 11,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-19 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-58",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469889,
+   "lat": 59.380758,
+   "size_m": 9,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-17 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-59",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.468964,
+   "lat": 59.380704,
+   "size_m": 8,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-10 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  },
+  {
+   "id": "BO-60",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": 10.469639,
+   "lat": 59.380669,
+   "size_m": 9,
+   "expect": true,
+   "source": "Riksantikvaren, Askeladden record 22228-16 (https://kulturminnesok.no/ra/lokalitet/22228)"
+  }
+ ],
+ "built": "2026-11-15"
+}

@@ -1,0 +1,307 @@
+{
+ "id": "mound-city",
+ "name": "Mound City Group",
+ "place": "Ohio, United States",
+ "data": "USGS 3DEP",
+ "box": [
+  -83.00875,
+  39.37455,
+  -83.00275,
+  39.37895
+ ],
+ "coverage": "partial",
+ "published": "Squier and Davis (1848) mapped 23 mounds inside the enclosure, and the National Park Service counts 25 today. 18 of them are mapped one by one in open data and make up this key.",
+ "sources": [
+  {
+   "cite": "Squier, E. G. and Davis, E. H. (1848) Ancient Monuments of the Mississippi Valley. Washington: Smithsonian Institution."
+  },
+  {
+   "cite": "National Park Service, Hopewell Culture National Historical Park: Mound City Group",
+   "link": "https://www.nps.gov/hocu/learn/historyculture/mound-city-group.htm"
+  },
+  {
+   "cite": "OpenStreetMap contributors, available under the Open Database Licence",
+   "link": "https://www.openstreetmap.org/copyright"
+  }
+ ],
+ "features": [
+  {
+   "id": "MC-01",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.004358,
+   "lat": 39.377605,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979850; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-02",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.004776,
+   "lat": 39.377514,
+   "size_m": 19,
+   "expect": true,
+   "source": "OpenStreetMap way 445979844; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-03",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.005165,
+   "lat": 39.377404,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979843; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-04",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.003681,
+   "lat": 39.377351,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979855; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-05",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.005798,
+   "lat": 39.377316,
+   "size_m": 18,
+   "expect": true,
+   "source": "OpenStreetMap way 445979840; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-06",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.005706,
+   "lat": 39.377021,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979854; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-07",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.005251,
+   "lat": 39.376937,
+   "size_m": 19,
+   "expect": true,
+   "source": "OpenStreetMap way 445979853; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-08",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.004422,
+   "lat": 39.376708,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979856; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-09",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.004865,
+   "lat": 39.376659,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979845; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-10",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.003561,
+   "lat": 39.376626,
+   "size_m": 25,
+   "expect": true,
+   "source": "OpenStreetMap way 445979842; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-11",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.005609,
+   "lat": 39.376555,
+   "size_m": 21,
+   "expect": true,
+   "source": "OpenStreetMap way 445979846; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-12",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.005323,
+   "lat": 39.376527,
+   "size_m": 15,
+   "expect": true,
+   "source": "OpenStreetMap way 445979852; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-13",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.004219,
+   "lat": 39.37637,
+   "size_m": 38,
+   "expect": true,
+   "source": "OpenStreetMap way 445979841; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-14",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.003907,
+   "lat": 39.376365,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979847; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-15",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.004442,
+   "lat": 39.376241,
+   "size_m": 29,
+   "expect": true,
+   "source": "OpenStreetMap way 445979849; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-16",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.004666,
+   "lat": 39.375934,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979857; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-17",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.00501,
+   "lat": 39.37567,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979851; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-18",
+   "what": "Mound",
+   "kind": "point",
+   "lon": -83.005314,
+   "lat": 39.375589,
+   "size_m": 16,
+   "expect": true,
+   "source": "OpenStreetMap way 445979848; Squier and Davis (1848)"
+  },
+  {
+   "id": "MC-WALL",
+   "what": "Enclosure wall",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      -83.005931,
+      39.377356
+     ],
+     [
+      -83.005554,
+      39.377463
+     ],
+     [
+      -83.004438,
+      39.377741
+     ],
+     [
+      -83.004026,
+      39.377808
+     ],
+     [
+      -83.003614,
+      39.377887
+     ],
+     [
+      -83.003425,
+      39.377821
+     ],
+     [
+      -83.00327,
+      39.377683
+     ],
+     [
+      -83.003185,
+      39.377584
+     ],
+     [
+      -83.003082,
+      39.377476
+     ],
+     [
+      -83.002652,
+      39.376149
+     ],
+     [
+      -83.002652,
+      39.375917
+     ],
+     [
+      -83.002721,
+      39.375751
+     ],
+     [
+      -83.002996,
+      39.375565
+     ],
+     [
+      -83.003099,
+      39.375485
+     ],
+     [
+      -83.004627,
+      39.375167
+     ],
+     [
+      -83.00497,
+      39.375167
+     ],
+     [
+      -83.005159,
+      39.375207
+     ],
+     [
+      -83.005356,
+      39.37532
+     ],
+     [
+      -83.005468,
+      39.375485
+     ],
+     [
+      -83.006017,
+      39.377111
+     ],
+     [
+      -83.005931,
+      39.377356
+     ]
+    ]
+   ],
+   "area": false,
+   "expect": true,
+   "source": "OpenStreetMap way 43285197; Squier and Davis (1848)",
+   "note": "A find on the wall counts once; more finds on it are not counted as false."
+  }
+ ],
+ "built": "2026-11-15"
+}

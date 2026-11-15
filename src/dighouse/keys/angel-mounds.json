@@ -1,0 +1,81 @@
+{
+ "id": "angel-mounds",
+ "name": "Angel Mounds",
+ "place": "Indiana, United States",
+ "data": "USGS 3DEP",
+ "box": [
+  -87.45921,
+  37.94013,
+  -87.45238,
+  37.94556
+ ],
+ "coverage": "partial",
+ "published": "Black (1967) describes 11 mounds at the Angel site and a palisade around the town. Four of the mounds inside this test area are mapped in open data, so a find on another mound is listed as not in the key, and the literature step says what it is.",
+ "sources": [
+  {
+   "cite": "Black, G. A. (1967) Angel Site: An Archaeological, Historical, and Ethnological Study. Indianapolis: Indiana Historical Society."
+  },
+  {
+   "cite": "OpenStreetMap contributors, available under the Open Database Licence",
+   "link": "https://www.openstreetmap.org/copyright"
+  }
+ ],
+ "features": [
+  {
+   "id": "AM-A",
+   "what": "Mound A",
+   "kind": "point",
+   "lon": -87.455488,
+   "lat": 37.941511,
+   "size_m": 50,
+   "expect": true,
+   "source": "OpenStreetMap node 10552717209; described in Black (1967)",
+   "note": "Its outline is not in open data, so a find within 40 m of the mapped point counts."
+  },
+  {
+   "id": "AM-B",
+   "what": "Mound B",
+   "kind": "point",
+   "lon": -87.453173,
+   "lat": 37.942598,
+   "size_m": 50,
+   "expect": true,
+   "source": "OpenStreetMap node 10552500408; described in Black (1967)",
+   "note": "Its outline is not in open data, so a find within 40 m of the mapped point counts."
+  },
+  {
+   "id": "AM-C",
+   "what": "Mound C",
+   "kind": "point",
+   "lon": -87.457861,
+   "lat": 37.941993,
+   "size_m": 50,
+   "expect": true,
+   "source": "OpenStreetMap node 10552717110; described in Black (1967)",
+   "note": "Its outline is not in open data, so a find within 40 m of the mapped point counts."
+  },
+  {
+   "id": "AM-E",
+   "what": "Mound E",
+   "kind": "point",
+   "lon": -87.457963,
+   "lat": 37.943631,
+   "size_m": 50,
+   "expect": true,
+   "source": "OpenStreetMap node 10552717111; described in Black (1967)",
+   "note": "Its outline is not in open data, so a find within 40 m of the mapped point counts."
+  },
+  {
+   "id": "AM-HUT",
+   "what": "Reconstructed house",
+   "kind": "point",
+   "lon": -87.45541,
+   "lat": 37.941934,
+   "size_m": 10,
+   "expect": false,
+   "source": "OpenStreetMap node 10552500407",
+   "note": "A modern reconstruction, not an earthwork."
+  }
+ ],
+ "built": "2026-11-15"
+}

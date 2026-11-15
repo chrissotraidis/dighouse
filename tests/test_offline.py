@@ -409,3 +409,21 @@ def test_a_stopped_run_is_on_the_record(tmp_path):
     assert "during: Looking at the tiles." in p.path("RESEARCH.md").read_text()
     server.write_summary(root, "Finished the screening.")
     assert "The last run was stopped" not in p.path("RESEARCH.md").read_text()
+
+
+def test_answer_keys_are_sourced_and_inside_their_areas():
+    """Every launch key has counted features, each with a source, and every feature lies inside the key's test area."""
+    from dighouse import answers
+
+    ks = {k["id"]: k for k in answers.keys()}
+    assert set(ks) == {"angel-mounds", "mound-city", "serpent-mound", "cahokia", "maiden-castle", "borre"}
+    for k in ks.values():
+        w, s, e, n = k["box"]
+        assert k["sources"] and k["published"] and k["coverage"] in ("register", "partial")
+        assert any(f["expect"] for f in k["features"]), k["id"]
+        for f in k["features"]:
+            assert f["source"] and f["what"], (k["id"], f["id"])
+            pts = [(f["lon"], f["lat"])] if f["kind"] == "point" else [p for line in f["lines"] for p in line]
+            assert all(w - 0.002 <= x <= e + 0.002 and s - 0.002 <= y <= n + 0.002 for x, y in pts), (k["id"], f["id"])
+        shown = json.dumps(answers.summary(k))
+        assert '"lon"' not in shown and '"lat"' not in shown
