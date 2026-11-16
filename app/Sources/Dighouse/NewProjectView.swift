@@ -137,6 +137,7 @@ struct NewProjectView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("New project").font(.system(size: 22 * Theme.scale, weight: .bold))
                 Text(point.kind == .own ? "A project is one question about one area."
+                     : point.kind == .chat ? "Filled in from the chat “\(point.title)”. Once the project is made, the chat moves into it."
                      : "Starting from \(point.title). You can change anything below.")
                     .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
@@ -332,7 +333,8 @@ struct NewProjectView: View {
         let tutorial = app.tutorialOn && point.id == Tutorial.point.id
         Task { @MainActor in
             do {
-                try await app.createProject(name: name.trimmingCharacters(in: .whitespaces), question: question, box: n, fetch: !tutorial)
+                try await app.createProject(name: name.trimmingCharacters(in: .whitespaces), question: question, box: n,
+                                            fetch: !tutorial, fromChat: point.chat)
                 if tutorial { app.tutorialProject = app.store.current?.path }
             } catch {
                 problem = error.localizedDescription

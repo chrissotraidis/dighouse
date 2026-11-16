@@ -382,7 +382,7 @@ struct ToolServer: Identifiable, Codable, Hashable {
 
 /// A place to begin: a known site to learn on, or an area where searching is still useful.
 struct StartingPoint: Identifiable, Hashable {
-    enum Kind { case learn, search, own }
+    enum Kind { case learn, search, own, chat }
     let id: String
     let kind: Kind
     let title: String
@@ -395,10 +395,40 @@ struct StartingPoint: Identifiable, Hashable {
     var dataset: String? = nil
     /// A place name to look up when the New project page opens, for a project started from typed text.
     var search: String? = nil
+    /// The general chat this project is made from. It moves into the project once the project exists.
+    var chat: String? = nil
+    /// Why this area, as the chat settled it.
+    var whyHere: String? = nil
 
     var centre: (lat: Double, lon: Double)? {
         let n = box.compactMap(Double.init)
         return n.count == 4 ? ((n[1] + n[3]) / 2, (n[0] + n[2]) / 2) : nil
+    }
+}
+
+/// A project the agent offered from a general chat (suggest_project): what the New project page is filled in with.
+struct ProjectOffer {
+    var name: String
+    var question: String
+    var whyHere = ""
+    var place = ""
+    var box: [Double]? = nil
+
+    init(name: String, question: String) {
+        self.name = name
+        self.question = question
+    }
+
+    /// From the tool's reply.
+    init?(reply: String?) {
+        guard let data = reply?.data(using: .utf8), let info = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              info["offered"] as? Bool == true, let name = info["name"] as? String, let question = info["question"] as? String else { return nil }
+        self.name = name
+        self.question = question
+        whyHere = info["why_here"] as? String ?? ""
+        place = info["place"] as? String ?? ""
+        box = (info["box"] as? [Any])?.compactMap { ($0 as? NSNumber)?.doubleValue }
+        if box?.count != 4 { box = nil }
     }
 }
 

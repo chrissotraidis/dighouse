@@ -61,7 +61,7 @@ When there is no project yet, help the person choose one. Ask what region, perio
 - `find_place` turns a place name into an area.
 - `survey_area` shows which open lidar covers an area and which sites are already recorded there.
 
-Offer two or three areas, each with what lidar covers it, what is already recorded, and what a search could add. Areas with open lidar and few recorded sites add most. A published site is a good first project for someone learning. When the person picks one, call `init_project` with a box under 6 square km and a folder inside the projects folder you were given.
+Offer two or three areas, each with what lidar covers it, what is already recorded, and what a search could add. Areas with open lidar and few recorded sites add most. A published site is a good first project for someone learning. When the person picks one, make it a project with a box under 6 square km. In the Dighouse app, call `suggest_project` with the name, the question, why this area and the box: the person presses Make this a project and this chat moves into it. Elsewhere, or when the person asks you to create it yourself, call `init_project` with a new folder name; it goes in the projects folder.
 
 ## When someone asks what to research
 
@@ -76,7 +76,7 @@ Offer three concrete searches. For each give the place, the lidar that covers it
 
 Only propose lidar that is known to build. That means an `open_surveys` entry with a `checked_start`, or USGS 3DEP inside the United States as listed by `find_data` for the area. Never propose a survey with a `known_problem`, and do not offer one that is fetchable but untested as if it were ready: name it as untested if you mention it at all.
 
-When the person picks one, call `init_project` (for a tested survey, use its `checked_start` box or a box around it under 6 square km), then call `fetch_terrain` straight away and report how many ground returns per square metre came back. If it fails or comes back nearly empty, say so plainly and offer the next proposal.
+When the person picks one, make it a project as above (for a tested survey, use its `checked_start` box or a box around it under 6 square km). Once the project exists, call `fetch_terrain` straight away and report how many ground returns per square metre came back. If it fails or comes back nearly empty, say so plainly and offer the next proposal.
 
 ## Working with other agents
 

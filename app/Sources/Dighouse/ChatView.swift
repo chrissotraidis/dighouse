@@ -156,7 +156,8 @@ private enum Block: Identifiable {
             run = []
         }
         for item in items {
-            if item.kind == .step, item.projectPath == nil, item.state != .failed, !item.showsImage {
+            // Steps with a card (a project made or offered) or a picture stay out of the folded run.
+            if item.kind == .step, item.projectPath == nil, item.tool != "suggest_project", item.state != .failed, !item.showsImage {
                 run.append(item)
             } else {
                 flush(tail: false)
@@ -295,6 +296,9 @@ private struct ChatRow: View {
             if let path = item.projectPath {
                 StepRow(item: item)
                 ProjectCard(path: path)
+            } else if item.tool == "suggest_project", item.state == .done, let offer = ProjectOffer(reply: item.result) {
+                StepRow(item: item)
+                OfferCard(offer: offer)
             } else {
                 StepRow(item: item)
             }
@@ -382,19 +386,47 @@ private struct ProjectCard: View {
 
     var body: some View {
         let project = store.projects.first { $0.path == path }
+        let here = store.current?.path == path
         HStack(spacing: 12) {
             IconTile(name: "folder")
             VStack(alignment: .leading, spacing: 2) {
                 Text(project?.name ?? URL(fileURLWithPath: path).lastPathComponent).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                Text("Project created. Open it to work with its map and records beside the chat.")
+                Text(here ? "This chat is in this project now." : "Project created. Open it to work with its map and records beside the chat.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
-            Button("Open project") {
-                store.register(path: path)
-                if let project = store.projects.first(where: { $0.path == path }) { app.open(project) }
+            if !here {
+                Button("Open project") {
+                    store.register(path: path)
+                    if let project = store.projects.first(where: { $0.path == path }) { app.open(project) }
+                }
+                .buttonStyle(PrimaryButton())
             }
-            .buttonStyle(PrimaryButton())
+        }
+        .panel(padding: 12, radius: 12)
+    }
+}
+
+/// Shown when the agent offers to make a project from a general chat. Only the person's press makes it.
+private struct OfferCard: View {
+    let offer: ProjectOffer
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            IconTile(name: "folder.badge.plus")
+            VStack(alignment: .leading, spacing: 3) {
+                Text(offer.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text(offer.question).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                Text(store.current == nil ? "Make it a project and this chat moves into it, with its own folder and history."
+                     : "This chat is in a project now. Its records and history are in the project's folder.")
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            if store.current == nil {
+                Button("Make this a project") { app.makeProject(offer) }.buttonStyle(PrimaryButton())
+            }
         }
         .panel(padding: 12, radius: 12)
     }

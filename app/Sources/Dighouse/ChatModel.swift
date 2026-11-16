@@ -287,6 +287,27 @@ final class ChatModel: ObservableObject {
         }
     }
 
+    /// Carry a general chat into a project. The engine lists chats by the folder they started in, so the chat is
+    /// copied whole into the project's folder, keeps its name, and the general one is archived. Returns the copy.
+    func move(_ id: String, into path: String) async throws -> ChatThread {
+        guard let engine else { throw EngineError(message: "The engine is not running.") }
+        var settings = threadSettings(["threadId": id])
+        settings["cwd"] = path
+        let forked = try await engine.request("thread/fork", settings)
+        guard let copy = (forked["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "The chat could not be moved.") }
+        let title = (generalThreads + threads).first { $0.id == id }?.title ?? "Chat"
+        let moved = ChatThread(id: copy, title: title, named: true)
+        _ = try? await engine.request("thread/name/set", ["threadId": copy, "name": title])
+        _ = try? await engine.request("thread/archive", ["threadId": id])
+        generalThreads.removeAll { $0.id == id }
+        startedHere.insert(copy)
+        known[path] = [moved] + (known[path] ?? []).filter { $0.id != copy }
+        if project == path { threads = known[path] ?? [] }
+        if active == id { newChat() }
+        remember()
+        return moved
+    }
+
     /// Take back the last message and send it again, edited or as it was.
     /// The failure the chat ended on, if the last thing in it is one.
     var lastProblem: ChatItem? {

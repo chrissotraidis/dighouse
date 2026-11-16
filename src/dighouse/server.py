@@ -183,6 +183,28 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
 
 
 @tool
+def suggest_project(name: str, question: str, why_here: str = "", place: str = "",
+                    west: float = 0.0, south: float = 0.0, east: float = 0.0, north: float = 0.0) -> dict:
+    """Offer the person a project made from this chat, once the chat has settled a place and a question.
+
+    It creates nothing. The Dighouse app shows a card with "Make this a project"; only the person presses it, and the
+    New project page opens filled in from these words, with the chat moving into the project. Give the search area
+    as a box in degrees if you have one, otherwise a place name to look up. why_here is a sentence or two on why this
+    area is worth searching, from what the chat found."""
+    box = [west, south, east, north]
+    has_box = west < east and south < north
+    if not has_box and not place.strip():
+        raise ValueError("Give the area as a box in degrees, or a place name to look up.")
+    if not name.strip() or not question.strip():
+        raise ValueError("Give the project a name and a question.")
+    if has_box:
+        answers.guard_box(box)
+    return {"offered": True, "name": name.strip(), "question": question.strip(), "why_here": why_here.strip(),
+            "place": place.strip(), "box": box if has_box else None,
+            "note": "The person sees a Make this a project card. Nothing is created until they press it."}
+
+
+@tool
 def find_data(west: float, south: float, east: float, north: float) -> list[dict]:
     """List open lidar datasets overlapping a lon/lat box, with the citation each one asks for.
 

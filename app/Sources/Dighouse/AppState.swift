@@ -177,9 +177,10 @@ final class AppState: ObservableObject {
                     + "Do not record a second opinion yourself: the person asks a different model for it from the record. " + shared
             }
             return self.setup.skill + "\n\nYou are running inside the Dighouse app and no project is open. Help the person choose "
-                + "where to look, or answer their question. New projects go inside \(Paths.projectsHome.path): pass a new folder "
-                + "there as the project argument to init_project. After creating one, tell the person to open it from the card "
-                + "in the chat. " + shared
+                + "where to look, or answer their question. Once the chat has settled a place and a question, call suggest_project: "
+                + "the person gets a Make this a project card, and pressing it makes the project and moves this chat into it. "
+                + "Call init_project yourself only when the person asks you to create the project; pass a new folder name and it "
+                + "goes inside \(Paths.projectsHome.path), then tell the person to open it from the card in the chat. " + shared
         }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }
@@ -271,12 +272,16 @@ final class AppState: ObservableObject {
         Task { @MainActor in await chat.open(project: nil) }
     }
 
-    func open(_ project: ProjectRef) {
+    /// Open a project, and with a chat given, show that chat once the project's chat list is open.
+    func open(_ project: ProjectRef, showing thread: ChatThread? = nil) {
         sidebarPeek = false
         store.open(project)
         route = .chat
         tab = .map
-        Task { @MainActor in await chat.open(project: project.path) }
+        Task { @MainActor in
+            await chat.open(project: project.path)
+            if let thread { await chat.select(thread) }
+        }
         // Bring the research record up to date (and give an older project its method and history). No model is used.
         Task { @MainActor in await updateRecord(of: project.path) }
     }
@@ -366,7 +371,8 @@ final class AppState: ObservableObject {
 
     /// Create a project folder through the tools, so its layout always matches what they expect.
     /// Create the project and, unless told not to, start getting its terrain straight away, so a new project is never left empty.
-    func createProject(name: String, question: String, box: [Double], fetch: Bool = true) async throws {
+    /// Made from a general chat, the chat moves into the project and stays on screen, and the person goes on from there.
+    func createProject(name: String, question: String, box: [Double], fetch: Bool = true, fromChat source: String? = nil) async throws {
         let slug = name.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
             .split(separator: "-").joined(separator: "-")
         var path = Paths.projectsHome.appendingPathComponent(slug.isEmpty ? "project" : slug).path
@@ -380,10 +386,24 @@ final class AppState: ObservableObject {
             "west": box[0], "south": box[1], "east": box[2], "north": box[3],
         ])
         store.register(path: path)
+        if let source { await carry(source, into: path); return }
         if let project = store.projects.first(where: { $0.path == path }) { open(project) }
         if fetch, let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) {
             try? await Task.sleep(for: .milliseconds(400))   // let the project's chat list open first
             run(flow)
+        }
+    }
+
+    /// Move a general chat into a project and open the project with the chat on screen.
+    func carry(_ source: String, into path: String) async {
+        store.register(path: path)
+        var moved: ChatThread?
+        var problem: String?
+        do { moved = try await chat.move(source, into: path) } catch { problem = error.localizedDescription }
+        if let project = store.projects.first(where: { $0.path == path }) { open(project, showing: moved) }
+        if let problem {
+            try? await Task.sleep(for: .milliseconds(400))
+            chat.note("The project is ready, but the chat could not be moved into it: \(problem). It is still under Chats.")
         }
     }
 
@@ -395,6 +415,32 @@ final class AppState: ObservableObject {
             id: "typed-" + name, kind: .own, title: name, place: "", about: "", source: "",
             name: name, question: "What built features show in the ground at \(name), and which of them are already published?",
             box: ["", "", "", ""], search: name))
+    }
+
+    /// Make a project from the general chat on screen. With the agent's offer, the New project page opens filled in
+    /// from it, and the chat moves into the project once the person makes it. Without one, the agent is asked for an
+    /// offer, which shows as a card in the chat. An empty chat just opens New project.
+    func makeProject(_ offer: ProjectOffer? = nil) {
+        guard store.current == nil else { return }
+        guard let id = chat.active, chat.items.contains(where: { $0.kind == .user }) else { startProject(); return }
+        // A chat that already made a project (the agent's init_project) moves into that one rather than making another.
+        if offer == nil, let made = chat.items.last(where: { $0.projectPath != nil })?.projectPath,
+           FileManager.default.fileExists(atPath: made + "/PROJECT.md") {
+            Task { @MainActor in await carry(id, into: made) }
+            return
+        }
+        let title = chat.generalThreads.first { $0.id == id }?.title ?? "Chat"
+        guard let offer = offer
+            ?? chat.items.last(where: { $0.tool == "suggest_project" && $0.state == .done }).flatMap({ ProjectOffer(reply: $0.result) }) else {
+            ask("Offer this chat as a project: call suggest_project with a name, the question, why this area, and a box under "
+                + "6 square km, from what we have settled. If the place or the question is not settled yet, ask me for what is missing.")
+            return
+        }
+        startProject(from: StartingPoint(
+            id: "chat-\(id)-\(UUID().uuidString)", kind: .chat, title: title, place: offer.place, about: "", source: "",
+            name: offer.name, question: offer.question,
+            box: offer.box.map { $0.map { String(format: "%.5f", $0) } } ?? ["", "", "", ""],
+            search: offer.box == nil && !offer.place.isEmpty ? offer.place : nil, chat: id, whyHere: offer.whyHere))
     }
 
     /// The next part of the search for the open project, or nil when nothing is ready or a run is going.

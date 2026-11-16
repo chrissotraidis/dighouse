@@ -110,6 +110,7 @@ enum ToolGuide {
              why: "A project is a plain folder of Markdown, so it can be shared, reviewed, or handed to an archaeologist.",
              image: "record-relief", flow: "decide",
              tools: [Tool(name: "init_project", title: "Create a project", does: "Creates a project folder."),
+                     Tool(name: "suggest_project", title: "Offer a project", does: "Offers to turn a chat into a project. Nothing is made until you press Make this a project."),
                      Tool(name: "add_evidence", title: "Add evidence", does: "Adds a line of evidence to a record."),
                      Tool(name: "suggest_decision", title: "Suggest a decision", does: "Writes the decision the evidence points to, and why, so your review starts prepared."),
                      Tool(name: "set_status", title: "Set a status", does: "Moves a find to a status, if its checks support it."),
@@ -425,6 +426,7 @@ enum ToolGuide {
         case "search_records": return ("dig.sieve", "Searched published records: \(s("query"))")
         case "survey_area": return ("binoculars", "Sized up an area: lidar coverage and recorded sites")
         case "init_project": return ("folder.badge.plus", "Created the project \(s("name"))")
+        case "suggest_project": return ("folder.badge.plus", "Offered a project: \(s("name"))")
         case "find_data": return ("magnifyingglass", "Looked for open lidar over the area")
         case "import_terrain": return ("tray.and.arrow.down", "Added your own file")
         case "suggest_decision": return ("dig.brush", "Suggested a decision for \(s("candidate"))")

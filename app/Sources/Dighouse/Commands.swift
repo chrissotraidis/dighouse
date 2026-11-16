@@ -23,6 +23,7 @@ enum SlashCommands {
         SlashCommand(id: "research", summary: "Find where a search is worth doing, and get three proposals", group: .search, workflow: "research"),
         SlashCommand(id: "whatis", summary: "What is this? A quick look at a place, without a project", group: .search, argument: "place", needsArgument: true),
         SlashCommand(id: "new-project", summary: "Start a project on a place", group: .search),
+        SlashCommand(id: "make-project", summary: "Make this chat a project: it moves into the project's own folder", group: .search),
         SlashCommand(id: "investigate", summary: "Find and report back: the whole search in one go, ending with a report", group: .search, workflow: "full"),
         SlashCommand(id: "ground", summary: "Find open lidar for the project and build the bare ground", group: .search, workflow: "terrain"),
         SlashCommand(id: "look", summary: "Look at every tile nobody has looked at yet", group: .search, workflow: "screen"),
@@ -111,6 +112,9 @@ extension AppState {
             if chat.running { return "Stop the run first" }
             return chat.items.contains { $0.kind == .user } ? nil : "Nothing to take back"
         case "goal": return chat.running ? "Wait for the run to finish" : nil
+        case "make-project":
+            if store.current != nil { return "This chat is already in a project" }
+            return chat.running ? "Wait for the run to finish" : nil
         case "review": return store.candidates.isEmpty ? "Needs finds" : nil
         default: return nil
         }
@@ -119,6 +123,10 @@ extension AppState {
     /// A command that cannot run says so in the chat, with what to do, instead of doing nothing.
     func explainUnavailable(_ c: SlashCommand, _ reason: String) {
         route = .chat
+        if reason == "This chat is already in a project" {
+            chat.note("This chat is already in a project, so \(c.name) has nothing to do. To start another project, use /new-project.")
+            return
+        }
         if ["Nothing left to do", "All decided", "Running now"].contains(reason) || reason.hasPrefix("0 ") {
             chat.note(reason == "Running now" ? "\(c.name) is already running." : "\(c.name) has nothing left to do in this project.")
             return
@@ -144,6 +152,7 @@ extension AppState {
         switch c.id {
         case "whatis": whatIs(argument)
         case "new-project": startProject()
+        case "make-project": makeProject()
         case "review": reviewing = true
         case "new": newChat()
         case "model": pickerRequest = .model

@@ -609,3 +609,15 @@ def test_every_new_project_gets_its_own_folder_and_repository(tmp_path, monkeypa
         log = subprocess.run(["git", "-C", root, "log", "--oneline"], capture_output=True, text=True).stdout.splitlines()
         tracked = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True).stdout
         assert len(log) == 1 and "private/" not in tracked and "data/" not in tracked
+
+
+def test_offering_a_project_makes_nothing(tmp_path, monkeypatch):
+    """suggest_project only describes the project for the person's card; the folder appears when they press it."""
+    monkeypatch.setenv("DIGHOUSE_PROJECTS_HOME", str(tmp_path / "home"))
+    offer = server.suggest_project("Hill", "What is on the hill?", "A wooded hill with no recorded sites.", "",
+                                   0.0, 51.0, 0.01, 51.01)
+    assert offer["offered"] and offer["box"] == [0.0, 51.0, 0.01, 51.01] and offer["why_here"].startswith("A wooded")
+    assert server.suggest_project("Hill", "What is on the hill?", place="Box Hill")["box"] is None
+    with pytest.raises(ValueError):
+        server.suggest_project("Hill", "What is on the hill?")
+    assert not (tmp_path / "home").exists()
