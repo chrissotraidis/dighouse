@@ -255,6 +255,14 @@ def document(p: Project, commit_it: bool = True) -> dict:
     from .answers import calibration_lines, score_lines
     L += score_lines(p)
     L += calibration_lines(p)
+    rises = p.load("rises", {}) or {}
+    rise_rows = [(t, s) for t, spots in sorted(rises.items()) for s in spots]
+    if rise_rows:
+        L += ["## Measured rises to look at", "", "Round rises the tools measured in the ground model (find_mounds) that may be small mounds a "
+              "picture hides. They are not finds: look at each in the tile's mounds picture and mark the ones that look built.", "",
+              "| Tile | Spot | Across | High |", "|---|---|---|---|"]
+        L += [f"| {t} | {s['n']} | {s['diameter_m']:.0f} m | {s['height_m']:.1f} m |" for t, s in rise_rows[:40]]
+        L.append("")
     L += ["## Data used", ""]
     if terrains:
         L += ["| Survey | From | Flown | Area | Ground returns per sq m | Cell |", "|---|---|---|---|---|---|"]

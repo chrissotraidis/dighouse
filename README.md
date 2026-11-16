@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
-  <img alt="41 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-41%20tools-8B5E3C">
+  <img alt="42 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-42%20tools-8B5E3C">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
 </p>
 
@@ -64,6 +64,8 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
 
 Run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 minutes a site (10 at Maiden Castle). The answer keys come from Norway's heritage register (Borre) and from OpenStreetMap features with the publications that describe them (the rest). Five of the six keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log). Results will differ with other models.
 
+Small mounds are the weak spot: a mound 5 m across is a few pixels in a tile picture. `find_mounds` measures round rises in the ground model instead, and the clearest ones (at least 0.6 m high and nearly round) go on a list for a person to look over, apart from the agent's finds. Across the six keys that list puts 50 of 83 known features in front of a person instead of 45, at the cost of 28 more spots to rule out. At Borre it adds 4 mounds and 7 spots that are not.
+
 > [!NOTE]
 > Dighouse builds from source today. The app is signed for local use and is not yet notarized. The archaeology tools also run on their own in Codex or any harness that speaks the Model Context Protocol.
 
@@ -74,6 +76,8 @@ In November 2026 Pietro Miotti let AI agents search about 1,200 km² of NASA lid
 Dighouse is built around the check. Every find gets a slice through the raw laser points, a second opinion from a different model, a look at open maps for roads and buildings, and a search of what is published. The tools refuse a status the evidence does not support, and nothing is ever called new.
 
 A chat app can talk about archaeology. It cannot download a survey, look at every tile of an area, cut a slice through the points, or keep a record that someone else can pick up. Dighouse gives the same kind of model those abilities, with rules that hold whichever model is running.
+
+We checked. Given the Mound City blind test box with no tools, the same model that found 19 of 19 mounds there through Dighouse answered that it could not reliably identify, count or place any features from the coordinates alone. That is the right answer for a chat app, and the reason the tools exist.
 
 *A dig house is the building where an excavation team lives, works and keeps its records. The app plays the same role for a search.*
 
@@ -157,7 +161,7 @@ uv run pytest -m live    # the same chain against the real data services (8 test
 | Set up | `init_project` |
 | Fetch open lidar, or use your own | `find_data`, `fetch_terrain`, `import_terrain` |
 | Draw the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `next_tiles`, `view_tile` |
-| Look at every tile | `record_verdict`, `flag_candidate` |
+| Look at every tile | `record_verdict`, `flag_candidate`, `find_mounds` |
 | Check each find | `cut_section`, `second_look`, `check_modern`, `add_control` |
 | Test the method on a known site | `list_tests`, `start_test`, `score_test`, `calibration_site`, `start_calibration`, `record_calibration` |
 | A quick look at one place | `quick_look` |

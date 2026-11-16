@@ -131,6 +131,10 @@ struct Scorecard: View {
                         Text("\(minutes) min · \(s["model"] as? String ?? "")").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                     }
                 }
+                if let w = s["with_rises"] as? JSON, let wf = w["found"] as? Int, let wr = w["rises"] as? Int, wf > found {
+                    Text("With the \(wr) measured rises the tools list for you to look over, \(wf) of \(known) are in front of you.")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                }
                 if let map = pictures["map"] as? String, let image = Images.load(root + "/" + map) {
                     VStack(alignment: .leading, spacing: 6) {
                         Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10))

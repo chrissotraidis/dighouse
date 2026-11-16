@@ -114,3 +114,54 @@ def coverage(p: Project) -> dict:
         out[key] = sum(t["status"] == key for t in tiles)
     out["verdicts"] = {v: sum(t.get("verdict") == v for t in tiles) for v in VERDICTS}
     return out
+
+
+def mound_spots(p: Project, tile_id: str, min_height_m: float = 0.3) -> tuple[list[dict], Image.Image]:
+    """Round rises in a tile, measured from the ground model, and the tile in sky view with each one ringed and numbered.
+
+    Positions are fractions of the tile, as flag_candidate takes them. A spot is a place to look, not a find."""
+    from . import mounds
+    tile = p.load("tiles", {})[tile_id]
+    meta = p.load("terrains", {})[tile["terrain"]]
+    res = meta["res"]
+    r, c, h, w = tile["window"]
+    pad = int((PAD_M + 40) / res)
+    r0, c0 = max(r - pad, 0), max(c - pad, 0)
+    dtm, gap, outside = T.load_terrain(p.path(meta["file"]), (r0, c0, h + (r - r0) + pad, w + (c - c0) + pad))
+    valid = ~((gap > T.GAP_M) | outside.astype(bool))
+    spots = []
+    for b in mounds.bumps(dtm, res, min_h=min_height_m, valid=valid):
+        y, x = b["row"] - (r - r0), b["col"] - (c - c0)
+        if 0 <= y < h and 0 <= x < w:
+            spots.append({"n": len(spots) + 1, "x": round((x + 0.5) / w, 3), "y": round((y + 0.5) / h, 3),
+                          "diameter_m": b["diameter_m"], "height_m": b["height_m"], "roundness": b["roundness"]})
+    from PIL import ImageFont
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 26)
+        small = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 20)
+    except OSError:
+        font = small = ImageFont.load_default()
+    img = tile_image(p, tile_id, "sky_view").convert("RGB")
+    d = ImageDraw.Draw(img)
+    for s in spots:
+        cx, cy = s["x"] * img.width, s["y"] * img.height
+        rad = max(s["diameter_m"] / res / w * img.width / 2 + 6, 14)
+        d.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], outline=(255, 170, 40), width=3)
+        d.text((cx + rad + 3, cy - rad - 4), str(s["n"]), fill=(255, 210, 90), font=font, stroke_width=3, stroke_fill=(0, 0, 0))
+    # Below the tile, a close look at each spot (40 m across, hillshade), so a small rise can be judged.
+    if spots:
+        shade = tile_image(p, tile_id, "hillshade").convert("RGB")
+        cell, per_row = 200, 5
+        rows_n = -(-len(spots) // per_row)
+        sheet = Image.new("RGB", (img.width, img.height + rows_n * (cell + 30)), (20, 18, 16))
+        sheet.paste(img, (0, 0))
+        dd = ImageDraw.Draw(sheet)
+        span = 40 / res / w * shade.width
+        for i, s in enumerate(spots):
+            cx, cy = s["x"] * shade.width, s["y"] * shade.height
+            crop = shade.crop((int(cx - span / 2), int(cy - span / 2), int(cx + span / 2), int(cy + span / 2))).resize((cell, cell))
+            x, y = (i % per_row) * (img.width // per_row) + 6, img.height + (i // per_row) * (cell + 30) + 6
+            sheet.paste(crop, (x, y))
+            dd.text((x, y + cell + 2), f"{s['n']}: {s['diameter_m']:.0f} m, {s['height_m']:.1f} m high", fill=(230, 220, 205), font=small)
+        img = sheet
+    return spots, img

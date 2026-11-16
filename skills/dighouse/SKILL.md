@@ -92,6 +92,7 @@ Finish what you start. Budget the run so the prior-art step and the summary alwa
 2. **Acquire.** `find_data` for the area, then `fetch_terrain` in boxes under 6 square km. A fetch can take ten minutes for a small area when the archive is slow; it returns on its own, so wait for it rather than concluding it failed. Read the dataset description: it names earlier studies of the same data. Write those down as the first sources to read.
 3. **Prepare.** `make_tiles`. Unreadable tiles stay unreadable. Report how many there are.
 4. **Look.** Call `feature_guide` once before the first tile and use it. For each tile from `next_tiles`: `view_tile`, look, then `record_verdict` with the name of the model that looked. Use a second style (`local_relief`, `sky_view` or `hillshade`) before deciding on anything doubtful. `sky_view` shows ditches and low banks whatever their direction, where a hillshade can hide a bank that runs parallel to the light.
+   Then call `find_mounds` on the tile: it measures round rises a picture hides. Look at each numbered spot in its picture and decide; most are not built.
 5. **Mark finds.** `flag_candidate` for anything that looks built, one record per feature: each mound gets its own find, while a rampart, enclosure or field system is one find. Start the note with the guide entry it matches ("Guide: burial mound."), or "Guide: no entry" with a description.
 6. **Check every find.**
    - `cut_section` across the feature, starting and ending on the surrounding ground, with the find id.

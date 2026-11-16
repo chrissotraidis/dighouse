@@ -211,6 +211,22 @@ def guard_box(box: list[float]) -> None:
         raise ValueError(BLIND)
 
 
+RISE_HEIGHT, RISE_ROUND = 0.6, 0.85   # measured rises worth a person's look (six keys: 45 -> 50 of 83, 28 more extras)
+
+
+def rises_lonlat(p, finds: dict) -> dict:
+    """The measured rises (find_mounds) that are not already near a find, as lon/lat, for the screening score."""
+    from . import tiles
+    out = {}
+    for tile, spots in (p.load("rises", {}) or {}).items():
+        for s in spots:
+            lon, lat = tiles.tile_lonlat(p, tile, s["x"], s["y"])
+            if all(math.hypot((lon - v["lon"]) * 111_320 * math.cos(math.radians(lat)), (lat - v["lat"]) * 110_540) > 10
+                   for v in list(finds.values()) + list(out.values())):
+                out[f"{tile[-7:]}-{s['n']}"] = {"lon": lon, "lat": lat}
+    return out
+
+
 def score_project(p) -> dict:
     """Score a blind test's finds against its key, write the score into the project, and open the literature."""
     from . import ledger
@@ -222,6 +238,11 @@ def score_project(p) -> dict:
     names = {m["id"]: m["name"] for m in ledger.everything(p)}
     finds = {cid: {"lon": v["lon"], "lat": v["lat"]} for cid, v in places.items() if cid in names}
     result = score(k, finds)
+    rises = rises_lonlat(p, finds)
+    if rises:
+        # With the measured rises a person would look over: what a search puts in front of a person, not what it claims.
+        both = score(k, {**finds, **rises})
+        result["with_rises"] = {"rises": len(rises), "found": both["found"], "extra": len(both["extra"])}
     result["key"] = summary(k)
     result["scored"] = __import__("datetime").date.today().isoformat()
     result["finds"] = {cid: names[cid] for cid in finds}
@@ -282,6 +303,10 @@ def score_lines(p, short: bool = False) -> list[str]:
     L = ["## Blind test", "", f"Scored {s['scored']} against {s['key']['name']} ({s['key']['place']}): "
          f"**{s['found']} of {s['known']}** features in the answer key found, {len(s['missed'])} missed, "
          f"{len(s['extra'])} find{'s' if len(s['extra']) != 1 else ''} not in the key.", ""]
+    if s.get("with_rises"):
+        w = s["with_rises"]
+        L += [f"With the {w['rises']} measured rises listed for a person to look over, {w['found']} of {s['known']} are in front of "
+              f"the person, with {w['extra']} not in the key.", ""]
     if s["missed"]:
         L.append("Missed: " + "; ".join(f"{m['feature']} {m['what']}" for m in s["missed"][:12])
                  + (f"; and {len(s['missed']) - 12} more" if len(s["missed"]) > 12 else "") + ".")

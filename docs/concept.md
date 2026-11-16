@@ -67,7 +67,7 @@ Computer use, the built-in browser and scheduled automations belong to the Codex
 
 ## The archaeology tools
 
-41 tools in one Model Context Protocol server (`src/dighouse`). The README lists them by stage.
+42 tools in one Model Context Protocol server (`src/dighouse`). The README lists them by stage.
 
 | Stage | What the tools do |
 |---|---|

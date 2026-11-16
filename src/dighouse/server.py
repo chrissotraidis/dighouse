@@ -683,6 +683,25 @@ def record_calibration(project: str, test_project: str) -> dict:
 
 
 @tool
+def find_mounds(project: str, tile: str, min_height_m: float = 0.3) -> list:
+    """Measure round rises in a tile from the ground model: small mounds a picture can hide. Returns each spot (position as
+    fractions of the tile, diameter, height, roundness) and the tile in sky view with the spots ringed and numbered.
+
+    A spot is a place to look, not a find. Look at each one, and mark a find only for those that look built in the
+    picture: a burial mound is round and stands alone or in a group; a tree throw has its heap on one side; a heap by a
+    track, a building or a field edge is usually modern. Run it on every tile after view_tile."""
+    p = Project(project).check()
+    spots, img = tiles.mound_spots(p, tile, min_height_m)
+    f = p.path("data", "tiles", f"{tile}-mounds.png")
+    img.save(f)
+    # The clearest rises are kept for the person, whether or not the agent marks them: a list to look over, not finds.
+    rises = p.load("rises", {}) or {}
+    rises[tile] = [s for s in spots if s["height_m"] >= answers.RISE_HEIGHT and s["roundness"] >= answers.RISE_ROUND]
+    p.save("rises", rises)
+    return _reply({"tile": tile, "spots": spots, "count": len(spots)}, f)
+
+
+@tool
 def feature_guide() -> str:
     """The feature guide: what built features look like in the bare ground, their usual sizes, and the look-alikes to rule
     out (sinkholes, tree throws, craters, drainage, plough lines, tracks). Read it before looking at tiles, and start each

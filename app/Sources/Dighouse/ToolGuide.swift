@@ -78,6 +78,7 @@ enum ToolGuide {
              image: "tile", flow: "screen",
              tools: [Tool(name: "next_tiles", title: "Pick tiles", does: "Picks the tiles nobody has looked at yet."),
                      Tool(name: "view_tile", title: "Look at a tile", does: "Shows one tile as shaded relief, slope, local relief, or sky view, which darkens ditches and brightens banks whatever their direction."),
+                     Tool(name: "find_mounds", title: "Measure small mounds", does: "Measures round rises in a tile that a picture can hide, and rings each for the agent and you to look at."),
                      Tool(name: "record_verdict", title: "Record a verdict", does: "Records what a tile shows: nothing, natural, modern, possible or built."),
                      Tool(name: "flag_candidate", title: "Mark a find", does: "Opens a record for something that looks built.")]),
         Pack(title: "Check every find", short: "Check", icon: "dig.layers",
@@ -396,6 +397,7 @@ enum ToolGuide {
         case "document_project": return ("book.closed", "Updated the research record")
         case "list_tests": return ("checklist", "Listed the test sites")
         case "feature_guide": return ("book", "Read the feature guide")
+        case "find_mounds": return ("smallcircle.filled.circle", "Measured small mounds")
         case "calibration_site": return ("scope", "Picked a calibration site")
         case "record_calibration": return ("checkmark.seal", "Recorded the calibration")
         case "start_calibration": return ("eye.slash", "Started the calibration test")

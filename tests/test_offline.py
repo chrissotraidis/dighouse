@@ -1,6 +1,7 @@
 """The whole chain on synthetic data: fetch, tile, screen, flag, section, checks, statuses."""
 
 import json
+import numpy as np
 import math
 from pathlib import Path
 
@@ -550,3 +551,20 @@ def test_blind_map_check_names_nothing():
     assert "Visitor Center" in named["buildings"] and "City Mound access road" in named["roads"]
     assert json.dumps(blind).count("Mound") == 0 and "Visitor" not in json.dumps(blind)
     assert blind["roads"] == ["service"] and blind["buildings"] == ["a building"]
+
+
+def test_mound_finder_measures_small_round_mounds():
+    """Two small domes on a slope are found with their size; a long bank and a flat field are not."""
+    from dighouse import mounds
+
+    y, x = np.mgrid[0:200, 0:200].astype(float)
+    dtm = 50 + 0.05 * x  # a gentle slope, 1 m cells
+    for cx, cy, r, h in ((50, 50, 4, 0.6), (140, 120, 8, 1.2)):
+        d = np.hypot(x - cx, y - cy) / r
+        dtm += h * np.clip(1 - d ** 2, 0, None)
+    dtm += 0.5 * np.clip(1 - np.abs(y - 170) / 3, 0, None) * ((x > 20) & (x < 180))  # a long bank
+    found = mounds.bumps(dtm, 1.0, min_h=0.3)
+    near = lambda cx, cy: [b for b in found if abs(b["col"] - cx) <= 2 and abs(b["row"] - cy) <= 2]
+    assert near(50, 50) and near(140, 120)
+    assert 5 <= near(50, 50)[0]["diameter_m"] <= 10 and near(140, 120)[0]["height_m"] > 0.8
+    assert not [b for b in found if abs(b["row"] - 170) <= 3]
