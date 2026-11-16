@@ -121,7 +121,7 @@ Take the stages one at a time, or press **Find and report back** and the agent c
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/toolbox.png" alt="The Toolbox on the Check stage of a real search at Cahokia: a line dragged across Monks Mound and the slice it cuts drawn beside it"><br><sub><b>Toolbox.</b> One real search at Cahokia in six stages, each a picture to press or drag. Here a line across Monks Mound draws its slice.</sub></td>
-    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: a map of the world showing where open lidar reaches, and a tile for each service with its status"><br><sub><b>Open data.</b> Where each kind of data reaches, and a page for every service the tools read.</sub></td>
+    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: a map of the world showing where open lidar reaches, and a tile for each service with its status"><br><sub><b>Open data.</b> Where each kind of data reaches, from the United States to New Zealand, and a page for every service the tools read. OpenStreetMap was partly online when this was taken.</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/workflows.png" alt="The Workflows tab: three lanes for the agent, a second model and you, with the eight parts of a search in order"><br><sub><b>Workflows.</b> Who does each part of a search, and where the open project stands.</sub></td>

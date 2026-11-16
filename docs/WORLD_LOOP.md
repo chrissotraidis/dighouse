@@ -233,3 +233,5 @@ The overview gained four enclosures and forts (Oberhaching 2, Lauske 1, Maiden C
 
 
 **Live tests:** `uv run pytest -m live` gives 7 passed and 2 failed on this Mac. The 2 query the Cahokia area, which an unfinished loop-6 blind test (~/dighouse-ui-test/blind-test-2026-11-16-2) still holds closed in the blind-test registry. With an empty cache (`DIGHOUSE_CACHE=$(mktemp -d)`) all 9 pass. That project was left as it is; finishing or removing it is Chris's call.
+
+**README picture:** Open data retaken at 1440 × 900 in Earth (window alone, `screencapture -l`): 42 tools, 21 of 22 services online (OpenStreetMap's Overpass partly online, as the caption says), the map with New Zealand and the European regions. Settings restored afterwards.
