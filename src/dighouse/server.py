@@ -263,7 +263,10 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
     p.save("terrains", terrains)
     p.note(f"Fetched {dataset} as terrain {tid}: {summary}")
     warn = [] if stats["ground_classified"] else ["This dataset has no ground classification; the model uses the lowest return per cell and will include low vegetation."]
-    if points is None:
+    if how.get("seafloor"):
+        warn.append("This is the seafloor from sonar surveys, as depth below the chart datum. Gaps between survey lines come back as outside the survey. "
+                    "A slice shows the seafloor's profile; a wreck stands above it or sits in a scour pit.")
+    elif points is None:
         warn.append("This is a national agency's ready-made ground model. There are no raw points, so a section shows the ground profile only and cannot tell a feature in the ground from one in the trees.")
     return {"terrain": tid, **{k: v for k, v in meta.items() if k not in ("box", "file", "points", "epsg")}, "warnings": warn}
 
@@ -446,7 +449,11 @@ def cut_section(project: str, tile: str, x1: float, y1: float, x2: float, y2: fl
     bx, by, _ = tiles.tile_xy(p, tile, x2, y2)
     terrain = p.load("tiles", {})[tile]["terrain"]
     img, stats = section.cut(p, terrain, (ax, ay), (bx, by), width_m)
-    if stats.get("from_ground_model_only"):
+    if stats.get("from_ground_model_only") and p.load("terrains", {}).get(terrain, {}).get("seafloor"):
+        stats["in_ground"] = None
+        stats["seafloor"] = True
+        stats["note"] = "This is a sonar survey of the seafloor. The height is how far the feature stands above the seafloor along the line."
+    elif stats.get("from_ground_model_only"):
         stats["in_ground"] = None
         stats["note"] = ("This terrain is a national agency's ground model with no raw points. The height is measured on the model; "
                          "whether the feature is in the ground or is vegetation the agency left in cannot be told from it.")
@@ -480,6 +487,23 @@ def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     """Check OpenStreetMap around a candidate for roads, buildings and land use, and for sites already mapped nearby."""
     p = Project(project).check()
     lon, lat = ledger.location(p, candidate)
+    tile = (p.load("locations", {}) or {}).get(candidate, {}).get("tile")
+    terrain = (p.load("tiles", {}) or {}).get(tile, {}).get("terrain")
+    if terrain and (p.load("terrains", {}) or {}).get(terrain, {}).get("seafloor"):
+        # Under water the open street map has nothing to say; the charts do. A blind test must not hear about charted wrecks.
+        try:
+            sea = checks.seafloor_features(lon, lat, radius_m, wrecks=not answers.is_blind(p))
+        except RuntimeError:
+            p.note(f"Could not check the charts near {candidate}: NOAA's chart services did not answer")
+            raise
+        summary = (f"within {radius_m} m the charts show {', '.join(sea['modern'])}" if sea["modern"] else f"no cable, pipeline or dumping ground charted within {radius_m} m")
+        if sea["charted_wreck_within_radius"]:
+            summary += f"; a wreck is already charted within {radius_m} m"
+        if sea["not_checked"]:
+            summary += f"; the charts for {', '.join(x + 's' for x in sea['not_checked'])} did not answer, so those are unchecked"
+        ledger.set_check(p, candidate, "modern", {"likely_modern": bool(sea["modern"]), "summary": summary, "radius_m": radius_m,
+                                                  "near": sea["modern"], "charts": True})
+        return {"candidate": candidate, **sea, "summary": summary}
     try:
         found = checks.modern_features(lon, lat, radius_m, named=not answers.is_blind(p))
     except RuntimeError:

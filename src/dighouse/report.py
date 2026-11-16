@@ -47,8 +47,8 @@ def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
     if isinstance(sec, dict):
         # A ready-made ground model has no treetops in it, so its slice can measure a shape but cannot place it.
         parts.append(f"Slice: {sec.get('feature_height_m', '?')} m high, "
-                     + ("in the ground" if sec.get("in_ground") else "on a ready-made ground model" if sec.get("from_ground_model_only")
-                        else "not clearly in the ground"))
+                     + ("in the ground" if sec.get("in_ground") else "above the seafloor" if sec.get("seafloor")
+                        else "on a ready-made ground model" if sec.get("from_ground_model_only") else "not clearly in the ground"))
     else:
         parts.append("Slice: not cut yet")
     second = c.get("second_look")
@@ -61,8 +61,9 @@ def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
         pass
     elif isinstance(modern, dict):
         near = record.listed(modern.get("near") or []) or "modern features"
-        parts.append("Open maps: " + (f"{near} within {modern.get('radius_m', 150)} m" if modern.get("likely_modern")
-                                      else "nothing modern on it"))
+        parts.append(("Charts: " if modern.get("charts") else "Open maps: ")
+                     + (f"{near} within {modern.get('radius_m', 150)} m" if modern.get("likely_modern")
+                        else "no cable, pipeline or dumping ground charted" if modern.get("charts") else "nothing modern on it"))
     elif m["id"] in failed_maps:
         parts.append("Open maps: did not answer")
     else:
@@ -136,10 +137,12 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     for t in sorted(terrains.values(), key=lambda t: t.get("dataset") or "")[:1]:
         dataset = t.get("dataset") or ""
         kind = dataset.split(":")[0]
-        where = "a file a person added" if kind == "own" else f"open lidar from {t.get('source') or national.publisher(kind)}"
+        where = ("a file a person added" if kind == "own" else f"a sonar survey of the seafloor from {t.get('source') or national.publisher(kind)}"
+                 if t.get("seafloor") else f"open lidar from {t.get('source') or national.publisher(kind)}")
         L.append(f"- {_short(dataset.split(':', 1)[-1], 50)}, {_short(where, 70)}: {(t.get('area_km2') or 0):.2f} sq km, "
                  + (f"{record.density(t)} laser points per square metre reached the ground."
-                    if isinstance(t.get("ground_points_per_m2"), (int, float)) else "a ground model that was already built."))
+                    if isinstance(t.get("ground_points_per_m2"), (int, float)) else "a depth model built from it." if t.get("seafloor")
+                    else "a ground model that was already built."))
     if len(terrains) > 1:
         L.append(f"- And {_s(len(terrains) - 1, 'more survey')}.")
     if tiles:

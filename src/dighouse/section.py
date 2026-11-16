@@ -44,7 +44,7 @@ def cut(p: Project, terrain_id: str, a: tuple[float, float], b: tuple[float, flo
 
     # ground profile in 1 m steps, from ground returns where there are any, else from the model
     steps = np.arange(0.5, length, 1.0)
-    profile = _sample_model(p, meta, ax + ux * steps, ay + uy * steps)
+    profile = _sample_model(p, meta, ax + ux * steps, ay + uy * steps)[0]
     bins = np.clip(s[ground].astype(int), 0, len(steps) - 1)
     hits = np.bincount(bins, minlength=len(steps))
     sums = np.bincount(bins, weights=z[ground], minlength=len(steps))
@@ -72,7 +72,9 @@ def cut(p: Project, terrain_id: str, a: tuple[float, float], b: tuple[float, flo
 def _model_only(p: Project, meta: dict, ax: float, ay: float, ux: float, uy: float, length: float) -> tuple[Image.Image, dict]:
     """A section through a ready-made ground model: the profile, with no points to show the canopy."""
     steps = np.arange(0.25, length, 0.5)
-    profile = _sample_model(p, meta, ax + ux * steps, ay + uy * steps)
+    profile, missing = _sample_model(p, meta, ax + ux * steps, ay + uy * steps)
+    if (~missing).sum() >= 10:  # samples in a gap between survey lines are fill, not ground
+        steps, profile = steps[~missing], profile[~missing]
     ends = np.linspace(np.median(profile[:10]), np.median(profile[-10:]), len(steps))
     rise = profile - ends
     peak = int(np.argmax(rise))
@@ -80,18 +82,20 @@ def _model_only(p: Project, meta: dict, ax: float, ay: float, ux: float, uy: flo
              "ground_returns_within_5m_of_peak": None, "feature_height_m": round(float(rise[peak]), 2),
              "peak_at_m": round(float(steps[peak]), 1), "canopy_height_m": None, "has_vegetation_returns": False,
              "from_ground_model_only": True}
-    return _draw(steps, profile, np.ones(len(steps), bool), length), stats
+    legend = "seafloor, from a sonar survey" if meta.get("seafloor") else "ground model, no raw points"
+    return _draw(steps, profile, np.ones(len(steps), bool), length, legend), stats
 
 
-def _sample_model(p: Project, meta: dict, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
-    dtm = T.load_terrain(p.path(meta["file"]))[0]
+def _sample_model(p: Project, meta: dict, xs: np.ndarray, ys: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Heights along the line, and which samples fall outside the survey."""
+    dtm, _, outside = T.load_terrain(p.path(meta["file"]))
     x0, _, _, y1 = meta["box"]
     c = np.clip(((xs - x0) / meta["res"]).astype(int), 0, dtm.shape[1] - 1)
     r = np.clip(((y1 - ys) / meta["res"]).astype(int), 0, dtm.shape[0] - 1)
-    return dtm[r, c].astype(float)
+    return dtm[r, c].astype(float), outside[r, c].astype(bool)
 
 
-def _draw(s: np.ndarray, z: np.ndarray, ground: np.ndarray, length: float) -> Image.Image:
+def _draw(s: np.ndarray, z: np.ndarray, ground: np.ndarray, length: float, legend: str = "") -> Image.Image:
     img = np.zeros((H, W, 3), np.uint8)
     img[:] = BG_RGB
     if len(z):
@@ -115,6 +119,9 @@ def _draw(s: np.ndarray, z: np.ndarray, ground: np.ndarray, length: float) -> Im
         v_px = v_m / (z1 - z0) * (H - 2 * MARGIN)
         d.line([(18, H - MARGIN), (18, H - MARGIN - v_px)], fill=ink, width=3)
         d.text((26, H - MARGIN - v_px), f"{v_m} m", fill=ink, font=font, anchor="lm")
-    d.text((W - MARGIN, 16), "ground returns", fill=GROUND_RGB, font=small, anchor="ra")
-    d.text((W - MARGIN - d.textlength("ground returns", font=small) - 24, 16), "trees and other returns", fill=VEG_RGB, font=small, anchor="ra")
+    if legend:  # a ground model has one line, not points sorted into ground and trees
+        d.text((W - MARGIN, 16), legend, fill=GROUND_RGB, font=small, anchor="ra")
+    else:
+        d.text((W - MARGIN, 16), "ground returns", fill=GROUND_RGB, font=small, anchor="ra")
+        d.text((W - MARGIN - d.textlength("ground returns", font=small) - 24, 16), "trees and other returns", fill=VEG_RGB, font=small, anchor="ra")
     return out

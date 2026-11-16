@@ -102,6 +102,12 @@ def find_data(bbox: list[float]) -> list[dict]:
             errors.append(f"{finder.__name__[6:]}: {exc}")
     if errors:
         found.append({"errors": errors})
+    if any(d.get("seafloor") for d in found):
+        # A sonar survey covers the box, so it is at least partly under water: airborne lidar stops at the surface.
+        for d in found:
+            if d.get("id") and not d.get("seafloor"):
+                d["note"] = "Lidar flown from the air maps the land and stops at the water's surface. A sonar survey of the seafloor also covers this box; use it for anything under water."
+        found.sort(key=lambda d: not d.get("seafloor"))
     return found
 
 

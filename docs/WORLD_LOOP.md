@@ -167,3 +167,69 @@ publisher and calibration changes. Each was checked separately below.
 - **Checked in the running app:** the Settings row shows, Save stays off until something is typed, and a saved token reaches the tools (keys.json mode 600). Clearing it and saving removes it. An offline test covers the message without a token and reading the keys file.
 - **Waiting for Chris:** the live fetch and the Danish blind test (Trelleborg or a mound group, keyed from the register) need a real token, which needs an account. That is Chris's to create.
 
+
+### 2026-11-16, W6: the method changed, and every site rerun
+
+The W1 to W4 scores showed the agent calling straight-sided earthworks at field edges "modern". Two changes, each rerun on the sites they touch:
+
+1. **Feature guide** (src/dighouse/FEATURES.md): enclosures can be square, with sharp corners (Iron Age square enclosures, Roman forts, moated sites). A field edge runs on; an earthwork that closes on itself is an enclosure. "Straight is not the same as modern": a closed bank or ditch is worth a find, and the checks decide.
+   - Rerun at Oberhaching with only this change: still 0 of 3. Every enclosure tile was still called modern. Looking at the tile showed why: a 250 m tile shows one side of a 100 m enclosure, which looks like a field edge.
+2. **A look at the whole area first** (skills/dighouse/SKILL.md, step 3): after make_tiles, `view_terrain` in sky view and hillshade, noting every bank or ditch that closes on itself; mark each once, with the point on the bank or ditch itself. (The middle of an enclosure is not on its line: Maiden Castle's rampart find was 128 m from the rampart and scored as extra.)
+
+**Three rounds, primary / 6.1 Terra at medium, `find_mounds` in each:**
+
+| Site | First (W1 to W4, or loop 6) | Guide and overview | Final (point on the bank) |
+|---|---|---|---|
+| Mound City | 19 of 19 | 19 of 19 | 19 of 19, 3 extra |
+| Angel Mounds | 4 of 4 | 4 of 4 | 4 of 4, 3 extra |
+| Cahokia | 1 of 1 | 1 of 1 | 1 of 1, 3 extra |
+| Serpent Mound | 1 of 3 | 1 of 3 | 1 of 3, 2 extra |
+| Maiden Castle | 1 of 3 | 0 of 3 (rampart marked in its middle) | 1 of 3, 2 extra |
+| Borre | 19 of 53 | 20 of 53 | 20 of 53, 0 extra |
+| Oberhaching | 0 of 3 | 2 of 3 | 2 of 3, 3 extra |
+| Lauske | 2 of 3 | 3 of 3 | 3 of 3, 5 extra |
+| Irulegi | 1 of 2 | 1 of 2 | 1 of 2, 0 extra |
+| Andía | 0 of 11 | 0 of 11 | 0 of 11, 12 extra |
+| Puketapu | 1 of 1 | 1 of 1 | 1 of 1, 8 extra |
+| **Eleven on land** | **49 of 103** | **52 of 103** | **53 of 103, 41 extra** |
+
+The overview gained four enclosures and forts (Oberhaching 2, Lauske 1, Maiden Castle back to 1) and cost nothing on the mound sites. Extras rose from 30 to 41, most of them at Andía, where the agent marked rough upland bumps.
+
+**The README** benchmark table has all eleven land sites and the underwater pilot, with the same caveats. "What it cannot do" names Andía and the pilot's limits. The services table lists the new sources. The tool count stays 42 (no new tool). Measured rises across the eleven: 63 of 103 in front of a person instead of 53, but 738 spots in all, 565 of them on the Andía upland. They help on smooth ground and flood rough ground, and the README says so.
+
+### 2026-11-16, W7 to W10: the seafloor pilot
+
+- **Source:** NOAA NCEI's `bag_bathymetry` image service (every BAG survey as one mosaic) is fetched like a ground model (`kind: image`, in the box's UTM zone, 32-bit depths, `us:noaa-bag`). `find_data` offers it only where a survey 2 m or finer covers the box, listing the surveys (from the service's catalog), so it never shows on land. Depth is negative height. The terrain records the surveys used (for example H12132, H14139, W00499 at 1 m). Checked by a live test: a charted wreck in Thunder Bay stands more than 1.5 m above the lake bed in the fetched model.
+- **Land or water:** when a seafloor survey covers a box, `find_data` lists it first and notes on the land lidar that it stops at the water's surface; the skill says to fetch the seafloor survey. (Before that fix, two of the three first wreck runs fetched land lidar over the lake and found nothing to score.)
+- **Keys** (W8): `wreck_key` in scripts/build_answer_keys.py reads the wrecks on NOAA's electronic charts at all four scales from ENC Direct, merging two symbols within 80 m. It checks each wreck's 120 m surroundings for survey data and marks it "may not show" below 30%. Match distance is 100 m (one Thunder Bay hull lies 70 m from its symbol), stated in the key. Coverage is "charted": the scorecard says an extra may be an uncharted wreck or debris. Three areas in Thunder Bay National Marine Sanctuary were chosen because all 27 charted wrecks there sit in 1 m surveys:
+  - **thunder-bay-a**, west: 4 wrecks, 3 counted (one has 14% coverage).
+  - **thunder-bay-south**: 2 wrecks.
+  - **thunder-bay-east**: 2 wrecks.
+
+  A Key Largo key was dropped: none of its charted wrecks had survey data around them. The chart services answer "could not find service" now and then, so key building and the checks retry; one empty key came from a single unanswered request.
+- **Looking under water** (W9): the feature guide has a seafloor section (hull, scour pit, debris field; rock outcrops, sand waves, trawl and anchor scars, pipelines, dumped material, survey artefacts and gaps).
+  - **Modern check:** `check_modern` reads charted cables, pipelines and dumping grounds from NOAA's charts, plus charted wrecks except during a blind test. A layer that does not answer is named as unchecked.
+  - **Slice:** samples in gaps between survey lines are skipped, and the picture is labelled "seafloor, from a sonar survey". The report and record say "above the seafloor" and "Charts:". Checked end to end on a Thunder Bay hull: slice 2.3 m high over 51 m, charts "no cable, pipeline or dumping ground charted; a wreck is already charted within 150 m".
+- **Blind tests** (W10), the final method, one scored run each:
+
+| Area | Found | Extra | Notes |
+|---|---|---|---|
+| Thunder Bay west | 2 of 3 | 2 | |
+| Thunder Bay east | 2 of 2 | 3 | Scorecard in the running app: [screenshot](loop7/wreck-scorecard.png) |
+| Thunder Bay south | 0 of 2 | 0 | Both charted wrecks stand 1.3 to 2.3 m above a lake bed strewn with boulders of the same size; the agent called all 84 tiles natural. |
+| **Pilot** | **4 of 7** | 5 | |
+
+  The README benchmark table has an "underwater (pilot)" row. "What it cannot do" covers wrecks that lie flat, are buried, sit among rocks or in survey gaps. Responsible use adds that wrecks can be war graves and are reported to NOAA's sanctuaries office or the state's underwater archaeology program.
+
+### Where loop 7 stands
+
+- **Done and checked:** W0 to W4, W6 to W10.
+- **W5, Denmark:** built and checked offline and in the app's Settings. The live fetch and a Danish blind test wait for Chris to create a free Dataforsyningen account and paste the token.
+- **Not done:** Spain beyond Navarre (IGN's national service rounds heights to whole metres; CNIG's download centre does not answer scripts).
+- **Next:**
+  - Calibrate the wreck search on a rocky lake bed.
+  - Try EMODnet for European waters.
+  - Run the land sites again when the model changes.
+
+
+**Live tests:** `uv run pytest -m live` gives 7 passed and 2 failed on this Mac. The 2 query the Cahokia area, which an unfinished loop-6 blind test (~/dighouse-ui-test/blind-test-2026-11-16-2) still holds closed in the blind-test registry. With an empty cache (`DIGHOUSE_CACHE=$(mktemp -d)`) all 9 pass. That project was left as it is; finishing or removing it is Chris's call.

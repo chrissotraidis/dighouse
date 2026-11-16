@@ -360,8 +360,82 @@ def puketapu():
             "features": feats}
 
 
+ENC = "https://encdirect.noaa.gov/arcgis/rest/services/encdirect"
+ENC_WRECKS = [("enc_harbour", 36, "harbour"), ("enc_approach", 39, "approach"), ("enc_coastal", 33, "coastal"), ("enc_general", 29, "general")]
+WRECK_REACH_M = 100  # NOAA warns that charted wreck positions can be off; at Thunder Bay one hull lay 70 m from its chart symbol
+
+
+def wreck_key(kid, prefix, name, place, box, why):
+    """Charted wrecks inside a box, from NOAA's electronic charts at every scale, merged where two charts mark one wreck."""
+    import numpy as np
+    from dighouse import national
+    found = []
+    import time
+    for svc, layer, scale in ENC_WRECKS:
+        for attempt in range(4):  # the chart services answer "could not find service" now and then; a key must not miss wrecks
+            r = httpx.get(f"{ENC}/{svc}/MapServer/{layer}/query", headers=UA, timeout=90, params={
+                "geometry": ",".join(map(str, box)), "geometryType": "esriGeometryEnvelope", "inSR": 4326, "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "OBJNAM,CATWRK,VALSOU,SORDAT,SORIND", "returnGeometry": "true", "outSR": 4326, "f": "json"})
+            r.raise_for_status()
+            j = r.json()
+            if "error" not in j:
+                break
+            if attempt == 3:
+                raise RuntimeError(f"NOAA {svc} did not answer: {j['error'].get('message')}")
+            time.sleep(10 * (attempt + 1))
+        for f in j.get("features", []):
+            a, g = f["attributes"], f["geometry"]
+            if not (box[0] <= g["x"] <= box[2] and box[1] <= g["y"] <= box[3]):
+                continue
+            near = next((w for w in found if math.hypot((w["lon"] - g["x"]) * 111_320 * math.cos(math.radians(g["y"])), (w["lat"] - g["y"]) * 110_540) < 80), None)
+            src = f"NOAA chart ({scale} scale), {a.get('CATWRK') or 'wreck'}, source {a.get('SORIND') or 'not stated'} {a.get('SORDAT') or ''}".strip()
+            if near:
+                near["charted"].append(src)
+                continue
+            found.append({"lon": g["x"], "lat": g["y"], "name": a.get("OBJNAM"), "charted": [src]})
+    d = national.NATIONAL["us:noaa-bag"]
+    feats = []
+    for i, w in enumerate(sorted(found, key=lambda w: (-w["lat"], w["lon"])), 1):
+        # A wreck needs survey data around it to show at all. Look at the 120 m around its chart position.
+        b = [w["lon"] - 0.0008, w["lat"] - 0.00055, w["lon"] + 0.0008, w["lat"] + 0.00055]
+        try:
+            dtm, outside, *_ = national.fetch_dtm("us:noaa-bag", b)
+            covered = float(1 - outside.mean())
+        except ValueError:
+            covered = 0.0
+        expect = covered >= 0.3
+        note = f"Charted {len(w['charted'])} times within 80 m; merged." if len(w["charted"]) > 1 else ""
+        if not expect:
+            note = (note + " " if note else "") + f"May not show: only {covered:.0%} of the 120 m around its chart position has survey data."
+        f = point(f"{prefix}-{i:02d}", f"Wreck{': ' + w['name'] if w['name'] else ''}", w["lon"], w["lat"], 30, "; ".join(w["charted"]), expect, note)
+        f["reach_m"] = WRECK_REACH_M
+        feats.append(f)
+    return {"id": kid, "name": name, "place": place, "data": "NOAA hydrographic surveys (BAG), 1 m", "prefix": "us", "box": box,
+            "coverage": "charted", "seafloor": True,
+            "published": f"Wrecks on NOAA's electronic navigational charts. {why} Charted positions can be tens of metres off, so a find within "
+                         f"{WRECK_REACH_M} m of a charted wreck counts. Uncharted wrecks and debris are not in the key.",
+            "sources": [{"cite": "NOAA Office of Coast Survey, Electronic Navigational Charts, through ENC Direct to GIS", "link": "https://encdirect.noaa.gov"},
+                        {"cite": "NOAA National Centers for Environmental Information, NOS hydrographic surveys (BAG)", "link": "https://www.ncei.noaa.gov/products/nos-hydrographic-survey"}],
+            "features": feats}
+
+
+def thunder_bay_a():
+    return wreck_key("thunder-bay-a", "TBA", "Thunder Bay wrecks, west", "Lake Huron, Michigan, United States", [-83.444, 45.045, -83.425, 45.058],
+                     "Thunder Bay is a National Marine Sanctuary with some of the best-preserved wrecks in the Great Lakes.")
+
+
+def thunder_bay_south():
+    return wreck_key("thunder-bay-south", "TBS", "Thunder Bay wrecks, south", "Lake Huron, Michigan, United States", [-83.260, 44.801, -83.243, 44.824],
+                     "Thunder Bay is a National Marine Sanctuary with some of the best-preserved wrecks in the Great Lakes.")
+
+
+def thunder_bay_east():
+    return wreck_key("thunder-bay-east", "TBE", "Thunder Bay wrecks, east", "Lake Huron, Michigan, United States", [-83.190, 45.050, -83.163, 45.071],
+                     "Thunder Bay is a National Marine Sanctuary with some of the best-preserved wrecks in the Great Lakes.")
+
 KEYS = {"angel-mounds": angel_mounds, "mound-city": mound_city, "serpent-mound": serpent_mound, "cahokia": cahokia,
-        "maiden-castle": maiden_castle, "borre": borre, "andia": andia, "irulegi": irulegi, "oberhaching": oberhaching, "lauske": lauske, "puketapu": puketapu}
+        "maiden-castle": maiden_castle, "borre": borre, "andia": andia, "irulegi": irulegi, "oberhaching": oberhaching, "lauske": lauske, "puketapu": puketapu,
+        "thunder-bay-a": thunder_bay_a, "thunder-bay-south": thunder_bay_south, "thunder-bay-east": thunder_bay_east}
 
 
 def main(names=None):

@@ -88,3 +88,15 @@ def test_national_ground_models_build(tmp_path):
 def test_pleiades_adds_ancient_places():
     sites = server.survey_area(12.45, 41.85, 12.55, 41.92)["known_sites"]   # central Rome
     assert sites["by_source"].get("Pleiades", 0) > 50
+
+def test_noaa_seafloor_survey_shows_a_wreck():
+    """A NOAA sonar survey is offered over Thunder Bay, not on land, and a charted wreck stands above the seafloor in it."""
+    import numpy as np
+    from dighouse import national
+    box = [-83.3485, 45.0240, -83.3438, 45.0272]
+    assert any(d.get("seafloor") for d in national.find(box))
+    assert not any(d.get("seafloor") for d in national.find([-83.0, 39.3, -82.98, 39.32]))
+    dtm, outside, *_ = national.fetch_dtm("us:noaa-bag", box)
+    seafloor = dtm[~outside]
+    assert seafloor.max() < 0 and outside.mean() < 0.5
+    assert np.percentile(seafloor, 99.9) - np.median(seafloor) > 1.5  # the hull rises above the lake bed

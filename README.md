@@ -36,7 +36,8 @@ A **find** in Dighouse is a shape that might be built and is not yet confirmed. 
 ## What it cannot do
 
 - **It does not confirm sites.** A find is a reason to look, not a discovery. Confirming one takes an archaeologist, and often fieldwork.
-- **It misses things.** In the blind tests below it found large earthworks reliably and missed most small, low mounds: 18 of 53 at Borre.
+- **It misses things.** In the blind tests below it found large earthworks reliably and missed most small, low mounds: 20 of 53 at Borre, and none of the 11 low megalithic mounds in Navarre's 2 m model.
+- **Under water it is a pilot.** It reads NOAA's sonar surveys of US waters only. A wreck lying flat, buried in sediment, among rocks, or in a gap between survey lines will not show.
 - **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are not public, so "no match in the sources read" often means little was readable.
 - **It sees shapes in the ground, not artefacts.** Lidar cannot show buried deposits, pottery scatters, or a feature's date or culture.
 - **It needs a Mac and some setup.** It builds from source on an Apple silicon Mac today; the tools also run on their own in any harness that speaks the Model Context Protocol.
@@ -48,12 +49,18 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
 | Site | Data | Found of known | Missed | Not in the key |
 |---|---|---|---|---|
 | Mound City Group, Ohio | USGS 3DEP | 19 of 19 | 0 | 3 (real mounds the key leaves out) |
-| Angel Mounds, Indiana | USGS 3DEP | 4 of 4 | 0 | 2 |
-| Cahokia, Monks Mound, Illinois | USGS 3DEP | 1 of 1 | 0 | 1 |
-| Serpent Mound, Ohio | USGS 3DEP | 1 of 3 (the effigy) | 2 burial mounds | 1 |
+| Angel Mounds, Indiana | USGS 3DEP | 4 of 4 | 0 | 3 |
+| Cahokia, Monks Mound, Illinois | USGS 3DEP | 1 of 1 | 0 | 3 |
+| Serpent Mound, Ohio | USGS 3DEP | 1 of 3 (the effigy) | 2 burial mounds | 2 |
 | Maiden Castle, England | Environment Agency 1 m | 1 of 3 (the ramparts) | both entrance outworks | 2 |
-| Borre, Norway | Kartverket 1 m | 18 of 53 | 35 small burial mounds | 0 |
-| **All six** | | **44 of 83** | 39 | 9 |
+| Borre, Norway | Kartverket 1 m | 20 of 53 | 33 small burial mounds | 0 |
+| Oberhaching square enclosures, Bavaria | Bavarian DGM1 1 m | 2 of 3 | 1 enclosure | 3 |
+| Lauske ring forts, Saxony | Saxon DGM1 1 m | 3 of 3 | 0 | 5 |
+| Irulegi hill, Navarre | Navarre 2 m | 1 of 2 (the castle) | the Iron Age village | 0 |
+| Sierra de Andía megaliths, Navarre | Navarre 2 m | 0 of 11 | 11 low mounds and dolmens | 12 |
+| Puketapu Pa, Auckland | LINZ 1 m | 1 of 1 | 0 | 8 |
+| **All eleven on land** | | **53 of 103** | 50 | 41 |
+| Thunder Bay wrecks, Lake Huron (three areas) | NOAA sonar, 1 m | 4 of 7 charted wrecks | 3 | 5 |
 
 <table>
   <tr>
@@ -62,9 +69,11 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
   </tr>
 </table>
 
-Run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 minutes a site (10 at Maiden Castle). The answer keys come from Norway's heritage register (Borre) and from OpenStreetMap features with the publications that describe them (the rest). Five of the six keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log). Results will differ with other models.
+Run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 to 10 minutes a site. Every land site was run with the same method: a look at the whole area first, then every tile, then a slice and a map check for each find. The answer keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them (the rest). Most keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log). Results will differ with other models.
 
-Small mounds are the weak spot: a mound 5 m across is a few pixels in a tile picture. `find_mounds` measures round rises in the ground model instead, and the clearest ones (at least 0.6 m high and nearly round) go on a list for a person to look over, apart from the agent's finds. Across the six keys that list puts 50 of 83 known features in front of a person instead of 45, at the cost of 28 more spots to rule out. At Borre it adds 4 mounds and 7 spots that are not.
+The underwater row is a pilot: one source (NOAA's sonar surveys of US waters and the Great Lakes), three small areas of Thunder Bay National Marine Sanctuary, and one scored run each. The three charted wrecks it missed stand barely above a rocky lake bed, or lie at the edge of the survey.
+
+Small mounds are the weak spot: a mound 5 m across is a few pixels in a tile picture. `find_mounds` measures round rises in the ground model instead, and the clearest ones (at least 0.6 m high and nearly round) go on a list for a person to look over, apart from the agent's finds. On the six original sites that list puts 50 of 83 known features in front of a person instead of 45, for 28 more spots to rule out. It does not travel well: on rough ground it floods the list, with 565 spots on the Navarre upland (where it reaches 6 of the 11 megaliths) and 54 at the Saxon forts.
 
 > [!NOTE]
 > Dighouse builds from source today. The app is signed for local use and is not yet notarized. The archaeology tools also run on their own in Codex or any harness that speaks the Model Context Protocol.
@@ -191,6 +200,8 @@ Everything Dighouse reads is public, and none of it needs an account or a key.
 | [GeoSN](https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html) | Saxony's 1 m ground model |
 | [Toitū Te Whenua LINZ](https://registry.opendata.aws/nz-elevation/) | New Zealand's 1 m ground model, where it has been flown |
 | [Dataforsyningen](https://dataforsyningen.dk/data/930) | Denmark's 0.4 m ground model, with a free token pasted in Settings |
+| [NOAA NCEI](https://www.ncei.noaa.gov/products/nos-hydrographic-survey) | Sonar surveys of the seafloor in US waters and the Great Lakes, as 1 m depth grids |
+| [NOAA charts](https://encdirect.noaa.gov) | Charted cables, pipelines and dumping grounds near a find under water |
 | [Fund og Fortidsminder](https://www.kulturarv.dk/fundogfortidsminder/) | Denmark's national register of ancient monuments, for checking a find |
 | [IDENA heritage layer](https://idena.navarra.es) | Navarre's register of protected archaeological sites, for checking a find |
 | [OpenStreetMap](https://www.openstreetmap.org/) | Mapped sites through [QLever](https://qlever.dev/); roads and buildings near a find through Overpass, or OpenStreetMap's own map service when Overpass is down |
@@ -218,6 +229,7 @@ These live in the tools, so they hold whichever model is running.
 - **Do not visit or dig.** A find is a desk result. Digging or metal-detecting on a site destroys what it holds, and in many places it is illegal without a permit.
 - **Report, do not post.** Send a find to the heritage authority (in the United States, the state historic preservation office; in England, the local Historic Environment Record), not to social media. Published locations invite looting.
 - **Think of the people connected to a place.** Many sites, including the mound sites in the tests above, matter to descendant communities. Consult them before anything is made public.
+- **Leave wrecks alone.** Many wrecks are war graves or protected by law, and many hold the remains of those who sailed them. Report a wreck find to NOAA's Office of National Marine Sanctuaries or the state's underwater archaeology program, never online.
 - **Keep locations private.** Dighouse keeps coordinates under `private/`. Export for mapping software writes a GeoJSON file there too; that file holds locations, so treat it as you would the site itself.
 
 ## A project is a folder

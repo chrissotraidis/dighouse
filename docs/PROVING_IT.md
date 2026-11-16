@@ -53,3 +53,10 @@ Until 2026-11-16 every run was on a famous site, by design: that is how the meth
 - **Name the limits on the first screen** (done in the README; do the same in the app's welcome guide).
 - **Ask two or three archaeologists to try a blind test** and quote what they say, criticism included.
 
+
+## Loop 7: more of the world (2026-11-16)
+
+- **Coverage:** five more places (Navarre, Bavaria, Saxony, New Zealand, Denmark with a token) and the seafloor of US waters. Two official registers are read in the checks (Navarre, Denmark), so "not on record" there means "not in the national register, checked on this date".
+- **Method:** a look at the whole area before the tiles found enclosures the tiles had been calling field edges (Oberhaching 0 to 2 of 3, Lauske 2 to 3 of 3).
+- **Benchmark:** 53 of 103 known features across eleven land sites in five countries, and 4 of 7 charted wrecks in a seafloor pilot.
+- **Still no novel find.** The registers make Navarre and Denmark the best places to try first: a find there can be checked against the official list the same day.

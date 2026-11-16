@@ -165,6 +165,17 @@ NATIONAL = {
         "landing_page": "https://dataforsyningen.dk/data/930",
         "note": "Dataforsyningen asks for a free account and token. Paste it in Settings, Data and privacy.",
     },
+    "us:noaa-bag": {
+        "publisher": "NOAA (United States)",
+        "title": "NOAA hydrographic surveys, BAG depth grids (US waters and the Great Lakes)",
+        "source": "NOAA NCEI", "country": "US coastal waters and the Great Lakes", "maker": "NOAA's Office of Coast Survey",
+        "outline": [(-126.0, 30.0), (-126.0, 49.5), (-95.0, 49.5), (-89.0, 48.5), (-82.0, 46.5), (-76.0, 44.5), (-66.0, 45.5), (-65.0, 40.0), (-75.0, 34.0), (-79.0, 24.0), (-98.0, 24.0), (-118.0, 31.0), (-126.0, 30.0)],
+        "epsg": "utm", "res": 1.0, "kind": "image", "chunk_px": 1000, "parallel": 2, "seafloor": True, "valid": (-11000.0, 50.0),
+        "url": "https://gis.ngdc.noaa.gov/arcgis/rest/services/bag_bathymetry/ImageServer",
+        "citation": "NOAA National Centers for Environmental Information, NOS hydrographic survey data (BAG). Public domain.",
+        "landing_page": "https://www.ncei.noaa.gov/products/nos-hydrographic-survey",
+        "note": "The seafloor from sonar surveys, as depth below the chart datum (negative height). Offered only where a survey 2 m or finer covers the box.",
+    },
 }
 CHUNK_PX = 1000  # the services answer faster for several small requests than for one large one
 _client = httpx.Client(timeout=120, follow_redirects=True,
@@ -205,6 +216,22 @@ def access_key(name: str) -> str:
         return ""
 
 
+def _surveys(d: dict, bbox: list[float], finest_m: float = 2.0) -> list[dict]:
+    """The sonar surveys inside a box that are fine enough to show a wreck, from the image service's own catalog."""
+    w, s, e, n = bbox
+    r = _client.get(d["url"] + "/query", params={
+        "geometry": f"{w},{s},{e},{n}", "geometryType": "esriGeometryEnvelope", "inSR": 4326, "spatialRel": "esriSpatialRelIntersects",
+        "where": "Category = 1", "outFields": "SurveyID,Name,LowPS", "returnGeometry": "false", "f": "json"})
+    r.raise_for_status()
+    out = []
+    for f in r.json().get("features", []):
+        a = f["attributes"]
+        res = (a.get("LowPS") or 1) * 111_320
+        if res <= finest_m and a.get("SurveyID"):
+            out.append({"survey": a["SurveyID"], "res_m": round(res, 1), "file": a.get("Name", "")})
+    return out
+
+
 def _inside(x: float, y: float, ring: list[tuple[float, float]]) -> bool:
     hit = False
     for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
@@ -225,6 +252,19 @@ def find(bbox: list[float]) -> list[dict]:
     out = []
     for key, d in NATIONAL.items():
         if _overlaps(bbox, d["outline"]):
+            if d.get("seafloor"):
+                try:
+                    found = _surveys(d, bbox)
+                except Exception:  # the survey catalog being down should not hide the ground models
+                    found = []
+                if not found:
+                    continue
+                names = sorted({f"{x['survey']} ({x['res_m']:g} m)" for x in found})
+                out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
+                            "citation": d["citation"], "ready_made_ground_model": True, "seafloor": True,
+                            "about": f"{d['note']} Surveys here: {', '.join(names[:8])}. Each survey's record and date are at "
+                                     "https://www.ncei.noaa.gov/maps/bathymetry/."})
+                continue
             if d.get("token") and not access_key(d["token"]):
                 out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
                             "citation": d["citation"], "ready_made_ground_model": False, "needs_token": True,
@@ -339,6 +379,17 @@ def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.nd
         return _from_files(d, x0, y0, x1, y1)
     if d["kind"] == "tiles":
         return _from_tiles(d, x0, y0, x1, y1)
+    if d["kind"] == "image":  # an ArcGIS image service: export the box as 32-bit heights
+        res = d["res"]
+        r = _client.get(d["url"] + "/exportImage", params={
+            "bbox": f"{x0},{y0},{x1},{y1}", "bboxSR": d["epsg"], "imageSR": d["epsg"],
+            "size": f"{int(round((x1 - x0) / res))},{int(round((y1 - y0) / res))}", "format": "tiff", "pixelType": "F32",
+            "noData": "-99999", "interpolation": "RSP_BilinearInterpolation", "f": "image"})
+        r.raise_for_status()
+        with rasterio.open(io.BytesIO(r.content)) as src:
+            a = src.read(1).astype(np.float32)
+            t = src.transform
+            return a, t.c, t.f, t.a, -99999.0
     if d["kind"] == "wcs1":  # the older form of the request, which some servers still want
         res = d["res"]
         params = {"service": "WCS", "version": "1.0.0", "request": "GetCoverage", "coverage": d["coverage"], "crs": f"EPSG:{d['epsg']}",
@@ -378,6 +429,8 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
     d = NATIONAL.get(dataset)
     if not d:
         raise ValueError(f"Unknown national dataset {dataset!r}.")
+    if d.get("epsg") == "utm":  # a service that answers in any projection: use the box's own UTM zone
+        d = {**d, "epsg": sources.utm_epsg((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)}
     if d.get("token") and not access_key(d["token"]):
         raise ValueError(f"{d['source']} asks for a free token. Get one at {TOKEN_HELP[d['token']]}, then paste it in Settings, Data and privacy.")
     res = max(res or d["res"], d["res"])
@@ -394,7 +447,8 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
     for _, (a, left, top, cell, nodata) in got:
         if nodata is not None:
             a[a == nodata] = np.nan
-        a[(a < -500) | (a > 9000)] = np.nan  # sentinel values the services use for "no data"
+        lo, hi = d.get("valid", (-500.0, 9000.0))
+        a[(a < lo) | (a > hi)] = np.nan  # sentinel values the services use for "no data"
         if abs(cell - res) > 1e-3:  # resample to the requested cell size
             k = max(int(round(res / cell)), 1)
             h, w = a.shape[0] // k * k, a.shape[1] // k * k
@@ -409,8 +463,13 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
             dtm[rr0:rr1, cc0:cc1] = np.where(np.isnan(block), target, block)
     outside = np.isnan(dtm)
     if outside.all():
+        if d.get("seafloor"):
+            raise ValueError(f"{d['source']} has no survey inside this box. Seafloor surveys cover strips and patches; try find_data on a nearby box.")
         raise ValueError(f"{d['source']} has no ground model inside this box. It covers {d['country']} only.")
     if outside.any():
         dtm[outside] = float(np.nanmedian(dtm))
     how = {"source": d["source"], "citation": d["citation"], "ready_made_ground_model": True, "requests": len(parts)}
+    if d.get("seafloor"):
+        how["seafloor"] = True
+        how["surveys"] = sorted({f"{x['survey']} ({x['res_m']:g} m)" for x in _surveys(d, bbox)})
     return dtm, outside, x0, y1, res, d["epsg"], how

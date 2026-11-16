@@ -421,7 +421,7 @@ def test_answer_keys_are_sourced_and_inside_their_areas():
     assert {"angel-mounds", "mound-city", "serpent-mound", "cahokia", "maiden-castle", "borre", "andia"} <= set(ks)
     for k in ks.values():
         w, s, e, n = k["box"]
-        assert k["sources"] and k["published"] and k["coverage"] in ("register", "partial")
+        assert k["sources"] and k["published"] and k["coverage"] in ("register", "partial", "charted")
         assert any(f["expect"] for f in k["features"]), k["id"]
         for f in k["features"]:
             assert f["source"] and f["what"], (k["id"], f["id"])

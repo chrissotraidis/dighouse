@@ -1,0 +1,53 @@
+{
+ "id": "thunder-bay-south",
+ "name": "Thunder Bay wrecks, south",
+ "place": "Lake Huron, Michigan, United States",
+ "data": "NOAA hydrographic surveys (BAG), 1 m",
+ "prefix": "us",
+ "box": [
+  -83.26,
+  44.801,
+  -83.243,
+  44.824
+ ],
+ "coverage": "charted",
+ "seafloor": true,
+ "published": "Wrecks on NOAA's electronic navigational charts. Thunder Bay is a National Marine Sanctuary with some of the best-preserved wrecks in the Great Lakes. Charted positions can be tens of metres off, so a find within 100 m of a charted wreck counts. Uncharted wrecks and debris are not in the key.",
+ "sources": [
+  {
+   "cite": "NOAA Office of Coast Survey, Electronic Navigational Charts, through ENC Direct to GIS",
+   "link": "https://encdirect.noaa.gov"
+  },
+  {
+   "cite": "NOAA National Centers for Environmental Information, NOS hydrographic surveys (BAG)",
+   "link": "https://www.ncei.noaa.gov/products/nos-hydrographic-survey"
+  }
+ ],
+ "features": [
+  {
+   "id": "TBS-01",
+   "what": "Wreck",
+   "kind": "point",
+   "lon": -83.249644,
+   "lat": 44.818284,
+   "size_m": 30,
+   "expect": true,
+   "source": "NOAA chart (general scale), dangerous wreck, source US,US,graph,Chart 14860 20011208; NOAA chart (general scale), dangerous wreck, source US,US,graph,Chart 14860 20011208",
+   "note": "Charted 2 times within 80 m; merged.",
+   "reach_m": 100
+  },
+  {
+   "id": "TBS-02",
+   "what": "Wreck",
+   "kind": "point",
+   "lon": -83.253054,
+   "lat": 44.807179,
+   "size_m": 30,
+   "expect": true,
+   "source": "NOAA chart (general scale), dangerous wreck, source US,US,graph,Chart 14860 20011208; NOAA chart (general scale), dangerous wreck, source US,US,graph,Chart 14860 20011208",
+   "note": "Charted 2 times within 80 m; merged.",
+   "reach_m": 100
+  }
+ ],
+ "built": "2026-11-16"
+}

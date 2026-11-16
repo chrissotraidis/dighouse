@@ -300,7 +300,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
         for m in records:
             c = m["checks"]
             sec = c.get("section")
-            sec_t = (f"{sec.get('feature_height_m', '?')} m high, " + ("in the ground" if sec.get("in_ground")
+            sec_t = (f"{sec.get('feature_height_m', '?')} m high, " + ("in the ground" if sec.get("in_ground") else "above the seafloor" if sec.get("seafloor")
                                                                       else "on a ready-made ground model" if sec.get("from_ground_model_only") else "not in the ground")
                      if isinstance(sec, dict) else "not yet")
             second = c.get("second_look")

@@ -131,6 +131,42 @@ def modern_features(lon: float, lat: float, radius_m: int = 300, named: bool = T
     return out
 
 
+ENC = "https://encdirect.noaa.gov/arcgis/rest/services/encdirect"
+# Charted things on the seafloor that are modern: (service, layer, what). From NOAA's electronic charts at three scales.
+ENC_MODERN = [("enc_coastal", 88, "submarine cable"), ("enc_approach", 118, "submarine cable"), ("enc_harbour", 114, "submarine cable"),
+              ("enc_coastal", 127, "pipeline"), ("enc_approach", 172, "pipeline"), ("enc_harbour", 167, "pipeline"),
+              ("enc_coastal", 136, "dumping ground"), ("enc_approach", 196, "dumping ground"), ("enc_harbour", 191, "dumping ground")]
+ENC_WRECKS = [("enc_general", 29), ("enc_coastal", 33), ("enc_approach", 39), ("enc_harbour", 36)]
+
+
+def seafloor_features(lon: float, lat: float, radius_m: int = 150, wrecks: bool = True) -> dict:
+    """Charted cables, pipelines and dumping grounds near a point on the seafloor, and charted wrecks unless asked not to."""
+    from concurrent.futures import ThreadPoolExecutor
+    dx, dy = radius_m / (111_320 * math.cos(math.radians(lat))), radius_m / 110_540
+    box = f"{lon - dx},{lat - dy},{lon + dx},{lat + dy}"
+
+    def count(svc: str, layer: int) -> int | None:
+        for attempt in range(5):  # the chart services say "could not find service" now and then, and answer a moment later
+            r = _client.get(f"{ENC}/{svc}/MapServer/{layer}/query", params={
+                "geometry": box, "geometryType": "esriGeometryEnvelope", "inSR": 4326, "spatialRel": "esriSpatialRelIntersects",
+                "returnCountOnly": "true", "f": "json"}, timeout=60)
+            if r.status_code == 200 and "error" not in (j := r.json()):
+                return int(j.get("count", 0))
+            time.sleep(2 * (attempt + 1))
+        return None
+
+    jobs = [(svc, layer, what) for svc, layer, what in ENC_MODERN] + ([(svc, layer, "charted wreck") for svc, layer in ENC_WRECKS] if wrecks else [])
+    with ThreadPoolExecutor(2) as pool:
+        counts = list(pool.map(lambda j: (j[2], count(j[0], j[1])), jobs))
+    if all(n is None for _, n in counts):
+        raise RuntimeError("NOAA's chart services did not answer")
+    answered = {what for what, n in counts if n is not None}
+    modern = sorted({what for what, n in counts if n and what != "charted wreck"})
+    return {"modern": modern, "charted_wreck_within_radius": any(n for what, n in counts if what == "charted wreck"),
+            "not_checked": sorted({what for what, _ in counts} - answered),
+            "source": "NOAA electronic navigational charts"}
+
+
 def _abstract(index: dict | None) -> str:
     """OpenAlex stores an abstract as each word with its positions. Put the words back in order."""
     if not index:

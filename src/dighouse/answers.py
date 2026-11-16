@@ -70,6 +70,9 @@ def distance_m(feature: dict, lon: float, lat: float) -> float:
 
 
 def reach_m(feature: dict) -> float:
+    """How far from a feature a find may be and still count. A key can set its own (charted wreck positions are rough)."""
+    if feature.get("reach_m"):
+        return feature["reach_m"]
     return feature["size_m"] / 2 + POINT_SLACK_M if feature["kind"] == "point" else WORK_REACH_M
 
 
@@ -118,6 +121,8 @@ def score(k: dict, finds: dict[str, dict]) -> dict:
         "extra": extra,
         "matches": rows,
         "note": ("The key comes from an official register." if k["coverage"] == "register" else
+                 "The key holds the wrecks on NOAA's charts. An extra find may be an uncharted wreck or debris; the literature step labels each one."
+                 if k["coverage"] == "charted" else
                  "The key holds only the features mapped in open data, so an extra find may be a real feature the key leaves out. "
                  "The literature step labels each one."),
     }

@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-15 after the final pass. This file is the prompt for whoever continues the work. Read it, then the Log at the end of REFINE_LOOP.md, which says what was checked and how, and what was not.
+Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-16 after loop 7. This file is the prompt for whoever continues the work. Read it, then the Log at the end of REFINE_LOOP.md, which says what was checked and how, and what was not.
 
 ## Your brief
 
@@ -8,7 +8,9 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. He wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-Six loops are finished; the sixth was [TEST_LOOP.md](TEST_LOOP.md), whose Log has the benchmark (44 of 83 across six blind tests; small mounds are the gap) and every check. It added blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration before a search for something new, a benchmark, and an honest README. The next loop should start from Chris's notes; finding small mounds (Borre, 18 of 53) is the clearest technical gap. Rerun scripts/smoke_test.py and the six blind tests after any change to the model, prompt, skill or feature guide.
+Seven loops are finished. The sixth was [TEST_LOOP.md](TEST_LOOP.md): blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration and an honest README. The seventh was [WORLD_LOOP.md](WORLD_LOOP.md), whose Log has every source probe, run and score. It added Navarre (Spain), Bavaria, Saxony, New Zealand and Denmark (with a token), registers for Navarre and Denmark in the checks, and a pilot on the seafloor from NOAA's sonar surveys with charted wrecks as the key. It changed the method to look at the whole area before the tiles (enclosures bigger than a tile were being called field edges). The benchmark is 53 of 103 on eleven land sites and 4 of 7 charted wrecks. Small low mounds remain the clearest gap (Borre 20 of 53, Andía 0 of 11). Rerun scripts/smoke_test.py and the blind tests after any change to the model, prompt, skill or feature guide.
+
+Waiting for Chris: a free Dataforsyningen token for Denmark's live check, and the macOS Documents prompt.
 
 ## Rules
 
@@ -34,9 +36,11 @@ Six loops are finished; the sixth was [TEST_LOOP.md](TEST_LOOP.md), whose Log ha
 
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes, Sources and Data tabs. Three looks; Earth is the default. The mark at the top of the sidebar opens Home.
 - **Tools** (`src/dighouse`, Python, MCP): 42 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
-- **Open lidar:** the United States (USGS 3DEP), surveys on OpenTopography, and seven national ground models: England, the Netherlands, France, Flanders, Norway, Estonia and Switzerland.
+- **Open lidar:** the United States (USGS 3DEP), surveys on OpenTopography, and ready-made ground models for England, the Netherlands, France, Flanders, Norway, Estonia, Switzerland, Navarre (Spain), Bavaria, Saxony, New Zealand and Denmark (Denmark needs a free token pasted in Settings, Data and privacy). Each is one entry in `NATIONAL` in national.py; Bavaria, Saxony and New Zealand use the `tiles` kind (files on a grid of map sheets).
+- **Seafloor:** NOAA's sonar surveys of US waters and the Great Lakes (`us:noaa-bag`), offered only where a 2 m or finer survey covers the box. The modern check reads NOAA's charts there.
+- **Project state** is saved atomically and changed under a file lock (`Project.change`), because the agent records verdicts from parallel helpers.
 - **Engine**: `codex app-server` as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse starts the **newest** copy of Codex on the Mac (`Setup.detect`); on Chris's Mac that is 0.167 inside the ChatGPT app, because 0.146 on the PATH is refused GPT-6.1 Terra. Dighouse's own tools are approved at launch (`default_tools_approval_mode`), since newer engines ask before every tool call.
-- **Tests**: 13 offline, 8 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.
+- **Tests**: 22 offline, 9 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.
 - **README** has pictures in `docs/images`, retaken on 2026-11-14 at 1440 × 900 in Earth after loop 5. Loop 5's own pictures are in `docs/loop5`.
 
 ## What the fifth loop added
