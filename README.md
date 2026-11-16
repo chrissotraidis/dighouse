@@ -190,6 +190,9 @@ Everything Dighouse reads is public, and none of it needs an account or a key.
 | [Bavarian Surveying Administration](https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1) | Bavaria's 1 m ground model |
 | [GeoSN](https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html) | Saxony's 1 m ground model |
 | [Toitū Te Whenua LINZ](https://registry.opendata.aws/nz-elevation/) | New Zealand's 1 m ground model, where it has been flown |
+| [Dataforsyningen](https://dataforsyningen.dk/data/930) | Denmark's 0.4 m ground model, with a free token pasted in Settings |
+| [Fund og Fortidsminder](https://www.kulturarv.dk/fundogfortidsminder/) | Denmark's national register of ancient monuments, for checking a find |
+| [IDENA heritage layer](https://idena.navarra.es) | Navarre's register of protected archaeological sites, for checking a find |
 | [OpenStreetMap](https://www.openstreetmap.org/) | Mapped sites through [QLever](https://qlever.dev/); roads and buildings near a find through Overpass, or OpenStreetMap's own map service when Overpass is down |
 | [Wikidata](https://www.wikidata.org/) | Archaeological sites already on record |
 | [Pleiades](https://pleiades.stoa.org/) | About 35,000 located ancient places |

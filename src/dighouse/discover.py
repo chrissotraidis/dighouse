@@ -250,6 +250,46 @@ def _nrhp_sites(bbox: list[float]) -> list[dict]:
             for f in r.json().get("features", []) if f.get("geometry")]
 
 
+DK_REGISTER = "https://www.kulturarv.dk/ffgeoserver/public/wfs"
+NAVARRE_REGISTER = "https://idena.navarra.es/ogc/wfs"
+
+
+def _wfs_points(url: str, layer: str, bbox: list[float]) -> list[dict]:
+    w, s, e, n = bbox
+    r = _client.get(url, params={"service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": layer,
+                                 "outputFormat": "application/json", "srsName": "EPSG:4326", "count": 2000,
+                                 "bbox": f"{s},{w},{n},{e},urn:ogc:def:crs:EPSG::4326"})
+    r.raise_for_status()
+    return [f for f in r.json().get("features", []) if f.get("geometry") and f["geometry"]["type"] == "Point"]
+
+
+def _danish_sites(bbox: list[float]) -> list[dict]:
+    """Denmark's national register of sites and finds, Fund og Fortidsminder: protected and unprotected sites."""
+    w, s, e, n = bbox
+    if e < 8.0 or w > 15.3 or n < 54.5 or s > 57.8:
+        return []
+    out = []
+    for layer, kind in (("public:fundogfortidsminder_punkt_fredet", "protected"), ("public:fundogfortidsminder_punkt_ikkefredet", "not protected")):
+        for f in _wfs_points(DK_REGISTER, layer, bbox):
+            p = f["properties"]
+            lon, lat = f["geometry"]["coordinates"][:2]
+            out.append({"name": " ".join(x for x in (p.get("anlaegstype"), f"({p['datering']})" if p.get("datering") else "") if x) or "Recorded site",
+                        "kind": f"site in Denmark's register, {kind}", "lon": lon, "lat": lat, "source": "Fund og Fortidsminder",
+                        "record": p.get("url") or f"Fund og Fortidsminder {p.get('systemnr')}"})
+    return out
+
+
+def _navarre_sites(bbox: list[float]) -> list[dict]:
+    """Navarre's register of protected archaeological sites (Bien de Interés Cultural), through IDENA."""
+    w, s, e, n = bbox
+    if e < -2.6 or w > -0.7 or n < 41.9 or s > 43.35:
+        return []
+    return [{"name": f["properties"].get("BIC") or "Protected site", "kind": f"{(f['properties'].get('TIPO') or 'site').lower()} in Navarre's register",
+             "lon": f["geometry"]["coordinates"][0], "lat": f["geometry"]["coordinates"][1], "source": "Navarre's heritage register",
+             "record": f"BIC {f['properties'].get('CBIC')}"}
+            for f in _wfs_points(NAVARRE_REGISTER, "IDENA:PATRIM_Sym_BICarqueo", bbox)]
+
+
 PLEIADES = "https://atlantides.org/downloads/pleiades/dumps/pleiades-places-latest.csv.gz"
 PLEIADES_REACH = (-20.0, 10.0, 80.0, 60.0)  # the Greek and Roman world and its neighbours, roughly
 
@@ -282,7 +322,7 @@ def _pleiades_sites(bbox: list[float]) -> list[dict]:
 
 
 SITE_READERS = {"Wikidata": _wikidata_sites, "OpenStreetMap": _osm_sites, "National Register of Historic Places": _nrhp_sites,
-                "Pleiades": _pleiades_sites}
+                "Pleiades": _pleiades_sites, "Fund og Fortidsminder": _danish_sites, "Navarre's heritage register": _navarre_sites}
 
 
 def _answered(silent: list[str]) -> list[str]:

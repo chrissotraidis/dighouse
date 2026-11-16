@@ -496,6 +496,36 @@ private struct PrivacySettings: View {
             }
         }
         .panel()
+        OpenDataKeys()
+    }
+}
+
+/// Accounts some open data services ask for. Denmark's ground model needs a free token from Dataforsyningen.
+private struct OpenDataKeys: View {
+    @State private var token = Keys.read("dataforsyningen")
+    @State private var saved = Keys.read("dataforsyningen")
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SettingRow(title: "Denmark's ground model",
+                       note: "Dataforsyningen asks for a free account and a token. Paste the token here. It stays in a file only you can read on this Mac.") {
+                HStack(spacing: 8) {
+                    SecureField("Token", text: $token).textFieldStyle(.plain).font(.system(size: 13 * Theme.scale))
+                        .padding(.horizontal, 10).frame(width: 190, height: 30)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
+                    Button(token == saved ? (saved.isEmpty ? "Save" : "Saved") : "Save") {
+                        Keys.write("dataforsyningen", token)
+                        saved = Keys.read("dataforsyningen")
+                    }
+                    .buttonStyle(SecondaryButton()).disabled(token == saved)
+                    Link(destination: URL(string: "https://confluence.kds.dk/display/MYD/Log%2Bind%2Bog%2BToken")!) {
+                        Label("Get a token", systemImage: "arrow.up.right").font(.system(size: 12.5 * Theme.scale))
+                    }
+                    .foregroundStyle(Theme.green)
+                }
+            }
+        }
+        .panel()
     }
 }
 

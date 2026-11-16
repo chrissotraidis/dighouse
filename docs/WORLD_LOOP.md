@@ -157,3 +157,13 @@ publisher and calibration changes. Each was checked separately below.
 
 **What the scores show.** The agent reads straight-sided or field-edge earthworks as modern. The feature guide tells it straight lines along field edges are modern and that an unsure tile is "possible", not a find. That costs the Bavarian enclosures and a Saxon ring fort. The guide is changed next (W2/W3 follow-up), and every site is rerun with it in W6, with both results reported.
 
+
+### 2026-11-16, W5: Denmark
+
+- **Ground:** `dk:dhm-terraen`, Danmarks Højdemodel terrain at 0.4 m through Dataforsyningen's WCS 1.0.0, with the token added to each request. The token comes from `DIGHOUSE_DATAFORSYNINGEN_TOKEN` or from `keys.json` in the app's support folder. The new "Denmark's ground model" row in Settings, Data and privacy, writes that file with owner-only permissions.
+- **Without a token:** `find_data` lists Denmark as needing a free token, with the sign-up page; quick look passes over it. `fetch_terrain` says what is needed. A refused token says the token was not accepted (checked with a dummy token against the live service).
+- **Register:** Fund og Fortidsminder's public WFS (protected and unprotected sites) is a records source, so a check in Denmark reads the national register. At Trelleborg it lists the fortress (Borg/Voldsted, Viking Age) and 19 other records. Navarre's register (`PATRIM_Sym_BICarqueo`) joined the same list.
+- **App:** cards for Danmarks Højdemodel, Fund og Fortidsminder and Navarre's register; "Not read yet" now names Finland and Sweden only.
+- **Checked in the running app:** the Settings row shows, Save stays off until something is typed, and a saved token reaches the tools (keys.json mode 600). Clearing it and saving removes it. An offline test covers the message without a token and reading the keys file.
+- **Waiting for Chris:** the live fetch and the Danish blind test (Trelleborg or a mound group, keyed from the register) need a real token, which needs an account. That is Chris's to create.
+

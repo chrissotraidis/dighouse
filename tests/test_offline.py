@@ -580,3 +580,17 @@ def test_parallel_verdicts_and_finds_are_all_kept(tmp_path):
         made = list(pool.map(lambda i: ledger.create(p, f"Find {i}", "t00", (0.001 * i, 51.0), "", "test")["id"], range(12)))
     assert all(t["status"] == "screened" for t in p.load("tiles").values())
     assert len(set(made)) == 12 and len(p.load("locations")) == 12
+
+def test_a_service_that_needs_a_token_says_so(tmp_path, monkeypatch):
+    """Denmark's ground model needs a free token: without one the data finder says where to get it, and with one it is read."""
+    from dighouse import national
+    monkeypatch.delenv("DIGHOUSE_DATAFORSYNINGEN_TOKEN", raising=False)
+    monkeypatch.setenv("DIGHOUSE_KEYS", str(tmp_path / "keys.json"))
+    box = [11.26, 55.39, 11.27, 55.40]
+    dk = [d for d in national.find(box) if d["id"] == "dk:dhm-terraen"][0]
+    assert dk["needs_token"] and not dk["ready_made_ground_model"] and "Settings" in dk["about"]
+    with pytest.raises(ValueError, match="free token"):
+        national.fetch_dtm("dk:dhm-terraen", box)
+    (tmp_path / "keys.json").write_text(json.dumps({"dataforsyningen": " abc123 "}))
+    assert national.access_key("dataforsyningen") == "abc123"
+    assert [d for d in national.find(box) if d["id"] == "dk:dhm-terraen"][0]["ready_made_ground_model"]

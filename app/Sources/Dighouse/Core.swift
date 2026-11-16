@@ -121,6 +121,26 @@ enum Shell {
     }
 }
 
+/// Free keys and tokens that some open data services ask for. They sit in one file only this person can read, where
+/// the tools look for them (src/dighouse/national.py, access_key).
+enum Keys {
+    static var file: URL { Paths.support.appendingPathComponent("keys.json") }
+
+    static func read(_ name: String) -> String {
+        guard let data = try? Data(contentsOf: file), let all = try? JSONSerialization.jsonObject(with: data) as? [String: String] else { return "" }
+        return all[name] ?? ""
+    }
+
+    static func write(_ name: String, _ value: String) {
+        var all = ((try? Data(contentsOf: file)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: String] }) ?? [:]
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        all[name] = trimmed.isEmpty ? nil : trimmed
+        guard let data = try? JSONSerialization.data(withJSONObject: all, options: [.prettyPrinted, .sortedKeys]) else { return }
+        FileManager.default.createFile(atPath: file.path, contents: data, attributes: [.posixPermissions: 0o600])
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+    }
+}
+
 enum Paths {
     static var support: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

@@ -1,5 +1,5 @@
 """National lidar published as ready-made ground models: England, the Netherlands, France, Flanders, Norway, Estonia,
-Switzerland, Navarre (Spain), Bavaria, Saxony and New Zealand.
+Switzerland, Navarre (Spain), Bavaria, Saxony, New Zealand and Denmark (with a free token).
 
 These services hand out a bare-ground raster (a DTM) built by the national mapping agency,
 not raw points. The terrain is as good as their ground classification; a section through it
@@ -115,7 +115,7 @@ NATIONAL = {
     "es:navarra-mdt-2m": {
         "publisher": "the Government of Navarre (Spain)",
         "title": "MDT 2 m from lidar, Government of Navarre (Navarre, Spain)",
-        "source": "IDENA, Government of Navarre", "country": "Navarre, Spain", "maker": "the Government of Navarre",
+        "source": "IDENA, Government of Navarre", "country": "Navarre (Spain)", "maker": "the Government of Navarre",
         "outline": [(-1.79, 43.31), (-1.39, 43.27), (-0.72, 42.92), (-0.85, 42.79), (-1.2, 42.55), (-1.3, 42.3), (-1.4, 41.91), (-1.85, 42.0), (-1.9, 42.3), (-2.25, 42.45), (-2.5, 42.6), (-2.4, 42.9), (-2.0, 43.0), (-1.79, 43.31)],
         "epsg": 25830, "res": 2.0, "kind": "wcs", "axes": ("E", "N"), "chunk_px": 500, "parallel": 2,
         "url": "https://idena.navarra.es/ogc/wcs", "coverage": "IDENA.WCS__ELEVAC_Ras_MDT_2M",
@@ -126,7 +126,7 @@ NATIONAL = {
     "de-by:dgm1": {
         "publisher": "the Bavarian Surveying Administration (Germany)",
         "title": "DGM1, digital terrain model 1 m (Bavaria, Germany)",
-        "source": "Bayerische Vermessungsverwaltung", "country": "Bavaria, Germany", "maker": "the Bavarian Surveying Administration",
+        "source": "Bayerische Vermessungsverwaltung", "country": "Bavaria (Germany)", "maker": "the Bavarian Surveying Administration",
         "outline": [(9.0, 50.1), (9.9, 50.6), (11.0, 50.5), (12.1, 50.3), (12.5, 49.9), (12.4, 49.7), (13.0, 49.3), (13.8, 48.8), (13.5, 48.6), (13.0, 48.3), (12.9, 47.7), (13.0, 47.5), (12.2, 47.6), (11.0, 47.4), (10.2, 47.3), (9.5, 47.55), (10.1, 48.0), (10.1, 48.5), (10.4, 48.7), (10.2, 49.3), (9.5, 49.6), (9.0, 50.1)],
         "epsg": 25832, "res": 1.0, "kind": "tiles", "chunk_px": 2000, "parallel": 2,
         "sheets": _km_grid(1, "https://download1.bayernwolke.de/a/dgm/dgm1/{e}_{n}.tif"),
@@ -136,7 +136,7 @@ NATIONAL = {
     "de-sn:dgm1": {
         "publisher": "GeoSN, the Saxon State Survey (Germany)",
         "title": "DGM1, digital terrain model 1 m (Saxony, Germany)",
-        "source": "GeoSN", "country": "Saxony, Germany", "maker": "the Saxon State Office for Geodata and Surveying",
+        "source": "GeoSN", "country": "Saxony (Germany)", "maker": "the Saxon State Office for Geodata and Surveying",
         "outline": [(11.9, 50.4), (12.3, 50.2), (12.9, 50.4), (13.5, 50.6), (14.0, 50.8), (14.3, 50.9), (14.8, 50.8), (15.0, 51.0), (14.95, 51.4), (14.7, 51.6), (14.0, 51.5), (13.2, 51.6), (12.6, 51.5), (12.2, 51.3), (12.15, 51.0), (11.9, 50.6), (11.9, 50.4)],
         "epsg": 25833, "res": 1.0, "kind": "tiles", "chunk_px": 2000, "parallel": 2,
         "sheets": _km_grid(2, "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/JCcXyifaNdLDnxZ/dgm1_33{e}_{n}_2_sn_tiff.zip"),
@@ -153,6 +153,17 @@ NATIONAL = {
         "citation": "New Zealand LiDAR 1 m DEM, sourced from Toitū Te Whenua Land Information New Zealand. CC BY 4.0.",
         "landing_page": "https://registry.opendata.aws/nz-elevation/",
         "note": "Some areas have not been flown yet; they come back as outside the survey.",
+    },
+    "dk:dhm-terraen": {
+        "publisher": "the Danish Agency for Climate Data (Denmark)",
+        "title": "Danmarks Højdemodel, terrain 0.4 m (Denmark)",
+        "source": "Klimadatastyrelsen", "country": "Denmark", "maker": "the Danish Agency for Climate Data",
+        "outline": [(8.0, 55.0), (8.1, 56.6), (8.6, 57.1), (10.0, 57.6), (10.6, 57.75), (10.5, 57.2), (10.3, 56.5), (10.9, 56.4), (12.6, 56.1), (12.7, 55.6), (12.1, 54.9), (11.0, 54.6), (10.0, 54.8), (9.4, 54.8), (8.6, 54.9), (8.0, 55.0)],
+        "epsg": 25832, "res": 0.4, "kind": "wcs1", "chunk_px": 1000, "parallel": 2, "format": "GTiff",
+        "url": "https://api.dataforsyningen.dk/dhm_wcs_DAF", "coverage": "dhm_terraen", "token": "dataforsyningen",
+        "citation": "Danmarks Højdemodel, © Klimadatastyrelsen, through Dataforsyningen. Free data, attribution required.",
+        "landing_page": "https://dataforsyningen.dk/data/930",
+        "note": "Dataforsyningen asks for a free account and token. Paste it in Settings, Data and privacy.",
     },
 }
 CHUNK_PX = 1000  # the services answer faster for several small requests than for one large one
@@ -177,6 +188,23 @@ def countries() -> str:
     return ", ".join(names[:-1]) + " and " + names[-1]
 
 
+TOKEN_HELP = {"dataforsyningen": "https://confluence.kds.dk/display/MYD/Log%2Bind%2Bog%2BToken"}
+
+
+def access_key(name: str) -> str:
+    """A free key or token an open data service asks for: from DIGHOUSE_<NAME>_TOKEN, or the keys file the app's Settings write."""
+    import json
+    import os
+    from pathlib import Path
+    if os.environ.get(f"DIGHOUSE_{name.upper()}_TOKEN"):
+        return os.environ[f"DIGHOUSE_{name.upper()}_TOKEN"].strip()
+    f = Path(os.environ.get("DIGHOUSE_KEYS", Path.home() / "Library" / "Application Support" / "Dighouse" / "keys.json"))
+    try:
+        return str(json.loads(f.read_text()).get(name) or "").strip()
+    except (OSError, ValueError):
+        return ""
+
+
 def _inside(x: float, y: float, ring: list[tuple[float, float]]) -> bool:
     hit = False
     for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
@@ -197,6 +225,12 @@ def find(bbox: list[float]) -> list[dict]:
     out = []
     for key, d in NATIONAL.items():
         if _overlaps(bbox, d["outline"]):
+            if d.get("token") and not access_key(d["token"]):
+                out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
+                            "citation": d["citation"], "ready_made_ground_model": False, "needs_token": True,
+                            "about": f"{d['source']} asks for a free token before it hands out its ground model. Get one at "
+                                     f"{TOKEN_HELP[d['token']]}, then paste it in Settings, Data and privacy."})
+                continue
             out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
                         "citation": d["citation"], "ready_made_ground_model": True,
                         "about": f"A bare-ground model for {d['country']} at {d['res']:g} m, built by {d.get('maker', 'the national agency')} from its lidar. "
@@ -307,9 +341,12 @@ def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.nd
         return _from_tiles(d, x0, y0, x1, y1)
     if d["kind"] == "wcs1":  # the older form of the request, which some servers still want
         res = d["res"]
-        r = _client.get(d["url"], params={
-            "service": "WCS", "version": "1.0.0", "request": "GetCoverage", "coverage": d["coverage"], "crs": f"EPSG:{d['epsg']}",
-            "bbox": f"{x0},{y0},{x1},{y1}", "width": int(round((x1 - x0) / res)), "height": int(round((y1 - y0) / res)), "format": "GeoTIFF"})
+        params = {"service": "WCS", "version": "1.0.0", "request": "GetCoverage", "coverage": d["coverage"], "crs": f"EPSG:{d['epsg']}",
+                  "bbox": f"{x0},{y0},{x1},{y1}", "width": int(round((x1 - x0) / res)), "height": int(round((y1 - y0) / res)),
+                  "format": d.get("format", "GeoTIFF")}
+        if d.get("token"):
+            params["token"] = access_key(d["token"])
+        r = _client.get(d["url"], params=params)
     elif d["kind"] == "wms":
         res = d["res"]
         r = _client.get(d["url"], params={
@@ -321,6 +358,8 @@ def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.nd
         r = _client.get(d["url"], params=[
             ("service", "WCS"), ("version", "2.0.1"), ("request", "GetCoverage"), ("coverageId", d["coverage"]),
             ("format", "image/tiff"), ("subset", f"{ax}({x0},{x1})"), ("subset", f"{ay}({y0},{y1})")])
+    if d.get("token") and r.status_code in (401, 403):
+        raise ValueError(f"{d['source']} did not accept the token. Check it at {TOKEN_HELP[d['token']]} and paste it again in Settings, Data and privacy.")
     r.raise_for_status()
     body = r.content
     if "multipart" in r.headers.get("content-type", ""):  # some servers wrap the picture in a description of it
@@ -339,6 +378,8 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
     d = NATIONAL.get(dataset)
     if not d:
         raise ValueError(f"Unknown national dataset {dataset!r}.")
+    if d.get("token") and not access_key(d["token"]):
+        raise ValueError(f"{d['source']} asks for a free token. Get one at {TOKEN_HELP[d['token']]}, then paste it in Settings, Data and privacy.")
     res = max(res or d["res"], d["res"])
     x0, y0, x1, y1 = (math.floor(v / res) * res if i < 2 else math.ceil(v / res) * res
                       for i, v in enumerate(sources.project_bbox(bbox, d["epsg"])))
