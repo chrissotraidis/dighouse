@@ -258,8 +258,8 @@ private struct CompareBoard: View {
     private let rows = [
         Row(topic: "Getting the data", icon: "dig.mound", chat: "Can describe lidar, but cannot download a survey.",
             dig: "Downloads the raw laser points from open archives and builds the bare ground itself.", image: "reveal"),
-        Row(topic: "Looking", icon: "dig.grid", chat: "Sees only the pictures you paste in.",
-            dig: "Looks at every tile of an area in several renderings, and keeps count of what is left.", image: "tile"),
+        Row(topic: "Looking", icon: "dig.grid", chat: "Given the Mound City area with no tools, it said it could not find or place any features.",
+            dig: "Found all 19 mounds there in a blind test, by looking at every tile in several renderings.", image: "tile"),
         Row(topic: "Checking a find", icon: "dig.layers", chat: "One model, one opinion.",
             dig: "Cuts a slice through the raw points, asks a second model, checks open maps, and opens the literature.", image: "section"),
         Row(topic: "Keeping a record", icon: "dig.brush", chat: "A conversation that scrolls away.",
@@ -273,7 +273,7 @@ private struct CompareBoard: View {
 
     var body: some View {
         PageSection(title: "Why not just ask ChatGPT?",
-                    caption: "A chat app can talk about archaeology. Dighouse gives the same kind of model the tools to do it. Pick a task.") {
+                    caption: "A chat app can talk about archaeology. Dighouse gives the same kind of model the tools to do it, and we tested the difference with the same model on both sides. Pick a task.") {
             VStack(alignment: .leading, spacing: 0) {
                 Flow(spacing: 6) {
                     ForEach(rows.indices, id: \.self) { i in
