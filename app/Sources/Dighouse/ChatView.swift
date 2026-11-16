@@ -420,15 +420,14 @@ private struct ProjectCard: View {
             IconTile(name: "folder")
             VStack(alignment: .leading, spacing: 2) {
                 Text(project?.name ?? URL(fileURLWithPath: path).lastPathComponent).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                Text(here ? "This chat is in this project now." : "Project created. Open it to work with its map and records beside the chat.")
+                Text(here ? "This chat is in this project now."
+                     : store.current == nil ? "Project created. Open it and this chat moves in with it, as the project's first record."
+                     : "Project created. Open it to work with its map and records beside the chat.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
             if !here {
-                Button("Open project") {
-                    store.register(path: path)
-                    if let project = store.projects.first(where: { $0.path == path }) { app.open(project) }
-                }
+                Button("Open project") { app.bringChat(into: path) }
                 .buttonStyle(PrimaryButton())
             }
         }

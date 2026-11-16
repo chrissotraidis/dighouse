@@ -175,6 +175,8 @@ final class AppState: ObservableObject {
             if let project = self.store.current {
                 return self.setup.skill + "\n\nYou are running inside the Dighouse app. The open project folder is \(project.path). "
                     + "Pass that path as the project argument to every dighouse tool. "
+                + "Write the search report (write_report) only in a whole search, when asked to report back; after a single step, "
+                + "end with write_summary. "
                     + "The person sees the map, the tiles and the records beside this chat, so do not paste images or file contents. "
                     + "Do not record a second opinion yourself: the person asks a different model for it from the record. " + shared
             }
@@ -392,7 +394,8 @@ final class AppState: ObservableObject {
                 "project": path, "chat_title": start.title, "why_here": start.whyHere ?? "",
                 "sources": start.sources, "ruled_out": start.ruledOut, "conversation": start.conversation ?? "",
             ])
-            await carry(source, into: path)
+            // The chat stays on screen, and the project starts on its ground in that chat, as any new project does.
+            if await carry(source, into: path), fetch, let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { run(flow) }
             return
         }
         if let project = store.projects.first(where: { $0.path == path }) { open(project) }
@@ -418,16 +421,41 @@ final class AppState: ObservableObject {
         return path
     }
 
-    /// Move a general chat into a project and open the project with the chat on screen.
-    func carry(_ source: String, into path: String) async {
+    /// Move a general chat into a project and open the project with the chat on screen. Returns whether it moved.
+    @discardableResult
+    func carry(_ source: String, into path: String) async -> Bool {
         store.register(path: path)
         var moved: ChatThread?
         var problem: String?
-        do { moved = try await chat.move(source, into: path) } catch { problem = error.localizedDescription }
-        if let project = store.projects.first(where: { $0.path == path }) { open(project, showing: moved) }
+        let name = store.projects.first { $0.path == path }?.name
+        do { moved = try await chat.move(source, into: path, projectName: name) } catch { problem = error.localizedDescription }
+        if let project = store.projects.first(where: { $0.path == path }) {
+            sidebarPeek = false
+            store.open(project)
+            route = .chat
+            tab = .map
+            await chat.open(project: path)
+            if let moved { await chat.select(moved) }
+            Task { @MainActor in await updateRecord(of: path) }
+        }
         if let problem {
-            try? await Task.sleep(for: .milliseconds(400))
             chat.note("The project is ready, but the chat could not be moved into it: \(problem). It is still under Chats.")
+        }
+        return moved != nil
+    }
+
+    /// Bring the general chat on screen into a project it made (the agent's init_project), with the chat as its first record.
+    func bringChat(into path: String) {
+        guard store.current == nil, let id = chat.active else {
+            store.register(path: path)
+            if let project = store.projects.first(where: { $0.path == path }) { open(project) }
+            return
+        }
+        let title = chat.generalThreads.first { $0.id == id }?.title ?? "Chat"
+        let conversation = ProjectOffer.conversation(chat.items)
+        Task { @MainActor in
+            _ = try? await engine.callTool("start_from_chat", ["project": path, "chat_title": title, "conversation": conversation])
+            await carry(id, into: path)
         }
     }
 
@@ -451,11 +479,7 @@ final class AppState: ObservableObject {
         // A chat that already made a project (the agent's init_project) moves into that one rather than making another.
         if offer == nil, let made = chat.items.last(where: { $0.projectPath != nil })?.projectPath,
            FileManager.default.fileExists(atPath: made + "/PROJECT.md") {
-            let conversation = ProjectOffer.conversation(chat.items)
-            Task { @MainActor in
-                _ = try? await engine.callTool("start_from_chat", ["project": made, "chat_title": title, "conversation": conversation])
-                await carry(id, into: made)
-            }
+            bringChat(into: made)
             return
         }
         guard let offer = offer
@@ -675,7 +699,7 @@ final class AppState: ObservableObject {
     /// The stage a run is on: from the last tool its agent called, or else from what the project still lacks.
     func stage(of thread: String) -> (number: Int, title: String, icon: String) {
         var index = store.tiles.isEmpty ? 0 : store.tiles.contains { $0.status == "unscreened" } ? 1 : 2
-        if let tool = chat.lastTool[thread], let known = ToolGuide.stages.firstIndex(where: { $0.tools.contains(tool) }) { index = known }
+        if let reached = chat.furthest[thread] { index = max(index, reached) }
         return (index + 1, ToolGuide.stages[index].title, ToolGuide.stages[index].icon)
     }
 

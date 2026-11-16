@@ -51,6 +51,7 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 - **P4, GitHub only when asked.** New project has a Folder row; `suggest_project` takes `work_in_github`. `new_folder` refuses iCloud folders and anything inside an existing repository.
 - **P5, history and publishing.** The overview's History section lists the last five commits, with Show in Finder and Publish to GitHub. `check_before_publishing` runs first, then `gh repo create --private --push`; after that the button is Push changes. Every step shows in a panel under the history: Chris did not want pop-up windows.
 - **P6, explained in the folder.** PROJECT.md's "How this project is kept", added to older projects when the record is rebuilt. A plain Codex session read a project correctly from it.
+- **After the loop (polish):** "What should I research?" ends with an offer card rather than making the project itself, and a project made from a chat starts on its ground in that chat, as any new project does. The agent's own "Project created" card brings its chat along. A moved chat named after a workflow is renamed "Choosing <project>". The agent writes a search report only in a whole search. The stage strip no longer steps back. Coordinates are taken out of shared notes without breaking DOIs and links.
 - **P7, goals and commands.** A running goal shows a bar with Stop at the top of its chat. A command typed in full is the one Return runs, even when it can't run (it then says why), and an unknown /word gets an answer.
 
 ## What the fifth loop added
@@ -113,8 +114,6 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 - **The national services are slow.** England rate-limits; Norway and Estonia take about 15 seconds for a quarter of a square km.
 - **The National Register** withholds archaeological site locations, so it adds almost nothing near mound sites.
 - **A path within 150 m counts as a modern feature nearby.** The map check says what is there ("paths or roads, buildings"), and the person judges; it is not a verdict.
-- **The stage in the strip follows the last tool called,** so it can step back from 4 to 3 when the agent cuts another slice.
-- **A single step ends with a search report too,** because the agent is told to end every run with one. After "Only get the ground" the report says little.
 - **The welcome guide** still has more words than the rest of the app, and was not gone over in loop 5.
 
 ## What Chris has asked for that is not built

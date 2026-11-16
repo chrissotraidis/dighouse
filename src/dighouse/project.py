@@ -292,10 +292,17 @@ def today() -> str:
 COORDINATES = r"-?\d{1,3}\.\d{4,}"
 
 
+# A coordinate standing on its own: not part of a link, a DOI such as 10.5069/G9VT1Q1G, or a longer number.
+LOOSE_COORDINATE = r"(?<![\w./-])-?\d{1,3}\.\d{4,}(?![\w/])"
+LINK = r"https?://\S+|doi:\S+"
+
+
 def without_coordinates(text: str) -> str:
-    """Text that will be shared, with anything that looks like a coordinate taken out. Locations stay in private/."""
+    """Text that will be shared, with anything that looks like a coordinate taken out. Links are left whole.
+    Locations stay in private/."""
     import re
-    return re.sub(COORDINATES, "(location kept private)", text)
+    parts = re.split(f"({LINK})", text)
+    return "".join(part if i % 2 else re.sub(LOOSE_COORDINATE, "(location kept private)", part) for i, part in enumerate(parts))
 
 
 def publish_problems(root: Path) -> list[str]:
@@ -308,7 +315,7 @@ def publish_problems(root: Path) -> list[str]:
     listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True)
     if listed.returncode != 0:
         return problems + ["The folder is not a git repository yet."]
-    loose = re.compile(r"(?<![\w./-])-?\d{1,3}\.\d{4,}(?![\w/])")
+    loose = re.compile(LOOSE_COORDINATE)
     for name in filter(None, listed.stdout.split("\0")):
         if name.startswith(("private/", "data/")):
             problems.append(f"{name} is in the history, but private/ and data/ must stay on this Mac.")
@@ -321,7 +328,7 @@ def publish_problems(root: Path) -> list[str]:
         except (UnicodeDecodeError, OSError):
             continue   # pictures and other binary files
         for i, line in enumerate(text.splitlines(), 1):
-            if loose.search(re.sub(r"https?://\S+|doi:\S+", "", line)):
+            if loose.search(re.sub(LINK, "", line)):
                 problems.append(f"{name}, line {i}, looks like it holds a coordinate.")
                 break
     return problems

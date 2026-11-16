@@ -60,6 +60,8 @@ final class ChatModel: ObservableObject {
     @Published private(set) var objectives: [String: String] = [:]
     /// The last Dighouse tool each chat's agent called, so a run can say which stage it is on.
     @Published private(set) var lastTool: [String: String] = [:]
+    /// The furthest stage of a whole search each chat has reached, so going back to cut another slice does not step it back.
+    @Published private(set) var furthest: [String: Int] = [:]
     /// The share of the account's usage left, as the engine last reported it.
     @Published var usageLeft: Int?
 
@@ -307,13 +309,17 @@ final class ChatModel: ObservableObject {
 
     /// Carry a general chat into a project. The engine lists chats by the folder they started in, so the chat is
     /// copied whole into the project's folder, keeps its name, and the general one is archived. Returns the copy.
-    func move(_ id: String, into path: String) async throws -> ChatThread {
+    func move(_ id: String, into path: String, projectName: String? = nil) async throws -> ChatThread {
         guard let engine else { throw EngineError(message: "The engine is not running.") }
         var settings = threadSettings(["threadId": id])
         settings["cwd"] = path
         let forked = try await engine.request("thread/fork", settings)
         guard let copy = (forked["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "The chat could not be moved.") }
-        let title = (generalThreads + threads).first { $0.id == id }?.title ?? "Chat"
+        var title = (generalThreads + threads).first { $0.id == id }?.title ?? "Chat"
+        // A chat still named after the workflow that began it ("What should I research? 4") is named for what it did.
+        if let projectName, ToolGuide.workflows.contains(where: { title == $0.title || title.hasPrefix($0.title + " ") }) {
+            title = "Choosing \(projectName)"
+        }
         let moved = ChatThread(id: copy, title: title, named: true)
         _ = try? await engine.request("thread/name/set", ["threadId": copy, "name": title])
         _ = try? await engine.request("thread/archive", ["threadId": id])
@@ -681,6 +687,7 @@ final class ChatModel: ObservableObject {
         if method == "item/started", let item = params["item"] as? JSON, item["type"] as? String == "mcpToolCall",
            item["server"] as? String == "dighouse", let tool = item["tool"] as? String {
             lastTool[thread] = tool
+            if let reached = ToolGuide.stages.firstIndex(where: { $0.tools.contains(tool) }) { furthest[thread] = max(furthest[thread] ?? 0, reached) }
         }
         if method == "thread/tokenUsage/updated", let use = params["tokenUsage"] as? JSON {
             let used = (use["last"] as? JSON)?["totalTokens"] as? Int ?? (use["total"] as? JSON)?["totalTokens"] as? Int ?? 0
