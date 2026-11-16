@@ -69,6 +69,18 @@ final class ChatModel: ObservableObject {
     /// Called for a chat that has no name yet, with the text it began with.
     var onUntitled: ((String, String) -> Void)?
     var onToolFinished: ((String, JSON) -> Void)?
+
+    /// A tool call's arguments, with the folder init_project actually made in place of the one asked for:
+    /// a taken name gets a number, and a bare name goes in the projects folder.
+    static func withMadeFolder(_ raw: JSON) -> JSON {
+        var args = raw["arguments"] as? JSON ?? [:]
+        guard raw["tool"] as? String == "init_project",
+              let text = ((raw["result"] as? JSON)?["content"] as? [JSON])?.compactMap({ $0["text"] as? String }).first,
+              let reply = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? JSON,
+              let made = reply["project"] as? String else { return args }
+        args["project"] = made
+        return args
+    }
     /// Called when a run in a project ends, with the project's folder and whether the person stopped it.
     var onRunEnded: ((String, String, Bool) -> Void)?
     /// Called when a chat's goal stops being worked on, with the chat and how it ended: complete, paused, blocked,
@@ -658,7 +670,7 @@ final class ChatModel: ObservableObject {
             done.turn = params["turnId"] as? String
             if let i = items.firstIndex(where: { $0.id == done.id }) { items[i] = done } else { items.append(done) }
             if raw["type"] as? String == "mcpToolCall", raw["server"] as? String == "dighouse", done.state != .failed {
-                onToolFinished?(raw["tool"] as? String ?? "", raw["arguments"] as? JSON ?? [:])
+                onToolFinished?(raw["tool"] as? String ?? "", Self.withMadeFolder(raw))
             }
         case "turn/completed":
             running = false
@@ -765,7 +777,7 @@ final class ChatModel: ObservableObject {
                     s.images = [picture]
                     s.showsImage = true
                 }
-                if tool == "init_project" { s.projectPath = args["project"] as? String }
+                if tool == "init_project" { s.projectPath = Self.withMadeFolder(raw)["project"] as? String }
             }
             return s
         case "commandExecution":

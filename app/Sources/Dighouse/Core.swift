@@ -177,12 +177,10 @@ enum Paths {
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Dighouse")
     }
 
+    /// Where new projects go: ~/Dighouse, or the folder the person chose in Settings if it is not kept in iCloud.
+    /// Projects made earlier stay where they are; Home offers to move any that sit in iCloud.
     static var projectsHome: URL {
-        if let custom = UserDefaults.standard.string(forKey: "projectsHome") { return URL(fileURLWithPath: custom) }
-        // Projects that already live in Documents stay there. New ones go in the home folder: a Documents folder kept in
-        // iCloud moves files offline ("dataless"), and every read of a terrain or a tile then waits on a download.
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Dighouse")
-        if FileManager.default.fileExists(atPath: documents.path) { return documents }
+        if let custom = UserDefaults.standard.string(forKey: "projectsHome"), !inCloud(custom) { return URL(fileURLWithPath: custom) }
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Dighouse")
     }
 }

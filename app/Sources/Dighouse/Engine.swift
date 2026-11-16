@@ -106,6 +106,7 @@ final class Engine: ObservableObject {
         p.arguments = arguments
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = path
+        env["DIGHOUSE_PROJECTS_HOME"] = Paths.projectsHome.path   // where init_project puts a project named without a folder
         p.environment = env
         let stdin = Pipe(), stdout = Pipe()
         p.standardInput = stdin

@@ -171,8 +171,14 @@ def export_finds(project: str) -> dict:
 
 @tool
 def init_project(project: str, name: str, question: str, west: float, south: float, east: float, north: float) -> dict:
-    """Create a project folder (or adopt an existing one). The box is the search area in degrees."""
-    p = Project.create(project, name, question, [west, south, east, north])
+    """Create a new project in its own folder, as a git repository. The box is the search area in degrees.
+
+    project is a folder path, or just a folder name, which goes in the projects folder (~/Dighouse unless the person
+    chose another). A folder that already holds anything is never reused: a number is added to the name instead.
+    The reply's project is the folder actually made; use it for every later call."""
+    from .project import new_folder
+    root = new_folder(project)
+    p = Project.create(root, name, question, [west, south, east, north])
     return {"project": str(p.root), "read_first": ["RESEARCH.md", "METHODOLOGY.md"]}
 
 

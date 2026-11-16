@@ -125,6 +125,24 @@ def commit(root: Path, message: str) -> bool:
     return _git(root, "-c", "user.name=Dighouse", "-c", "user.email=dighouse@localhost", "commit", "-q", "-m", message)
 
 
+def projects_home() -> Path:
+    """Where new projects go: the folder the app passes in, else ~/Dighouse."""
+    return Path(os.environ.get("DIGHOUSE_PROJECTS_HOME") or Path.home() / "Dighouse").expanduser()
+
+
+def new_folder(project: str | Path) -> Path:
+    """A folder for a new project: a bare name goes in the projects folder, and a folder that already holds anything
+    gets a number added rather than being reused."""
+    root = Path(project).expanduser()
+    if not root.is_absolute():
+        root = projects_home() / root
+    base, n = root, 2
+    while root.exists() and any(root.iterdir()):
+        root = base.with_name(f"{base.name}-{n}")
+        n += 1
+    return root.resolve()
+
+
 class Project:
     def __init__(self, root: str | Path):
         self.root = Path(root).expanduser().resolve()

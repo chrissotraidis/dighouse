@@ -1,53 +1,66 @@
-# Dighouse goal loop 8: from a chat to a project with its own repository
+# Dighouse goal loop 8: every project is its own folder and repository
 
-Last updated: 2026-11-17
+Read docs/HANDOFF.md and the end of docs/WORLD_LOOP.md first.
 
-Read [HANDOFF.md](HANDOFF.md) and the end of [WORLD_LOOP.md](WORLD_LOOP.md) first.
+## What should be true at the end
 
-## The problem
+- Starting a project, from New project or from a chat, always creates the project's own folder. That folder is a git
+  repository holding a fixed documentation layout.
+- New projects go in ~/Dighouse. A project goes in ~/GitHub only when the person asks for it, either on New project or
+  by saying so in the chat ("I want to work out of my GitHub folder").
+- A chat that has worked out what to research can become a project with one press. The chat moves into the project,
+  and what it settled becomes the project's first records.
+- The project's history is visible in the app. "Publish to GitHub" makes a private repository, and only when the person
+  presses it.
+- Another agent opening the folder in plain Codex, without Dighouse, can tell what was looked at, found and left open.
 
-Today a chat and a project are separate things:
+## How a project is kept (the layout every project gets)
 
-- A chat about "what should I research?" keeps everything in the chat. Nothing it learns becomes a folder.
-- A project is made from a form (name, question, a box on the map) into the projects folder. You cannot choose where it lives, and it cannot start from a chat.
-- A project is already a git repository with a documentation hierarchy (PROJECT.md, METHODOLOGY.md, RESEARCH.md, candidates/, notes/, sources/, reports/; private/ and data/ ignored). But nobody sees that it is one, and it cannot be pushed anywhere.
-
-Chris wants this path:
-
-1. Open a new chat and work out what to research.
-2. When the chat has a place and a question, turn it into a project.
-3. The project lives in a folder he chooses, such as a new repository under ~/GitHub, under version control.
-4. The project's documentation carries what the chat worked out, so a later agent or person can pick it up.
-
-## Decisions (Chris, 2026-11-17)
-
-- A chat can become a project. The project keeps the chat, and its first records come from what the chat settled.
-- New project lets you choose the folder: the projects folder (default ~/Dighouse) or any folder, such as a new repo under ~/GitHub.
-- Every project is a git repository. Pushing to GitHub is a separate, explicit step that a person presses; nothing is published by default.
-- Locations stay in private/, which git ignores, so a pushed repo carries no coordinates.
+| Path | What it holds | Written by | Leaves the Mac |
+|---|---|---|---|
+| PROJECT.md | Name, question, why this area, how the project is kept | Tools, then the person | Yes |
+| METHODOLOGY.md | Method, calibration, the data used and its limits | Tools | Yes |
+| RESEARCH.md | The research record: tiles, finds, checks, sources, decisions | Tools, after every run | Yes |
+| candidates/ | One page per find, with pictures and checks | Agent and tools | Yes |
+| notes/ | Dated notes and run summaries, including what was ruled out | Agent and tools | Yes |
+| sources/ | Sources read, with what each said | Agent | Yes |
+| reports/ | Drafts for the heritage authority | Agent; the person sends | Yes |
+| private/ | Locations and working state | Tools | Never (in .gitignore) |
+| data/ | Ground models, tiles, points | Tools | Never (in .gitignore) |
 
 ## Goals
 
-| Goal | What | Check |
+| Goal | What | Check (in the running app) |
 |---|---|---|
-| P1 | **Make it a project.** In a general chat, once the agent has a place (a box or a named place) and a question, a card offers "Make this a project". It opens New project filled in from the chat (name, question, area). After creating, the chat moves into the project and stays its first chat. The agent can also suggest it, through a tool that returns the proposal; the person presses. | A general chat about a place ends in a project with that chat inside it, in the running app. |
-| P2 | **The chat becomes the first records.** On creation, write what the chat settled: the question and why it was chosen into PROJECT.md, sources it read into sources/, places ruled out and why into notes/, and the proposal into METHODOLOGY.md ("Why this area"). Use the tools' existing writers, no new formats. Commit it as "Started from chat: <title>". | The new project's RESEARCH.md and git log show the chat's reasoning and sources. |
-| P3 | **Choose where it lives.** New project gets a "Folder" row: the projects folder (default) or "Choose…" for any folder, with "Make a new folder in ~/GitHub" as the second option. Refuse iCloud folders, with the reason. The sidebar shows the folder on hover. | A project created in ~/GitHub/<name> opens, runs /ground, and its folder is a git repo with the hierarchy. |
-| P4 | **Version control you can see.** The project overview shows the history (the last five commits, in plain words) and "Show in Finder". A "Publish to GitHub" button runs `gh repo create --private --source <folder> --push` only when `gh` is signed in. It first checks that private/ and data/ are ignored and that no file outside them holds coordinates, and says so. Never public by default. | In the app, a test project publishes to a private repo, and the pushed tree has no private/ or data/. The test repo is deleted afterwards by Chris, not the agent. |
-| P5 | **One documentation layout, explained.** METHODOLOGY.md and a short "How this project is kept" section in PROJECT.md say what each file and folder is for, who writes it (agent, tools or person), and what never leaves the Mac. Another agent opening the folder in Codex, without Dighouse, can follow it. | A plain Codex session given only the folder lists what was looked at, what was found and what is still open, correctly. |
-| P6 | **Slash commands everywhere.** Every command either runs or says why not (done 2026-11-17 in PR #56). Add /make-project (P1) and /publish (P4), and show the active goal at the top of the chat with a Stop button. | Each command typed and Return in the running app does something visible. |
-| P7 | **Docs.** README "A project is a folder" gets the chat-to-project path and the GitHub step. HANDOFF and this file agree with the app. | README matches the app. |
+| P1 | **Own folder, always, in ~/Dighouse.** Every way of starting a project (New project, Home starting points, blind tests, the agent's init_project, a chat) creates a new folder under ~/Dighouse with the layout above, runs git init and makes a first commit. If a name is taken, add a number; never reuse a folder. | Starting a project each of the five ways makes five folders in ~/Dighouse, each a git repo with the layout that starts with a commit. |
+| P2 | **Make this a project.** In a general chat, once the agent has a place and a question, a card offers "Make this a project". So does /make-project at any time. It opens New project filled in from the chat (name, question, area). After creation, the chat moves into the project as its first chat. The agent may suggest it; only the person presses. | A chat about a place ends as a project containing that chat. |
+| P3 | **The chat becomes the first records.** On creation, write what the chat settled into the layout: the question and why this area into PROJECT.md, sources it read into sources/, places ruled out and why into notes/. Commit it as "Started from chat: <title>". | The new project's files and git log show the chat's reasoning and sources. |
+| P4 | **~/GitHub only when asked.** New project shows "Folder: ~/Dighouse" with one alternative, "Work out of my GitHub folder", which makes ~/GitHub/<project-name> instead. When the person says in the chat that they want to work out of GitHub, the agent fills that choice in on the card and names the folder it will use. It never picks ~/GitHub on its own. A name already taken in ~/GitHub gets a number; an existing repository is never written into. iCloud folders are refused, with the reason. | (a) A default project lands in ~/Dighouse. (b) Choosing the GitHub option lands in ~/GitHub/<name>. (c) Saying "work out of my GitHub folder" in a chat lands there too. Each folder opens, runs /ground, and is a repo with the layout. |
+| P5 | **History you can see, publishing you control.** The project overview shows the last five commits in plain words, plus Show in Finder. "Publish to GitHub" (and /publish) first checks that private/ and data/ are ignored and that no tracked file holds coordinates, then runs gh repo create --private --push. It is never public and never automatic. | A test project publishes to a private repo whose tree has no private/ or data/. Chris deletes the test repo himself. |
+| P6 | **Explained in the project itself.** A "How this project is kept" section in PROJECT.md (the table above, in plain words) and the skill tell any agent where to read and write. | A plain Codex session given only the folder correctly lists what was looked at, what was found and what is open. |
+| P7 | **Goals are visible.** An active goal shows at the top of the chat with its objective and a Stop button. /goal alone uses the last message (done in PR #56). Every slash command either runs or says why not. | /goal, /make-project, /publish, /ground and /look each do something visible on Return. |
+| P8 | **Docs.** The README section "A project is a folder" covers the chat-to-project path, ~/Dighouse as the home for projects, the GitHub option and the publish step. HANDOFF and this file agree with the app. | The README matches the app. |
 
 ## Rules
 
-- Cheap models only for tests: primary / 6.1 Terra. Never Opus.
-- Nothing is pushed to GitHub, made public or sent without Chris pressing the button, and the agent never creates a public repository.
+- Tests that send a message to a model use primary / 6.1 Terra. Never Opus.
+- Nothing is pushed, made public or sent unless Chris presses the button. The agent never creates a public repository.
 - Locations stay in private/. Check every pushed tree.
-- Leave Chris's settings and projects as found. Back up the settings plist and use `-projectsHome $HOME/dighouse-ui-test`.
-- One branch and PR per goal, `codex/` prefix, squash-merged. `rm` is blocked; move files to /tmp.
-- Plain words. Recheck every control you rewire.
+- Don't touch Chris's projects or existing repositories in ~/GitHub. Back up the settings plist, test with
+  -projectsHome $HOME/dighouse-ui-test, and move any test folders made in ~/GitHub to /tmp afterwards.
+- One branch and PR per goal, with the codex/ prefix, squash-merged. rm is blocked, so move files to /tmp.
+- Plain words. Recheck every control you rewire and the ones next to it.
 
-## After this loop: the search loop
+## The loop (every turn)
+
+1. Read HANDOFF.md, this file and its Log.
+2. Take the lowest unfinished goal, build it, and run its check in the running app.
+3. Fix what the check shows, log the result with the date, run the tests, then commit, open the PR and merge.
+4. Stop when P1 to P8 pass, or when a decision from Chris is needed. Before stopping, update the Log and HANDOFF.md.
+
+## Next loop (drafted, not part of this one)
+
+### The search loop
 
 Once a project can live in its own repository, run the first real search for something unrecorded. Bavaria is the place to start: open raw lidar, an open register of known sites, and enclosures the method finds. The prompt for a Dighouse chat, after making a project for a 10 to 25 sq km wooded area:
 
@@ -55,7 +68,7 @@ Once a project can live in its own repository, run the first real search for som
 
 Before that, Bavaria's register needs adding as a records source (it answers per point through the Denkmal-Atlas WMS, already used for the Oberhaching key).
 
-## Which model
+### Which model
 
 Every model on Chris's engine accepts images, and Dighouse hands the agent each tile as an image through view_tile, so no computer use is involved. What matters is how well a model reads relief and how much each run costs:
 
@@ -64,3 +77,7 @@ Every model on Chris's engine accepts images, and Dighouse hands the agent each 
 - **6 Luna and 5.6 Luna** ("fast and affordable"): worth trying for the bookkeeping stages (slices, map checks, the record), not for looking.
 
 Settle it with a bake-off before the real search: the same four blind tests (Borre, Oberhaching, Lauske, Thunder Bay east) on Luna, Terra and Sol at medium, comparing features found per percent of usage spent (the meter under the message box).
+
+## Log
+
+**P1 passed (2026-11-16).** `projects_home()` (env `DIGHOUSE_PROJECTS_HOME`, else ~/Dighouse) and `new_folder()` in project.py: a bare name becomes a folder there, and a folder already in use gets -2, -3. `init_project` uses it and replies with the folder it made; the app swaps that path in (`ChatModel.withMadeFolder`) and passes its projects folder to the engine. The old fallback to ~/Documents/Dighouse is gone; a projects folder in iCloud is not used. Checked in the running app with a test projects folder: the Home starting point (Lauske) made `lauske-ring-fort`, the New project form with the same name made `lauske-ring-fort-2`, a blind test made its own folder, and the agent in a general chat, given the bare name `newark-check`, made `newark-check`, and Open project registered it. Each is a git repo with the layout, starting with a commit (later record updates add commits), with private/ and data/ ignored. The fifth way, from a chat, is P2. Offline test: `test_every_new_project_gets_its_own_folder_and_repository`.

@@ -594,3 +594,18 @@ def test_a_service_that_needs_a_token_says_so(tmp_path, monkeypatch):
     (tmp_path / "keys.json").write_text(json.dumps({"dataforsyningen": " abc123 "}))
     assert national.access_key("dataforsyningen") == "abc123"
     assert [d for d in national.find(box) if d["id"] == "dk:dhm-terraen"][0]["ready_made_ground_model"]
+
+def test_every_new_project_gets_its_own_folder_and_repository(tmp_path, monkeypatch):
+    """A bare name goes in the projects folder, a used folder is never reused, and each project starts as a git repo."""
+    import subprocess
+    monkeypatch.setenv("DIGHOUSE_PROJECTS_HOME", str(tmp_path / "home"))
+    first = server.init_project("hill", "Hill", "What is on the hill?", 0.0, 51.0, 0.01, 51.01)["project"]
+    second = server.init_project("hill", "Hill again", "And now?", 0.0, 51.0, 0.01, 51.01)["project"]
+    assert first == str((tmp_path / "home" / "hill").resolve()) and second.endswith("hill-2")
+    assert "Hill" in (Path(first) / "PROJECT.md").read_text() and "Hill again" in (Path(second) / "PROJECT.md").read_text()
+    for root in (first, second):
+        for part in ("PROJECT.md", "METHODOLOGY.md", "notes", "candidates", "sources", "reports", ".gitignore"):
+            assert (Path(root) / part).exists(), part
+        log = subprocess.run(["git", "-C", root, "log", "--oneline"], capture_output=True, text=True).stdout.splitlines()
+        tracked = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True).stdout
+        assert len(log) == 1 and "private/" not in tracked and "data/" not in tracked
