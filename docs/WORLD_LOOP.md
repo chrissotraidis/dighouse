@@ -269,3 +269,12 @@ The overview gained four enclosures and forts (Oberhaching 2, Lauske 1, Maiden C
 
 - **docs/images/lake-to-wreck.gif:** a sweep like the treetops-to-ground animation, at Thunder Bay. The "Lake surface" side is the USGS lidar surface (the highest return in each cell) over the shore and breakwater, with the water drawn plain, since airborne lidar stops at the surface. The "Lake bed" side is the lidar ground on land and NOAA's sonar survey under the water, where two charted wrecks show. 938 × 586, 96 frames at 50 ms, the same size and timing as the first animation.
 - **docs/images/home.png:** retaken in the running app at 1440 × 900 in Earth (window only, test projects out of the sidebar). It shows Places to start, with the Lauske ring fort and the Thunder Bay wreck in the last row. Settings restored afterwards.
+
+### 2026-11-17, why Dighouse is slow to start and freezes
+
+Measured on Chris's Mac:
+
+- **Start:** the app started a login shell (`zsh -lic`) to find the engine and uv: 2.6 s every launch, before the engine could start. The engine itself is ready in about 1.3 s. Dighouse now saves what the full check found and starts the engine from it straight away, then runs the full check in the background. From launch to engine and tools running: 4.7 s before, 1.7 to 2.2 s after (three launches of the new build).
+- **Freezes:** all 11 of Chris's projects sit in ~/Documents, which is synced to iCloud, and about half their files are offline (for example 118 of 225 in Maiden Castle, 2 to 4 state files in each project). Any read of an offline file waits for iCloud. Copying one 95 MB project (Middle Usumacinta) took 162 s, almost all of it waiting on downloads. The app reads project state every 2 seconds, so it stalls when a project is open.
+- **Fix:** Home and Settings, Data and privacy, show "N projects are in iCloud" with **Move to this Mac**. The button copies each project with ditto (which waits for the downloads), checks every file and size, repoints the project, puts the original in the Trash and sets the projects folder to ~/Dighouse. A project that fails to copy is left in place, with a note saying so. Checked in the running app with two test projects in a folder marked as iCloud: both moved, the originals went to the Trash, the notice went away, and a moved project opened with its tiles and find.
+- **Not done for Chris:** his own projects were not moved. The move puts originals in the Trash, so he presses the button himself.

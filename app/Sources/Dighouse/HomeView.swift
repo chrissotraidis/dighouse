@@ -92,6 +92,7 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
+                CloudNotice()
                 if !app.offersTutorial { WelcomeBack().padding(.bottom, -8) }
                 hero.arrives()
                 if app.offersTutorial {
@@ -474,3 +475,42 @@ struct StartCard: View {
     }
 }
 
+
+
+/// Projects kept in iCloud make Dighouse freeze: their files go offline, and every read waits for a download.
+/// This offers to move them to this Mac, once, and shows how far the move has got.
+struct CloudNotice: View {
+    @EnvironmentObject var store: ProjectStore
+    @EnvironmentObject var chat: ChatModel
+
+    var body: some View {
+        let count = store.cloudProjects.count
+        if count > 0 || store.moving != nil || store.moveProblem != nil {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "icloud.slash").font(.system(size: 18 * Theme.scale)).foregroundStyle(Theme.amber).padding(.top, 2)
+                VStack(alignment: .leading, spacing: 6) {
+                    if let moving = store.moving {
+                        Text("Moving \(moving.name), \(moving.done + 1) of \(moving.of)").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                        Text("iCloud is downloading the files that were offline. This can take a few minutes for each project. You can keep using Dighouse.")
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        ProgressView(value: Double(moving.done), total: Double(max(moving.of, 1))).tint(Theme.green)
+                    } else if count > 0 {
+                        Text("\(count) project\(count == 1 ? " is" : "s are") in iCloud").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                        Text("iCloud keeps their files offline, and Dighouse freezes while it waits for them to download. Move them to \(Paths.localProjectsHome.path.tildePath) on this Mac; the originals go to the Trash once each copy is checked.")
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let problem = store.moveProblem {
+                        Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 0)
+                if store.moving == nil, count > 0 {
+                    Button("Move to this Mac") { Task { await store.moveOutOfCloud() } }
+                        .buttonStyle(PrimaryButton()).disabled(chat.running)
+                        .help(chat.running ? "Wait until the agent finishes its run." : "Copy each project to this Mac, check it, then put the original in the Trash.")
+                }
+            }
+            .padding(16).panel()
+        }
+    }
+}

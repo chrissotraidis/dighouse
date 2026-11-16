@@ -240,7 +240,8 @@ final class AppState: ObservableObject {
     /// Find the engine and the tools, then start the engine if everything is in place.
     func boot() async {
         starting = true
-        await setup.detect()
+        let quick = setup.restore()
+        if !quick { await setup.detect() }
         // After an update the tools may need new parts. Fetch them without asking, since nothing else works until then.
         if onboarded, !setup.toolsReady, setup.uv != nil, setup.toolsSource != nil { await setup.prepareTools() }
         if let codex = setup.codex, setup.toolsReady {
@@ -257,6 +258,8 @@ final class AppState: ObservableObject {
             }
         }
         starting = false
+        // Started from what the last check found: check again now, for the next start and for Settings.
+        if quick { await setup.detect() }
     }
 
     // MARK: moving around

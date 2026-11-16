@@ -57,6 +57,24 @@ final class Setup: ObservableObject {
         codex = best?.path
         codexVersion = best?.version ?? ""
         ocxRunning = await routerAnswers()
+        findTools()
+        UserDefaults.standard.set(["path": path, "codex": codex ?? "", "version": codexVersion, "uv": uv ?? ""], forKey: "setupFound")
+    }
+
+    /// What the last full check found, if the engine it found is still there. A full check starts a login shell to learn
+    /// where the person's tools live, which takes seconds; with this, the engine starts at once and the check runs after.
+    func restore() -> Bool {
+        guard let found = UserDefaults.standard.dictionary(forKey: "setupFound") as? [String: String],
+              let engine = found["codex"], FileManager.default.isExecutableFile(atPath: engine), let saved = found["path"] else { return false }
+        path = saved
+        codex = engine
+        codexVersion = found["version"] ?? ""
+        uv = found["uv"].flatMap { $0.isEmpty || !FileManager.default.fileExists(atPath: $0) ? nil : $0 }
+        findTools()
+        return toolsReady
+    }
+
+    private func findTools() {
         toolsSource = existing([
             ProcessInfo.processInfo.environment["DIGHOUSE_TOOLS_DIR"],
             Bundle.main.resourceURL?.appendingPathComponent("tools").path,

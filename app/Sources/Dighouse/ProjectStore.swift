@@ -62,6 +62,59 @@ final class ProjectStore: ObservableObject {
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
     }
 
+    /// Projects kept in an iCloud folder, whose files can go offline.
+    var cloudProjects: [ProjectRef] { projects.filter { Paths.inCloud($0.path) } }
+    /// While projects move out of iCloud: which one, of how many. Nil when nothing is moving.
+    @Published var moving: (done: Int, of: Int, name: String)?
+    @Published var moveProblem: String?
+
+    /// Copy each project kept in iCloud to this Mac, check the copy, then put the original in the Trash.
+    /// The copy is made by ditto, which waits for iCloud to download each offline file; that can take minutes.
+    func moveOutOfCloud() async {
+        let todo = cloudProjects
+        guard moving == nil, !todo.isEmpty else { return }
+        let home = Paths.localProjectsHome
+        try? FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        moveProblem = nil
+        for (i, ref) in todo.enumerated() {
+            moving = (i, todo.count, ref.name)
+            let name = URL(fileURLWithPath: ref.path).lastPathComponent
+            var target = home.appendingPathComponent(name).path
+            var n = 2
+            while FileManager.default.fileExists(atPath: target) { target = home.appendingPathComponent("\(name)-\(n)").path; n += 1 }
+            let copy = await Shell.run("/usr/bin/ditto", [ref.path, target])
+            let same = await Task.detached { Self.sameFiles(ref.path, target) }.value
+            guard copy.code == 0, same else {
+                moveProblem = "\(ref.name) could not be copied, so it was left where it is. " + String(copy.out.prefix(200))
+                continue
+            }
+            try? FileManager.default.trashItem(at: URL(fileURLWithPath: ref.path), resultingItemURL: nil)
+            if let at = projects.firstIndex(of: ref) { projects[at].path = target }
+            if current == ref { current = ProjectRef(path: target, name: ref.name); UserDefaults.standard.set(target, forKey: "currentProject") }
+            if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
+        }
+        if !Paths.inCloud(home.path) { UserDefaults.standard.set(home.path, forKey: "projectsHome") }
+        moving = nil
+        signature = ""
+        reloadIfChanged()
+    }
+
+    /// Whether two folders hold the same files at the same sizes.
+    nonisolated static func sameFiles(_ a: String, _ b: String) -> Bool {
+        func list(_ root: String) -> [String: Int] {
+            var out: [String: Int] = [:]
+            let url = URL(fileURLWithPath: root)
+            guard let walk = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) else { return out }
+            for case let file as URL in walk {
+                guard let v = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]), v.isRegularFile == true else { continue }
+                out[String(file.path.dropFirst(url.path.count))] = v.fileSize ?? 0
+            }
+            return out
+        }
+        let (x, y) = (list(a), list(b))
+        return !x.isEmpty && x == y
+    }
+
     /// Leave the open project, back to the general chat.
     func close() {
         current = nil

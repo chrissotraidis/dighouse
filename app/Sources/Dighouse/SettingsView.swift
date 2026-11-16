@@ -496,6 +496,7 @@ private struct PrivacySettings: View {
             }
         }
         .panel()
+        CloudNotice()
         OpenDataKeys()
     }
 }

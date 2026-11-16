@@ -156,6 +156,27 @@ enum Paths {
         return dir
     }
 
+    /// Folders that macOS keeps in iCloud when Desktop and Documents sync is on. Files there go offline, and every read
+    /// of one waits for a download, so Dighouse offers to move projects out of them.
+    static var cloudFolders: [String] {
+        let home = NSHomeDirectory()
+        var out: [String] = []
+        if FileManager.default.fileExists(atPath: home + "/Library/Mobile Documents/com~apple~CloudDocs/Documents") {
+            out += [home + "/Documents", home + "/Desktop", home + "/Library/Mobile Documents"]
+        }
+        if let test = UserDefaults.standard.string(forKey: "cloudFolderForTest") { out.append(test) }
+        return out
+    }
+
+    static func inCloud(_ path: String) -> Bool { cloudFolders.contains { path == $0 || path.hasPrefix($0 + "/") } }
+
+    /// Where projects go when they leave iCloud: the chosen projects folder if it is on this Mac, else ~/Dighouse.
+    static var localProjectsHome: URL {
+        let chosen = UserDefaults.standard.string(forKey: "projectsHome")
+        if let chosen, !inCloud(chosen) { return URL(fileURLWithPath: chosen) }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Dighouse")
+    }
+
     static var projectsHome: URL {
         if let custom = UserDefaults.standard.string(forKey: "projectsHome") { return URL(fileURLWithPath: custom) }
         // Projects that already live in Documents stay there. New ones go in the home folder: a Documents folder kept in
