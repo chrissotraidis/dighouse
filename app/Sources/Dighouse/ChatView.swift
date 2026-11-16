@@ -13,7 +13,10 @@ struct ChatView: View {
                     Text("Opening the chat").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if chat.items.isEmpty { EmptyChat() } else { Messages() }
+            } else if chat.items.isEmpty { EmptyChat() } else {
+                if let id = chat.active, chat.goals.contains(id) { GoalBar(objective: chat.objectives[id] ?? "") }
+                Messages()
+            }
             RecoveryBar()
             if let approval = chat.approval {
                 VStack(alignment: .leading, spacing: 10) {
@@ -31,6 +34,32 @@ struct ChatView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
+    }
+}
+
+/// A goal keeps the agent taking turn after turn, so while one runs it stays in view at the top of its chat, with Stop.
+private struct GoalBar: View {
+    let objective: String
+    @EnvironmentObject var chat: ChatModel
+
+    var body: some View {
+        let title = ToolGuide.workflow(sentAs: objective)?.title ?? objective
+        HStack(spacing: 10) {
+            Glyph(name: "dig.trowel", size: 14 * Theme.scale).foregroundStyle(Theme.tan)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Goal: " + title).font(.system(size: 13 * Theme.scale, weight: .semibold)).lineLimit(1)
+                Text("The agent keeps working, turn after turn, until this is done or it needs you.")
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
+            }
+            .help(objective)
+            Spacer(minLength: 8)
+            Button { Task { @MainActor in await chat.stopGoal() } } label: { Label("Stop", systemImage: "stop.fill") }
+                .buttonStyle(SecondaryButton()).help("Pause the goal and end the turn running now (⌘.)")
+        }
+        .padding(.horizontal, 14).padding(.vertical, 9)
+        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+        .background(Theme.tan.opacity(0.07))
+        .overlay(alignment: .bottom) { Hairline() }
     }
 }
 
@@ -842,7 +871,11 @@ struct Composer: View {
             if app.placeProblem != nil { app.placeProblem = nil }
             if Mentions.query(draft) != nil, pool.isEmpty { pool = Mentions.pool(store: store) }
             if Mentions.query(draft) == nil, commands.isEmpty { pool = [] }
-            selected = commands.isEmpty ? 0 : commands.firstIndex { app.unavailable($0) == nil } ?? 0
+            // A command typed in full is the one Return runs, even when it can't run yet: it then says why. Otherwise the
+            // first command that can run is highlighted.
+            let typed = SlashCommands.parse(draft)?.name
+            selected = commands.isEmpty ? 0
+                : commands.firstIndex { $0.id == typed } ?? commands.firstIndex { app.unavailable($0) == nil } ?? 0
             if dismissed != draft { dismissed = nil }
             if draft.isEmpty { picked = [] }
         }
@@ -925,7 +958,11 @@ struct Composer: View {
         }
         let list = commands
         guard list.indices.contains(selected), let (_, argument) = SlashCommands.parse(chat.draft) else { return }
-        let c = list[selected]
+        run(list[selected], argument: argument)
+    }
+
+    /// Run a command, or say why it can't run, or ask for the text it needs.
+    private func run(_ c: SlashCommand, argument: String) {
         if let reason = app.unavailable(c) {
             chat.draft = ""
             app.explainUnavailable(c, reason)
@@ -1059,6 +1096,15 @@ struct Composer: View {
 
     private func send() {
         guard canSend else { return }
+        // A command typed in full runs on Return even when its list was closed; a word after / that names no command
+        // says so, rather than going to the model. A path such as /Users/... is still sent as text.
+        if let (name, argument) = SlashCommands.parse(chat.draft), !name.isEmpty, name.allSatisfy({ $0.isLetter || $0 == "-" }) {
+            if let c = SlashCommands.all.first(where: { $0.id == name }) { run(c, argument: argument); return }
+            chat.draft = ""
+            app.route = .chat
+            chat.note("There is no /\(name) command. Type / to see them all, or /help for the list with shortcuts.")
+            return
+        }
         let text = Mentions.expand(chat.draft, with: picked)
         chat.draft = ""
         picked = []

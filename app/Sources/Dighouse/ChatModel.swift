@@ -56,6 +56,8 @@ final class ChatModel: ObservableObject {
     @Published private(set) var usage: [String: (used: Int, window: Int?)] = [:]
     /// Chats whose goal is still being worked on.
     @Published private(set) var goals: Set<String> = []
+    /// What each chat's goal asks for, as set, for the bar at the top of a chat whose goal is running.
+    @Published private(set) var objectives: [String: String] = [:]
     /// The last Dighouse tool each chat's agent called, so a run can say which stage it is on.
     @Published private(set) var lastTool: [String: String] = [:]
     /// The share of the account's usage left, as the engine last reported it.
@@ -204,6 +206,7 @@ final class ChatModel: ObservableObject {
             if let goal = (try? await engine.request("thread/goal/get", ["threadId": thread.id]))?["goal"] as? JSON,
                let objective = goal["objective"] as? String, active == thread.id {
                 items.insert(ChatItem(id: "goal-" + thread.id, kind: .note, text: Self.goalNote(objective)), at: 0)
+                objectives[thread.id] = objective
                 if goal["status"] as? String == "active" { goals.insert(thread.id) }
             }
             loading = false
@@ -405,6 +408,8 @@ final class ChatModel: ObservableObject {
             guard let active else { return }
             note(Self.goalNote(objective))
             running = true
+            objectives[active] = objective
+            goals.insert(active)
             _ = try await engine.request("thread/goal/set", ["threadId": active, "objective": objective, "status": "active"])
         } catch {
             running = false
@@ -610,6 +615,14 @@ final class ChatModel: ObservableObject {
         _ = try? await engine.request("turn/interrupt", ["threadId": active, "turnId": turn])
     }
 
+    /// Stop the goal in the chat on screen: pause it so no next turn starts, and end the turn running now, if any.
+    func stopGoal() async {
+        guard let engine, let active else { return }
+        _ = try? await engine.request("thread/goal/set", ["threadId": active, "status": "paused"])
+        goals.remove(active)
+        if let turn = live[active], !turn.isEmpty { _ = try? await engine.request("turn/interrupt", ["threadId": active, "turnId": turn]) }
+    }
+
     /// Stop the run in one chat, whichever chat is on screen.
     func stop(chat thread: String) async {
         guard let engine, let turn = live[thread] else { return }
@@ -674,7 +687,9 @@ final class ChatModel: ObservableObject {
             usage[thread] = (used, use["modelContextWindow"] as? Int)
         }
         if method == "thread/goal/updated" {
-            let status = (params["goal"] as? JSON)?["status"] as? String ?? ""
+            let goal = params["goal"] as? JSON
+            let status = goal?["status"] as? String ?? ""
+            if let objective = goal?["objective"] as? String { objectives[thread] = objective }
             if status == "active" { goals.insert(thread) } else {
                 goals.remove(thread)
                 onGoalEnded?(thread, status)
