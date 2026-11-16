@@ -890,7 +890,11 @@ struct Composer: View {
         let list = commands
         guard list.indices.contains(selected), let (_, argument) = SlashCommands.parse(chat.draft) else { return }
         let c = list[selected]
-        guard app.unavailable(c) == nil else { return }
+        if let reason = app.unavailable(c) {
+            chat.draft = ""
+            app.explainUnavailable(c, reason)
+            return
+        }
         if c.needsArgument && argument.isEmpty {
             chat.draft = c.name + " "
             dismissed = chat.draft

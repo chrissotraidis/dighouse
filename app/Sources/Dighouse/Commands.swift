@@ -39,7 +39,7 @@ enum SlashCommands {
         SlashCommand(id: "fork", summary: "Copy this chat into a new one, to try something else", group: .chat),
         SlashCommand(id: "undo", summary: "Take back your last message and its answer", group: .chat),
         SlashCommand(id: "compact", summary: "Shorten this chat so the model has room to keep going", group: .chat),
-        SlashCommand(id: "goal", summary: "Keep working, turn after turn, until this is done", group: .chat, argument: "what to finish", needsArgument: true),
+        SlashCommand(id: "goal", summary: "Keep working, turn after turn, until this is done. Alone, it uses your last message", group: .chat, argument: "what to finish"),
         SlashCommand(id: "status", summary: "Show the model, how full the chat is, and your usage left", group: .chat),
         SlashCommand(id: "archive", summary: "Archive this chat", group: .chat),
         SlashCommand(id: "help", summary: "List every command and shortcut", group: .chat),
@@ -116,6 +116,24 @@ extension AppState {
         }
     }
 
+    /// A command that cannot run says so in the chat, with what to do, instead of doing nothing.
+    func explainUnavailable(_ c: SlashCommand, _ reason: String) {
+        route = .chat
+        if ["Nothing left to do", "All decided", "Running now"].contains(reason) || reason.hasPrefix("0 ") {
+            chat.note(reason == "Running now" ? "\(c.name) is already running." : "\(c.name) has nothing left to do in this project.")
+            return
+        }
+        var next = ""
+        if c.workflow != nil, store.current == nil {
+            next = " It works inside a project: start one with /new-project, or open one from the sidebar."
+        } else if reason == "Needs the ground" || reason.lowercased().contains("ground") {
+            next = " Run /ground first."
+        } else if reason.lowercased().contains("finds") {
+            next = " Run /look first, so the agent can mark finds."
+        }
+        chat.note("\(c.name) can't run yet: \(reason.prefix(1).lowercased() + reason.dropFirst()).\(next)")
+    }
+
     /// Run a command with the text typed after it.
     func perform(_ c: SlashCommand, argument: String) {
         if let id = c.workflow, let flow = ToolGuide.workflows.first(where: { $0.id == id }) {
@@ -136,7 +154,16 @@ extension AppState {
         case "fork": Task { @MainActor in await chat.fork() }
         case "undo": Task { @MainActor in if let text = await chat.undo() { chat.draft = text } }
         case "compact": Task { @MainActor in await chat.compact() }
-        case "goal": route = .chat; Task { @MainActor in await chat.setGoal(argument) }
+        case "goal":
+            route = .chat
+            if !argument.isEmpty { Task { @MainActor in await chat.setGoal(argument) }; return }
+            if let id = chat.active, chat.goals.contains(id) {
+                chat.note("A goal is already running in this chat. The agent keeps going until it is done; ⌘. stops it.")
+            } else if let last = chat.items.last(where: { $0.kind == .user })?.text.trimmingCharacters(in: .whitespacesAndNewlines), !last.isEmpty {
+                Task { @MainActor in await chat.setGoal(last) }
+            } else {
+                chat.note("Type what to finish after /goal, for example: /goal search this area and report every find. Or send a message first, then type /goal to keep going on it.")
+            }
         case "status": Task { @MainActor in await showStatus() }
         case "archive": if let thread { Task { @MainActor in await chat.archive(thread) } }
         case "help": route = .chat; chat.note(SlashCommands.help)
