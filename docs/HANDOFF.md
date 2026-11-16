@@ -10,7 +10,7 @@ Chris reviews by using the app and sending screenshots. He wants to use it to fi
 
 Seven loops are finished. The sixth was [TEST_LOOP.md](TEST_LOOP.md): blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration and an honest README. The seventh was [WORLD_LOOP.md](WORLD_LOOP.md), whose Log has every source probe, run and score. It added Navarre (Spain), Bavaria, Saxony, New Zealand and Denmark (with a token), registers for Navarre and Denmark in the checks, and a pilot on the seafloor from NOAA's sonar surveys with charted wrecks as the key. It changed the method to look at the whole area before the tiles (enclosures bigger than a tile were being called field edges). The benchmark is 53 of 105 on thirteen land sites and 4 of 7 charted wrecks. Small low mounds remain the clearest gap (Borre 20 of 53, Andía 0 of 11). Rerun scripts/smoke_test.py and the blind tests after any change to the model, prompt, skill or feature guide.
 
-Waiting for Chris: a free Dataforsyningen token for Denmark's live check, and the macOS Documents prompt.
+Denmark is an option for anyone with a free Dataforsyningen token (Chris chose not to make one). Waiting for Chris: the macOS Documents prompt.
 
 ## Rules
 

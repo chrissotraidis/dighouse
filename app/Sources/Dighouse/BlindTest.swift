@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// Blind tests on known sites: the six sites a newcomer can try, starting one, and the scorecard it ends with.
+/// Blind tests on known sites: the sites a newcomer can try, starting one, and the scorecard it ends with.
 enum TestSites {
     struct Site: Identifiable {
         let id: String, title: String, place: String, about: String, image: String
+        var underwater = false
     }
 
     static let all: [Site] = [
@@ -19,6 +20,14 @@ enum TestSites {
              about: "An Iron Age hillfort with rings of ramparts and two entrances.", image: "maiden-castle"),
         Site(id: "borre", title: "Borre", place: "Vestfold, Norway",
              about: "A Viking Age cemetery of more than fifty burial mounds.", image: "borre"),
+        Site(id: "oberhaching", title: "Oberhaching", place: "Bavaria, Germany",
+             about: "Late Iron Age square enclosures in woodland and at a field edge.", image: "oberhaching"),
+        Site(id: "lauske", title: "Lauske ring forts", place: "Saxony, Germany",
+             about: "Three ring forts in Upper Lusatia, one on a wooded spur.", image: "lauske"),
+        Site(id: "puketapu", title: "Puketapu Pā", place: "Auckland, New Zealand",
+             about: "A pā on a ridge, with ditches, terraces and storage pits.", image: "puketapu"),
+        Site(id: "thunder-bay-east", title: "Thunder Bay wrecks", place: "Lake Huron, United States",
+             about: "Wrecks on the lake bed in a marine sanctuary, from NOAA's sonar surveys.", image: "thunder-bay", underwater: true),
     ]
 }
 
@@ -63,38 +72,49 @@ struct TestPicker: View {
             }
             Text("The agent is not told which site it is. It looks at the ground, marks what it finds, then is scored against what is published. A test takes about five minutes.")
                 .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
-                ForEach(TestSites.all) { site in
-                    Button { app.startTest(site) } label: {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Theme.ink.opacity(0.04).aspectRatio(3 / 2, contentMode: .fit)
-                                .overlay {
-                                    if let image = StartingPoints.image(named: site.image) {
-                                        Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-                                    }
-                                }
-                                .clipped()
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(site.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                                Text(site.place).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                                Text(site.about).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
-                                    .fixedSize(horizontal: false, vertical: true).padding(.top, 2)
-                            }
-                            .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach([(false, "On land"), (true, "Under water")], id: \.1) { group in
+                        Text(group.1).font(.system(size: 12.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
+                            ForEach(TestSites.all.filter { $0.underwater == group.0 }) { site in card(site) }
                         }
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.ink.opacity(0.035)))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
-                        .contentShape(Rectangle())
+                        .padding(.bottom, 6)
                     }
-                    .buttonStyle(.plain)
-                    .help("Start a blind test on \(site.title)")
                 }
             }
+            .frame(maxHeight: max(320, app.windowSize.height - 260))
         }
         .padding(22)
         .frame(width: min(720, app.windowSize.width - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
+    }
+
+    private func card(_ site: TestSites.Site) -> some View {
+        Button { app.startTest(site) } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                Theme.ink.opacity(0.04).aspectRatio(3 / 2, contentMode: .fit)
+                    .overlay {
+                        if let image = StartingPoints.image(named: site.image) {
+                            Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                        }
+                    }
+                    .clipped()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(site.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                    Text(site.place).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                    Text(site.about).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                        .fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+                }
+                .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.ink.opacity(0.035)))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Start a blind test on \(site.title)")
     }
 }
 

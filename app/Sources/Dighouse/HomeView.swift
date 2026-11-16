@@ -52,6 +52,18 @@ enum StartingPoints {
             question: "How much of the ridge system shows in the ground, and what has ploughing and the road removed?",
             box: ["-91.4115", "32.6320", "-91.4035", "32.6390"]),
         StartingPoint(
+            id: "lauske", kind: .learn, title: "Lauske ring fort", place: "Saxony, Germany",
+            about: "A ring fort on a wooded spur in Upper Lusatia, with two more nearby. Shows a rampart closing on itself in a 1 m ground model.",
+            source: "GeoSN", name: "Lauske ring fort",
+            question: "Which ramparts and ditches show around the Lauske ring fort, and what else on the spur is built?",
+            box: ["14.6140", "51.1670", "14.6240", "51.1730"]),
+        StartingPoint(
+            id: "thunder-bay", kind: .learn, title: "Thunder Bay wreck", place: "Lake Huron, United States",
+            about: "A wreck on the lake bed in a marine sanctuary, from NOAA's sonar surveys. Shows a hull and the seafloor around it.",
+            source: "NOAA", name: "Thunder Bay wreck",
+            question: "Which shapes on the lake bed here are wrecks or debris, and which are already charted?",
+            box: ["-83.1850", "45.0627", "-83.1773", "45.0672"]),
+        StartingPoint(
             id: "yucatan", kind: .search, title: "Yucatán lowlands", place: "Quintana Roo, Mexico",
             about: "A NASA G-LiHT strip over forest and limestone. A 2026 catalog lists structures detected in this data, so the work is checking each feature against it.",
             source: "OpenTopography", name: "Yucatan strip",
@@ -177,7 +189,7 @@ struct HomeView: View {
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 surveys
             } else {
-                Text("Seven published sites and one strip of Yucatán forest, each with lidar ready to fetch. A run on a known site shows what real earthworks look like, and whether the agents find them again.")
+                Text("Nine published sites, one of them a wreck on a lake bed, and one strip of Yucatán forest, each with open data ready to fetch. A run on a known site shows what real earthworks look like, and whether the agents find them again.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 LazyVGrid(columns: cards, alignment: .leading, spacing: 12) {
                     ForEach(StartingPoints.all) { point in StartCard(point: point) { app.startProject(from: point) } }

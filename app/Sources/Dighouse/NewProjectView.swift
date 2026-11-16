@@ -16,6 +16,8 @@ struct NewProjectView: View {
 
     private struct Coverage: Identifiable {
         let id: String, title: String, source: String, collected: String
+        /// Set when the service asks for a free token that is not on this Mac yet, with what to do about it.
+        var needs = ""
     }
 
     @State private var name: String
@@ -207,7 +209,7 @@ struct NewProjectView: View {
                     .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
             }
 
-            labeled("Open lidar here") { coverageList }
+            labeled("Open data here") { coverageList }
 
             if let problem { Text(problem).foregroundStyle(Theme.amber).font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true) }
             HStack(spacing: 8) {
@@ -236,18 +238,22 @@ struct NewProjectView: View {
             Text(coverageProblem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
         } else if let coverage {
             if coverage.isEmpty {
-                Text("None of the open catalogs Dighouse reads (OpenTopography and USGS 3DEP) cover this area. Try another place, or ask the agent about other sources.")
+                Text("No open data Dighouse reads covers this area. The Toolbox's Open data tab shows where it reaches; try a place inside it, or add your own ground model to a project.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(coverage.enumerated()), id: \.element.id) { index, item in
                         if index > 0 { Hairline() }
                         HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.green).font(.system(size: 13 * Theme.scale)).padding(.top, 1)
+                            Image(systemName: item.needs.isEmpty ? "checkmark.circle.fill" : "key.fill")
+                                .foregroundStyle(item.needs.isEmpty ? Theme.green : Theme.amber).font(.system(size: 13 * Theme.scale)).padding(.top, 1)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.title).font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
                                 Text([item.source, item.collected].filter { !$0.isEmpty }.joined(separator: " · "))
                                     .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                                if !item.needs.isEmpty {
+                                    Text(item.needs).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                                }
                             }
                             Spacer(minLength: 0)
                         }
@@ -307,7 +313,8 @@ struct NewProjectView: View {
             coverage = rows.compactMap { row in
                 guard let id = row["id"] as? String else { return nil }
                 return Coverage(id: id, title: row["title"] as? String ?? id, source: row["source"] as? String ?? "",
-                                collected: String((row["collected"] as? String ?? "").prefix(4)))
+                                collected: String((row["collected"] as? String ?? "").prefix(4)),
+                                needs: row["needs_token"] as? Bool == true ? "Needs a free token: paste it in Settings, Data and privacy." : "")
             }
             if let errors = rows.compactMap({ $0["errors"] as? [String] }).first, coverage?.isEmpty == true {
                 coverageProblem = "A catalog did not answer: " + errors.joined(separator: "; ")

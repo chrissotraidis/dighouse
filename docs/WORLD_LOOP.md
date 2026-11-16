@@ -253,3 +253,14 @@ The overview gained four enclosures and forts (Oberhaching 2, Lauske 1, Maiden C
 
   Both are reported as scored, without changing the method or the keys. The README table now has thirteen land sites: 53 of 105.
 
+
+### 2026-11-17, Denmark as an option, and the new sites in the app
+
+- **Denmark:** Chris decided not to make a token. Denmark stays an option for anyone who pastes their own free token, which is what W5's check allows: "Without one: the code, an offline test and the token message are done." W5 is closed on that basis. In the running app, an area at Trelleborg lists Danmarks Højdemodel with a key icon and "Needs a free token: paste it in Settings, Data and privacy" (New project now shows this for any service that needs a token). Denmark's register is read in the checks without a token.
+- **The new sites in the app:**
+  - "Test it on a known site" now offers ten sites, under On land and Under water: the six launch sites, Oberhaching, Lauske, Puketapu and the Thunder Bay wrecks, each with a picture made from its own data.
+  - Home's "Known sites to learn on" adds the Lauske ring fort (Saxony) and a Thunder Bay wreck (NOAA sonar). The Thunder Bay starting point opens New project over the lake, which lists the NOAA survey.
+  - New project's list is called "Open data here", since it lists sonar surveys too.
+  - All of this was checked in the running app.
+- **README:** a picture of the ten test sites under the benchmark, and the Denmark row says it is an option.
+
