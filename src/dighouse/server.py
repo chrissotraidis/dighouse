@@ -184,13 +184,16 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
 
 @tool
 def suggest_project(name: str, question: str, why_here: str = "", place: str = "",
-                    west: float = 0.0, south: float = 0.0, east: float = 0.0, north: float = 0.0) -> dict:
+                    west: float = 0.0, south: float = 0.0, east: float = 0.0, north: float = 0.0,
+                    sources: list[str] | None = None, ruled_out: list[str] | None = None) -> dict:
     """Offer the person a project made from this chat, once the chat has settled a place and a question.
 
     It creates nothing. The Dighouse app shows a card with "Make this a project"; only the person presses it, and the
     New project page opens filled in from these words, with the chat moving into the project. Give the search area
     as a box in degrees if you have one, otherwise a place name to look up. why_here is a sentence or two on why this
-    area is worth searching, from what the chat found."""
+    area is worth searching, from what the chat found. sources lists what the chat read, one line each: title, link,
+    and what it says about this place. ruled_out lists places the chat considered and set aside, one line each with
+    why. These become the project's first records. No coordinates in any of these words."""
     box = [west, south, east, north]
     has_box = west < east and south < north
     if not has_box and not place.strip():
@@ -201,7 +204,22 @@ def suggest_project(name: str, question: str, why_here: str = "", place: str = "
         answers.guard_box(box)
     return {"offered": True, "name": name.strip(), "question": question.strip(), "why_here": why_here.strip(),
             "place": place.strip(), "box": box if has_box else None,
+            "sources": [s.strip() for s in sources or [] if s.strip()],
+            "ruled_out": [s.strip() for s in ruled_out or [] if s.strip()],
             "note": "The person sees a Make this a project card. Nothing is created until they press it."}
+
+
+@tool
+def start_from_chat(project: str, chat_title: str, why_here: str = "", sources: list[str] | None = None,
+                    ruled_out: list[str] | None = None, conversation: str = "") -> dict:
+    """Write what a chat settled into the project made from it, and commit it as "Started from chat: <title>".
+
+    The app calls this when the person makes a project from a chat. why_here goes into PROJECT.md, each source into
+    sources/read-log.md, and the places ruled out with an account of the chat into a note in notes/. Anything that
+    looks like a coordinate is taken out, because these files are shared."""
+    from .project import start_from_chat as write
+    p = Project(project).check()
+    return {"written": f"notes/{write(p, chat_title, why_here, sources, ruled_out, conversation)}"}
 
 
 @tool

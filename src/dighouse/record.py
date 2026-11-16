@@ -188,6 +188,10 @@ def document(p: Project, commit_it: bool = True) -> dict:
             if s["status"] == "read":
                 entry.update(status="read", finding=s["finding"], link=s.get("link") or entry.get("link", ""))
     searches = _searches(p)
+    # Sources read in the chat a project was made from, before there were any finds to log them against.
+    log = p.path("sources", "read-log.md")
+    from_chat = [l.split(" · read · ", 1)[1] for l in log.read_text().splitlines()
+                 if " · before the project, in the chat · read · " in l] if log.exists() else []
     todo = still_to_do(p)
     name = info.get("name") or _title(p) or p.root.name
     question_text = question(p)
@@ -216,6 +220,9 @@ def document(p: Project, commit_it: bool = True) -> dict:
         short.append(f"{n_status['read']} published source{'s' if n_status['read'] != 1 else ''} "
                      f"{'were' if n_status['read'] != 1 else 'was'} read"
                      + (f", and {n_status['could_not_open']} could not be opened" if n_status["could_not_open"] else "") + ".")
+    elif from_chat:
+        short.append(f"{len(from_chat)} source{'s were' if len(from_chat) != 1 else ' was'} read in the chat that started "
+                     "the project; none has been logged against a find yet.")
     else:
         short.append("Nothing published has been read yet.")
     if handed:
@@ -333,6 +340,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
     L.append("")
 
     L += ["## What has been read", ""]
+    if from_chat:
+        L += ["### Read in the chat that started the project", ""] + [f"- {_clean(s, 400)}" for s in from_chat] + [""]
     if sources:
         for key, title in SOURCE_WORDS.items():
             group = [s for s in sources.values() if s["status"] == key]
@@ -345,7 +354,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
                 link = f" ([link]({s['link']}))" if s.get("link") else ""
                 L.append(f"- **{_clean(s['title'], 200)}**{link}. For {', '.join(sorted(set(s['for'])))}. {_clean(s.get('finding', ''), 400)}")
             L.append("")
-    else:
+    elif not from_chat:
         L += ["Nothing logged yet.", ""]
 
     L += ["## Literature searches run", ""]
@@ -354,6 +363,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
 
     index = p.path("notes", "INDEX.md")
     runs = [l for l in index.read_text().splitlines() if l.startswith("- [")] if index.exists() else []
+    # The index links from inside notes/; from here the same files are under notes/.
+    runs = [re.sub(r"\]\((?!notes/|https?:)([^)]+)\)", r"](notes/\1)", l) for l in runs]
     L += ["## History", ""] + (runs[:8] or ["No runs yet."])
     L += ["", "The full history is in [notes/INDEX.md](notes/INDEX.md), the dated notes, and the project's git log.", ""]
     L += ["## How this project keeps its record", "",

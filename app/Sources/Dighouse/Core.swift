@@ -399,6 +399,10 @@ struct StartingPoint: Identifiable, Hashable {
     var chat: String? = nil
     /// Why this area, as the chat settled it.
     var whyHere: String? = nil
+    /// What the chat read and ruled out, and the chat itself in plain words: the project's first records.
+    var sources: [String] = []
+    var ruledOut: [String] = []
+    var conversation: String? = nil
 
     var centre: (lat: Double, lon: Double)? {
         let n = box.compactMap(Double.init)
@@ -413,6 +417,8 @@ struct ProjectOffer {
     var whyHere = ""
     var place = ""
     var box: [Double]? = nil
+    var sources: [String] = []
+    var ruledOut: [String] = []
 
     init(name: String, question: String) {
         self.name = name
@@ -429,6 +435,21 @@ struct ProjectOffer {
         place = info["place"] as? String ?? ""
         box = (info["box"] as? [Any])?.compactMap { ($0 as? NSNumber)?.doubleValue }
         if box?.count != 4 { box = nil }
+        sources = info["sources"] as? [String] ?? []
+        ruledOut = info["ruled_out"] as? [String] ?? []
+    }
+
+    /// A chat in plain words for the project's notes: what the person said, what the agent answered, and each step.
+    static func conversation(_ items: [ChatItem]) -> String {
+        let lines: [String] = items.compactMap { item in
+            switch item.kind {
+            case .user: return "**Person:** " + item.text
+            case .agent: return item.text.isEmpty ? nil : "**Agent:** " + item.text
+            case .step: return item.tool == "thinking" ? nil : "- " + item.text
+            default: return nil
+            }
+        }
+        return String(lines.joined(separator: "\n\n").prefix(40_000))
     }
 }
 

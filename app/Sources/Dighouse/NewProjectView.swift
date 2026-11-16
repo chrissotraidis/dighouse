@@ -334,7 +334,7 @@ struct NewProjectView: View {
         Task { @MainActor in
             do {
                 try await app.createProject(name: name.trimmingCharacters(in: .whitespaces), question: question, box: n,
-                                            fetch: !tutorial, fromChat: point.chat)
+                                            fetch: !tutorial, from: point.chat == nil ? nil : point)
                 if tutorial { app.tutorialProject = app.store.current?.path }
             } catch {
                 problem = error.localizedDescription

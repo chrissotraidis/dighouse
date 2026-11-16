@@ -621,3 +621,23 @@ def test_offering_a_project_makes_nothing(tmp_path, monkeypatch):
     with pytest.raises(ValueError):
         server.suggest_project("Hill", "What is on the hill?")
     assert not (tmp_path / "home").exists()
+
+
+def test_a_chat_becomes_the_projects_first_records(tmp_path):
+    """What the chat settled is written into the layout and committed, with coordinates taken out."""
+    import subprocess
+    root = server.init_project(str(tmp_path / "hill"), "Hill", "What is on the hill?", 0.0, 51.0, 0.01, 51.01)["project"]
+    server.start_from_chat(root, "Choosing a hill", "Open lidar and only one recorded barrow.",
+                           ["Smith 1990, Barrows of the Downs, https://example.org/smith: lists one barrow on the hill"],
+                           ["The next valley: already surveyed in 2004"],
+                           "**Person:** What about the hill at 51.00512, 0.00733?\n\n**Agent:** It has open lidar.")
+    project_md = (Path(root) / "PROJECT.md").read_text()
+    assert "## Why this area" in project_md and project_md.index("## Why this area") < project_md.index("## Rules for agents")
+    note = next((Path(root) / "notes").glob("*-started-from-chat.md")).read_text()
+    assert "The next valley" in note and "Smith 1990" in note and "51.00512" not in note and "kept private" in note
+    assert "Smith 1990" in (Path(root) / "sources" / "read-log.md").read_text()
+    assert "started-from-chat" in (Path(root) / "notes" / "INDEX.md").read_text()
+    log = subprocess.run(["git", "-C", root, "log", "--format=%s"], capture_output=True, text=True).stdout
+    assert log.splitlines()[0] == "Started from chat: Choosing a hill"
+    research = server.document_project(root) and (Path(root) / "RESEARCH.md").read_text()
+    assert "Read in the chat that started the project" in research and "](notes/" in research

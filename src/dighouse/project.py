@@ -238,3 +238,58 @@ class Project:
 
 def today() -> str:
     return dt.date.today().isoformat()
+
+
+COORDINATES = r"-?\d{1,3}\.\d{4,}"
+
+
+def without_coordinates(text: str) -> str:
+    """Text that will be shared, with anything that looks like a coordinate taken out. Locations stay in private/."""
+    import re
+    return re.sub(COORDINATES, "(location kept private)", text)
+
+
+def start_from_chat(p: Project, title: str, why_here: str = "", sources: list[str] | None = None,
+                    ruled_out: list[str] | None = None, conversation: str = "") -> str:
+    """Make what a chat settled the project's first records, and commit them. Returns the note written."""
+    clean = without_coordinates
+    title, why_here = clean(title.strip()) or "a chat", clean(why_here.strip())
+    sources = [clean(s.strip()) for s in sources or [] if s.strip()]
+    ruled_out = [clean(s.strip()) for s in ruled_out or [] if s.strip()]
+    question = (p.load("project", {}) or {}).get("question", "")
+    name = f"{today()}-started-from-chat.md"
+
+    project_md = p.path("PROJECT.md").read_text()
+    if "## Why this area" not in project_md:
+        section = (f"## Why this area\n\n{why_here or 'Not written yet.'}\n\n"
+                   f"The project started from the chat “{title}” on {today()}. What that chat read and ruled out is in "
+                   f"notes/{name}.\n\n")
+        at = project_md.find("## Rules for agents")
+        project_md = project_md[:at] + section + project_md[at:] if at >= 0 else project_md.rstrip() + "\n\n" + section
+        p.path("PROJECT.md").write_text(project_md)
+
+    if sources:
+        log = p.path("sources", "read-log.md")
+        if not log.exists():
+            log.write_text("# Sources read\n\n")
+        with log.open("a") as fh:
+            fh.writelines(f"- {today()} · before the project, in the chat · read · {s}\n" for s in sources)
+
+    lines = [f"# Started from a chat, {today()}", "",
+             f"This project was made from the chat “{title}”, which settled the place and the question below.", "",
+             "## Question", "", question or "Not written yet.", "", "## Why this area", "", why_here or "Not written yet.", "",
+             "## Ruled out", ""]
+    lines += [f"- {s}" for s in ruled_out] or ["- Nothing was ruled out in the chat."]
+    lines += ["", "## Read in the chat", ""]
+    lines += [f"- {s}" for s in sources] or ["- Nothing was read in the chat."]
+    if conversation.strip():
+        lines += ["", "## The chat", "", clean(conversation.strip())]
+    p.path("notes", name).write_text("\n".join(lines) + "\n")
+
+    index = p.path("notes", "INDEX.md")
+    head = index.read_text() if index.exists() else INDEX_MD
+    line = f"- [{today()}]({name}) Started from the chat “{title}”: the question, why this area, what was read and ruled out.\n"
+    parts = head.split("\n\n", 2)
+    index.write_text(head.rstrip("\n") + "\n\n" + line if len(parts) < 3 else "\n\n".join(parts[:2]) + "\n\n" + line + parts[2])
+    commit(p.root, f"Started from chat: {title}")
+    return name
