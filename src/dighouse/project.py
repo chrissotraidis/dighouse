@@ -7,10 +7,14 @@ private/ and data/, which the project's .gitignore keeps out of version control.
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
+import fcntl
 import json
+import os
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 
 DIRS = (
@@ -160,7 +164,30 @@ class Project:
     def save(self, name: str, obj) -> None:
         f = self.path("private", "state", f"{name}.json")
         f.parent.mkdir(parents=True, exist_ok=True)
-        f.write_text(json.dumps(obj, indent=1))
+        # Written beside the file and swapped in whole, so a reader never sees half a file.
+        tmp = f.with_name(f".{f.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        tmp.write_text(json.dumps(obj, indent=1))
+        os.replace(tmp, f)
+
+    @contextlib.contextmanager
+    def locked(self, name: str):
+        """Hold a lock on a piece of state while it is read and changed. Agents look at tiles in parallel."""
+        f = self.path("private", "state", f".{name}.lock")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        with f.open("a") as fh:
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+
+    @contextlib.contextmanager
+    def change(self, name: str, default=None):
+        """Load a piece of state, let the caller change it, and save it, all under its lock."""
+        with self.locked(name):
+            obj = self.load(name, default)
+            yield obj
+            self.save(name, obj)
 
     def note(self, text: str) -> None:
         f = self.path("notes", f"{today()}.md")

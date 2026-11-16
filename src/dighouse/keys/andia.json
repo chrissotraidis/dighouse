@@ -1,0 +1,149 @@
+{
+ "id": "andia",
+ "name": "Sierra de Andía megaliths",
+ "place": "Navarre, Spain",
+ "data": "Government of Navarre 2 m ground model",
+ "prefix": "es",
+ "box": [
+  -1.853,
+  42.825,
+  -1.836,
+  42.839
+ ],
+ "coverage": "register",
+ "published": "Navarre's register of protected cultural heritage (Bien de Interés Cultural) lists 11 dolmens and burial mounds here, published through IDENA. Mounds worn low by grazing may barely show in a 2 m ground model.",
+ "sources": [
+  {
+   "cite": "Gobierno de Navarra, Registro de Bienes del Patrimonio Cultural de Navarra, archaeological sites layer (PATRIM_Sym_BICarqueo) on IDENA",
+   "link": "https://idena.navarra.es"
+  },
+  {
+   "cite": "Gobierno de Navarra, Registro de Bienes del Patrimonio Cultural de Navarra",
+   "link": "https://administracionelectronica.navarra.es/webextregistrobienes/"
+  }
+ ],
+ "features": [
+  {
+   "id": "AN-01",
+   "what": "Dolmen in its mound",
+   "kind": "point",
+   "lon": -1.842193,
+   "lat": 42.836922,
+   "size_m": 12,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1760 (Mortxe IV (Mortxe)), through IDENA",
+   "note": "The register gives no size; 12 m is assumed, usual for a dolmen in its mound here."
+  },
+  {
+   "id": "AN-02",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.844975,
+   "lat": 42.83668,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1762 (Mortxe I (Mortxe 1)), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  },
+  {
+   "id": "AN-03",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.842912,
+   "lat": 42.836434,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1763 (Mortxe II (Mortxe 2)), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  },
+  {
+   "id": "AN-04",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.840443,
+   "lat": 42.835644,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1761 (Mortxe III (Mortxe 3)), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  },
+  {
+   "id": "AN-05",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.845142,
+   "lat": 42.835574,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1902 (Illarradi Ipar (Illarradi 2 Ipar)), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  },
+  {
+   "id": "AN-06",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.848017,
+   "lat": 42.834982,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1907 (Balsa Illarradi II (Balsa Illarradi 2)), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  },
+  {
+   "id": "AN-07",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.8452,
+   "lat": 42.834458,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1908 (Illarradi Hego (Illarradi 1 Hego)), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  },
+  {
+   "id": "AN-08",
+   "what": "Dolmen in its mound",
+   "kind": "point",
+   "lon": -1.837311,
+   "lat": 42.832983,
+   "size_m": 12,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1885 (Korostegi), through IDENA",
+   "note": "The register gives no size; 12 m is assumed, usual for a dolmen in its mound here."
+  },
+  {
+   "id": "AN-09",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.849666,
+   "lat": 42.831153,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1904 (Balsa Illarradi I (Balsa Illarradi 1)), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  },
+  {
+   "id": "AN-10",
+   "what": "Dolmen in its mound",
+   "kind": "point",
+   "lon": -1.839444,
+   "lat": 42.829501,
+   "size_m": 12,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1886 (Larrola), through IDENA",
+   "note": "The register gives no size; 12 m is assumed, usual for a dolmen in its mound here."
+  },
+  {
+   "id": "AN-11",
+   "what": "Burial mound",
+   "kind": "point",
+   "lon": -1.845523,
+   "lat": 42.826951,
+   "size_m": 10,
+   "expect": true,
+   "source": "Gobierno de Navarra, register of protected cultural heritage, BIC 1906 (Arizdia), through IDENA",
+   "note": "The register gives no size; 10 m is assumed, usual for a burial mound here."
+  }
+ ],
+ "built": "2026-11-16"
+}

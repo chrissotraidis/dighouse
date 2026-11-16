@@ -418,7 +418,7 @@ def test_answer_keys_are_sourced_and_inside_their_areas():
     from dighouse import answers
 
     ks = {k["id"]: k for k in answers.keys()}
-    assert set(ks) == {"angel-mounds", "mound-city", "serpent-mound", "cahokia", "maiden-castle", "borre"}
+    assert {"angel-mounds", "mound-city", "serpent-mound", "cahokia", "maiden-castle", "borre", "andia"} <= set(ks)
     for k in ks.values():
         w, s, e, n = k["box"]
         assert k["sources"] and k["published"] and k["coverage"] in ("register", "partial")
@@ -568,3 +568,15 @@ def test_mound_finder_measures_small_round_mounds():
     assert near(50, 50) and near(140, 120)
     assert 5 <= near(50, 50)[0]["diameter_m"] <= 10 and near(140, 120)[0]["height_m"] > 0.8
     assert not [b for b in found if abs(b["row"] - 170) <= 3]
+
+def test_parallel_verdicts_and_finds_are_all_kept(tmp_path):
+    """Agents look at tiles in parallel. Verdicts and finds made at the same moment must all land, in a readable file."""
+    from concurrent.futures import ThreadPoolExecutor
+    from dighouse import ledger, tiles
+    p = Project.create(tmp_path / "par", "Parallel check", "Is the bank built?", [0.0, 51.0, 0.01, 51.01])
+    p.save("tiles", {f"t{i:02d}": {"status": "unscreened"} for i in range(40)})
+    with ThreadPoolExecutor(16) as pool:
+        list(pool.map(lambda i: tiles.record_verdict(p, f"t{i:02d}", "natural", "", "test"), range(40)))
+        made = list(pool.map(lambda i: ledger.create(p, f"Find {i}", "t00", (0.001 * i, 51.0), "", "test")["id"], range(12)))
+    assert all(t["status"] == "screened" for t in p.load("tiles").values())
+    assert len(set(made)) == 12 and len(p.load("locations")) == 12

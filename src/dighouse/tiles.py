@@ -98,12 +98,11 @@ def next_unscreened(p: Project, n: int = 8) -> list[str]:
 def record_verdict(p: Project, tile_id: str, verdict: str, note: str, model: str) -> dict:
     if verdict not in VERDICTS:
         raise ValueError(f"verdict must be one of {VERDICTS}")
-    tiles = p.load("tiles", {})
-    tile = tiles[tile_id]
-    if tile["status"] == "unreadable":
-        raise ValueError("This tile has too little ground data to judge. It stays unreadable.")
-    tile.update(status="screened", verdict=verdict, note=note, model=model)
-    p.save("tiles", tiles)
+    with p.change("tiles", {}) as tiles:
+        tile = tiles[tile_id]
+        if tile["status"] == "unreadable":
+            raise ValueError("This tile has too little ground data to judge. It stays unreadable.")
+        tile.update(status="screened", verdict=verdict, note=note, model=model)
     return tile
 
 

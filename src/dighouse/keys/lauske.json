@@ -1,0 +1,122 @@
+{
+ "id": "lauske",
+ "name": "Lauske, Niethen and Zschorna ring forts",
+ "place": "Upper Lusatia, Saxony, Germany",
+ "data": "Saxon DGM1 1 m ground model",
+ "prefix": "de-sn",
+ "box": [
+  14.5852,
+  51.161,
+  14.6223,
+  51.1718
+ ],
+ "coverage": "partial",
+ "published": "Three ring forts (Schanzen) near Hochkirch, of the kind built in Upper Lusatia in the Bronze Age and again by Slavic communities. The key counts the three forts as OpenStreetMap maps them; Saxony's register of ground monuments is not open, so other monuments in the box may be missing.",
+ "sources": [
+  {
+   "cite": "OpenStreetMap contributors, available under the Open Database Licence",
+   "link": "https://www.openstreetmap.org/copyright"
+  },
+  {
+   "cite": "Wikidata Q131551600 (Niethener Schanze)",
+   "link": "https://www.wikidata.org/wiki/Q131551600"
+  }
+ ],
+ "features": [
+  {
+   "id": "LA-01",
+   "what": "Ring fort (Lausker Schanze)",
+   "kind": "point",
+   "lon": 14.619116,
+   "lat": 51.170023,
+   "size_m": 100,
+   "expect": true,
+   "source": "OpenStreetMap node 415415449 (Lausker Schanze, hill fort)",
+   "note": "Mapped as a point; ring forts here are usually 80 to 130 m across, so 100 m is assumed."
+  },
+  {
+   "id": "LA-02",
+   "what": "Ring fort (Niethener Schanze)",
+   "kind": "point",
+   "lon": 14.587681,
+   "lat": 51.162792,
+   "size_m": 100,
+   "expect": true,
+   "source": "OpenStreetMap node 1372761444 (Niethener Schanze, hill fort); Wikidata Q131551600",
+   "note": "Mapped as a point; ring forts here are usually 80 to 130 m across, so 100 m is assumed."
+  },
+  {
+   "id": "LA-03",
+   "what": "Ring fort (Zschornaer Schanze)",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      14.61872,
+      51.16898
+     ],
+     [
+      14.619355,
+      51.168928
+     ],
+     [
+      14.61971,
+      51.168819
+     ],
+     [
+      14.619788,
+      51.168592
+     ],
+     [
+      14.619747,
+      51.168424
+     ],
+     [
+      14.619636,
+      51.16832
+     ],
+     [
+      14.619384,
+      51.16825
+     ],
+     [
+      14.619116,
+      51.168235
+     ],
+     [
+      14.618811,
+      51.168279
+     ],
+     [
+      14.618605,
+      51.168385
+     ],
+     [
+      14.618464,
+      51.168674
+     ],
+     [
+      14.618419,
+      51.168855
+     ],
+     [
+      14.618431,
+      51.168949
+     ],
+     [
+      14.618551,
+      51.168982
+     ],
+     [
+      14.61872,
+      51.16898
+     ]
+    ]
+   ],
+   "area": true,
+   "expect": true,
+   "source": "OpenStreetMap way 306286783 (Zschornaer Schanze, hill fort)"
+  }
+ ],
+ "built": "2026-11-16"
+}

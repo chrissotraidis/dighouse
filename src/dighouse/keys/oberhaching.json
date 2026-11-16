@@ -1,0 +1,138 @@
+{
+ "id": "oberhaching",
+ "name": "Oberhaching square enclosures",
+ "place": "Upper Bavaria, Germany",
+ "data": "Bavarian DGM1 1 m ground model",
+ "prefix": "de-by",
+ "box": [
+  11.59,
+  48.0062,
+  11.6093,
+  48.018
+ ],
+ "coverage": "partial",
+ "published": "The Bavarian State Office for Monument Protection lists Late Iron Age square enclosures (Viereckschanzen) here: one to the west and a double enclosure to the east. The key counts those three enclosures; other ground monuments in the box are not in it.",
+ "sources": [
+  {
+   "cite": "Bayerisches Landesamt für Denkmalpflege, Bayerischer Denkmal-Atlas, ground monuments D-1-7935-0042 and D-1-7935-0043",
+   "link": "https://geoportal.bayern.de/denkmalatlas/"
+  },
+  {
+   "cite": "Schwarz, K. (1959) Atlas der spätkeltischen Viereckschanzen Bayerns. Munich: Bayerisches Landesamt für Denkmalpflege."
+  },
+  {
+   "cite": "OpenStreetMap contributors, available under the Open Database Licence",
+   "link": "https://www.openstreetmap.org/copyright"
+  }
+ ],
+ "features": [
+  {
+   "id": "OH-01",
+   "what": "Square enclosure (Viereckschanze)",
+   "kind": "point",
+   "lon": 11.59152,
+   "lat": 48.00717,
+   "size_m": 110,
+   "expect": true,
+   "source": "Bayerisches Landesamt für Denkmalpflege, ground monument D-1-7935-0043 (\"Viereckschanze (Mehrfachschanze) der späten Latènezeit\"); position from OpenStreetMap node 1274621796",
+   "note": "Mapped as a point; a Viereckschanze is usually 80 to 120 m across, so 110 m is assumed."
+  },
+  {
+   "id": "OH-02",
+   "what": "Square enclosure (Viereckschanze)",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      11.601929,
+      48.014219
+     ],
+     [
+      11.601834,
+      48.014196
+     ],
+     [
+      11.600252,
+      48.013781
+     ],
+     [
+      11.600145,
+      48.013746
+     ],
+     [
+      11.600253,
+      48.013593
+     ],
+     [
+      11.600552,
+      48.01301
+     ],
+     [
+      11.600756,
+      48.012585
+     ],
+     [
+      11.60262,
+      48.013115
+     ],
+     [
+      11.601929,
+      48.014219
+     ]
+    ]
+   ],
+   "area": true,
+   "expect": true,
+   "source": "Bayerisches Landesamt für Denkmalpflege, ground monument D-1-7935-0042 (\"Viereckschanze (Mehrfachschanze) der späten Latènezeit\"), one of its enclosures; outline from OpenStreetMap way 25956101"
+  },
+  {
+   "id": "OH-03",
+   "what": "Square enclosure (Viereckschanze)",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      11.607834,
+      48.013463
+     ],
+     [
+      11.607779,
+      48.013484
+     ],
+     [
+      11.607719,
+      48.013506
+     ],
+     [
+      11.607064,
+      48.014663
+     ],
+     [
+      11.606198,
+      48.016269
+     ],
+     [
+      11.605826,
+      48.016959
+     ],
+     [
+      11.605896,
+      48.016987
+     ],
+     [
+      11.606063,
+      48.016683
+     ],
+     [
+      11.607834,
+      48.013463
+     ]
+    ]
+   ],
+   "area": true,
+   "expect": true,
+   "source": "Bayerisches Landesamt für Denkmalpflege, ground monument D-1-7935-0042 (\"Viereckschanze (Mehrfachschanze) der späten Latènezeit\"), one of its enclosures; outline from OpenStreetMap way 84301734"
+  }
+ ],
+ "built": "2026-11-16"
+}

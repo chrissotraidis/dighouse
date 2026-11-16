@@ -13,7 +13,7 @@ import time
 
 from PIL import Image, ImageDraw, ImageFont
 
-from . import answers, discover, sources
+from . import answers, discover, national, sources
 from . import terrain as T
 from .project import Project
 
@@ -73,7 +73,7 @@ def look(place: str = "", lon: float = 0.0, lat: float = 0.0, size_m: float = 40
     if not data:
         return ({"place": name, "found": False,
                  "why": "No open lidar covers this spot. Dighouse reads the United States, surveys on OpenTopography, and national "
-                        "ground models for England, the Netherlands, France, Flanders, Norway, Estonia and Switzerland."}, None)
+                        f"ground models for {national.countries()}."}, None)
     tag = hashlib.sha1(json.dumps([data["id"], box, 1.0]).encode()).hexdigest()[:12]
     root = sources.cache_dir() / "quicklook" / tag
     if not (root / "PROJECT.md").exists():

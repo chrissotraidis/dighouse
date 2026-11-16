@@ -242,10 +242,133 @@ def borre():
             "features": feats}
 
 
-def main():
+def andia():
+    """Burial mounds and dolmens on the Sierra de Andía, Navarre, from the government's register of protected archaeological sites."""
+    box = [-1.853, 42.825, -1.836, 42.839]
+    w, s, e, n = box
+    r = httpx.get("https://idena.navarra.es/ogc/wfs", headers=UA, timeout=90, params={
+        "service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": "IDENA:PATRIM_Sym_BICarqueo",
+        "outputFormat": "application/json", "srsName": "EPSG:4326", "bbox": f"{s},{w},{n},{e},urn:ogc:def:crs:EPSG::4326"})
+    r.raise_for_status()
+    feats = []
+    for rec in r.json()["features"]:
+        lon, lat = rec["geometry"]["coordinates"][:2]
+        p = rec["properties"]
+        if not (w <= lon <= e and s <= lat <= n):
+            continue
+        what, size = {"Dolmen": ("Dolmen in its mound", 12), "Túmulo": ("Burial mound", 10)}.get(p["TIPO"], (p["TIPO"], 8))
+        note = f"The register gives no size; {size} m is assumed, usual for a {what.lower()} here."
+        source = f"Gobierno de Navarra, register of protected cultural heritage, BIC {p['CBIC']} ({p['BIC']}), through IDENA"
+        feats.append(point("", what, lon, lat, size, source, True, note))
+    feats.sort(key=lambda f: (-f["lat"], f["lon"]))
+    for i, f in enumerate(feats, 1):
+        f["id"] = f"AN-{i:02d}"
+    return {"id": "andia", "name": "Sierra de Andía megaliths", "place": "Navarre, Spain", "data": "Government of Navarre 2 m ground model",
+            "prefix": "es", "box": box, "coverage": "register",
+            "published": f"Navarre's register of protected cultural heritage (Bien de Interés Cultural) lists {len(feats)} dolmens and burial mounds "
+                         "here, published through IDENA. Mounds worn low by grazing may barely show in a 2 m ground model.",
+            "sources": [{"cite": "Gobierno de Navarra, Registro de Bienes del Patrimonio Cultural de Navarra, archaeological sites layer (PATRIM_Sym_BICarqueo) on IDENA", "link": "https://idena.navarra.es"},
+                        {"cite": "Gobierno de Navarra, Registro de Bienes del Patrimonio Cultural de Navarra", "link": "https://administracionelectronica.navarra.es/webextregistrobienes/"}],
+            "features": feats}
+
+
+def oberhaching():
+    """Late Iron Age square enclosures near Oberhaching, Bavaria, in woodland and at a field edge: records from the Bavarian monument office."""
+    lon, lat = 11.59152, 48.00717  # OpenStreetMap node 1274621796 marks the western enclosure; it has no outline there
+    feats = [point("OH-01", "Square enclosure (Viereckschanze)", lon, lat, 110,
+                   "Bayerisches Landesamt für Denkmalpflege, ground monument D-1-7935-0043 (\"Viereckschanze (Mehrfachschanze) der späten Latènezeit\"); position from OpenStreetMap node 1274621796",
+                   note="Mapped as a point; a Viereckschanze is usually 80 to 120 m across, so 110 m is assumed.")]
+    pts = [[lon, lat]]
+    for i, way in enumerate((25956101, 84301734), 2):
+        line = osm_way(way)
+        pts += line
+        feats.append(work(f"OH-{i:02d}", "Square enclosure (Viereckschanze)", [line],
+                          "Bayerisches Landesamt für Denkmalpflege, ground monument D-1-7935-0042 (\"Viereckschanze (Mehrfachschanze) der späten Latènezeit\"), "
+                          f"one of its enclosures; outline from OpenStreetMap way {way}", area=True))
+    pad_lon, pad_lat = 0.0015, 0.001
+    box = [round(min(p[0] for p in pts) - pad_lon, 4), round(min(p[1] for p in pts) - pad_lat, 4),
+           round(max(p[0] for p in pts) + pad_lon, 4), round(max(p[1] for p in pts) + pad_lat, 4)]
+    return {"id": "oberhaching", "name": "Oberhaching square enclosures", "place": "Upper Bavaria, Germany", "data": "Bavarian DGM1 1 m ground model",
+            "prefix": "de-by", "box": box, "coverage": "partial",
+            "published": "The Bavarian State Office for Monument Protection lists Late Iron Age square enclosures (Viereckschanzen) here: one to the west "
+                         "and a double enclosure to the east. The key counts those three enclosures; other ground monuments in the box are not in it.",
+            "sources": [{"cite": "Bayerisches Landesamt für Denkmalpflege, Bayerischer Denkmal-Atlas, ground monuments D-1-7935-0042 and D-1-7935-0043", "link": "https://geoportal.bayern.de/denkmalatlas/"},
+                        {"cite": "Schwarz, K. (1959) Atlas der spätkeltischen Viereckschanzen Bayerns. Munich: Bayerisches Landesamt für Denkmalpflege."},
+                        OSM],
+            "features": feats}
+
+
+def irulegi():
+    """The Iron Age village and medieval castle on Irulegi hill, Navarre: one protected archaeological zone, outlines from OpenStreetMap."""
+    village, castle = osm_way(1112913101), osm_way(326419857)
+    feats = [work("IR-01", "Iron Age village on the hilltop terraces", [village],
+                  "Gobierno de Navarra, register of protected cultural heritage, archaeological zone Conjunto de Irulegi; outline from OpenStreetMap way 1112913101 (Irulegiko herrixka)", area=True),
+             work("IR-02", "Medieval castle walls on the summit", [castle],
+                  "Gobierno de Navarra, register of protected cultural heritage, archaeological zone Conjunto de Irulegi; outline from OpenStreetMap way 326419857 (Irulegiko gaztelua)", area=True)]
+    pts = village + castle
+    box = [round(min(p[0] for p in pts) - 0.002, 4), round(min(p[1] for p in pts) - 0.0015, 4),
+           round(max(p[0] for p in pts) + 0.002, 4), round(max(p[1] for p in pts) + 0.0015, 4)]
+    return {"id": "irulegi", "name": "Irulegi hill", "place": "Navarre, Spain", "data": "Government of Navarre 2 m ground model",
+            "prefix": "es", "box": box, "coverage": "partial",
+            "published": "Irulegi is a protected archaeological zone in Navarre: an Iron Age village on the terraces below the summit, where the inscribed "
+                         "bronze Hand of Irulegi was found, and a medieval castle on top. The key counts the village and the castle; terraces and "
+                         "tracks around them are not separate features in it.",
+            "sources": [{"cite": "Gobierno de Navarra, Registro de Bienes del Patrimonio Cultural de Navarra, archaeological zone Conjunto de Irulegi (Aranguren)", "link": "https://idena.navarra.es"},
+                        {"cite": "Aiestaran, M., Gorrochategui, J., Velaza, J. et al. (2024) A Vasconic inscription on a bronze hand: writing and rituality in the Iron Age Basque Country. Antiquity 98."},
+                        OSM],
+            "features": feats}
+
+
+def lauske():
+    """Three ring forts near Hochkirch in Upper Lusatia, Saxony: their circular ramparts, from OpenStreetMap."""
+    note = "Mapped as a point; ring forts here are usually 80 to 130 m across, so 100 m is assumed."
+    feats = [point("LA-01", "Ring fort (Lausker Schanze)", 14.6191159, 51.1700225, 100, "OpenStreetMap node 415415449 (Lausker Schanze, hill fort)", note=note),
+             point("LA-02", "Ring fort (Niethener Schanze)", 14.5876813, 51.1627922, 100, "OpenStreetMap node 1372761444 (Niethener Schanze, hill fort); Wikidata Q131551600", note=note)]
+    ring = osm_way(306286783)
+    feats.append(work("LA-03", "Ring fort (Zschornaer Schanze)", [ring], "OpenStreetMap way 306286783 (Zschornaer Schanze, hill fort)", area=True))
+    pts = [[f["lon"], f["lat"]] for f in feats[:2]] + ring
+    box = [round(min(p[0] for p in pts) - 0.0025, 4), round(min(p[1] for p in pts) - 0.0018, 4),
+           round(max(p[0] for p in pts) + 0.0025, 4), round(max(p[1] for p in pts) + 0.0018, 4)]
+    return {"id": "lauske", "name": "Lauske, Niethen and Zschorna ring forts", "place": "Upper Lusatia, Saxony, Germany", "data": "Saxon DGM1 1 m ground model",
+            "prefix": "de-sn", "box": box, "coverage": "partial",
+            "published": "Three ring forts (Schanzen) near Hochkirch, of the kind built in Upper Lusatia in the Bronze Age and again by Slavic communities. "
+                         "The key counts the three forts as OpenStreetMap maps them; Saxony's register of ground monuments is not open, so other monuments in the box may be missing.",
+            "sources": [OSM, {"cite": "Wikidata Q131551600 (Niethener Schanze)", "link": "https://www.wikidata.org/wiki/Q131551600"}],
+            "features": feats}
+
+
+def puketapu():
+    """Puketapu Pa south of Auckland: a ridge pā with ditches, terraces and pits, from Auckland Council's heritage schedule."""
+    r = httpx.get("https://services1.arcgis.com/n4yPwebTjJCmXB6W/arcgis/rest/services/Historic_Heritage_Overlay_Extent_of_Place/FeatureServer/0/query",
+                  params={"where": "SCHEDULE='2251'", "outFields": "SCHEDULE,NAME", "returnGeometry": "true", "outSR": 4326, "f": "json"},
+                  headers=UA, timeout=60)
+    r.raise_for_status()
+    f = r.json()["features"][0]
+    ring = f["geometry"]["rings"][0]
+    name = f["attributes"]["NAME"]
+    feats = [work("PU-01", "Pā on the ridge: ditches, terraces and storage pits", [ring],
+                  f"Auckland Unitary Plan, Schedule 14.1 Historic Heritage, place 2251 ({name}); outline is the scheduled extent of place", area=True)]
+    box = [round(min(p[0] for p in ring) - 0.002, 4), round(min(p[1] for p in ring) - 0.0016, 4),
+           round(max(p[0] for p in ring) + 0.002, 4), round(max(p[1] for p in ring) + 0.0016, 4)]
+    return {"id": "puketapu", "name": "Puketapu Pa", "place": "Auckland, New Zealand", "data": "LINZ 1 m ground model",
+            "prefix": "nz", "box": box, "coverage": "partial",
+            "published": f"Auckland Council schedules {name} as a historic heritage place, recorded by the New Zealand Archaeological Association as site R12/85. "
+                         "The key counts the pā as one work, drawn as the scheduled extent of place; other recorded sites nearby are not in it.",
+            "sources": [{"cite": "Auckland Council, Auckland Unitary Plan Schedule 14.1 Historic Heritage, Historic Heritage Overlay Extent of Place, place 2251",
+                         "link": "https://unitaryplan.aucklandcouncil.govt.nz"},
+                        {"cite": "New Zealand Archaeological Association site record R12/85, cited by the schedule"}],
+            "features": feats}
+
+
+KEYS = {"angel-mounds": angel_mounds, "mound-city": mound_city, "serpent-mound": serpent_mound, "cahokia": cahokia,
+        "maiden-castle": maiden_castle, "borre": borre, "andia": andia, "irulegi": irulegi, "oberhaching": oberhaching, "lauske": lauske, "puketapu": puketapu}
+
+
+def main(names=None):
+    """Build the named keys, or all of them. Rebuilding a key changes what earlier scores were measured against."""
     OUT.mkdir(parents=True, exist_ok=True)
     built = dt.date.today().isoformat()
-    for make in (angel_mounds, mound_city, serpent_mound, cahokia, maiden_castle, borre):
+    for make in (KEYS[n] for n in (names or KEYS)):
         key = make()
         key["built"] = built
         (OUT / f"{key['id']}.json").write_text(json.dumps(key, indent=1, ensure_ascii=False) + "\n")
@@ -253,5 +376,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1:])
 

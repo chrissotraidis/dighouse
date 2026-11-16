@@ -11,7 +11,7 @@ import datetime as dt
 import json
 import re
 
-from . import ledger
+from . import ledger, national
 from .project import INDEX_MD, METHODOLOGY_MD, RECORD_SECTION, Project, commit
 
 # A decimal degree. DOIs such as 10.2307/503404 are left alone: their number runs straight into a slash.
@@ -267,11 +267,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
     if terrains:
         L += ["| Survey | From | Flown | Area | Ground returns per sq m | Cell |", "|---|---|---|---|---|---|"]
         for t in sorted(terrains.values(), key=lambda t: t.get("dataset", "")):
-            publisher = {"usgs": "USGS 3DEP", "ot": "OpenTopography", "uk": "Environment Agency (England)", "nl": "AHN (Netherlands)",
-                         "fr": "IGN (France)", "be": "Digitaal Vlaanderen (Flanders)", "no": "Kartverket (Norway)",
-              "ee": "the Estonian Land Board", "ch": "swisstopo (Switzerland)", "own": "Imported by a person"}
             prefix = t.get("dataset", "").split(":")[0]
-            L.append(f"| {t.get('dataset', '')} | {t.get('source') or publisher.get(prefix, prefix)} | {t.get('collected') or 'not stated'} "
+            L.append(f"| {t.get('dataset', '')} | {t.get('source') or ('Imported by a person' if prefix == 'own' else national.publisher(prefix))} | {t.get('collected') or 'not stated'} "
                      f"| {(t.get('area_km2') or 0):.2f} sq km | {density(t)} | {t.get('res') or 0.5} m |")
     else:
         L.append("No ground yet.")

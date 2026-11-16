@@ -9,14 +9,11 @@ from __future__ import annotations
 import datetime as dt
 import re
 
-from . import ledger, record
+from . import ledger, national, record
 from .project import Project, commit
 
 ADVICE = "**The agent adds:** "
 LIMIT = 400  # words in a report, however many finds there are
-PUBLISHERS = {"usgs": "USGS 3DEP", "ot": "OpenTopography", "uk": "the Environment Agency (England)", "nl": "AHN (Netherlands)",
-              "fr": "IGN (France)", "be": "Digitaal Vlaanderen (Flanders)", "no": "Kartverket (Norway)",
-              "ee": "the Estonian Land Board", "ch": "swisstopo (Switzerland)", "own": "a file added by a person"}
 
 
 def _s(n: int, word: str, plural: str = "") -> str:
@@ -139,7 +136,7 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     for t in sorted(terrains.values(), key=lambda t: t.get("dataset") or "")[:1]:
         dataset = t.get("dataset") or ""
         kind = dataset.split(":")[0]
-        where = "a file a person added" if kind == "own" else f"open lidar from {t.get('source') or PUBLISHERS.get(kind, 'an open archive')}"
+        where = "a file a person added" if kind == "own" else f"open lidar from {t.get('source') or national.publisher(kind)}"
         L.append(f"- {_short(dataset.split(':', 1)[-1], 50)}, {_short(where, 70)}: {(t.get('area_km2') or 0):.2f} sq km, "
                  + (f"{record.density(t)} laser points per square metre reached the ground."
                     if isinstance(t.get("ground_points_per_m2"), (int, float)) else "a ground model that was already built."))

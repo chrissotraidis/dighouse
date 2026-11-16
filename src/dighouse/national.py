@@ -1,5 +1,5 @@
-"""National lidar published as ready-made ground models: England, the Netherlands, France, Flanders, Norway, Estonia
-and Switzerland.
+"""National lidar published as ready-made ground models: England, the Netherlands, France, Flanders, Norway, Estonia,
+Switzerland, Navarre (Spain), Bavaria, Saxony and New Zealand.
 
 These services hand out a bare-ground raster (a DTM) built by the national mapping agency,
 not raw points. The terrain is as good as their ground classification; a section through it
@@ -19,8 +19,33 @@ import rasterio
 
 from . import sources
 
+def _km_grid(step_km: int, url: str):
+    """Files named by the lower-left corner of a square grid in km, such as 698_5331: the sheets covering a box."""
+    def sheets(x0: float, y0: float, x1: float, y1: float) -> list[str]:
+        k = step_km * 1000
+        return [url.format(e=e * step_km, n=n * step_km)
+                for e in range(math.floor(x0 / k), math.ceil(x1 / k)) for n in range(math.floor(y0 / k), math.ceil(y1 / k))]
+    return sheets
+
+
+_TOPO50_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"  # New Zealand's Topo50 sheet rows skip I and O
+
+
+def _topo50(url: str):
+    """New Zealand Topo50 map sheets (24 km wide, 36 km tall in NZTM, such as BA31) covering a box."""
+    def sheets(x0: float, y0: float, x1: float, y1: float) -> list[str]:
+        out = []
+        for row in range(math.floor((6_810_000 - y1) / 36_000), math.floor((6_810_000 - y0) / 36_000) + 1):
+            for col in range(math.floor((x0 - 1_012_000) / 24_000) + 1, math.floor((x1 - 1_012_000) / 24_000) + 2):
+                if 0 <= row < 24 * 24 and 1 <= col <= 99:
+                    out.append(url.format(sheet=f"{_TOPO50_LETTERS[row // 24]}{_TOPO50_LETTERS[row % 24]}{col:02d}"))
+        return out
+    return sheets
+
+
 NATIONAL = {
     "uk:ea-dtm-1m": {
+        "publisher": "the Environment Agency (England)",
         "title": "Environment Agency lidar composite DTM, 1 m (England)",
         "source": "Environment Agency", "country": "England", "outline": [(-5.8, 50.0), (-4.2, 50.3), (-3.0, 50.6), (-1.0, 50.7), (1.4, 51.1), (1.8, 52.6), (0.3, 53.5), (-0.1, 54.5), (-1.6, 55.65), (-2.1, 55.85), (-3.1, 55.05), (-3.6, 54.5), (-3.1, 53.35), (-2.95, 52.0), (-2.65, 51.6), (-3.6, 51.2), (-4.6, 51.1), (-5.8, 50.0)],
         "epsg": 27700, "res": 1.0, "kind": "wcs", "axes": ("E", "N"), "chunk_px": 500, "parallel": 1,
@@ -30,6 +55,7 @@ NATIONAL = {
         "landing_page": "https://environment.data.gov.uk/dataset/13787b9a-26a4-4775-8523-806d13af58fc",
     },
     "nl:ahn-dtm-05m": {
+        "publisher": "AHN (Netherlands)",
         "title": "AHN, Actueel Hoogtebestand Nederland, DTM 0.5 m (Netherlands)",
         "source": "Rijkswaterstaat / PDOK", "country": "the Netherlands", "outline": [(3.3, 51.4), (3.4, 51.2), (5.8, 51.0), (6.0, 50.75), (6.2, 51.4), (6.9, 51.9), (7.25, 53.2), (6.9, 53.6), (4.8, 53.4), (4.5, 52.5), (3.9, 51.9), (3.3, 51.4)],
         "epsg": 28992, "res": 0.5, "kind": "wcs", "axes": ("x", "y"),
@@ -38,6 +64,7 @@ NATIONAL = {
         "landing_page": "https://www.ahn.nl",
     },
     "fr:lidarhd-mnt": {
+        "publisher": "IGN (France)",
         "title": "IGN LiDAR HD, ground model (MNT) 0.5 m (France)",
         "source": "IGN", "country": "metropolitan France", "outline": [(-4.9, 48.4), (-1.6, 48.7), (-1.4, 49.75), (1.6, 50.95), (2.55, 51.1), (4.2, 49.95), (6.4, 49.5), (8.25, 48.95), (7.6, 47.55), (6.9, 47.35), (6.0, 46.2), (7.05, 45.9), (6.6, 45.1), (7.6, 43.8), (6.2, 43.05), (3.1, 43.0), (3.2, 42.4), (-1.8, 43.35), (-1.2, 46.0), (-2.6, 47.3), (-4.9, 48.4)],
         "epsg": 2154, "res": 0.5, "kind": "wms",
@@ -46,6 +73,7 @@ NATIONAL = {
         "landing_page": "https://geoservices.ign.fr/lidarhd",
     },
     "be:dhmv-dtm-1m": {
+        "publisher": "Digitaal Vlaanderen (Flanders)",
         "title": "Digitaal Hoogtemodel Vlaanderen II, DTM 1 m (Flanders, Belgium)",
         "source": "Digitaal Vlaanderen", "country": "Flanders", "maker": "the Flemish government",
         "outline": [(2.55, 51.09), (3.37, 51.37), (4.24, 51.37), (5.04, 51.49), (5.85, 51.16), (5.9, 50.75), (5.1, 50.71), (4.3, 50.69), (3.2, 50.71), (2.6, 50.8), (2.55, 51.09)],
@@ -55,6 +83,7 @@ NATIONAL = {
         "landing_page": "https://www.vlaanderen.be/digitaal-vlaanderen/onze-oplossingen/earth-observation-data-science-eodas/het-digitaal-hoogtemodel/digitaal-hoogtemodel-vlaanderen-ii",
     },
     "no:nhm-dtm-1m": {
+        "publisher": "Kartverket (Norway)",
         "title": "Nasjonal høydemodell, DTM 1 m (Norway)",
         "source": "Kartverket", "country": "Norway",
         "outline": [(4.6, 58.0), (7.0, 57.9), (11.8, 58.9), (12.6, 60.0), (12.2, 63.5), (14.5, 65.5), (16.5, 68.5), (20.5, 69.0), (26.0, 69.9), (31.2, 70.4), (28.0, 71.2), (20.0, 70.3), (13.5, 68.3), (10.5, 64.5), (4.8, 62.0), (4.6, 58.0)],
@@ -64,6 +93,7 @@ NATIONAL = {
         "landing_page": "https://hoydedata.no",
     },
     "ee:dtm-1m": {
+        "publisher": "the Estonian Land Board",
         "title": "Estonian elevation model, DTM 1 m (Estonia)",
         "source": "Estonian Land and Spatial Development Board", "country": "Estonia",
         "outline": [(21.7, 57.9), (23.3, 57.5), (26.5, 57.5), (27.4, 57.5), (28.2, 59.4), (26.0, 59.7), (23.4, 59.5), (21.7, 58.9), (21.7, 57.9)],
@@ -73,6 +103,7 @@ NATIONAL = {
         "landing_page": "https://geoportaal.maaamet.ee/eng/Spatial-Data/Elevation-data-p308.html",
     },
     "ch:swissalti3d-05m": {
+        "publisher": "swisstopo (Switzerland)",
         "title": "swissALTI3D, DTM 0.5 m (Switzerland)",
         "source": "swisstopo", "country": "Switzerland",
         "outline": [(5.95, 46.13), (6.8, 45.83), (7.9, 45.9), (9.0, 45.82), (10.5, 46.5), (10.45, 46.95), (9.5, 47.55), (8.6, 47.82), (7.5, 47.6), (6.0, 46.6), (5.95, 46.13)],
@@ -81,10 +112,69 @@ NATIONAL = {
         "citation": "swissALTI3D, © swisstopo. Open government data.",
         "landing_page": "https://www.swisstopo.admin.ch/en/height-model-swissalti3d",
     },
+    "es:navarra-mdt-2m": {
+        "publisher": "the Government of Navarre (Spain)",
+        "title": "MDT 2 m from lidar, Government of Navarre (Navarre, Spain)",
+        "source": "IDENA, Government of Navarre", "country": "Navarre, Spain", "maker": "the Government of Navarre",
+        "outline": [(-1.79, 43.31), (-1.39, 43.27), (-0.72, 42.92), (-0.85, 42.79), (-1.2, 42.55), (-1.3, 42.3), (-1.4, 41.91), (-1.85, 42.0), (-1.9, 42.3), (-2.25, 42.45), (-2.5, 42.6), (-2.4, 42.9), (-2.0, 43.0), (-1.79, 43.31)],
+        "epsg": 25830, "res": 2.0, "kind": "wcs", "axes": ("E", "N"), "chunk_px": 500, "parallel": 2,
+        "url": "https://idena.navarra.es/ogc/wcs", "coverage": "IDENA.WCS__ELEVAC_Ras_MDT_2M",
+        "citation": "Modelo digital del terreno 2 m, © Gobierno de Navarra, IDENA. CC BY 4.0.",
+        "landing_page": "https://idena.navarra.es",
+        "note": "Spain's national services do not serve this: IGN's ground model service rounds heights to whole metres, and the CNIG download centre cannot be reached by a script, so for now Spain means Navarre.",
+    },
+    "de-by:dgm1": {
+        "publisher": "the Bavarian Surveying Administration (Germany)",
+        "title": "DGM1, digital terrain model 1 m (Bavaria, Germany)",
+        "source": "Bayerische Vermessungsverwaltung", "country": "Bavaria, Germany", "maker": "the Bavarian Surveying Administration",
+        "outline": [(9.0, 50.1), (9.9, 50.6), (11.0, 50.5), (12.1, 50.3), (12.5, 49.9), (12.4, 49.7), (13.0, 49.3), (13.8, 48.8), (13.5, 48.6), (13.0, 48.3), (12.9, 47.7), (13.0, 47.5), (12.2, 47.6), (11.0, 47.4), (10.2, 47.3), (9.5, 47.55), (10.1, 48.0), (10.1, 48.5), (10.4, 48.7), (10.2, 49.3), (9.5, 49.6), (9.0, 50.1)],
+        "epsg": 25832, "res": 1.0, "kind": "tiles", "chunk_px": 2000, "parallel": 2,
+        "sheets": _km_grid(1, "https://download1.bayernwolke.de/a/dgm/dgm1/{e}_{n}.tif"),
+        "citation": "DGM1, © Bayerische Vermessungsverwaltung, www.geodaten.bayern.de. CC BY 4.0.",
+        "landing_page": "https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1",
+    },
+    "de-sn:dgm1": {
+        "publisher": "GeoSN, the Saxon State Survey (Germany)",
+        "title": "DGM1, digital terrain model 1 m (Saxony, Germany)",
+        "source": "GeoSN", "country": "Saxony, Germany", "maker": "the Saxon State Office for Geodata and Surveying",
+        "outline": [(11.9, 50.4), (12.3, 50.2), (12.9, 50.4), (13.5, 50.6), (14.0, 50.8), (14.3, 50.9), (14.8, 50.8), (15.0, 51.0), (14.95, 51.4), (14.7, 51.6), (14.0, 51.5), (13.2, 51.6), (12.6, 51.5), (12.2, 51.3), (12.15, 51.0), (11.9, 50.6), (11.9, 50.4)],
+        "epsg": 25833, "res": 1.0, "kind": "tiles", "chunk_px": 2000, "parallel": 2,
+        "sheets": _km_grid(2, "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/JCcXyifaNdLDnxZ/dgm1_33{e}_{n}_2_sn_tiff.zip"),
+        "citation": "DGM1, © GeoSN, Staatsbetrieb Geobasisinformation und Vermessung Sachsen. Data licence Germany, attribution, version 2.0 (dl-de/by-2-0).",
+        "landing_page": "https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html",
+    },
+    "nz:dem-1m": {
+        "publisher": "Toitū Te Whenua Land Information New Zealand",
+        "title": "New Zealand LiDAR 1 m DEM (New Zealand)",
+        "source": "Toitū Te Whenua LINZ", "country": "New Zealand", "maker": "Toitū Te Whenua Land Information New Zealand",
+        "outline": [(172.6, -34.4), (174.9, -36.1), (178.6, -37.6), (178.0, -39.3), (176.9, -40.2), (175.2, -41.7), (174.2, -41.8), (174.0, -42.5), (173.0, -43.8), (171.2, -44.9), (170.6, -46.0), (169.0, -46.7), (166.4, -46.0), (167.0, -45.0), (168.4, -44.0), (170.8, -42.8), (172.1, -40.8), (173.1, -40.8), (174.6, -39.9), (173.7, -39.2), (174.6, -38.0), (173.1, -35.2), (172.6, -34.4)],
+        "epsg": 2193, "res": 1.0, "kind": "tiles", "chunk_px": 2000, "parallel": 2,
+        "sheets": _topo50("https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand/dem_1m/2193/{sheet}.tiff"),
+        "citation": "New Zealand LiDAR 1 m DEM, sourced from Toitū Te Whenua Land Information New Zealand. CC BY 4.0.",
+        "landing_page": "https://registry.opendata.aws/nz-elevation/",
+        "note": "Some areas have not been flown yet; they come back as outside the survey.",
+    },
 }
 CHUNK_PX = 1000  # the services answer faster for several small requests than for one large one
 _client = httpx.Client(timeout=120, follow_redirects=True,
                        headers={"User-Agent": "dighouse/0.1 (https://github.com/chrissotraidis/dighouse)"})
+
+
+OTHER_PUBLISHERS = {"usgs": "USGS 3DEP", "ot": "OpenTopography", "own": "a file added by a person"}
+
+
+def publisher(dataset: str) -> str:
+    """Who publishes a dataset, from its id or its prefix ("es:mdt-5m" or "es")."""
+    prefix = dataset.split(":")[0]
+    if prefix in OTHER_PUBLISHERS:
+        return OTHER_PUBLISHERS[prefix]
+    return next((d["publisher"] for k, d in NATIONAL.items() if k.split(":")[0] == prefix), prefix)
+
+
+def countries() -> str:
+    """The places with a national ground model, as a sentence fragment: "England, ..., and Spain"."""
+    names = [d["country"] for d in NATIONAL.values()]
+    return ", ".join(names[:-1]) + " and " + names[-1]
 
 
 def _inside(x: float, y: float, ring: list[tuple[float, float]]) -> bool:
@@ -110,7 +200,8 @@ def find(bbox: list[float]) -> list[dict]:
             out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
                         "citation": d["citation"], "ready_made_ground_model": True,
                         "about": f"A bare-ground model for {d['country']} at {d['res']:g} m, built by {d.get('maker', 'the national agency')} from its lidar. "
-                                 "The box is matched against a rough outline of the country; parts of it with no data come back as outside the survey."})
+                                 + (d["note"] + " " if d.get("note") else "")
+                                 + "The box is matched against a rough outline of the country; parts of it with no data come back as outside the survey."})
     return out
 
 
@@ -165,9 +256,55 @@ def _from_files(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np
     return out, x0, y1, res, None
 
 
+def _sheet(url: str) -> str | None:
+    """A path GDAL can read for one sheet, or None when the sheet does not exist (sea, or outside the region).
+    Zipped sheets are downloaded once into the cache; plain ones are read in place, only the part that is needed."""
+    if not url.endswith(".zip"):
+        return "/vsicurl/" + url
+    import hashlib
+    import zipfile
+    local = sources.cache_dir() / "national" / (hashlib.sha1(url.encode()).hexdigest()[:16] + ".zip")
+    if not local.exists():
+        r = _client.get(url)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        local.parent.mkdir(parents=True, exist_ok=True)
+        part = local.with_suffix(".part")
+        part.write_bytes(r.content)
+        part.rename(local)
+    inner = next((n for n in zipfile.ZipFile(local).namelist() if n.lower().endswith((".tif", ".tiff"))), None)
+    return f"/vsizip/{local}/{inner}" if inner else None
+
+
+def _from_tiles(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.ndarray, float, float, float, float | None]:
+    """A ground model published as one file per map sheet on a fixed grid: read the part of each sheet the box needs."""
+    from rasterio.errors import RasterioIOError
+    from rasterio.windows import from_bounds
+
+    res = d["res"]
+    out = np.full((int(round((y1 - y0) / res)), int(round((x1 - x0) / res))), np.nan, np.float32)
+    for url in d["sheets"](x0, y0, x1, y1):
+        path = _sheet(url)
+        if not path:
+            continue
+        try:
+            with rasterio.open(path) as src:
+                part = src.read(1, window=from_bounds(x0, y0, x1, y1, src.transform), boundless=True, fill_value=np.nan,
+                                out_shape=out.shape).astype(np.float32)
+                if src.nodata is not None:
+                    part[part == src.nodata] = np.nan
+        except RasterioIOError:  # no such sheet: the area has not been flown, or it is sea
+            continue
+        out = np.where(np.isnan(out), part, out)
+    return out, x0, y1, res, None
+
+
 def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.ndarray, float, float, float, float | None]:
     if d["kind"] == "files":
         return _from_files(d, x0, y0, x1, y1)
+    if d["kind"] == "tiles":
+        return _from_tiles(d, x0, y0, x1, y1)
     if d["kind"] == "wcs1":  # the older form of the request, which some servers still want
         res = d["res"]
         r = _client.get(d["url"], params={

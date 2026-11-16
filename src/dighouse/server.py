@@ -695,9 +695,8 @@ def find_mounds(project: str, tile: str, min_height_m: float = 0.3) -> list:
     f = p.path("data", "tiles", f"{tile}-mounds.png")
     img.save(f)
     # The clearest rises are kept for the person, whether or not the agent marks them: a list to look over, not finds.
-    rises = p.load("rises", {}) or {}
-    rises[tile] = [s for s in spots if s["height_m"] >= answers.RISE_HEIGHT and s["roundness"] >= answers.RISE_ROUND]
-    p.save("rises", rises)
+    with p.change("rises", {}) as rises:
+        rises[tile] = [s for s in spots if s["height_m"] >= answers.RISE_HEIGHT and s["roundness"] >= answers.RISE_ROUND]
     return _reply({"tile": tile, "spots": spots, "count": len(spots)}, f)
 
 

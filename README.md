@@ -186,6 +186,10 @@ Everything Dighouse reads is public, and none of it needs an account or a key.
 | [Kartverket](https://hoydedata.no) | Norway's 1 m ground model |
 | [Estonian Land Board](https://geoportaal.maaamet.ee/eng/Spatial-Data/Elevation-data-p308.html) | Estonia's 1 m ground model |
 | [swisstopo](https://www.swisstopo.admin.ch/en/height-model-swissalti3d) | Switzerland's 0.5 m ground model |
+| [IDENA](https://idena.navarra.es) | Navarre's 2 m ground model, from the Government of Navarre (the only part of Spain so far) |
+| [Bavarian Surveying Administration](https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1) | Bavaria's 1 m ground model |
+| [GeoSN](https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html) | Saxony's 1 m ground model |
+| [Toitū Te Whenua LINZ](https://registry.opendata.aws/nz-elevation/) | New Zealand's 1 m ground model, where it has been flown |
 | [OpenStreetMap](https://www.openstreetmap.org/) | Mapped sites through [QLever](https://qlever.dev/); roads and buildings near a find through Overpass, or OpenStreetMap's own map service when Overpass is down |
 | [Wikidata](https://www.wikidata.org/) | Archaeological sites already on record |
 | [Pleiades](https://pleiades.stoa.org/) | About 35,000 located ancient places |

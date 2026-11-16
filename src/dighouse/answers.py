@@ -391,14 +391,17 @@ SOURCE_OF = {"usgs": "USGS 3DEP", "uk": "Environment Agency", "no": "Kartverket"
 
 
 def _key_source(k: dict) -> str:
+    """The prefix of the dataset a key's lidar comes from: written in newer keys, read from the description in older ones."""
+    if k.get("prefix"):
+        return k["prefix"]
     d = k["data"].lower()
-    return next((v for v in SOURCE_OF.values() if v.lower().split()[0] in d), k["data"])
+    return next((p for p, v in SOURCE_OF.items() if v.lower().split()[0] in d), k["data"])
 
 
 def calibration_site(box: list[float], dataset: str = "") -> dict:
     """The known site that will calibrate a search of this area: the nearest key whose lidar comes from the same source."""
     cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
-    want = SOURCE_OF.get(dataset.split(":")[0], "") if dataset else ""
+    want = dataset.split(":")[0] if dataset else ""
     rows = []
     for k in keys():
         kx, ky = (k["box"][0] + k["box"][2]) / 2, (k["box"][1] + k["box"][3]) / 2

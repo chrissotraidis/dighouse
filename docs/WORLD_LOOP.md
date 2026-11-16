@@ -126,3 +126,34 @@ Each goal is done when its check passes in the running app. Record the date and 
 
 **Shared form:** Bavaria, Saxony and New Zealand all publish files on a grid of map sheets, so they share one new way to fetch, `tiles`: the entry names the sheets covering a box, and each sheet is read with a windowed read, or downloaded and cached when it is a zip.
 
+
+### 2026-11-16, W1 to W4: Navarre (Spain), Bavaria, Saxony and New Zealand
+
+These four went in together because Bavaria, Saxony and New Zealand share one new way to fetch, and all four share the
+publisher and calibration changes. Each was checked separately below.
+
+**Code.**
+- `NATIONAL` gains `es:navarra-mdt-2m` (wcs), `de-by:dgm1`, `de-sn:dgm1` and `nz:dem-1m` (the new `tiles` kind: `_km_grid` for Bavaria and Saxony, `_topo50` for New Zealand). Zipped sheets (Saxony) are downloaded once into the cache; others are read in windows. A missing sheet is skipped.
+- Each entry carries its publisher. `national.publisher()` and `national.countries()` replace the copies in report.py, record.py and quicklook.py.
+- Keys can name their dataset prefix (`"prefix": "es"`). Calibration matches on it, so a Spanish search is not calibrated on a French key because both agencies are called IGN.
+- `scripts/build_answer_keys.py` takes key names, so a new key can be built without rebuilding (and so changing) the six launch keys.
+- App: four outlines in `Reach.national`, four `DataSource` entries with sky-view pictures of sites outside the test boxes (Irulegi, the Laufzorner Holz enclosure, Ostro, Maungawhau). README services table and concept.md.
+
+**Spain is Navarre for now.** IGN's national ground model service answers but rounds heights to whole metres (int16), which draws terraces over everything (a quick look at a Galician castro showed the steps). The CNIG download centre, which has the 2 m model and raw points, accepts a connection but never answers a script. Navarre's IDENA serves a 2 m model with real decimals (CC BY 4.0), and Navarre publishes its register of protected archaeological sites as an open layer (`PATRIM_Sym_BICarqueo`, 1,187 records).
+
+**Found during W2: parallel writes corrupted a project.** The agent hands tiles to helpers that record verdicts at the same moment. Two saves of `tiles.json` interleaved ("Extra data" at character 12,626) and every later tool failed. Fixed: `Project.save` writes a temporary file and swaps it in, and `Project.change` holds a file lock while state is loaded, changed and saved (verdicts, measured rises, new finds and their ids). An offline test records 40 verdicts and 12 finds from 16 threads; it fails without the fix.
+
+**Checks.** `find_data` offers each region inside its outline and nothing in Baden-Württemberg or Portugal. A fetch of each builds ground with decimal heights (Bavaria 17 s for four 1 km sheets, Saxony 4 s, New Zealand 3 s). In the running app the coverage map shows the four regions ([screenshot](loop7/coverage-map.png)), the four services answer "Online", and the Saxony card opens with its picture.
+
+**Blind tests,** primary / 6.1 Terra at medium, with `find_mounds` in the workflow, second opinion skipped:
+
+| Region | Site | Key from | Found | Extra | What happened |
+|---|---|---|---|---|---|
+| Navarre | Sierra de Andía megaliths | Navarre's register, 11 dolmens and mounds | 0 of 11 | 5 | The mounds do not stand out among hundreds of small bumps (shrubs or boulders) in the 2 m model. The measured rises reach 6 of 11 only among 561 spots. A limit of the data for low mounds on this upland. |
+| Navarre | Irulegi hill | Register zone; OpenStreetMap outlines | 1 of 2 | 0 | Castle found; the Iron Age village on the terraces missed. |
+| Bavaria | Oberhaching square enclosures | Bavarian monument office records D-1-7935-0042 and -0043 | 0 of 3 | 2 | First run broke on the corrupted tiles file (above). Rerun: every enclosure tile was called "modern", for its straight sides and field edges. |
+| Saxony | Lauske, Niethen and Zschorna ring forts | OpenStreetMap | 2 of 3 | 1 | Niethen missed though its rampart is plain; 68 of 72 tiles were called modern. |
+| New Zealand | Puketapu Pa (R12/85) | Auckland Council heritage schedule, place 2251 | 1 of 1 | 8 | Found. The extras are ditches and pits around the scheduled outline, unscored. |
+
+**What the scores show.** The agent reads straight-sided or field-edge earthworks as modern. The feature guide tells it straight lines along field edges are modern and that an unsure tile is "possible", not a find. That costs the Bavarian enclosures and a Saxon ring fort. The guide is changed next (W2/W3 follow-up), and every site is rerun with it in W6, with both results reported.
+

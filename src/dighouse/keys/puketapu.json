@@ -1,0 +1,103 @@
+{
+ "id": "puketapu",
+ "name": "Puketapu Pa",
+ "place": "Auckland, New Zealand",
+ "data": "LINZ 1 m ground model",
+ "prefix": "nz",
+ "box": [
+  174.58,
+  -37.1189,
+  174.5871,
+  -37.1116
+ ],
+ "coverage": "partial",
+ "published": "Auckland Council schedules Puketapu Pa R12_85 as a historic heritage place, recorded by the New Zealand Archaeological Association as site R12/85. The key counts the pā as one work, drawn as the scheduled extent of place; other recorded sites nearby are not in it.",
+ "sources": [
+  {
+   "cite": "Auckland Council, Auckland Unitary Plan Schedule 14.1 Historic Heritage, Historic Heritage Overlay Extent of Place, place 2251",
+   "link": "https://unitaryplan.aucklandcouncil.govt.nz"
+  },
+  {
+   "cite": "New Zealand Archaeological Association site record R12/85, cited by the schedule"
+  }
+ ],
+ "features": [
+  {
+   "id": "PU-01",
+   "what": "Pā on the ridge: ditches, terraces and storage pits",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      174.582511,
+      -37.114829
+     ],
+     [
+      174.583449,
+      -37.113542
+     ],
+     [
+      174.583707,
+      -37.113317
+     ],
+     [
+      174.584028,
+      -37.113199
+     ],
+     [
+      174.584334,
+      -37.113287
+     ],
+     [
+      174.584351,
+      -37.113816
+     ],
+     [
+      174.583424,
+      -37.11493
+     ],
+     [
+      174.583712,
+      -37.115191
+     ],
+     [
+      174.584488,
+      -37.11517
+     ],
+     [
+      174.585123,
+      -37.115561
+     ],
+     [
+      174.585082,
+      -37.116496
+     ],
+     [
+      174.583129,
+      -37.117289
+     ],
+     [
+      174.582573,
+      -37.117173
+     ],
+     [
+      174.582173,
+      -37.116724
+     ],
+     [
+      174.582007,
+      -37.115592
+     ],
+     [
+      174.582511,
+      -37.114829
+     ]
+    ]
+   ],
+   "area": true,
+   "expect": true,
+   "source": "Auckland Unitary Plan, Schedule 14.1 Historic Heritage, place 2251 (Puketapu Pa R12_85); outline is the scheduled extent of place"
+  }
+ ],
+ "built": "2026-11-16"
+}
