@@ -24,6 +24,7 @@ enum SlashCommands {
         SlashCommand(id: "whatis", summary: "What is this? A quick look at a place, without a project", group: .search, argument: "place", needsArgument: true),
         SlashCommand(id: "new-project", summary: "Start a project on a place", group: .search),
         SlashCommand(id: "make-project", summary: "Make this chat a project: it moves into the project's own folder", group: .search),
+        SlashCommand(id: "publish", summary: "Publish the project to a private GitHub repository, after checking no location leaves this Mac", group: .search),
         SlashCommand(id: "investigate", summary: "Find and report back: the whole search in one go, ending with a report", group: .search, workflow: "full"),
         SlashCommand(id: "ground", summary: "Find open lidar for the project and build the bare ground", group: .search, workflow: "terrain"),
         SlashCommand(id: "look", summary: "Look at every tile nobody has looked at yet", group: .search, workflow: "screen"),
@@ -115,6 +116,7 @@ extension AppState {
         case "make-project":
             if store.current != nil { return "This chat is already in a project" }
             return chat.running ? "Wait for the run to finish" : nil
+        case "publish": return store.current == nil ? "Needs a project" : nil
         case "review": return store.candidates.isEmpty ? "Needs finds" : nil
         default: return nil
         }
@@ -132,7 +134,7 @@ extension AppState {
             return
         }
         var next = ""
-        if c.workflow != nil, store.current == nil {
+        if c.workflow != nil || reason == "Needs a project", store.current == nil {
             next = " It works inside a project: start one with /new-project, or open one from the sidebar."
         } else if reason == "Needs the ground" || reason.lowercased().contains("ground") {
             next = " Run /ground first."
@@ -153,6 +155,7 @@ extension AppState {
         case "whatis": whatIs(argument)
         case "new-project": startProject()
         case "make-project": makeProject()
+        case "publish": showPublishing()
         case "review": reviewing = true
         case "new": newChat()
         case "model": pickerRequest = .model

@@ -660,3 +660,15 @@ def test_github_only_when_asked_and_never_inside_a_repository_or_icloud(tmp_path
     (tmp_path / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Documents").mkdir(parents=True)
     with pytest.raises(ValueError, match="iCloud"):
         server.init_project(str(tmp_path / "Documents" / "hill"), "Hill", "q", 0.0, 51.0, 0.01, 51.01)
+
+
+def test_publishing_is_checked_for_locations(tmp_path):
+    """A project is ready to publish only when private/ and data/ stay out and no shared file holds a coordinate."""
+    root = server.init_project(str(tmp_path / "hill"), "Hill", "q", 0.0, 51.0, 0.01, 51.01)["project"]
+    (Path(root) / "sources" / "read-log.md").write_text("- Smith 1990, https://doi.org/10.2307/503404, doi:10.1179/mca.2013.008\n")
+    assert server.check_before_publishing(root) == {"ready": True, "problems": [], "remote": ""}
+    (Path(root) / "notes" / "slip.md").write_text("The mound is at 39.02541, -83.43012.\n")
+    from dighouse.project import commit
+    commit(Path(root), "A note with a location in it")
+    problems = server.check_before_publishing(root)["problems"]
+    assert problems == ["notes/slip.md, line 1, looks like it holds a coordinate."]

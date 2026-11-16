@@ -39,6 +39,8 @@ final class AppState: ObservableObject {
     @Published var pickerRequest: PickerRequest?
     /// A slash command asking the sidebar to rename a chat.
     @Published var renameRequest: ChatThread?
+    /// Publishing a project: its folder and the step it is on, shown on that project's overview.
+    @Published var publishing: (path: String, step: PublishStep)?
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
     @Published var jumping = false
@@ -521,6 +523,64 @@ final class AppState: ObservableObject {
         }
         return problem
     }
+
+    /// Where publishing the open project stands. It shows as a panel on the project's overview, one step at a time.
+    enum PublishStep: Equatable {
+        case checking, blocked([String]), confirm(name: String), working(String), done(String), failed(String)
+    }
+
+    /// Publish the open project to a private GitHub repository, only ever on the person's press. This checks that no
+    /// location would leave this Mac and then asks, in the overview's panel. A project already published just pushes.
+    func beginPublish() async {
+        guard let project = store.current else { return }
+        let path = project.path
+        publishing = (path, .checking)
+        func set(_ step: PublishStep) { if publishing?.path == path { publishing = (path, step) } }
+        guard engine.ready, (try? await engine.callTool("document_project", ["project": path])) != nil,
+              let reply = try? await engine.callTool("check_before_publishing", ["project": path]),
+              let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON else {
+            return set(.failed("Dighouse could not check the project first. Try again once the engine is running."))
+        }
+        let problems = info["problems"] as? [String] ?? []
+        guard problems.isEmpty else { return set(.blocked(problems)) }
+        if let remote = info["remote"] as? String, !remote.isEmpty {
+            set(.working("Sending the new history to GitHub"))
+            let push = await Shell.run("/usr/bin/git", ["push", "-q", "origin", "HEAD"], env: publishEnv, in: path)
+            return set(push.code == 0 ? .done("The new history is on GitHub. private/ and data/ stayed on this Mac.")
+                                      : .failed(push.out.trimmingCharacters(in: .whitespacesAndNewlines)))
+        }
+        guard githubTool != nil else {
+            return set(.failed("Publishing needs GitHub's command-line tool, gh. Install it from cli.github.com, then run "
+                               + "\"gh auth login\" in Terminal once."))
+        }
+        set(.confirm(name: URL(fileURLWithPath: path).lastPathComponent))
+    }
+
+    /// Open the project's overview, where publishing shows its panel, and start: from /publish or the sidebar.
+    func showPublishing() {
+        guard store.current != nil else { return }
+        route = .chat
+        if layout == .workspace { layout = .split }
+        if chat.active != nil { chat.newChat() }
+        Task { @MainActor in await beginPublish() }
+    }
+
+    /// The person pressed Publish privately in the panel.
+    func confirmPublish() async {
+        guard let (path, step) = publishing, case .confirm(let name) = step, let gh = githubTool else { return }
+        publishing = (path, .working("Making the private repository"))
+        let made = await Shell.run(gh, ["repo", "create", name, "--private", "--source", path, "--remote", "origin", "--push"],
+                                   env: publishEnv, in: path)
+        guard publishing?.path == path else { return }
+        publishing = (path, made.code == 0 ? .done("Published privately. Only you can see it until you change that on GitHub.")
+                                           : .failed(made.out.trimmingCharacters(in: .whitespacesAndNewlines)))
+    }
+
+    private var githubTool: String? {
+        ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", NSHomeDirectory() + "/.local/bin/gh"].first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    private var publishEnv: [String: String] { ProcessInfo.processInfo.environment.merging(["PATH": setup.path]) { _, new in new } }
 
     func loadSurveys() async {
         guard engine.ready, !surveysLoading, surveys.isEmpty else { return }

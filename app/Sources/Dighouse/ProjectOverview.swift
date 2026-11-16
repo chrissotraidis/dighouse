@@ -161,6 +161,7 @@ struct ProjectOverview: View {
     }
 
     var body: some View {
+        ScrollViewReader { reader in
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -241,14 +242,134 @@ struct ProjectOverview: View {
                         Button("Read the run summaries") { app.showNotes("runs") }.buttonStyle(SecondaryButton())
                     }
                 }
+                if let root = store.current?.path {
+                    ProjectHistory(root: root, refresh: "\(store.status.tiles)-\(store.candidates.count)-\(lastRun?.date ?? "")").id("history")
+                }
                 Text("Or ask the agent anything about this project, below. Type / for commands.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             .padding(24).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
+        }
+        // Publishing, from /publish or the sidebar, shows its panel under the history, so bring it into view.
+        .onChange(of: app.publishing.map { "\($0.path) \($0.step)" }) { _, now in
+            // After the panel has its new height.
+            if now != nil { DispatchQueue.main.async { withAnimation(Motion.ease(0.3)) { reader.scrollTo("history", anchor: .bottom) } } }
+        }
+        .onAppear { if app.publishing != nil, app.publishing?.path == store.current?.path { reader.scrollTo("history", anchor: .bottom) } }
         }
     }
 }
 
 /// A suggestion the review can make from the record itself, when the agent left none.
 func Review_hasSuggestion(_ c: Candidate) -> Bool { ReviewSheet.suggestion(for: c) != nil }
+
+/// The project's history in its own repository: the last five changes, where the folder is, and publishing it.
+private struct ProjectHistory: View {
+    let root: String
+    let refresh: String
+    @EnvironmentObject var app: AppState
+    @State private var changes: [(what: String, when: String)] = []
+    @State private var remote = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("History").font(.system(size: 14 * Theme.scale, weight: .semibold))
+            Text("The project is its own folder with its own history, at \(Paths.short(root)).")
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+            if !changes.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(Array(changes.enumerated()), id: \.offset) { i, change in
+                        if i > 0 { Hairline() }
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(change.what).font(.system(size: 12.5 * Theme.scale)).lineLimit(2)
+                            Spacer(minLength: 8)
+                            Text(change.when).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                    }
+                }
+                .panel()
+            }
+            HStack(spacing: 8) {
+                Button { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: root) } label: { Label("Show in Finder", systemImage: "folder") }
+                    .buttonStyle(SecondaryButton())
+                Button { Task { @MainActor in await app.beginPublish() } } label: {
+                    Label(remote.isEmpty ? "Publish to GitHub…" : "Push changes", systemImage: "arrow.up.circle")
+                }
+                .buttonStyle(SecondaryButton()).disabled(step != nil && !finished)
+                .help(remote.isEmpty ? "Makes a private repository on your GitHub account, after checking that no location leaves this Mac."
+                                     : "Sends the new history to GitHub. private/ and data/ stay on this Mac.")
+                if let web = webURL { Link("Open on GitHub", destination: web).font(.system(size: 12.5 * Theme.scale)) }
+            }
+            if let step { panel(step).transition(.opacity) }
+        }
+        .animation(Motion.ease(0.2), value: step)
+        .onChange(of: finished) { _, done in if done { Task { await load() } } }
+        .task(id: root + refresh) { await load() }
+    }
+
+    private var step: AppState.PublishStep? { app.publishing?.path == root ? app.publishing?.step : nil }
+
+    private var finished: Bool {
+        switch step {
+        case .done, .failed, .blocked: return true
+        default: return false
+        }
+    }
+
+    private var webURL: URL? {
+        guard !remote.isEmpty else { return nil }
+        let url = URL(string: remote.replacingOccurrences(of: "git@github.com:", with: "https://github.com/").replacingOccurrences(of: ".git", with: ""))
+        return url?.scheme == "https" ? url : nil
+    }
+
+    /// Publishing, one step at a time, in place on the overview: nothing pops up over the app.
+    @ViewBuilder private func panel(_ step: AppState.PublishStep) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            switch step {
+            case .checking:
+                HStack(spacing: 8) { DigIndicator(); Text("Checking that no location would leave this Mac").foregroundStyle(Theme.dim) }
+            case .working(let what):
+                HStack(spacing: 8) { DigIndicator(); Text(what).foregroundStyle(Theme.dim) }
+            case .blocked(let problems):
+                Label("Not published. These need fixing first, so that no location leaves this Mac:", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(problems, id: \.self) { Text("• " + $0).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true) }
+                }
+                Button("Close") { app.publishing = nil }.buttonStyle(SecondaryButton())
+            case .confirm(let name):
+                Text("Publish privately to GitHub?").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text("This makes a private repository called \(name) on your GitHub account and sends the project's history: the "
+                     + "question, the method, the research record, the finds, notes, sources and reports. private/ and data/, which "
+                     + "hold the locations and the downloads, stay on this Mac. Nobody else can see it unless you change that on GitHub.")
+                    .foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    Button("Publish privately") { Task { @MainActor in await app.confirmPublish() } }.buttonStyle(PrimaryButton())
+                    Button("Cancel") { app.publishing = nil }.buttonStyle(SecondaryButton())
+                }
+            case .done(let what):
+                Label(what, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.green).fixedSize(horizontal: false, vertical: true)
+                Button("Close") { app.publishing = nil }.buttonStyle(SecondaryButton())
+            case .failed(let why):
+                Label("Not published: " + why, systemImage: "exclamationmark.triangle").foregroundStyle(Theme.amber)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Close") { app.publishing = nil }.buttonStyle(SecondaryButton())
+            }
+        }
+        .font(.system(size: 12.5 * Theme.scale))
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .panel(radius: 12)
+    }
+
+    private func load() async {
+        let log = await Shell.run("/usr/bin/git", ["-C", root, "log", "-5", "--format=%s%x1f%cr"])
+        changes = log.code == 0 ? log.out.split(separator: "\n").compactMap { line in
+            let parts = line.split(separator: "\u{1f}", maxSplits: 1).map(String.init)
+            return parts.count == 2 ? (parts[0], parts[1]) : nil
+        } : []
+        let origin = await Shell.run("/usr/bin/git", ["-C", root, "remote", "get-url", "origin"])
+        remote = origin.code == 0 ? origin.out.trimmingCharacters(in: .whitespacesAndNewlines) : ""
+    }
+}
 

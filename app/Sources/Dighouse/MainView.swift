@@ -424,6 +424,10 @@ struct Sidebar: View {
                  },
                  MenuEntry(title: "Show in Finder", icon: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) },
                  MenuEntry(title: "Export project…", icon: "square.and.arrow.up") { Task { await app.exportProject(project) } },
+                 MenuEntry(title: "Publish to GitHub…", icon: "arrow.up.circle") {
+                    if !current { app.open(project) }
+                    app.showPublishing()
+                 },
                  .divider,
                  MenuEntry(title: "Remove from list", icon: "minus.circle", detail: nil) {
                     if current { app.goHome() }

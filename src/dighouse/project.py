@@ -276,6 +276,35 @@ def without_coordinates(text: str) -> str:
     return re.sub(COORDINATES, "(location kept private)", text)
 
 
+def publish_problems(root: Path) -> list[str]:
+    """What stops a project being published: private/ or data/ not kept out of the history, or a shared file that
+    looks like it holds a coordinate. Links are ignored, so a DOI such as 10.2307/503404 is not taken for one."""
+    import re
+    problems = []
+    ignored = (root / ".gitignore").read_text().split() if (root / ".gitignore").exists() else []
+    problems += [f"{part} is not listed in .gitignore." for part in ("private/", "data/") if part not in ignored]
+    listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True)
+    if listed.returncode != 0:
+        return problems + ["The folder is not a git repository yet."]
+    loose = re.compile(r"(?<![\w./-])-?\d{1,3}\.\d{4,}(?![\w/])")
+    for name in filter(None, listed.stdout.split("\0")):
+        if name.startswith(("private/", "data/")):
+            problems.append(f"{name} is in the history, but private/ and data/ must stay on this Mac.")
+            continue
+        f = root / name
+        if not f.is_file() or f.stat().st_size > 2_000_000:
+            continue
+        try:
+            text = f.read_text()
+        except (UnicodeDecodeError, OSError):
+            continue   # pictures and other binary files
+        for i, line in enumerate(text.splitlines(), 1):
+            if loose.search(re.sub(r"https?://\S+|doi:\S+", "", line)):
+                problems.append(f"{name}, line {i}, looks like it holds a coordinate.")
+                break
+    return problems
+
+
 def start_from_chat(p: Project, title: str, why_here: str = "", sources: list[str] | None = None,
                     ruled_out: list[str] | None = None, conversation: str = "") -> str:
     """Make what a chat settled the project's first records, and commit them. Returns the note written."""

@@ -101,6 +101,13 @@ final class ChatModel: ObservableObject {
     private var known: [String: [ChatThread]] = UserDefaults.standard.data(forKey: "chatLists")
         .flatMap { try? JSONDecoder().decode([String: [ChatThread]].self, from: $0) } ?? [:]
 
+    /// Chats moved into a project. The engine lists a chat only once it has a message of its own, and a moved chat is a
+    /// copy that has none yet, so it is kept here until the engine lists it.
+    private var moved: [String: [ChatThread]] = UserDefaults.standard.data(forKey: "movedChats")
+        .flatMap { try? JSONDecoder().decode([String: [ChatThread]].self, from: $0) } ?? [:] {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(moved), forKey: "movedChats") }
+    }
+
     /// Every chat Dighouse has listed, with its folder, for the ⌘K palette.
     var allChats: [(String, ChatThread)] {
         var lists = known
@@ -127,7 +134,11 @@ final class ChatModel: ObservableObject {
         if let fresh { generalThreads = keepingNew(fresh, from: generalThreads) }
         if let mine, let scope {
             // The person may have moved on while the engine was listing; the answer is still worth keeping.
-            if scope == project { threads = keepingNew(mine, from: threads) } else { known[scope] = keepingNew(mine, from: known[scope] ?? []) }
+            if scope == project { threads = keepingNew(mine, from: threads, in: scope) } else { known[scope] = keepingNew(mine, from: known[scope] ?? [], in: scope) }
+            // Once the engine lists a moved chat itself, it no longer needs keeping.
+            if let kept = moved[scope], kept.contains(where: { t in mine.contains { $0.id == t.id } }) {
+                moved[scope] = kept.filter { t in !mine.contains { $0.id == t.id } }
+            }
         }
         remember()
     }
@@ -138,8 +149,12 @@ final class ChatModel: ObservableObject {
         UserDefaults.standard.set(try? JSONEncoder().encode(known), forKey: "chatLists")
     }
 
-    private func keepingNew(_ fresh: [ChatThread], from old: [ChatThread]) -> [ChatThread] {
-        let missing = old.filter { t in (t.id == active || startedHere.contains(t.id)) && !fresh.contains { $0.id == t.id } }
+    private func keepingNew(_ fresh: [ChatThread], from old: [ChatThread], in scope: String? = nil) -> [ChatThread] {
+        let keep = scope.flatMap { moved[$0] } ?? []
+        var seen = Set(fresh.map(\.id))
+        let missing = (keep + old).filter { t in
+            (t.id == active || startedHere.contains(t.id) || keep.contains { $0.id == t.id }) && seen.insert(t.id).inserted
+        }
         return missing + fresh
     }
 
@@ -301,6 +316,7 @@ final class ChatModel: ObservableObject {
         _ = try? await engine.request("thread/archive", ["threadId": id])
         generalThreads.removeAll { $0.id == id }
         startedHere.insert(copy)
+        self.moved[path, default: []].insert(moved, at: 0)
         known[path] = [moved] + (known[path] ?? []).filter { $0.id != copy }
         if project == path { threads = known[path] ?? [] }
         if active == id { newChat() }

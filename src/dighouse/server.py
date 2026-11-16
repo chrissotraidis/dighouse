@@ -6,6 +6,7 @@ import functools
 import hashlib
 import json
 import re
+import subprocess
 import time
 
 import httpx
@@ -230,6 +231,17 @@ def start_from_chat(project: str, chat_title: str, why_here: str = "", sources: 
     from .project import start_from_chat as write
     p = Project(project).check()
     return {"written": f"notes/{write(p, chat_title, why_here, sources, ruled_out, conversation)}"}
+
+
+@tool
+def check_before_publishing(project: str) -> dict:
+    """Check a project before the person publishes it to GitHub: private/ and data/ must be kept out of its history,
+    and no shared file may hold a coordinate. It publishes nothing; only the person does, from the app."""
+    from .project import publish_problems
+    p = Project(project).check()
+    problems = publish_problems(p.root)
+    remote = subprocess.run(["git", "-C", str(p.root), "remote", "get-url", "origin"], capture_output=True, text=True)
+    return {"ready": not problems, "problems": problems[:20], "remote": remote.stdout.strip() if remote.returncode == 0 else ""}
 
 
 @tool
