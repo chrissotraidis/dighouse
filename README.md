@@ -248,17 +248,23 @@ These live in the tools, so they hold whichever model is running.
 ~~~
 my-project/
   RESEARCH.md     the research record: everything looked at, read and decided, and what is left
-  PROJECT.md      the question and the rules agents follow
+  PROJECT.md      the question, why this area, the rules, and how the project is kept
   METHODOLOGY.md  how the search and the record are kept, and lessons learned here
   candidates/     one Markdown record per find, with its pictures
-  notes/          a dated log, run summaries, and record.json (what was looked at, without locations)
+  notes/          a dated log, run summaries, how the project started, and record.json (what was looked at, without locations)
   sources/        what was read, what could not be opened, and pages you saved
   reports/        the search report, and drafts for the heritage authority
   data/           downloaded points, ground models, tiles (not versioned)
   private/        locations, exports and run state (not versioned)
 ~~~
 
-Markdown is the record of truth, so a project works offline and can be handed to an archaeologist like any folder. Each project keeps its own git history without `data/` or `private/`. Dighouse rebuilds `RESEARCH.md` whenever a run ends, a person decides or the project is opened, and the agent reads it before it starts, so work adds up instead of starting over.
+Markdown is the record of truth, so a project works offline and can be handed to an archaeologist like any folder. Each project keeps its own git history without `data/` or `private/`. Dighouse rebuilds `RESEARCH.md` whenever a run ends, a person decides or the project is opened, and the agent reads it before it starts, so work adds up instead of starting over. A section of `PROJECT.md`, "How this project is kept", says which file holds what, so an agent in plain Codex can carry a project on without Dighouse.
+
+**Where projects go.** Every new project is a new folder in `~/Dighouse`, with its own repository and a first commit. If you keep your work in `~/GitHub`, choose "Work out of my GitHub folder" on New project, or say so in a chat, and the project goes in `~/GitHub/<name>` instead. Dighouse never picks that on its own, never writes into a repository that is already there (a taken name gets a number), and refuses folders kept in iCloud.
+
+**From a chat to a project.** Talk a place through in a chat. Once the agent has a place and a question, it offers a card, Make this a project (or type `/make-project`). Pressing it opens New project already filled in. The chat moves into the project, and what it settled (the question, why this area, what it read and what it ruled out) becomes the project's first records, committed as "Started from chat".
+
+**History and publishing.** A project's overview lists its latest changes, with Show in Finder and Publish to GitHub (or `/publish`). Publishing first checks that `private/` and `data/` stay out and that no shared file holds a coordinate. Then it asks you, and makes a private repository on your account with GitHub's `gh` tool. Later runs go up with Push changes. Nothing is ever made public or sent on its own.
 
 **Handing a project over.** File › Export Project makes a zip without `data/` or `private/`, so it holds no locations. The other person opens the folder, the record shows every tile and what it showed as earlier work, and one button, Carry on, picks up what is left.
 

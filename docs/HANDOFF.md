@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-16 after loop 7. This file is the prompt for whoever continues the work. Read it, then the Log at the end of REFINE_LOOP.md, which says what was checked and how, and what was not.
+Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-16 after loop 8. This file is the prompt for whoever continues the work. Read it, then the Log at the end of [PROJECT_LOOP.md](PROJECT_LOOP.md), which says what was checked and how, and what was not.
 
 ## Your brief
 
@@ -8,7 +8,7 @@ You are continuing Dighouse for Chris Sotraidis. It is a free, open-source macOS
 
 Chris reviews by using the app and sending screenshots. He wants to use it to find things, and it must look and feel like its own product. Work in passes: build, check in the running app, fix, log, commit, push.
 
-Seven loops are finished. The sixth was [TEST_LOOP.md](TEST_LOOP.md): blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration and an honest README. The seventh was [WORLD_LOOP.md](WORLD_LOOP.md), whose Log has every source probe, run and score. It added Navarre (Spain), Bavaria, Saxony, New Zealand and Denmark (with a token), registers for Navarre and Denmark in the checks, and a pilot on the seafloor from NOAA's sonar surveys with charted wrecks as the key. It changed the method to look at the whole area before the tiles (enclosures bigger than a tile were being called field edges). The benchmark is 53 of 105 on thirteen land sites and 4 of 7 charted wrecks. Small low mounds remain the clearest gap (Borre 20 of 53, Andía 0 of 11). Rerun scripts/smoke_test.py and the blind tests after any change to the model, prompt, skill or feature guide.
+Eight loops are finished. The eighth was [PROJECT_LOOP.md](PROJECT_LOOP.md): every project is its own folder and repository (see "What loop 8 added" below). Its appendix drafts the next loop, a real search in Bavaria, and a model bake-off. The sixth was [TEST_LOOP.md](TEST_LOOP.md): blind tests on known sites with a scorecard, "What is this?", a feature guide, calibration and an honest README. The seventh was [WORLD_LOOP.md](WORLD_LOOP.md), whose Log has every source probe, run and score. It added Navarre (Spain), Bavaria, Saxony, New Zealand and Denmark (with a token), registers for Navarre and Denmark in the checks, and a pilot on the seafloor from NOAA's sonar surveys with charted wrecks as the key. It changed the method to look at the whole area before the tiles (enclosures bigger than a tile were being called field edges). The benchmark is 53 of 105 on thirteen land sites and 4 of 7 charted wrecks. Small low mounds remain the clearest gap (Borre 20 of 53, Andía 0 of 11). Rerun scripts/smoke_test.py and the blind tests after any change to the model, prompt, skill or feature guide.
 
 Denmark is an option for anyone with a free Dataforsyningen token (Chris chose not to make one). Waiting for Chris: the macOS Documents prompt.
 
@@ -35,13 +35,23 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 ## Where things stand
 
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes, Sources and Data tabs. Three looks; Earth is the default. The mark at the top of the sidebar opens Home.
-- **Tools** (`src/dighouse`, Python, MCP): 42 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
+- **Tools** (`src/dighouse`, Python, MCP): 45 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Open lidar:** the United States (USGS 3DEP), surveys on OpenTopography, and ready-made ground models for England, the Netherlands, France, Flanders, Norway, Estonia, Switzerland, Navarre and the Basque Country (Spain), Bavaria, Saxony, New Zealand and Denmark (Denmark needs a free token pasted in Settings, Data and privacy). Each is one entry in `NATIONAL` in national.py; Bavaria, Saxony and New Zealand use the `tiles` kind (files on a grid of map sheets).
 - **Seafloor:** NOAA's sonar surveys of US waters and the Great Lakes (`us:noaa-bag`), offered only where a 2 m or finer survey covers the box. The modern check reads NOAA's charts there.
 - **Project state** is saved atomically and changed under a file lock (`Project.change`), because the agent records verdicts from parallel helpers.
 - **Engine**: `codex app-server` as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse starts the **newest** copy of Codex on the Mac (`Setup.detect`); on Chris's Mac that is 0.167 inside the ChatGPT app, because 0.146 on the PATH is refused GPT-6.1 Terra. Dighouse's own tools are approved at launch (`default_tools_approval_mode`), since newer engines ask before every tool call.
-- **Tests**: 22 offline, 9 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.
+- **Tests**: 27 offline, 9 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.
 - **README** has pictures in `docs/images`, retaken on 2026-11-14 at 1440 × 900 in Earth after loop 5. Loop 5's own pictures are in `docs/loop5`.
+
+## What loop 8 added (2026-11-16)
+
+- **P1, own folder.** Every way of starting a project makes a new folder in `~/Dighouse` (`projects_home()`, `new_folder()` in project.py) with git and a first commit. A taken name gets -2, -3. The engine starts the tool server with a filtered environment, so the folders reach it through `mcp_servers.dighouse.env` in `Engine.swift`.
+- **P2, Make this a project.** The agent offers a project with `suggest_project` (it makes nothing). The chat shows a card; pressing it opens New project filled in. Once the project is made, `ChatModel.move` forks the chat into the project's folder and archives the general copy, because the engine lists chats by the folder they started in. A fork has no message of its own until it is used, and the engine does not list it until then, so moved chats are kept in the `movedChats` default. `/make-project` uses the offer, asks the agent for one, or moves a chat into the project it already made.
+- **P3, first records.** `start_from_chat` writes "Why this area" into PROJECT.md, the chat's sources into `sources/read-log.md`, and `notes/<date>-started-from-chat.md`, then commits "Started from chat: <title>". Coordinates are taken out.
+- **P4, GitHub only when asked.** New project has a Folder row; `suggest_project` takes `work_in_github`. `new_folder` refuses iCloud folders and anything inside an existing repository.
+- **P5, history and publishing.** The overview's History section lists the last five commits, with Show in Finder and Publish to GitHub. `check_before_publishing` runs first, then `gh repo create --private --push`; after that the button is Push changes. Every step shows in a panel under the history: Chris did not want pop-up windows.
+- **P6, explained in the folder.** PROJECT.md's "How this project is kept", added to older projects when the record is rebuilt. A plain Codex session read a project correctly from it.
+- **P7, goals and commands.** A running goal shows a bar with Stop at the top of its chat. A command typed in full is the one Return runs, even when it can't run (it then says why), and an unknown /word gets an answer.
 
 ## What the fifth loop added
 
@@ -65,6 +75,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 
 ## Waiting on Chris
 
+- **Delete the test repository** `chrissotraidis/default-folder-check` (private), made to check publishing.
 - **The promotional video** (30 to 40 seconds, made from real app footage) waits for his pass.
 - **Going public.** The README reads as if the repository were public. Making it public, tagging a release, and a notarized download are his decisions.
 
@@ -78,6 +89,9 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 
 ## Not verified
 
+- **Publishing** when gh is missing or signed out, when the repository name is taken on GitHub, or when gh is set to SSH. Only the first is handled in words; the others show gh's own message.
+- **The GitHub folder in iCloud or missing,** in the app. The refusal is covered by the offline test only.
+- **A moved chat whose archived original is deleted.** The copy reads its earlier turns from the original, so deleting archived chats in Codex would cut that history.
 - **A second opinion** in loop 5, for the reason above. It was last seen working in loop 4.
 - **The map check's second way in** in a town dense enough for the map service to refuse the 4 km square, other than in the offline test.
 - **The "Nothing here looked built" card** on a project where no tile was marked, and Widen the search.
@@ -126,6 +140,7 @@ open -n build/Dighouse.app --args -ApplePersistenceIgnoreState YES
 - **Pictures:** `screencapture -o -x -l<window id>` gives the window alone, with no Computer Use pill and no pointer; bring Dighouse to the front first. Computer Use's own screenshots include both.
 - **Empty settings for a first-run check:** export the settings, `defaults delete com.chrissotraidis.dighouse`, write back the window frames, `model` and a scratch `projectsHome`, run the check, then delete and import the export.
 - The engine takes about four seconds to list one folder's chats on this Mac. Chat lists are cached in defaults under `chatLists`.
-- Defaults keys the app uses: `look`, `textSize`, `chatWidth`, `sidebarWidth`, `layout`, `model`, `recentModels`, `secondModel`, `effort`, `toolboxTab`, `tourStage`, `startKind`, `mapStyle`, `toolServers`, `projects`, `currentProject`, `projectsHome`, `userName`, `onboarded`, `chatLists`, and the tutorial's `tutorialOn`, `tutorialProject`, `tutorialReached`, `tutorialDone`.
+- Defaults keys the app uses: `look`, `textSize`, `chatWidth`, `sidebarWidth`, `layout`, `model`, `recentModels`, `secondModel`, `effort`, `toolboxTab`, `tourStage`, `startKind`, `mapStyle`, `toolServers`, `projects`, `currentProject`, `projectsHome`, `githubHome` (tests only), `userName`, `onboarded`, `chatLists`, `movedChats`, and the tutorial's `tutorialOn`, `tutorialProject`, `tutorialReached`, `tutorialDone`.
+- **Checking project creation without touching Chris's folders:** launch with `-projects '<5b5d>' -currentProject '' -projectsHome $HOME/dighouse-ui-test -githubHome $HOME/dighouse-ui-test-github` (both scratch folders, from loop 8). To list chosen test projects, pass `-projects "<hex of the JSON list>"`. Export the settings first and import them afterwards, then delete `projectsHome`, `githubHome` and `movedChats` if present.
 - **Projects on Chris's Mac:** `~/Documents/Dighouse` holds his own (Angel Mounds, Maiden Castle, Mound City Group, Perry Mesa, Serpent Mound, Middle Usumacinta) and three test projects (`mound-city-review-test`, `serpent-mound-goal-run`, `fort-ancient-ohio`). The Cahokia control run is in `~/Documents/Codex/2026-11-12/vb/work/dighouse-projects`. Scratch projects from loops 4 and 5 are under `~/Documents/Codex/2026-11-14/dighouse-loop4/work` and `~/Documents/Codex/2026-11-14/dighouse-loop5/work` (a finished Mound City search, and a Borre search in Norway that waits for decisions). They are not in his list; open them with File, then Open Project Folder.
 - Pictures in `app/Resources/tour` and `app/Resources/starts` were made with the tools from open data. Keep it that way, and say in the caption where each comes from.
