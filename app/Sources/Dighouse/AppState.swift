@@ -180,6 +180,8 @@ final class AppState: ObservableObject {
                 + "where to look, or answer their question. Once the chat has settled a place and a question, call suggest_project, "
                 + "with what the chat read and the places it ruled out and why: "
                 + "the person gets a Make this a project card, and pressing it makes the project and moves this chat into it. "
+                + "Projects go in \(Paths.projectsHome.path). Only if the person says they want to work out of their GitHub folder, "
+                + "set work_in_github and tell them the folder the reply names; never choose it yourself. "
                 + "Call init_project yourself only when the person asks you to create the project; pass a new folder name and it "
                 + "goes inside \(Paths.projectsHome.path), then tell the person to open it from the card in the chat. " + shared
         }
@@ -373,15 +375,10 @@ final class AppState: ObservableObject {
     /// Create a project folder through the tools, so its layout always matches what they expect.
     /// Create the project and, unless told not to, start getting its terrain straight away, so a new project is never left empty.
     /// Made from a general chat, the chat moves into the project and stays on screen, and the person goes on from there.
-    func createProject(name: String, question: String, box: [Double], fetch: Bool = true, from start: StartingPoint? = nil) async throws {
-        let slug = name.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
-            .split(separator: "-").joined(separator: "-")
-        var path = Paths.projectsHome.appendingPathComponent(slug.isEmpty ? "project" : slug).path
-        var n = 2
-        while FileManager.default.fileExists(atPath: path) {
-            path = Paths.projectsHome.appendingPathComponent("\(slug)-\(n)").path
-            n += 1
-        }
+    func createProject(name: String, question: String, box: [Double], fetch: Bool = true, from start: StartingPoint? = nil,
+                       inGitHub: Bool = false) async throws {
+        if inGitHub, let problem = Paths.githubProblem { throw EngineError(message: problem) }
+        let path = Self.folder(for: name, inGitHub: inGitHub)
         _ = try await engine.callTool("init_project", [
             "project": path, "name": name, "question": question,
             "west": box[0], "south": box[1], "east": box[2], "north": box[3],
@@ -401,6 +398,22 @@ final class AppState: ObservableObject {
             try? await Task.sleep(for: .milliseconds(400))   // let the project's chat list open first
             run(flow)
         }
+    }
+
+    /// The folder a new project of this name would get: in ~/Dighouse, or in the GitHub folder when the person asked,
+    /// with a number added if the name is taken. A folder already there is never reused.
+    static func folder(for name: String, inGitHub: Bool) -> String {
+        let base = inGitHub ? Paths.githubHome : Paths.projectsHome
+        let slug = name.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
+            .split(separator: "-").joined(separator: "-")
+        let stem = slug.isEmpty ? "project" : slug
+        var path = base.appendingPathComponent(stem).path
+        var n = 2
+        while FileManager.default.fileExists(atPath: path) {
+            path = base.appendingPathComponent("\(stem)-\(n)").path
+            n += 1
+        }
+        return path
     }
 
     /// Move a general chat into a project and open the project with the chat on screen.
@@ -454,7 +467,8 @@ final class AppState: ObservableObject {
             name: offer.name, question: offer.question,
             box: offer.box.map { $0.map { String(format: "%.5f", $0) } } ?? ["", "", "", ""],
             search: offer.box == nil && !offer.place.isEmpty ? offer.place : nil, chat: id, whyHere: offer.whyHere,
-            sources: offer.sources, ruledOut: offer.ruledOut, conversation: ProjectOffer.conversation(chat.items)))
+            sources: offer.sources, ruledOut: offer.ruledOut, conversation: ProjectOffer.conversation(chat.items),
+            inGitHub: offer.inGitHub))
     }
 
     /// The next part of the search for the open project, or nil when nothing is ready or a run is going.

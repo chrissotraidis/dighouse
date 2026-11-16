@@ -419,6 +419,10 @@ private struct OfferCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(offer.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Text(offer.question).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                if store.current == nil, !offer.folder.isEmpty {
+                    Label(Paths.short(offer.folder) + (offer.inGitHub ? ", in your GitHub folder as you asked" : ""), systemImage: "folder")
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                }
                 Text(store.current == nil ? "Make it a project and this chat moves into it, with its own folder and history."
                      : "This chat is in a project now. Its records and history are in the project's folder.")
                     .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)

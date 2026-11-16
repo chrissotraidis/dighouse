@@ -183,6 +183,26 @@ enum Paths {
         if let custom = UserDefaults.standard.string(forKey: "projectsHome"), !inCloud(custom) { return URL(fileURLWithPath: custom) }
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Dighouse")
     }
+
+    /// The person's GitHub folder, used for a project only when they ask to work out of it.
+    static var githubHome: URL {
+        if let custom = UserDefaults.standard.string(forKey: "githubHome") { return URL(fileURLWithPath: custom) }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("GitHub")
+    }
+
+    /// Why the GitHub folder can't hold projects, or nil when it can.
+    static var githubProblem: String? {
+        let path = githubHome.resolvingSymlinksInPath().path
+        if inCloud(path) { return "Your GitHub folder is kept in iCloud, where files go offline, so projects can't go there." }
+        if !FileManager.default.fileExists(atPath: path) { return "There is no GitHub folder in your home folder." }
+        return nil
+    }
+
+    /// A path as a person reads it, with the home folder as ~.
+    static func short(_ path: String) -> String {
+        let home = NSHomeDirectory()
+        return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
+    }
 }
 
 // MARK: - What the app shows
@@ -403,6 +423,8 @@ struct StartingPoint: Identifiable, Hashable {
     var sources: [String] = []
     var ruledOut: [String] = []
     var conversation: String? = nil
+    /// Make the project in the person's GitHub folder rather than ~/Dighouse. Only ever set because they asked.
+    var inGitHub = false
 
     var centre: (lat: Double, lon: Double)? {
         let n = box.compactMap(Double.init)
@@ -419,6 +441,8 @@ struct ProjectOffer {
     var box: [Double]? = nil
     var sources: [String] = []
     var ruledOut: [String] = []
+    var inGitHub = false
+    var folder = ""
 
     init(name: String, question: String) {
         self.name = name
@@ -437,6 +461,8 @@ struct ProjectOffer {
         if box?.count != 4 { box = nil }
         sources = info["sources"] as? [String] ?? []
         ruledOut = info["ruled_out"] as? [String] ?? []
+        inGitHub = info["work_in_github"] as? Bool ?? false
+        folder = info["folder"] as? String ?? ""
     }
 
     /// A chat in plain words for the project's notes: what the person said, what the agent answered, and each step.

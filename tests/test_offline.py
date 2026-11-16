@@ -641,3 +641,22 @@ def test_a_chat_becomes_the_projects_first_records(tmp_path):
     assert log.splitlines()[0] == "Started from chat: Choosing a hill"
     research = server.document_project(root) and (Path(root) / "RESEARCH.md").read_text()
     assert "Read in the chat that started the project" in research and "](notes/" in research
+
+
+def test_github_only_when_asked_and_never_inside_a_repository_or_icloud(tmp_path, monkeypatch):
+    """Offers go in the projects folder unless the person asked for GitHub; a taken name gets a number; a folder in an
+    existing repository or in iCloud is refused."""
+    import subprocess
+    monkeypatch.setenv("DIGHOUSE_PROJECTS_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("DIGHOUSE_GITHUB_HOME", str(tmp_path / "GitHub"))
+    (tmp_path / "GitHub" / "hill").mkdir(parents=True)
+    (tmp_path / "GitHub" / "hill" / "README.md").write_text("someone's repo")
+    assert server.suggest_project("Hill", "q", place="Box Hill")["folder"] == str((tmp_path / "home" / "hill").resolve())
+    assert server.suggest_project("Hill", "q", place="Box Hill", work_in_github=True)["folder"].endswith("GitHub/hill-2")
+    subprocess.run(["git", "init", "-q", str(tmp_path / "GitHub" / "hill")], check=True)
+    with pytest.raises(ValueError, match="inside the repository"):
+        server.init_project(str(tmp_path / "GitHub" / "hill" / "sub"), "Hill", "q", 0.0, 51.0, 0.01, 51.01)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Documents").mkdir(parents=True)
+    with pytest.raises(ValueError, match="iCloud"):
+        server.init_project(str(tmp_path / "Documents" / "hill"), "Hill", "q", 0.0, 51.0, 0.01, 51.01)

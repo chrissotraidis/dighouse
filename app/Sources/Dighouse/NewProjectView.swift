@@ -34,6 +34,7 @@ struct NewProjectView: View {
     @State private var showEdges = false
     @State private var busy = false
     @State private var problem: String?
+    @State private var inGitHub: Bool
 
     private static let sizes: [Double] = [0.3, 0.6, 1, 1.5, 2]
 
@@ -42,6 +43,7 @@ struct NewProjectView: View {
         _name = State(initialValue: point.name)
         _question = State(initialValue: point.question)
         _box = State(initialValue: point.box)
+        _inGitHub = State(initialValue: point.inGitHub && Paths.githubProblem == nil)
         let n = point.box.compactMap(Double.init)
         if n.count == 4 {
             let km = (n[3] - n[1]) * 110.54
@@ -212,6 +214,20 @@ struct NewProjectView: View {
 
             labeled("Open data here") { coverageList }
 
+            labeled("Folder") {
+                HStack(spacing: 6) {
+                    folderChoice(Paths.short(Paths.projectsHome.path), selected: !inGitHub) { inGitHub = false }
+                    folderChoice("Work out of my GitHub folder", selected: inGitHub) { inGitHub = true }
+                        .disabled(Paths.githubProblem != nil)
+                        .help(Paths.githubProblem ?? "Makes the project in \(Paths.short(Paths.githubHome.path)), for people who keep their work there.")
+                }
+                Text("Makes \(Paths.short(AppState.folder(for: name.trimmingCharacters(in: .whitespaces), inGitHub: inGitHub))), its own folder with its own history.")
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                if let reason = Paths.githubProblem {
+                    Text(reason).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
             if let problem { Text(problem).foregroundStyle(Theme.amber).font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true) }
             HStack(spacing: 8) {
                 Button("Cancel") { app.goHome() }.buttonStyle(SecondaryButton())
@@ -230,6 +246,18 @@ struct NewProjectView: View {
             Text(label).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
             content()
         }
+    }
+
+    private func folderChoice(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 12 * Theme.scale))
+                .foregroundStyle(selected ? Theme.text : Theme.dim)
+                .padding(.horizontal, 10).frame(height: 26)
+                .background(Capsule().fill(selected ? Theme.ink.opacity(0.12) : .clear))
+                .overlay(Capsule().strokeBorder(Theme.line))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder private var coverageList: some View {
@@ -334,7 +362,7 @@ struct NewProjectView: View {
         Task { @MainActor in
             do {
                 try await app.createProject(name: name.trimmingCharacters(in: .whitespaces), question: question, box: n,
-                                            fetch: !tutorial, from: point.chat == nil ? nil : point)
+                                            fetch: !tutorial, from: point.chat == nil ? nil : point, inGitHub: inGitHub)
                 if tutorial { app.tutorialProject = app.store.current?.path }
             } catch {
                 problem = error.localizedDescription

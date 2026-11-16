@@ -130,12 +130,39 @@ def projects_home() -> Path:
     return Path(os.environ.get("DIGHOUSE_PROJECTS_HOME") or Path.home() / "Dighouse").expanduser()
 
 
+def github_home() -> Path:
+    """The person's GitHub folder, used only when they ask to work out of it: ~/GitHub, or the folder the app passes in."""
+    return Path(os.environ.get("DIGHOUSE_GITHUB_HOME") or Path.home() / "GitHub").expanduser()
+
+
+def slug(name: str) -> str:
+    """A folder name from a project name, the same way the app makes one."""
+    return "-".join(part for part in "".join(c if c.isalnum() else "-" for c in name.lower()).split("-") if part) or "project"
+
+
+def in_icloud(path: Path) -> bool:
+    """Whether macOS keeps this folder in iCloud (Desktop and Documents sync, or iCloud Drive). Files there go offline."""
+    home = Path.home()
+    cloud = [home / "Library" / "Mobile Documents"]
+    if (home / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Documents").exists():
+        cloud += [home / "Documents", home / "Desktop"]
+    path = path.resolve()
+    return any(path == c or c in path.parents for c in cloud)
+
+
 def new_folder(project: str | Path) -> Path:
     """A folder for a new project: a bare name goes in the projects folder, and a folder that already holds anything
-    gets a number added rather than being reused."""
+    gets a number added rather than being reused. A folder in iCloud, or inside an existing repository, is refused."""
     root = Path(project).expanduser()
     if not root.is_absolute():
         root = projects_home() / root
+    if in_icloud(root):
+        raise ValueError(f"{root} is kept in iCloud, where files go offline and every read waits for a download. "
+                         f"Put the project in {projects_home()} or in the GitHub folder instead.")
+    inside = next((d for d in root.resolve().parents if (d / ".git").exists()), None)
+    if inside:
+        raise ValueError(f"{root} is inside the repository {inside}. A project is never written into an existing "
+                         "repository; it gets a new folder of its own.")
     base, n = root, 2
     while root.exists() and any(root.iterdir()):
         root = base.with_name(f"{base.name}-{n}")

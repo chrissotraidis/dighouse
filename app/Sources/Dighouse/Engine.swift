@@ -96,6 +96,10 @@ final class Engine: ObservableObject {
             // Newer engines ask before every tool call. Dighouse's own tools are part of the app, so they are approved here;
             // tools the person adds still ask.
             "-c", "mcp_servers.dighouse.default_tools_approval_mode=\"approve\"",
+            // The engine starts tool servers with only a few of its own variables, so the folders go in the server's own
+            // settings: where init_project puts a project named without a folder, and the GitHub folder, used only when
+            // the person asks to work out of it.
+            "-c", "mcp_servers.dighouse.env={DIGHOUSE_PROJECTS_HOME=\(toml(Paths.projectsHome.path)),DIGHOUSE_GITHUB_HOME=\(toml(Paths.githubHome.path))}",
         ]
         for server in extraServers {
             let parts = Self.words(server.command)
@@ -106,7 +110,6 @@ final class Engine: ObservableObject {
         p.arguments = arguments
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = path
-        env["DIGHOUSE_PROJECTS_HOME"] = Paths.projectsHome.path   // where init_project puts a project named without a folder
         p.environment = env
         let stdin = Pipe(), stdout = Pipe()
         p.standardInput = stdin

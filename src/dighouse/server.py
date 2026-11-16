@@ -175,6 +175,8 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
 
     project is a folder path, or just a folder name, which goes in the projects folder (~/Dighouse unless the person
     chose another). A folder that already holds anything is never reused: a number is added to the name instead.
+    Use a folder in the person's GitHub folder (~/GitHub) only when they ask to work out of it. A folder in iCloud or
+    inside an existing repository is refused.
     The reply's project is the folder actually made; use it for every later call."""
     from .project import new_folder
     root = new_folder(project)
@@ -185,7 +187,8 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
 @tool
 def suggest_project(name: str, question: str, why_here: str = "", place: str = "",
                     west: float = 0.0, south: float = 0.0, east: float = 0.0, north: float = 0.0,
-                    sources: list[str] | None = None, ruled_out: list[str] | None = None) -> dict:
+                    sources: list[str] | None = None, ruled_out: list[str] | None = None,
+                    work_in_github: bool = False) -> dict:
     """Offer the person a project made from this chat, once the chat has settled a place and a question.
 
     It creates nothing. The Dighouse app shows a card with "Make this a project"; only the person presses it, and the
@@ -193,7 +196,12 @@ def suggest_project(name: str, question: str, why_here: str = "", place: str = "
     as a box in degrees if you have one, otherwise a place name to look up. why_here is a sentence or two on why this
     area is worth searching, from what the chat found. sources lists what the chat read, one line each: title, link,
     and what it says about this place. ruled_out lists places the chat considered and set aside, one line each with
-    why. These become the project's first records. No coordinates in any of these words."""
+    why. These become the project's first records. No coordinates in any of these words.
+
+    Projects go in the projects folder (~/Dighouse). Set work_in_github only when the person has said they want to
+    work out of their GitHub folder; never choose it yourself. The reply's folder is where the project would go:
+    tell the person."""
+    from .project import github_home, new_folder, projects_home, slug
     box = [west, south, east, north]
     has_box = west < east and south < north
     if not has_box and not place.strip():
@@ -202,10 +210,12 @@ def suggest_project(name: str, question: str, why_here: str = "", place: str = "
         raise ValueError("Give the project a name and a question.")
     if has_box:
         answers.guard_box(box)
+    folder = new_folder((github_home() if work_in_github else projects_home()) / slug(name))
     return {"offered": True, "name": name.strip(), "question": question.strip(), "why_here": why_here.strip(),
             "place": place.strip(), "box": box if has_box else None,
             "sources": [s.strip() for s in sources or [] if s.strip()],
             "ruled_out": [s.strip() for s in ruled_out or [] if s.strip()],
+            "work_in_github": work_in_github, "folder": str(folder),
             "note": "The person sees a Make this a project card. Nothing is created until they press it."}
 
 
