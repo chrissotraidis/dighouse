@@ -12,7 +12,7 @@ import json
 import re
 
 from . import ledger, national
-from .project import INDEX_MD, METHODOLOGY_MD, RECORD_SECTION, Project, commit
+from .project import INDEX_MD, KEPT_SECTION, METHODOLOGY_MD, RECORD_SECTION, Project, commit
 
 # A decimal degree. DOIs such as 10.2307/503404 are left alone: their number runs straight into a slash.
 COORD = re.compile(r"(?<![\w/.])-?\d{1,3}\.\d{4,}(?![\w/.])")
@@ -37,6 +37,9 @@ def _upgrade(p: Project) -> None:
         method.write_text(METHODOLOGY_MD)
     elif "## How this project keeps its record" not in method.read_text():
         method.write_text(method.read_text().rstrip() + "\n\n" + RECORD_SECTION)
+    project_md = p.path("PROJECT.md")
+    if project_md.exists() and "## How this project is kept" not in project_md.read_text():
+        project_md.write_text(project_md.read_text().rstrip() + "\n\n" + KEPT_SECTION)
     index = p.path("notes", "INDEX.md")
     if not index.exists():
         index.parent.mkdir(parents=True, exist_ok=True)

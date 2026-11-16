@@ -45,7 +45,29 @@ PROJECT_MD = """# {name}
   literature search before its status can move on.
 - A person decides before anything is marked as having no match, and a person
   sends any report.
+
+{kept}"""
+
+KEPT_SECTION = """## How this project is kept
+
+This folder is the whole project, with its own git history, so any person or agent can carry it on from here,
+with or without Dighouse.
+
+| Where | What it holds |
+|---|---|
+| PROJECT.md | This page: the question, why this area, and the rules. |
+| METHODOLOGY.md | How searches are done here, and lessons learned. Follow it. |
+| RESEARCH.md | The research record: every tile looked at and what it showed, every find with its checks and decision, every source, and what is still to do. Dighouse rebuilds it, so do not edit it by hand. |
+| candidates/ | One page per find, with its pictures, checks, sources and decision. |
+| notes/ | Run summaries (listed in notes/INDEX.md), the dated log of every step, and how the project started. Write new notes here. |
+| sources/ | read-log.md: every source, as read, could not open, or not relevant, with what it says. |
+| reports/ | Drafts for the heritage authority. Only a person sends them. |
+| private/, data/ | Locations and downloads. They stay on the Mac that made them and out of the history. |
+
+To carry on: read RESEARCH.md, then METHODOLOGY.md and the newest run summary in notes/, and do not redo what they
+list without saying why. Write what you do in notes/. Never write coordinates in these files.
 """
+PROJECT_MD = PROJECT_MD.replace("{kept}", KEPT_SECTION.replace("{", "{{").replace("}", "}}"))
 
 
 METHODOLOGY_MD = """# Method
