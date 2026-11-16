@@ -433,9 +433,32 @@ def thunder_bay_east():
     return wreck_key("thunder-bay-east", "TBE", "Thunder Bay wrecks, east", "Lake Huron, Michigan, United States", [-83.190, 45.050, -83.163, 45.071],
                      "Thunder Bay is a National Marine Sanctuary with some of the best-preserved wrecks in the Great Lakes.")
 
+def hillfort_key(kid, prefix, name, place, way, record, published, data):
+    """One hillfort's rampart line from OpenStreetMap, with its Wikidata record."""
+    line = osm_way(way)
+    f = work(f"{prefix}-01", "Hillfort rampart", [line], f"OpenStreetMap way {way}; Wikidata {record}", area=True)
+    box = [round(min(p[0] for p in line) - 0.002, 4), round(min(p[1] for p in line) - 0.0015, 4),
+           round(max(p[0] for p in line) + 0.002, 4), round(max(p[1] for p in line) + 0.0015, 4)]
+    return {"id": kid, "name": name, "place": place, "data": data, "prefix": "es-pv", "box": box, "coverage": "partial",
+            "published": published, "sources": [OSM, {"cite": f"Wikidata {record}", "link": f"https://www.wikidata.org/wiki/{record}"}], "features": [f]}
+
+
+def munoaundi():
+    return hillfort_key("munoaundi", "MU", "Munoaundi hillfort", "Gipuzkoa, Basque Country, Spain", 1090446321, "Q85965846",
+                        "An Iron Age hillfort on the Munoaundi ridge between Azkoitia and Azpeitia, excavated since 2009 by the Aranzadi Science Society. "
+                        "The key counts its rampart as one work; other features on the ridge are not in it.", "Basque Government 1 m lidar ground model")
+
+
+def arrola():
+    return hillfort_key("arrola", "AR", "Arrola hillfort (Marueleza)", "Bizkaia, Basque Country, Spain", 364190391, "Q16544867",
+                        "The Iron Age hillfort of Arrola on Marueleza hill above Arratzu, one of the largest in Bizkaia, studied by the Arkeologi Museoa. "
+                        "The key counts its rampart as one work.", "Basque Government 1 m lidar ground model")
+
+
 KEYS = {"angel-mounds": angel_mounds, "mound-city": mound_city, "serpent-mound": serpent_mound, "cahokia": cahokia,
         "maiden-castle": maiden_castle, "borre": borre, "andia": andia, "irulegi": irulegi, "oberhaching": oberhaching, "lauske": lauske, "puketapu": puketapu,
-        "thunder-bay-a": thunder_bay_a, "thunder-bay-south": thunder_bay_south, "thunder-bay-east": thunder_bay_east}
+        "thunder-bay-a": thunder_bay_a, "thunder-bay-south": thunder_bay_south, "thunder-bay-east": thunder_bay_east,
+        "munoaundi": munoaundi, "arrola": arrola}
 
 
 def main(names=None):

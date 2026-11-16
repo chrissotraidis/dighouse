@@ -59,7 +59,9 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
 | Irulegi hill, Navarre | Navarre 2 m | 1 of 2 (the castle) | the Iron Age village | 0 |
 | Sierra de Andía megaliths, Navarre | Navarre 2 m | 0 of 11 | 11 low mounds and dolmens | 12 |
 | Puketapu Pa, Auckland | LINZ 1 m | 1 of 1 | 0 | 8 |
-| **All eleven on land** | | **53 of 103** | 50 | 41 |
+| Munoaundi hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (marked 141 m off its mapped line) | 1 |
+| Arrola hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (banks marked 97 m outside the mapped outline) | 1 |
+| **All thirteen on land** | | **53 of 105** | 52 | 43 |
 | Thunder Bay wrecks, Lake Huron (three areas) | NOAA sonar, 1 m | 4 of 7 charted wrecks | 3 | 5 |
 
 <table>
@@ -69,7 +71,7 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
   </tr>
 </table>
 
-Run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 to 10 minutes a site. Every land site was run with the same method: a look at the whole area first, then every tile, then a slice and a map check for each find. The answer keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them (the rest). Most keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log). Results will differ with other models.
+Run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 to 10 minutes a site. Every land site was run with the same method (the two Basque hillforts a day later): a look at the whole area first, then every tile, then a slice and a map check for each find. The answer keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them (the rest). Most keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log). Results will differ with other models.
 
 The underwater row is a pilot: one source (NOAA's sonar surveys of US waters and the Great Lakes), three small areas of Thunder Bay National Marine Sanctuary, and one scored run each. The three charted wrecks it missed stand barely above a rocky lake bed, or lie at the edge of the survey.
 
@@ -195,7 +197,8 @@ Everything Dighouse reads is public, and none of it needs an account or a key.
 | [Kartverket](https://hoydedata.no) | Norway's 1 m ground model |
 | [Estonian Land Board](https://geoportaal.maaamet.ee/eng/Spatial-Data/Elevation-data-p308.html) | Estonia's 1 m ground model |
 | [swisstopo](https://www.swisstopo.admin.ch/en/height-model-swissalti3d) | Switzerland's 0.5 m ground model |
-| [IDENA](https://idena.navarra.es) | Navarre's 2 m ground model, from the Government of Navarre (the only part of Spain so far) |
+| [IDENA](https://idena.navarra.es) | Navarre's 2 m ground model, from the Government of Navarre |
+| [geoEuskadi](https://www.geo.euskadi.eus) | The Basque Country's 1 m ground model, from the Basque Government |
 | [Bavarian Surveying Administration](https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1) | Bavaria's 1 m ground model |
 | [GeoSN](https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html) | Saxony's 1 m ground model |
 | [Toitū Te Whenua LINZ](https://registry.opendata.aws/nz-elevation/) | New Zealand's 1 m ground model, where it has been flown |

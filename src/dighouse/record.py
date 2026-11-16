@@ -94,7 +94,7 @@ def facts(p: Project) -> tuple[dict, dict]:
         kept = json.loads(f.read_text()) if f.exists() else {}
     except ValueError:
         kept = {}
-    terrains = {k: {x: v.get(x) for x in ("dataset", "source", "collected", "area_km2", "ground_points_per_m2", "res")}
+    terrains = {k: {x: v.get(x) for x in ("dataset", "source", "collected", "area_km2", "ground_points_per_m2", "res", "survey_details")}
                 for k, v in (p.load("terrains", {}) or {}).items()}
     tiles = {k: {"terrain": v.get("terrain"), "status": v.get("status"), "verdict": v.get("verdict"),
                  "note": _clean(v.get("note") or ""), "model": v.get("model")}
@@ -270,6 +270,12 @@ def document(p: Project, commit_it: bool = True) -> dict:
             prefix = t.get("dataset", "").split(":")[0]
             L.append(f"| {t.get('dataset', '')} | {t.get('source') or ('Imported by a person' if prefix == 'own' else national.publisher(prefix))} | {t.get('collected') or 'not stated'} "
                      f"| {(t.get('area_km2') or 0):.2f} sq km | {density(t)} | {t.get('res') or 0.5} m |")
+        surveys = [x for t in terrains.values() for x in (t.get("survey_details") or [])]
+        if surveys:
+            L += ["", "| Seafloor survey | Surveyed | By | Median depth uncertainty | Record |", "|---|---|---|---|---|"]
+            for x in surveys:
+                u = f"{x['uncertainty_m']:g} m" if x.get("uncertainty_m") is not None else "not read"
+                L.append(f"| {x['survey']} | {x.get('surveyed') or 'not stated'} | {x.get('platform') or 'not stated'} | {u} | {x.get('record') or ''} |")
     else:
         L.append("No ground yet.")
     L.append("")

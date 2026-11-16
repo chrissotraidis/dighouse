@@ -1,0 +1,96 @@
+{
+ "id": "munoaundi",
+ "name": "Munoaundi hillfort",
+ "place": "Gipuzkoa, Basque Country, Spain",
+ "data": "Basque Government 1 m lidar ground model",
+ "prefix": "es-pv",
+ "box": [
+  -2.2981,
+  43.1603,
+  -2.2926,
+  43.1653
+ ],
+ "coverage": "partial",
+ "published": "An Iron Age hillfort on the Munoaundi ridge between Azkoitia and Azpeitia, excavated since 2009 by the Aranzadi Science Society. The key counts its rampart as one work; other features on the ridge are not in it.",
+ "sources": [
+  {
+   "cite": "OpenStreetMap contributors, available under the Open Database Licence",
+   "link": "https://www.openstreetmap.org/copyright"
+  },
+  {
+   "cite": "Wikidata Q85965846",
+   "link": "https://www.wikidata.org/wiki/Q85965846"
+  }
+ ],
+ "features": [
+  {
+   "id": "MU-01",
+   "what": "Hillfort rampart",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      -2.295334,
+      43.163754
+     ],
+     [
+      -2.295533,
+      43.163795
+     ],
+     [
+      -2.295694,
+      43.163795
+     ],
+     [
+      -2.295841,
+      43.163697
+     ],
+     [
+      -2.295972,
+      43.163525
+     ],
+     [
+      -2.295959,
+      43.163339
+     ],
+     [
+      -2.296103,
+      43.163062
+     ],
+     [
+      -2.29604,
+      43.162578
+     ],
+     [
+      -2.295739,
+      43.161835
+     ],
+     [
+      -2.295431,
+      43.16185
+     ],
+     [
+      -2.294879,
+      43.161865
+     ],
+     [
+      -2.294589,
+      43.162328
+     ],
+     [
+      -2.294895,
+      43.163041
+     ],
+     [
+      -2.295334,
+      43.163754
+     ]
+    ]
+   ],
+   "area": true,
+   "expect": true,
+   "source": "OpenStreetMap way 1090446321; Wikidata Q85965846"
+  }
+ ],
+ "built": "2026-11-16"
+}

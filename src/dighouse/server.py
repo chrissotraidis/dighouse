@@ -266,6 +266,10 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
     if how.get("seafloor"):
         warn.append("This is the seafloor from sonar surveys, as depth below the chart datum. Gaps between survey lines come back as outside the survey. "
                     "A slice shows the seafloor's profile; a wreck stands above it or sits in a scour pit.")
+        for x in how.get("survey_details") or []:
+            warn.append(f"Survey {x['survey']}: surveyed {x.get('surveyed') or 'on a date not given'} by {x.get('platform') or 'a vessel not named'}"
+                        + (f", median depth uncertainty {x['uncertainty_m']:g} m." if x.get("uncertainty_m") is not None else ", uncertainty not read.")
+                        + (f" Record: {x['record']}" if x.get("record") else ""))
     elif points is None:
         warn.append("This is a national agency's ready-made ground model. There are no raw points, so a section shows the ground profile only and cannot tell a feature in the ground from one in the trees.")
     return {"terrain": tid, **{k: v for k, v in meta.items() if k not in ("box", "file", "points", "epsg")}, "warnings": warn}

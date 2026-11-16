@@ -1,0 +1,92 @@
+{
+ "id": "arrola",
+ "name": "Arrola hillfort (Marueleza)",
+ "place": "Bizkaia, Basque Country, Spain",
+ "data": "Basque Government 1 m lidar ground model",
+ "prefix": "es-pv",
+ "box": [
+  -2.6111,
+  43.31,
+  -2.6057,
+  43.314
+ ],
+ "coverage": "partial",
+ "published": "The Iron Age hillfort of Arrola on Marueleza hill above Arratzu, one of the largest in Bizkaia, studied by the Arkeologi Museoa. The key counts its rampart as one work.",
+ "sources": [
+  {
+   "cite": "OpenStreetMap contributors, available under the Open Database Licence",
+   "link": "https://www.openstreetmap.org/copyright"
+  },
+  {
+   "cite": "Wikidata Q16544867",
+   "link": "https://www.wikidata.org/wiki/Q16544867"
+  }
+ ],
+ "features": [
+  {
+   "id": "AR-01",
+   "what": "Hillfort rampart",
+   "kind": "work",
+   "lines": [
+    [
+     [
+      -2.608441,
+      43.312474
+     ],
+     [
+      -2.608629,
+      43.312449
+     ],
+     [
+      -2.608774,
+      43.312404
+     ],
+     [
+      -2.608954,
+      43.312318
+     ],
+     [
+      -2.609096,
+      43.312156
+     ],
+     [
+      -2.609067,
+      43.312032
+     ],
+     [
+      -2.608921,
+      43.311797
+     ],
+     [
+      -2.608479,
+      43.311518
+     ],
+     [
+      -2.608203,
+      43.311748
+     ],
+     [
+      -2.607718,
+      43.312128
+     ],
+     [
+      -2.608081,
+      43.312443
+     ],
+     [
+      -2.608189,
+      43.312489
+     ],
+     [
+      -2.608441,
+      43.312474
+     ]
+    ]
+   ],
+   "area": true,
+   "expect": true,
+   "source": "OpenStreetMap way 364190391; Wikidata Q16544867"
+  }
+ ],
+ "built": "2026-11-16"
+}

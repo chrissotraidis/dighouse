@@ -235,3 +235,21 @@ The overview gained four enclosures and forts (Oberhaching 2, Lauske 1, Maiden C
 **Live tests:** `uv run pytest -m live` gives 7 passed and 2 failed on this Mac. The 2 query the Cahokia area, which an unfinished loop-6 blind test (~/dighouse-ui-test/blind-test-2026-11-16-2) still holds closed in the blind-test registry. With an empty cache (`DIGHOUSE_CACHE=$(mktemp -d)`) all 9 pass. That project was left as it is; finishing or removing it is Chris's call.
 
 **README picture:** Open data retaken at 1440 × 900 in Earth (window alone, `screencapture -l`): 42 tools, 21 of 22 services online (OpenStreetMap's Overpass partly online, as the caption says), the map with New Zealand and the European regions. Settings restored afterwards.
+
+### 2026-11-17, after the loop: seafloor survey details and the Basque Country
+
+- **Seafloor survey details** (the part of W7 still open): a seafloor fetch now reads each survey's dates, vessel and record link from NOAA's survey catalog (`nos_hydro_dynamic`, layer 0). It also reads the median of the BAG's uncertainty layer from the file's small overview grid, a few kilobytes over the network. All of this goes into the fetch warnings, the terrain's "Flown" column (for example "2010 to 2019") and a new "Seafloor survey" table in the research record. Thunder Bay: H12132, 2010-06-15 to 2010-11-04, NOAA SeaArk Launch S1211, 0.06 m. W00499, 2019-07-22 to 2019-08-02, NOAA R/V Storm, 0.06 m. H14139 is not in the catalog yet, so it is listed by name only.
+- **More of Spain:**
+  - **The Basque Country** joins as `es-pv:mdt-1m`: geoEuskadi's WCS, the latest 1 m lidar terrain model, CC BY 4.0, decimal heights (checked). It has an outline on the coverage map and a card in the Toolbox, which answers "Online" in the running app.
+  - **Catalonia:** ICGC's 2 m model could not be reached. Every address tried for it answers 404, and the open service (`icc_mdt`) serves only 5 m and 15 m.
+  - **Castilla y León:** its WCS answers, but at 5 m.
+  - **Madrid:** its 50 cm model is in the CNIG download centre only.
+- **Basque blind tests,** final method, primary / 6.1 Terra, keys from OpenStreetMap outlines with Wikidata records:
+
+| Site | Found | Extra | What happened |
+|---|---|---|---|
+| Munoaundi hillfort | 0 of 1 | 1 | The agent marked a curving boundary round the ridge 141 m from the mapped rampart line. |
+| Arrola hillfort | 0 of 1 | 1 | It marked "several parallel curving banks and ditches" 97 m outside the mapped outline. The outline may hold the inner enclosure only, while the outer banks are what show. |
+
+  Both are reported as scored, without changing the method or the keys. The README table now has thirteen land sites: 53 of 105.
+

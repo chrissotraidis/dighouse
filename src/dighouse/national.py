@@ -1,5 +1,5 @@
 """National lidar published as ready-made ground models: England, the Netherlands, France, Flanders, Norway, Estonia,
-Switzerland, Navarre (Spain), Bavaria, Saxony, New Zealand and Denmark (with a free token).
+Switzerland, Navarre and the Basque Country (Spain), Bavaria, Saxony, New Zealand and Denmark (with a free token).
 
 These services hand out a bare-ground raster (a DTM) built by the national mapping agency,
 not raw points. The terrain is as good as their ground classification; a section through it
@@ -154,6 +154,16 @@ NATIONAL = {
         "landing_page": "https://registry.opendata.aws/nz-elevation/",
         "note": "Some areas have not been flown yet; they come back as outside the survey.",
     },
+    "es-pv:mdt-1m": {
+        "publisher": "the Basque Government (Spain)",
+        "title": "MDT LiDAR 1 m, latest flight (Basque Country, Spain)",
+        "source": "geoEuskadi, Basque Government", "country": "the Basque Country (Spain)", "maker": "the Basque Government",
+        "outline": [(-3.45, 43.24), (-3.15, 43.35), (-2.75, 43.45), (-2.2, 43.32), (-1.79, 43.39), (-1.73, 43.30), (-2.05, 43.05), (-2.25, 42.9), (-2.4, 42.65), (-2.6, 42.48), (-2.9, 42.55), (-3.1, 42.75), (-3.3, 42.9), (-3.45, 43.24)],
+        "epsg": 25830, "res": 1.0, "kind": "wcs", "axes": ("x", "y"), "chunk_px": 1000, "parallel": 2,
+        "url": "https://www.geo.euskadi.eus/WCS_KARTOGRAFIA", "coverage": "MDT_LIDAR_1M_EGUNERATUENA_MAS_ACTUALIZADA",
+        "citation": "MDT LiDAR 1 m, © Gobierno Vasco / Eusko Jaurlaritza, geoEuskadi. CC BY 4.0.",
+        "landing_page": "https://www.geo.euskadi.eus",
+    },
     "dk:dhm-terraen": {
         "publisher": "the Danish Agency for Climate Data (Denmark)",
         "title": "Danmarks Højdemodel, terrain 0.4 m (Denmark)",
@@ -229,6 +239,39 @@ def _surveys(d: dict, bbox: list[float], finest_m: float = 2.0) -> list[dict]:
         res = (a.get("LowPS") or 1) * 111_320
         if res <= finest_m and a.get("SurveyID"):
             out.append({"survey": a["SurveyID"], "res_m": round(res, 1), "file": a.get("Name", "")})
+    return out
+
+
+NOS_SURVEYS = "https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/0/query"
+
+
+def survey_details(found: list[dict]) -> list[dict]:
+    """When each sonar survey was made, by what vessel, and how sure its depths are (the median of the BAG's uncertainty layer)."""
+    import datetime as dt
+    ids = sorted({f["survey"] for f in found})
+    if not ids:
+        return []
+    r = _client.get(NOS_SURVEYS, params={"where": "SURVEY_ID IN (" + ",".join(f"'{i}'" for i in ids) + ")", "f": "json",
+                                         "outFields": "SURVEY_ID,DATE_SURVEY_BEGIN,DATE_SURVEY_END,PLATFORM,DOWNLOAD_URL", "returnGeometry": "false"})
+    r.raise_for_status()
+    day = lambda ms: dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).date().isoformat() if ms else None
+    out = []
+    for a in (f["attributes"] for f in r.json().get("features", [])):
+        row = {"survey": a["SURVEY_ID"], "surveyed": " to ".join(x for x in (day(a.get("DATE_SURVEY_BEGIN")), day(a.get("DATE_SURVEY_END"))) if x),
+               "platform": a.get("PLATFORM"), "record": a.get("DOWNLOAD_URL")}
+        folder = (a.get("DOWNLOAD_URL") or "").split("/nos/")[-1].rsplit("/", 1)[0]
+        files = [f["file"].replace("_interp1m", "") for f in found if f["survey"] == a["SURVEY_ID"] and f.get("file")]
+        if folder and files:
+            try:  # the BAG's small overview grid carries the uncertainty layer, so this reads a few kilobytes
+                with rasterio.open(f"/vsicurl/https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/{folder}/{a['SURVEY_ID']}/BAG/{files[0]}.bag") as src:
+                    if src.count >= 2:
+                        u = src.read(2).astype(float)
+                        u = u[(u > 0) & (u < 100)]
+                        if u.size:
+                            row["uncertainty_m"] = round(float(np.median(u)), 2)
+            except Exception:
+                pass
+        out.append(row)
     return out
 
 
@@ -470,6 +513,15 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
         dtm[outside] = float(np.nanmedian(dtm))
     how = {"source": d["source"], "citation": d["citation"], "ready_made_ground_model": True, "requests": len(parts)}
     if d.get("seafloor"):
+        found = _surveys(d, bbox)
         how["seafloor"] = True
-        how["surveys"] = sorted({f"{x['survey']} ({x['res_m']:g} m)" for x in _surveys(d, bbox)})
+        how["surveys"] = sorted({f"{x['survey']} ({x['res_m']:g} m)" for x in found})
+        try:
+            how["survey_details"] = survey_details(found)
+        except Exception:  # the survey catalog being down should not stop a fetch; the record says the details are missing
+            how["survey_details"] = []
+        dates = [x["surveyed"] for x in how["survey_details"] if x.get("surveyed")]
+        if dates:
+            first, last = min(d[:4] for d in dates), max(d[-10:][:4] for d in dates)
+            how["collected"] = first if first == last else f"{first} to {last}"
     return dtm, outside, x0, y1, res, d["epsg"], how
