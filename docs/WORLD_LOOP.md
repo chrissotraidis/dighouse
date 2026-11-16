@@ -264,3 +264,8 @@ The overview gained four enclosures and forts (Oberhaching 2, Lauske 1, Maiden C
   - All of this was checked in the running app.
 - **README:** a picture of the ten test sites under the benchmark, and the Denmark row says it is an option.
 
+
+### 2026-11-17, README pictures: lake to wreck, and Home
+
+- **docs/images/lake-to-wreck.gif:** a sweep like the treetops-to-ground animation, at Thunder Bay. The "Lake surface" side is the USGS lidar surface (the highest return in each cell) over the shore and breakwater, with the water drawn plain, since airborne lidar stops at the surface. The "Lake bed" side is the lidar ground on land and NOAA's sonar survey under the water, where two charted wrecks show. 938 × 586, 96 frames at 50 ms, the same size and timing as the first animation.
+- **docs/images/home.png:** retaken in the running app at 1440 × 900 in Earth (window only, test projects out of the sidebar). It shows Places to start, with the Lauske ring fort and the Thunder Bay wreck in the last row. Settings restored afterwards.

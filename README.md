@@ -102,6 +102,12 @@ We checked. Given the Mound City blind test box with no tools, the same model th
 
 <p align="center"><sub>Serpent Mound, Ohio, from open USGS lidar. Dighouse keeps only the laser returns that reached the ground.</sub></p>
 
+<p align="center">
+  <img src="docs/images/lake-to-wreck.gif" alt="Thunder Bay, Lake Huron: a handle sweeps across the lake surface, taking the water away to show two shipwrecks on the lake bed beside a harbour breakwater" width="720">
+</p>
+
+<p align="center"><sub>Thunder Bay, Lake Huron. The shore and breakwater come from airborne lidar, which stops at the water; the lake bed and its two wrecks come from NOAA's sonar surveys.</sub></p>
+
 1. **Choose where to look.** Ask "What should I research?" and the agent weighs open lidar, how little is on record, and where earthworks survive, then proposes three searches. Or draw an area on a map, or type a place and press **What is this?** for a one-minute look.
 2. **Calibrate.** Before searching where nothing is on record, the agent runs a blind test on the nearest known site with the same kind of lidar. If it finds less than half of what is published there, the search stops.
 3. **Take the trees away.** The tools download the raw laser points, or a national ground model, and keep the ground.
@@ -116,7 +122,7 @@ Take the stages one at a time, or press **Find and report back** and the agent c
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.png" alt="Home: a greeting with the last project and what it waits for, the treetops-to-ground picture, a message box and two ways in"><br><sub><b>Home.</b> Picks up where you left off, and starts a search from a place name in one press.</sub></td>
+    <td width="50%"><img src="docs/images/home.png" alt="Home, Places to start: known sites to learn on, from Cahokia and Newark in the United States to the Lauske ring fort in Saxony and a Thunder Bay wreck from NOAA sonar"><br><sub><b>Home.</b> Places to start, each ready to fetch: mounds and enclosures in the United States, a ring fort in Saxony and a wreck on the bed of Lake Huron.</sub></td>
     <td width="50%"><img src="docs/images/new-project.png" alt="New project at Mound City Group: name, question, a search area drawn on the map, and the open lidar that covers it"><br><sub><b>New project.</b> Place the area on the map and see which open lidar covers it before you start.</sub></td>
   </tr>
   <tr>
