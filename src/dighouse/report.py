@@ -54,6 +54,9 @@ def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
     second = c.get("second_look")
     if isinstance(second, dict):
         parts.append("Second model: " + ("agreed it looks built" if second.get("agrees") else "did not agree it looks built"))
+    elif isinstance(c.get("second_look_tried"), dict):
+        tried = c["second_look_tried"]
+        parts.append(f"Second model: asked {tried.get('model', '')} on {tried.get('date', '')}, which could not answer ({tried.get('reason', '')})")
     else:
         parts.append("Second model: has not looked")
     modern = c.get("modern")

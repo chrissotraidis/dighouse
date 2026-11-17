@@ -154,7 +154,10 @@ def still_to_do(p: Project) -> list[str]:
                       ("second_look", "a second opinion from another model")):
         ids = [m["id"] for m in open_ if key not in m["checks"]]
         if ids:
-            out.append(f"Give {', '.join(ids)} {what}.")
+            tried = [m["checks"]["second_look_tried"] for m in open_ if key == "second_look" and m["id"] in ids and "second_look_tried" in m["checks"]]
+            out.append(f"Give {', '.join(ids)} {what}."
+                       + (f" The last request, to {tried[-1].get('model')}, could not be answered ({tried[-1].get('reason')}); "
+                          "choose another second model in Settings, Models." if tried else ""))
     ids = [m["id"] for m in open_ if not any(s["status"] == "read" for s in m["sources"])]
     if ids:
         out.append(f"Search the literature for {', '.join(ids)}; no source has been read for them.")
@@ -321,7 +324,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
                      if isinstance(sec, dict) else "not yet")
             second = c.get("second_look")
             second_t = (("agrees" if second.get("agrees") else "disagrees") + f" ({second.get('model', '')})"
-                        if isinstance(second, dict) else "not yet")
+                        if isinstance(second, dict) else "asked, no answer" if isinstance(c.get("second_look_tried"), dict) else "not yet")
             modern = c.get("modern")
             if isinstance(modern, dict):
                 modern_t = ((listed(modern.get("near") or []) or "modern features") + " nearby" if modern.get("likely_modern")

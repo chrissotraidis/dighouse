@@ -139,7 +139,8 @@ struct NewProjectView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("New project").font(.system(size: 22 * Theme.scale, weight: .bold))
                 Text(point.kind == .own ? "A project is one question about one area."
-                     : point.kind == .chat ? "Filled in from the chat “\(point.title)”. Once the project is made, the chat moves into it."
+                     : point.kind == .chat ? "Filled in from the chat “\(point.title)”. Once the project is made, the chat moves into it"
+                        + (point.searchNow ? " and the whole search starts." : ".")
                      : "Starting from \(point.title). You can change anything below.")
                     .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
@@ -233,7 +234,7 @@ struct NewProjectView: View {
                 Button("Cancel") { app.goHome() }.buttonStyle(SecondaryButton())
                 Spacer()
                 if busy { DigIndicator() }
-                Button("Create project", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
+                Button(point.searchNow ? "Create and search" : "Create project", action: create).buttonStyle(PrimaryButton()).disabled(busy || !valid || !engine.ready)
                     .help("Creates the project and starts fetching its open lidar straight away.")
                     .coach(.create)
             }

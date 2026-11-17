@@ -674,3 +674,19 @@ def test_publishing_is_checked_for_locations(tmp_path):
     commit(Path(root), "A note with a location in it")
     problems = server.check_before_publishing(root)["problems"]
     assert problems == ["notes/slip.md, line 1, looks like it holds a coordinate."]
+
+
+def test_a_refused_second_opinion_is_on_the_record(tmp_path):
+    """When the second model cannot answer, the record and the report say it was asked, and what to do; it is not counted."""
+    from dighouse import ledger, record, report
+    p = Project.create(tmp_path / "refused", "Refused", "Is the bank built?", [0.0, 51.0, 0.01, 51.01])
+    cid = ledger.create(p, "Low bank", "t1-r000c000", (0.005, 51.005), "A straight low bank", "model-a")["id"]
+    server.second_look_failed(str(p.root), cid, "Other model", "403: this service has been disabled")
+    todo = record.document(p)["still_to_do"]
+    assert any("could not be answered" in t and "Settings, Models" in t for t in todo)
+    assert "asked, no answer" in p.path("RESEARCH.md").read_text()
+    assert "second_look" not in ledger.get(p, cid)[0]["checks"]
+    report.write(p) if hasattr(report, "write") else server.write_report(str(p.root))
+    text = next(p.path("reports").glob("*-search-report.md")).read_text()
+    assert "asked Other model" in text and "could not answer" in text
+

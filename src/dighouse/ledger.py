@@ -173,7 +173,9 @@ def _body(meta: dict) -> str:
                      if s.get("from_ground_model_only")
                      else f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} laser points reached the ground at its top"))
     look = checks.get("second_look")
-    out.append(_tick(look and look.get("agrees"), "A second model agrees it looks built", f"{look['model']}: {look['note']}" if look else ""))
+    tried = checks.get("second_look_tried")
+    out.append(_tick(look and look.get("agrees"), "A second model agrees it looks built", f"{look['model']}: {look['note']}" if look
+                     else f"asked {tried['model']} on {tried['date']}; it could not answer: {tried['reason']}" if tried else ""))
     m = checks.get("modern")
     out.append(_tick(m is not None and not m.get("likely_modern"), "Nothing modern on open maps", m["summary"] if m else ""))
     read = sum(x["status"] == "read" for x in sources)

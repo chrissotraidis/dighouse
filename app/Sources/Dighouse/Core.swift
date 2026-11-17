@@ -425,6 +425,8 @@ struct StartingPoint: Identifiable, Hashable {
     var conversation: String? = nil
     /// Make the project in the person's GitHub folder rather than ~/Dighouse. Only ever set because they asked.
     var inGitHub = false
+    /// Run the whole search once the project is made, because the person asked for a search.
+    var searchNow = false
 
     var centre: (lat: Double, lon: Double)? {
         let n = box.compactMap(Double.init)
@@ -443,6 +445,7 @@ struct ProjectOffer {
     var ruledOut: [String] = []
     var inGitHub = false
     var folder = ""
+    var searchNow = false
 
     init(name: String, question: String) {
         self.name = name
@@ -463,6 +466,7 @@ struct ProjectOffer {
         ruledOut = info["ruled_out"] as? [String] ?? []
         inGitHub = info["work_in_github"] as? Bool ?? false
         folder = info["folder"] as? String ?? ""
+        searchNow = info["search_now"] as? Bool ?? false
     }
 
     /// A chat in plain words for the project's notes: what the person said, what the agent answered, and each step.

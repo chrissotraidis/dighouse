@@ -5,6 +5,8 @@ cd "$(dirname "$0")/.."
 swift build -c release
 APP=build/Dighouse.app
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/tools"
+# Replace the binary rather than write over it, so a copy of the app that is running keeps its own file.
+rm -f "$APP/Contents/MacOS/Dighouse"
 cp .build/release/Dighouse "$APP/Contents/MacOS/Dighouse"
 cp Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"

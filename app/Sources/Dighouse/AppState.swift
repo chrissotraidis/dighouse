@@ -186,6 +186,8 @@ final class AppState: ObservableObject {
                 + "the person gets a Make this a project card, and pressing it makes the project and moves this chat into it. "
                 + "Projects go in \(Paths.projectsHome.path). Only if the person says they want to work out of their GitHub folder, "
                 + "set work_in_github and tell them the folder the reply names; never choose it yourself. "
+                + "If the person asked you to search a place or find things there, set search_now, so one press makes the project "
+                + "and runs the whole search; size the place up first (survey_area) so the box has open data. "
                 + "Call init_project yourself only when the person asks you to create the project; pass a new folder name and it "
                 + "goes inside \(Paths.projectsHome.path), then tell the person to open it from the card in the chat. " + shared
         }
@@ -222,6 +224,7 @@ final class AppState: ObservableObject {
                 if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
                     self.secondLookProblem[candidate] = EngineError.plain(failure)
                     self.secondLookQueue = []
+                    self.recordSecondLookFailure(candidate, EngineError.plain(failure))
                 }
                 self.store.reloadIfChanged()
                 if let path = self.store.current?.path { Task { @MainActor in await self.updateRecord(of: path) } }
@@ -395,7 +398,8 @@ final class AppState: ObservableObject {
                 "sources": start.sources, "ruled_out": start.ruledOut, "conversation": start.conversation ?? "",
             ])
             // The chat stays on screen, and the project starts on its ground in that chat, as any new project does.
-            if await carry(source, into: path), fetch, let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { run(flow) }
+            let next = start.searchNow ? "full" : "terrain"
+            if await carry(source, into: path), fetch, let flow = ToolGuide.workflows.first(where: { $0.id == next }) { run(flow) }
             return
         }
         if let project = store.projects.first(where: { $0.path == path }) { open(project) }
@@ -494,7 +498,7 @@ final class AppState: ObservableObject {
             box: offer.box.map { $0.map { String(format: "%.5f", $0) } } ?? ["", "", "", ""],
             search: offer.box == nil && !offer.place.isEmpty ? offer.place : nil, chat: id, whyHere: offer.whyHere,
             sources: offer.sources, ruledOut: offer.ruledOut, conversation: ProjectOffer.conversation(chat.items),
-            inGitHub: offer.inGitHub))
+            inGitHub: offer.inGitHub, searchNow: offer.searchNow))
     }
 
     /// The next part of the search for the open project, or nil when nothing is ready or a run is going.
@@ -698,8 +702,11 @@ final class AppState: ObservableObject {
 
     /// The stage a run is on: from the last tool its agent called, or else from what the project still lacks.
     func stage(of thread: String) -> (number: Int, title: String, icon: String) {
+        // Until every tile has been looked at, the project's own state says the stage: the agent often reads a source
+        // while the ground downloads, and that is not the search being on stage 4. After that, the stage only moves forward,
+        // so going back to cut another slice does not step it back.
         var index = store.tiles.isEmpty ? 0 : store.tiles.contains { $0.status == "unscreened" } ? 1 : 2
-        if let reached = chat.furthest[thread] { index = max(index, reached) }
+        if index == 2, let reached = chat.furthest[thread] { index = max(index, reached) }
         return (index + 1, ToolGuide.stages[index].title, ToolGuide.stages[index].icon)
     }
 
@@ -860,6 +867,16 @@ final class AppState: ObservableObject {
     }
 
     /// Ask a different model for an independent opinion on a candidate, in its own short conversation.
+    /// A second opinion that could not be had goes on the project's record, so the report says it was asked for.
+    private func recordSecondLookFailure(_ candidate: String, _ reason: String) {
+        guard let path = store.current?.path else { return }
+        let model = secondModelName
+        Task { @MainActor in
+            _ = try? await engine.callTool("second_look_failed", ["project": path, "candidate": candidate, "model": model, "reason": reason])
+            store.reloadIfChanged()
+        }
+    }
+
     func secondLook(_ c: Candidate) {
         guard let project = store.current, let model = secondModelID, secondLookBusy == nil else { return }
         secondLookBusy = c.id
@@ -884,6 +901,7 @@ final class AppState: ObservableObject {
                 secondLookBusy = nil
                 secondLookQueue = []
                 secondLookProblem[c.id] = error.localizedDescription
+                recordSecondLookFailure(c.id, error.localizedDescription)
                 afterSecondLooks()
             }
         }

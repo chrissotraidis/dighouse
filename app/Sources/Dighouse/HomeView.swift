@@ -120,6 +120,7 @@ struct HomeView: View {
                 }
                 .padding(.top, -8)
                 .arrives(1)
+                HowItWorks().arrives(2)
                 CompareBoard().arrives(2)
                 starts.arrives(3)
             }
@@ -258,6 +259,140 @@ struct HomeView: View {
                 .buttonStyle(RowButton()).padding(4).help("Starts a chat in which the agent lists every survey in the catalog.")
             }
             .panel()
+        }
+    }
+}
+
+/// How Dighouse works, for someone deciding whether to trust it: how a search runs on its own, what it writes down,
+/// and where it can look.
+private struct HowItWorks: View {
+    @EnvironmentObject var app: AppState
+    @State private var picked = 0
+
+    private let tabs = [("It searches on its own", "dig.trowel"), ("It writes everything down", "dig.brush"), ("Where it can look", "globe")]
+
+    var body: some View {
+        PageSection(title: "How it works", caption: "Ask for a search and leave it. Everything it does is kept in a folder you can read, check and share.") {
+            VStack(alignment: .leading, spacing: 0) {
+                Flow(spacing: 6) {
+                    ForEach(tabs.indices, id: \.self) { i in
+                        Button { withAnimation(.easeOut(duration: 0.15)) { picked = i } } label: {
+                            Label(tabs[i].0, glyph: tabs[i].1).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                                .foregroundStyle(picked == i ? .black : Theme.dim)
+                                .padding(.horizontal, 12).frame(height: 30)
+                                .background(Capsule().fill(picked == i ? Theme.tan : Theme.ink.opacity(0.06)))
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(14)
+                Hairline()
+                Group {
+                    switch picked {
+                    case 0: alone
+                    case 1: record
+                    default: reach
+                    }
+                }
+                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .panel()
+        }
+    }
+
+    private func line(_ text: String, strong: Bool = false) -> some View {
+        Text(text).font(.system(size: (strong ? 15 : 13.5) * Theme.scale, weight: strong ? .medium : .regular))
+            .foregroundStyle(strong ? Theme.text : Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var alone: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            line("Type a place, or ask “Search Fort Ancient for anything built.” Press Find and report back, or say yes to the card the agent offers.", strong: true)
+            Flow(spacing: 6) {
+                ForEach(Array(ToolGuide.stages.enumerated()), id: \.offset) { i, stage in
+                    HStack(spacing: 6) {
+                        Glyph(name: stage.icon, size: 12.5 * Theme.scale).foregroundStyle(Theme.tan)
+                        Text(stage.title).font(.system(size: 12.5 * Theme.scale))
+                        if i < ToolGuide.stages.count - 1 {
+                            Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                        }
+                    }
+                    .padding(.horizontal, 10).frame(height: 28)
+                    .background(Capsule().fill(Theme.ink.opacity(0.05)))
+                }
+            }
+            line("It runs as a goal: the agent takes turn after turn until the report is written, about 5 to 15 minutes for a small area. A bar at the top of the chat shows it, with Stop.")
+            line("Then a model from a different maker gives each find a second opinion. What each find is stays your decision.")
+        }
+    }
+
+    private let layout: [(String, String)] = [
+        ("PROJECT.md", "the question, why this area, and how the folder is kept"),
+        ("METHODOLOGY.md", "how searches are done here, and lessons learned"),
+        ("RESEARCH.md", "every tile looked at, every find and its checks, every source, what is left"),
+        ("candidates/", "a page for each find, with its pictures and decision"),
+        ("notes/", "every step, dated, and a summary of each run"),
+        ("sources/", "every source, read or could not be opened"),
+        ("reports/", "the search report, and drafts only you send"),
+        ("private/, data/", "locations and downloads, which never leave this Mac"),
+    ]
+
+    private var record: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            line("Each project is its own folder and git repository, in ~/Dighouse. A person or an agent can open it and carry on without asking what was done.", strong: true)
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(layout, id: \.0) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(item.0).font(.system(size: 12.5 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.tan).frame(width: 130, alignment: .leading)
+                        Text(item.1).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.04)))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("The top of a real RESEARCH.md, from a blind test at Angel Mounds").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                Text("“So far 9 of 9 squares of ground have been looked at, and 6 features that looked built were marked. A person has decided 0 of 6. 3 published sources were read, and 4 could not be opened.”")
+                    .font(.system(size: 13 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.85)).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            }
+            line("A search that finds nothing is still written down, so nobody looks at the same ground twice. Publish to GitHub is there when you want to share it, and only privately.")
+        }
+    }
+
+    private var reach: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            CoverageMap(surveys: app.surveys.map(\.box))
+            VStack(alignment: .leading, spacing: 8) {
+                legend(.dot(Theme.tan), "Lidar, the United States", "raw laser points from USGS 3DEP")
+                legend(.dot(Theme.green), "Lidar, national ground models",
+                       Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", ") + ", and Denmark with a free token")
+                legend(.dot(Theme.amber), "Lidar, surveys worldwide", "flown for archaeology and published on OpenTopography")
+                legend(.icon("water.waves"), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks")
+                legend(.icon("plus.circle"), "Anywhere else", "give the agent your own ground model or point cloud, and it searches that")
+            }
+            Button("Every source, and whether it answers now") {
+                UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxTab")
+                app.show(.toolbox)
+            }
+            .buttonStyle(SecondaryButton())
+        }
+    }
+
+    private enum Mark { case dot(Color), icon(String) }
+
+    /// A row of the legend: a dot in the map's colour for a layer drawn on it, an icon for one that is not.
+    private func legend(_ mark: Mark, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Group {
+                switch mark {
+                case .dot(let color): Circle().fill(color).frame(width: 9, height: 9)
+                case .icon(let name): Image(systemName: name).font(.system(size: 10.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
+                }
+            }
+            .frame(width: 14)
+            (Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold)) + Text(": " + text).font(.system(size: 13 * Theme.scale)).foregroundColor(Theme.dim))
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

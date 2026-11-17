@@ -189,7 +189,7 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
 def suggest_project(name: str, question: str, why_here: str = "", place: str = "",
                     west: float = 0.0, south: float = 0.0, east: float = 0.0, north: float = 0.0,
                     sources: list[str] | None = None, ruled_out: list[str] | None = None,
-                    work_in_github: bool = False) -> dict:
+                    work_in_github: bool = False, search_now: bool = False) -> dict:
     """Offer the person a project made from this chat, once the chat has settled a place and a question.
 
     It creates nothing. The Dighouse app shows a card with "Make this a project"; only the person presses it, and the
@@ -201,7 +201,10 @@ def suggest_project(name: str, question: str, why_here: str = "", place: str = "
 
     Projects go in the projects folder (~/Dighouse). Set work_in_github only when the person has said they want to
     work out of their GitHub folder; never choose it yourself. The reply's folder is where the project would go:
-    tell the person."""
+    tell the person.
+
+    Set search_now when the person asked you to search the place, find things there or report back: pressing the card
+    then makes the project and runs the whole search on its own, ending with the search report."""
     from .project import github_home, new_folder, projects_home, slug
     box = [west, south, east, north]
     has_box = west < east and south < north
@@ -216,8 +219,9 @@ def suggest_project(name: str, question: str, why_here: str = "", place: str = "
             "place": place.strip(), "box": box if has_box else None,
             "sources": [s.strip() for s in sources or [] if s.strip()],
             "ruled_out": [s.strip() for s in ruled_out or [] if s.strip()],
-            "work_in_github": work_in_github, "folder": str(folder),
-            "note": "The person sees a Make this a project card. Nothing is created until they press it."}
+            "work_in_github": work_in_github, "folder": str(folder), "search_now": search_now,
+            "note": f"The person sees a card with a button, {'Make it a project and search' if search_now else 'Make this a project'}. "
+                    "Nothing is created until they press it; name the button when you tell them."}
 
 
 @tool
@@ -555,13 +559,31 @@ def second_look(project: str, candidate: str, agrees: bool, model: str, note: st
 
 
 @tool
+def second_look_failed(project: str, candidate: str, model: str, reason: str) -> dict:
+    """Record that a second opinion was asked for and the model could not give one, with why. The app calls this, so the
+    record says the request was made and the next person knows to choose another model. It does not count as a second opinion."""
+    p = Project(project).check()
+    from .project import today, without_coordinates
+    ledger.set_check(p, candidate, "second_look_tried", {"model": model, "reason": without_coordinates(reason.strip())[:300], "date": today()})
+    p.note(f"Asked {model} for a second opinion on {candidate}; it could not answer: {reason.strip()[:200]}")
+    return {"candidate": candidate, "recorded": True}
+
+
+@tool
 def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     """Check OpenStreetMap around a candidate for roads, buildings and land use, and for sites already mapped nearby."""
     p = Project(project).check()
     lon, lat = ledger.location(p, candidate)
     tile = (p.load("locations", {}) or {}).get(candidate, {}).get("tile")
     terrain = (p.load("tiles", {}) or {}).get(tile, {}).get("terrain")
-    if terrain and (p.load("terrains", {}) or {}).get(terrain, {}).get("seafloor"):
+    sea_terrain = (p.load("terrains", {}) or {}).get(terrain, {}) if terrain else {}
+    if sea_terrain.get("seafloor") and not str(sea_terrain.get("dataset", "")).startswith("us:"):
+        # The charts read here are NOAA's, which cover US waters only; saying "nothing charted" elsewhere would mislead.
+        summary = "not checked: the charts Dighouse reads cover US waters only, so cables, pipelines and charted wrecks here need a look at the national charts"
+        ledger.set_check(p, candidate, "modern", {"likely_modern": False, "summary": summary, "radius_m": radius_m, "near": [], "charts": False,
+                                                  "unchecked": True})
+        return {"candidate": candidate, "summary": summary}
+    if terrain and sea_terrain.get("seafloor"):
         # Under water the open street map has nothing to say; the charts do. A blind test must not hear about charted wrecks.
         try:
             sea = checks.seafloor_features(lon, lat, radius_m, wrecks=not answers.is_blind(p))

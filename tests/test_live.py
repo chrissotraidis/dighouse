@@ -74,7 +74,9 @@ def test_national_ground_models_build(tmp_path):
                                ("hill60", "be:dhmv-dtm-1m", [2.927, 50.822, 2.931, 50.825]),
                                ("borre", "no:nhm-dtm-1m", [10.467, 59.382, 10.471, 59.385]),
                                ("varbola", "ee:dtm-1m", [24.512, 59.039, 24.516, 59.042]),
-                               ("vindonissa", "ch:swissalti3d-05m", [8.211, 47.475, 8.215, 47.478])]:
+                               ("vindonissa", "ch:swissalti3d-05m", [8.211, 47.475, 8.215, 47.478]),
+                               ("zavist", "cz:dmr5g", [14.405, 49.958, 14.411, 49.962]),
+                               ("louisbourg", "ca:hrdem", [-59.990, 45.888, -59.984, 45.892])]:
         root = str(tmp_path / name)
         server.init_project(root, name, "Does the national ground model build?", *box)
         assert dataset in [d.get("id") for d in server.find_data(*box)]
@@ -83,6 +85,17 @@ def test_national_ground_models_build(tmp_path):
         server.make_tiles(root, got["terrain"], tile_m=200)
         stats = json.loads(server.cut_section(root, server.next_tiles(root, 1)[0], 0.1, 0.5, 0.9, 0.5)[0])
         assert stats["from_ground_model_only"] and stats["in_ground"] is None
+
+
+def test_infomar_seafloor_shows_the_lusitania(tmp_path):
+    """Ireland's sonar is offered off Kinsale and builds as seafloor; the chart check says it was not read, not that it is clear."""
+    box = [-8.560, 51.405, -8.535, 51.418]
+    found = [d for d in server.find_data(*box) if d.get("id") == "ie:infomar"]
+    assert found and found[0].get("seafloor")
+    root = str(tmp_path / "kinsale")
+    server.init_project(root, "Kinsale", "Does the wreck show?", *box)
+    got = server.fetch_terrain(root, "ie:infomar", *box)
+    assert got["ready_made_ground_model"] and got["share_outside_survey"] < 0.05
 
 
 def test_pleiades_adds_ancient_places():

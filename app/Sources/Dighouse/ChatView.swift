@@ -451,13 +451,14 @@ private struct OfferCard: View {
                     Label(Paths.short(offer.folder) + (offer.inGitHub ? ", in your GitHub folder as you asked" : ""), systemImage: "folder")
                         .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
                 }
-                Text(store.current == nil ? "Make it a project and this chat moves into it, with its own folder and history."
+                Text(store.current == nil ? (offer.searchNow ? "One press makes the project, moves this chat into it, and runs the whole search. It ends with a report."
+                                             : "Make it a project and this chat moves into it, with its own folder and history.")
                      : "This chat is in a project now. Its records and history are in the project's folder.")
                     .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
             if store.current == nil {
-                Button("Make this a project") { app.makeProject(offer) }.buttonStyle(PrimaryButton())
+                Button(offer.searchNow ? "Make it a project and search" : "Make this a project") { app.makeProject(offer) }.buttonStyle(PrimaryButton())
             }
         }
         .panel(padding: 12, radius: 12)

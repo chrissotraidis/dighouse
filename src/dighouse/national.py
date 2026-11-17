@@ -175,12 +175,46 @@ NATIONAL = {
         "landing_page": "https://dataforsyningen.dk/data/930",
         "note": "Dataforsyningen asks for a free account and token. Paste it in Settings, Data and privacy.",
     },
+    "cz:dmr5g": {
+        "publisher": "ČÚZK (Czechia)",
+        "title": "DMR 5G, digital terrain model 2 m from lidar (Czechia)",
+        "source": "ČÚZK", "country": "Czechia", "maker": "the Czech Office for Surveying, Mapping and Cadastre",
+        "outline": [(12.09, 50.25), (12.5, 50.4), (13.0, 50.6), (14.3, 51.05), (15.0, 51.0), (15.4, 50.8), (16.3, 50.65), (16.9, 50.45), (17.7, 50.3), (18.5, 49.95), (18.85, 49.5), (17.6, 48.8), (16.9, 48.6), (16.0, 48.75), (15.0, 49.0), (14.7, 48.6), (13.8, 48.75), (13.3, 49.1), (12.6, 49.5), (12.4, 49.9), (12.09, 50.25)],
+        "epsg": 5514, "res": 2.0, "kind": "image", "chunk_px": 1000, "parallel": 2,
+        "url": "https://ags.cuzk.cz/arcgis2/rest/services/dmr5g/ImageServer",
+        "citation": "Digitální model reliefu České republiky 5. generace (DMR 5G), © ČÚZK. CC BY 4.0.",
+        "landing_page": "https://geoportal.cuzk.cz",
+        "note": "Built from lidar flown 2009 to 2013, served as a 2 m grid. Heights are in the Baltic system (Bpv).",
+    },
+    "ca:hrdem": {
+        "publisher": "Natural Resources Canada",
+        "title": "HRDEM, high resolution digital terrain model 1 m, mostly from lidar (Canada)",
+        "source": "Natural Resources Canada", "country": "Canada", "maker": "Natural Resources Canada",
+        "outline": [(-141.0, 60.0), (-141.0, 69.6), (-110.0, 68.5), (-95.0, 68.5), (-80.0, 63.0), (-64.0, 60.0), (-55.0, 53.0), (-52.4, 47.8), (-53.0, 46.5), (-59.5, 45.6), (-65.9, 43.3), (-66.9, 44.4), (-67.8, 45.6), (-70.0, 45.2), (-71.5, 45.0), (-74.7, 45.0), (-76.4, 44.2), (-79.1, 43.1), (-79.0, 42.5), (-82.6, 41.7), (-83.1, 42.1), (-82.4, 43.0), (-84.6, 46.5), (-89.6, 48.0), (-95.2, 49.0), (-123.3, 49.0), (-123.0, 48.2), (-124.9, 48.2), (-133.0, 54.5), (-130.0, 56.0), (-141.0, 60.0)],
+        "epsg": 3979, "res": 1.0, "kind": "wcs11", "chunk_px": 1000, "parallel": 2,
+        "url": "https://datacube.services.geo.ca/wrapper/ogc/elevation-hrdem-mosaic", "coverage": "dtm",
+        "citation": "High Resolution Digital Elevation Model (HRDEM), Natural Resources Canada. Open Government Licence – Canada.",
+        "landing_page": "https://open.canada.ca/data/en/dataset/0fe65119-e96e-4a57-8bfe-9d9245fba06b",
+        "note": "A mosaic of 1 m terrain models, mostly from lidar, where Canada and its provinces have flown it: most of the south and some of the north. Elsewhere the reply has no ground data.",
+    },
+    "ie:infomar": {
+        "publisher": "INFOMAR, Geological Survey Ireland and the Marine Institute",
+        "title": "INFOMAR seabed survey, depth model about 4 m (Irish waters)",
+        "source": "INFOMAR", "country": "Irish waters", "maker": "INFOMAR, from multibeam sonar surveys",
+        "outline": [(-11.5, 51.0), (-11.5, 55.6), (-7.0, 55.6), (-5.4, 54.6), (-5.3, 53.2), (-6.0, 52.0), (-8.0, 51.3), (-10.0, 51.3), (-11.5, 51.0)],
+        "epsg": "utm", "res": 4.0, "kind": "image", "chunk_px": 1000, "parallel": 2, "seafloor": True, "valid": (-11000.0, 50.0),
+        "url": "https://infomar.marine.ie/arcgis/rest/services/INFOMAR/AllBathymetry/ImageServer",
+        "citation": "INFOMAR bathymetry, Geological Survey Ireland and the Marine Institute. CC BY 4.0.",
+        "landing_page": "https://www.infomar.ie",
+        "note": "The seafloor from multibeam sonar, as depth (negative height), about 4 m on the ground. Large wrecks show; small ones may not. Charts of cables and pipelines are not read here.",
+    },
     "us:noaa-bag": {
         "publisher": "NOAA (United States)",
         "title": "NOAA hydrographic surveys, BAG depth grids (US waters and the Great Lakes)",
         "source": "NOAA NCEI", "country": "US coastal waters and the Great Lakes", "maker": "NOAA's Office of Coast Survey",
         "outline": [(-126.0, 30.0), (-126.0, 49.5), (-95.0, 49.5), (-89.0, 48.5), (-82.0, 46.5), (-76.0, 44.5), (-66.0, 45.5), (-65.0, 40.0), (-75.0, 34.0), (-79.0, 24.0), (-98.0, 24.0), (-118.0, 31.0), (-126.0, 30.0)],
         "epsg": "utm", "res": 1.0, "kind": "image", "chunk_px": 1000, "parallel": 2, "seafloor": True, "valid": (-11000.0, 50.0),
+        "catalog": "noaa",
         "url": "https://gis.ngdc.noaa.gov/arcgis/rest/services/bag_bathymetry/ImageServer",
         "citation": "NOAA National Centers for Environmental Information, NOS hydrographic survey data (BAG). Public domain.",
         "landing_page": "https://www.ncei.noaa.gov/products/nos-hydrographic-survey",
@@ -295,7 +329,7 @@ def find(bbox: list[float]) -> list[dict]:
     out = []
     for key, d in NATIONAL.items():
         if _overlaps(bbox, d["outline"]):
-            if d.get("seafloor"):
+            if d.get("catalog") == "noaa":
                 try:
                     found = _surveys(d, bbox)
                 except Exception:  # the survey catalog being down should not hide the ground models
@@ -315,8 +349,10 @@ def find(bbox: list[float]) -> list[dict]:
                                      f"{TOKEN_HELP[d['token']]}, then paste it in Settings, Data and privacy."})
                 continue
             out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
-                        "citation": d["citation"], "ready_made_ground_model": True,
-                        "about": f"A bare-ground model for {d['country']} at {d['res']:g} m, built by {d.get('maker', 'the national agency')} from its lidar. "
+                        "citation": d["citation"], "ready_made_ground_model": True, **({"seafloor": True} if d.get("seafloor") else {}),
+                        "about": (f"A depth model of the seafloor in {d['country']} at about {d['res']:g} m, from {d.get('maker', 'sonar surveys')}. "
+                                  if d.get("seafloor") else
+                                  f"A bare-ground model for {d['country']} at {d['res']:g} m, built by {d.get('maker', 'the national agency')} from its lidar. ")
                                  + (d["note"] + " " if d.get("note") else "")
                                  + "The box is matched against a rough outline of the country; parts of it with no data come back as outside the survey."})
     return out
@@ -441,6 +477,13 @@ def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.nd
         if d.get("token"):
             params["token"] = access_key(d["token"])
         r = _client.get(d["url"], params=params)
+    elif d["kind"] == "wcs11":  # WCS 1.1, which names the grid by its origin and cell size
+        res, crs = d["res"], f"urn:ogc:def:crs:EPSG::{d['epsg']}"
+        r = _client.get(d["url"], params={
+            "service": "WCS", "version": "1.1.1", "request": "GetCoverage", "identifier": d["coverage"],
+            "BoundingBox": f"{x0},{y0},{x1},{y1},{crs}", "format": "image/geotiff", "GridBaseCRS": crs,
+            "GridCS": "urn:ogc:def:cs:OGC:0.0:Grid2dSquareCS", "GridType": "urn:ogc:def:method:WCS:1.1:2dGridIn2dCrs",
+            "GridOrigin": f"{x0},{y1}", "GridOffsets": f"{res},{-res}"})
     elif d["kind"] == "wms":
         res = d["res"]
         r = _client.get(d["url"], params={
@@ -513,8 +556,9 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
         dtm[outside] = float(np.nanmedian(dtm))
     how = {"source": d["source"], "citation": d["citation"], "ready_made_ground_model": True, "requests": len(parts)}
     if d.get("seafloor"):
-        found = _surveys(d, bbox)
         how["seafloor"] = True
+    if d.get("catalog") == "noaa":
+        found = _surveys(d, bbox)
         how["surveys"] = sorted({f"{x['survey']} ({x['res_m']:g} m)" for x in found})
         try:
             how["survey_details"] = survey_details(found)
