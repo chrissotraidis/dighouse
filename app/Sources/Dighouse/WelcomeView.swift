@@ -108,7 +108,7 @@ struct WelcomeView: View {
     private var how: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("How a search works").font(.system(size: 28 * Theme.scale, weight: .bold))
-            Text("Six sets of tools, used in this order. Watch, steer by typing, or leave a run and review it later.")
+            Text("Six sets of tools, used in this order. Ask for a search and the agent runs them all, then reports back. Watch, steer by typing, or come back later.")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(Array(ToolGuide.packs.enumerated()), id: \.element.id) { index, pack in
@@ -138,7 +138,7 @@ struct WelcomeView: View {
     private var first: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Your first project").font(.system(size: 28 * Theme.scale, weight: .bold))
-            Text("A project is a folder: the question, the area, and everything the agents find. A published place makes a good first run, because it shows what a real site looks like.")
+            Text("A project is a folder in ~/Dighouse with its own history: the question, the area, and everything the agents find. A published place makes a good first run, because it shows what a real site looks like.")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 8) {
                 ForEach(StartingPoints.all + [StartingPoints.own]) { option in

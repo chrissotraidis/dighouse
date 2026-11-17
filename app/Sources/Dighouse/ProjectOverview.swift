@@ -76,6 +76,15 @@ struct ProjectOverview: View {
         var coach: Tutorial.Target? = nil
     }
 
+    /// A provider's refusal in one plain sentence: the part a person can act on, without codes and links.
+    static func shortReason(_ text: String) -> String {
+        var t = text
+        if let r = t.range(of: "Provider error ") { t = String(t[r.upperBound...]) }
+        if let r = t.range(of: ", url") { t = String(t[..<r.lowerBound]) }
+        t = t.replacingOccurrences(of: #"^\d{3}:?\s*"#, with: "", options: .regularExpression)
+        return String(t.prefix(220)).trimmingCharacters(in: .whitespaces)
+    }
+
     /// What one step of a search does, in words a newcomer has, and what is left after it.
     static func step(_ id: String, tiles: Int, finds: Int) -> (title: String, what: String, after: String) {
         let f = "\(finds) find\(finds == 1 ? "" : "s")"
@@ -119,6 +128,14 @@ struct ProjectOverview: View {
                                           : "Look at each find and decide what it is.",
                           after: "About a minute each. Nothing is final until you decide.",
                           icon: "dig.brush", label: "Decide \(finds)") { app.reviewing = true }
+        // The second model refuses: asking again would fail the same way, so the card says why and offers the way out.
+        if let refusal = app.refusedSecondModel, open.contains(where: { $0.checks["second_look"] == nil }), app.chat.live.isEmpty,
+           app.nextStep == nil || app.nextStep?.id == "decide" {
+            return Next(title: "The second model is refused", what: "\(app.secondModelName) answered the last request with: \(Self.shortReason(refusal))",
+                        after: "Choose a model from a different maker in Settings, then ask again. Or decide without a second opinion.",
+                        icon: "person.2", label: "Choose another model", action: { app.settingsSection = .models; app.show(.settings) },
+                        other: (decide.label, "Go to the review without a second opinion.", decide.action))
+        }
         if let flow = app.nextStep {
             let unchecked = open.filter { $0.checks["section"] == nil || $0.checks["modern"] == nil }.count
             let words = Self.step(flow.id, tiles: store.status.unscreened, finds: unchecked)
@@ -340,7 +357,9 @@ private struct ProjectHistory: View {
                 Button("Close") { app.publishing = nil }.buttonStyle(SecondaryButton())
             case .confirm(let name):
                 Text("Publish privately to GitHub?").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                Text("This makes a private repository called \(name) on your GitHub account and sends the project's history: the "
+                Text("This makes a private repository called \(name) on your GitHub account"
+                     + (name == URL(fileURLWithPath: root).lastPathComponent ? "" : " (the folder's own name is already taken there)")
+                     + " and sends the project's history: the "
                      + "question, the method, the research record, the finds, notes, sources and reports. private/ and data/, which "
                      + "hold the locations and the downloads, stay on this Mac. Nobody else can see it unless you change that on GitHub.")
                     .foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)

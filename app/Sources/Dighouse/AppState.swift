@@ -114,7 +114,20 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(recentModels, forKey: "recentModels") }
     }
     @Published var secondModelID: String? = UserDefaults.standard.string(forKey: "secondModel") {
-        didSet { UserDefaults.standard.set(secondModelID, forKey: "secondModel") }
+        didSet {
+            UserDefaults.standard.set(secondModelID, forKey: "secondModel")
+            if secondModelID != oldValue { secondModelRefusal = nil }
+        }
+    }
+    /// The second model's provider refused the last request (an account or access problem, not a passing one): the model
+    /// and the reason, so Home, the project and Settings can say so instead of offering a step that will fail again.
+    @Published var secondModelRefusal: [String: String]? = UserDefaults.standard.dictionary(forKey: "secondModelRefused") as? [String: String] {
+        didSet { UserDefaults.standard.set(secondModelRefusal, forKey: "secondModelRefused") }
+    }
+    /// The refusal, when it is for the second model chosen now.
+    var refusedSecondModel: String? {
+        guard let r = secondModelRefusal, r["model"] == secondModelID else { return nil }
+        return r["reason"]
     }
     @Published var effort: String? = UserDefaults.standard.string(forKey: "effort") {
         didSet { UserDefaults.standard.set(effort, forKey: "effort") }
@@ -225,6 +238,8 @@ final class AppState: ObservableObject {
                     self.secondLookProblem[candidate] = EngineError.plain(failure)
                     self.secondLookQueue = []
                     self.recordSecondLookFailure(candidate, EngineError.plain(failure))
+                } else {
+                    self.secondModelRefusal = nil   // it answered, so whatever stopped it before is over
                 }
                 self.store.reloadIfChanged()
                 if let path = self.store.current?.path { Task { @MainActor in await self.updateRecord(of: path) } }
@@ -285,6 +300,7 @@ final class AppState: ObservableObject {
     /// Open a project, and with a chat given, show that chat once the project's chat list is open.
     func open(_ project: ProjectRef, showing thread: ChatThread? = nil) {
         sidebarPeek = false
+        if route == .home { chat.draft = "" }   // what was typed on Home was for Home, not for this project's chat
         store.open(project)
         route = .chat
         tab = .map
@@ -577,11 +593,23 @@ final class AppState: ObservableObject {
             return set(push.code == 0 ? .done("The new history is on GitHub. private/ and data/ stayed on this Mac.")
                                       : .failed(push.out.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
-        guard githubTool != nil else {
+        guard let gh = githubTool else {
             return set(.failed("Publishing needs GitHub's command-line tool, gh. Install it from cli.github.com, then run "
                                + "\"gh auth login\" in Terminal once."))
         }
-        set(.confirm(name: URL(fileURLWithPath: path).lastPathComponent))
+        // Signed in, and a name not already used on the account, so the confirmation names the repository it will make.
+        let user = await Shell.run(gh, ["api", "user", "--jq", ".login"], env: publishEnv)
+        let login = user.out.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard user.code == 0, !login.isEmpty, !login.contains(" ") else {
+            return set(.failed("gh is not signed in to GitHub on this Mac. Run \"gh auth login\" in Terminal once, then press Publish again."))
+        }
+        let base = URL(fileURLWithPath: path).lastPathComponent
+        var name = base, n = 2
+        while n < 50, await Shell.run(gh, ["repo", "view", "\(login)/\(name)", "--json", "name"], env: publishEnv).code == 0 {
+            name = "\(base)-\(n)"
+            n += 1
+        }
+        set(.confirm(name: name))
     }
 
     /// Open the project's overview, where publishing shows its panel, and start: from /publish or the sidebar.
@@ -647,6 +675,7 @@ final class AppState: ObservableObject {
             return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to check"))
         case "second":
             let n = open.filter { $0.checks["second_look"] == nil }.count
+            if n > 0, refusedSecondModel != nil { return (false, "Second model refused") }
             return (n > 0 && secondModelID != nil, all.isEmpty ? "Needs finds" : secondModelID == nil ? "Choose a second model" : count(n, "to ask"))
         case "prior":
             let n = open.filter { $0.sources.isEmpty }.count
@@ -733,8 +762,23 @@ final class AppState: ObservableObject {
                 }
                 // A square 600 m across around the place: nine tiles or so, which a first search finishes in minutes.
                 let north = 300 / 110_540.0, east = 300 / (111_320.0 * max(cos(lat * .pi / 180), 0.2))
+                let box = [lon - east, lat - north, lon + east, lat + north]
+                // Make sure open data covers the place before a project is made and the model spends time on it.
+                let data = Engine.rows(try await engine.callTool("find_data", ["west": box[0], "south": box[1], "east": box[2], "north": box[3]]))
+                let usable = data.filter { $0["id"] != nil && $0["needs_token"] as? Bool != true }
+                if usable.isEmpty {
+                    let place = (first["name"] as? String).map { String($0.split(separator: ",").prefix(2).joined(separator: ",")) } ?? name
+                    if let errors = data.compactMap({ $0["errors"] as? [String] }).first, !errors.isEmpty {
+                        placeProblem = "The open catalogs did not all answer, so Dighouse could not tell what covers \(place). Try again in a minute."
+                    } else if data.contains(where: { $0["needs_token"] as? Bool == true }) {
+                        placeProblem = "\(place) is covered only by data that needs a free token. Paste it in Settings, Data and privacy, then try again."
+                    } else {
+                        placeProblem = "No open lidar or sonar Dighouse reads covers \(place). How it works, on Home, shows where it can look; you can also give the agent your own ground model."
+                    }
+                    return
+                }
                 try await createProject(name: name, question: "What built features show in the ground at \(name), and which of them are already published?",
-                                        box: [lon - east, lat - north, lon + east, lat + north], fetch: false)
+                                        box: box, fetch: false)
                 chat.draft = ""
                 try? await Task.sleep(for: .milliseconds(400))   // let the project's chat list open first
                 run(flow)
@@ -753,7 +797,7 @@ final class AppState: ObservableObject {
         }
         store.reloadIfChanged()
         // The second look has to come from a different model, so Dighouse asks for it itself, then writes the report.
-        if store.current?.path == path, secondModelID != nil, let flow = ToolGuide.workflows.first(where: { $0.id == "second" }), state(of: flow).ready {
+        if store.current?.path == path, secondModelID != nil, refusedSecondModel == nil, let flow = ToolGuide.workflows.first(where: { $0.id == "second" }), state(of: flow).ready {
             reportAfterLooks = path
             run(flow)
         } else {
@@ -869,6 +913,11 @@ final class AppState: ObservableObject {
     /// Ask a different model for an independent opinion on a candidate, in its own short conversation.
     /// A second opinion that could not be had goes on the project's record, so the report says it was asked for.
     private func recordSecondLookFailure(_ candidate: String, _ reason: String) {
+        // A refusal by the provider will happen again on the next find, so remember it until the person chooses another model.
+        let lower = reason.lowercased()
+        if let id = secondModelID, ["403", "401", "permission", "disabled", "forbidden", "not found", "unauthorized", "access denied"].contains(where: lower.contains) {
+            secondModelRefusal = ["model": id, "reason": String(reason.prefix(300))]
+        }
         guard let path = store.current?.path else { return }
         let model = secondModelName
         Task { @MainActor in

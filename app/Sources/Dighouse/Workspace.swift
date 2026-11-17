@@ -655,7 +655,7 @@ struct RecordsView: View {
             }
             Hairline()
             CheckRow(done: look?["agrees"] as? Bool, title: "Second opinion",
-                     detail: app.secondLookProblem[c.id].map { "The second opinion did not run. " + $0 }
+                     detail: app.secondLookProblem[c.id].map { "The second opinion did not run: " + ProjectOverview.shortReason($0) + " Choose another model in Settings, Models." }
                         ?? look.map { "\($0["model"] as? String ?? ""): \($0["note"] as? String ?? "")" }
                         ?? (c.checks["second_look_tried"] as? JSON).map { "\($0["model"] as? String ?? "The second model") could not answer: \($0["reason"] as? String ?? ""). Choose another in Settings, Models." }
                         ?? "A different model looks at the tile without seeing the first opinion.") {

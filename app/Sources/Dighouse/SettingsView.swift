@@ -224,6 +224,9 @@ private struct ModelSettings: View {
         var out: [String] = []
         if let m = app.model, !m.readsImages { out.append("\(m.name) cannot read images, so it cannot look at tiles. Choose a model that reads images.") }
         if app.secondModelID == nil { out.append("No second opinion model is chosen, so finds cannot get an independent second opinion.") }
+        if let refusal = app.refusedSecondModel {
+            out.append("\(app.secondModelName) refused the last second opinion: \(ProjectOverview.shortReason(refusal)) Choose another model.")
+        }
         if app.secondModelID != nil, app.secondModelID == app.model?.id { out.append("The second opinion uses the same model as the agent. A different model gives a truly independent opinion.") }
         else if let a = maker(app.model?.id), let b = maker(app.secondModelID), a == b {
             out.append("Both models come from \(a). A model from a different maker gives a more independent second opinion.")

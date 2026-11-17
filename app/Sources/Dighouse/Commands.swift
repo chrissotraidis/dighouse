@@ -125,6 +125,10 @@ extension AppState {
     /// A command that cannot run says so in the chat, with what to do, instead of doing nothing.
     func explainUnavailable(_ c: SlashCommand, _ reason: String) {
         route = .chat
+        if reason == "Second model refused" {
+            chat.note("\(c.name) can't run: \(secondModelName) refused the last second opinion. Choose another model in Settings, Models, then try again.")
+            return
+        }
         if reason == "This chat is already in a project" {
             chat.note("This chat is already in a project, so \(c.name) has nothing to do. To start another project, use /new-project.")
             return

@@ -53,6 +53,7 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 - **P6, explained in the folder.** PROJECT.md's "How this project is kept", added to older projects when the record is rebuilt. A plain Codex session read a project correctly from it.
 - **After the loop (polish):** "What should I research?" ends with an offer card rather than making the project itself, and a project made from a chat starts on its ground in that chat, as any new project does. The agent's own "Project created" card brings its chat along. A moved chat named after a workflow is renamed "Choosing <project>". The agent writes a search report only in a whole search. The stage strip no longer steps back. Coordinates are taken out of shared notes without breaking DOIs and links.
 - **2026-11-17:** Home has a "How it works" section (how a search runs on its own, what a project writes down, where Dighouse can look). Asking in a chat to search a place makes the agent offer a card, Make it a project and search, which makes the project and runs Find and report back (`search_now` on `suggest_project`); checked end to end at Miamisburg Mound, which ended with a search report. A refused second opinion goes on the record (`second_look_failed`), so the report says it was asked and what to do. The stage strip follows the project's state until every tile is looked at. Czechia, Canada and INFOMAR added, each with a live test; Poland's WCS (`mapy.geoportal.gov.pl`) never answered from this Mac.
+- **2026-11-17, later:** a second model that its provider refuses (403, access denied, disabled) is remembered (`secondModelRefused` default) until another is chosen or it answers again. The project card then says "The second model is refused" with the provider's reason and Choose another model; the step leaves the header, `/second-opinion` explains, Settings, Models warns, and a whole search skips the second opinion and writes its report. Find and report back from a typed place checks open data first: with none, it says so and makes no project. Publishing checks that gh is signed in and picks a free repository name (dighouse-2 when dighouse is taken), named in the confirmation. A draft typed on Home no longer follows you into a project.
 - **P7, goals and commands.** A running goal shows a bar with Stop at the top of its chat. A command typed in full is the one Return runs, even when it can't run (it then says why), and an unknown /word gets an answer.
 
 ## What the fifth loop added
@@ -91,7 +92,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 
 ## Not verified
 
-- **Publishing** when gh is missing or signed out, when the repository name is taken on GitHub, or when gh is set to SSH. Only the first is handled in words; the others show gh's own message.
+- **Publishing** with gh signed out (handled in words, not seen) or set to SSH. A taken name was checked: the confirmation offered dighouse-2.
 - **The GitHub folder in iCloud or missing,** in the app. The refusal is covered by the offline test only.
 - **A moved chat whose archived original is deleted.** The copy reads its earlier turns from the original, so deleting archived chats in Codex would cut that history.
 - **A second opinion** in loop 5, for the reason above. It was last seen working in loop 4.
@@ -99,7 +100,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 - **The "Nothing here looked built" card** on a project where no tile was marked, and Widen the search.
 - **Reduce Motion with the Mac's own setting.** The indicator was checked with SwiftUI's flag outside the app. The mark in the sidebar and the tutorial's ring were not checked at all.
 - **A handover between two real Macs,** and a receiver who then fetches the ground for the same place.
-- **Find and report back** with usage running out part-way, and with a place name that cannot be found. (A whole search outside the United States was seen in loop 5, at Borre in Norway.)
+- **Find and report back** with usage running out part-way. (A name that cannot be found, and a place with no open data, were checked on 2026-11-17.) (A whole search outside the United States was seen in loop 5, at Borre in Norway.)
 - **The whole tutorial** after the words changed. Its rings were checked on two steps; it was not run from start to end, nor when the agent marks nothing.
 - **Codex's browser plugin inside Dighouse,** most models in the roster, and a provider that refuses an effort step outright.
 - **Turning the network off in the middle of a download.**
@@ -115,7 +116,6 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 - **The national services are slow.** England rate-limits; Norway and Estonia take about 15 seconds for a quarter of a square km.
 - **The National Register** withholds archaeological site locations, so it adds almost nothing near mound sites.
 - **A path within 150 m counts as a modern feature nearby.** The map check says what is there ("paths or roads, buildings"), and the person judges; it is not a verdict.
-- **The welcome guide** still has more words than the rest of the app, and was not gone over in loop 5.
 
 ## What Chris has asked for that is not built
 
@@ -141,7 +141,7 @@ open -n build/Dighouse.app --args -ApplePersistenceIgnoreState YES
 - **Pictures:** `screencapture -o -x -l<window id>` gives the window alone, with no Computer Use pill and no pointer; bring Dighouse to the front first. Computer Use's own screenshots include both.
 - **Empty settings for a first-run check:** export the settings, `defaults delete com.chrissotraidis.dighouse`, write back the window frames, `model` and a scratch `projectsHome`, run the check, then delete and import the export.
 - The engine takes about four seconds to list one folder's chats on this Mac. Chat lists are cached in defaults under `chatLists`.
-- Defaults keys the app uses: `look`, `textSize`, `chatWidth`, `sidebarWidth`, `layout`, `model`, `recentModels`, `secondModel`, `effort`, `toolboxTab`, `tourStage`, `startKind`, `mapStyle`, `toolServers`, `projects`, `currentProject`, `projectsHome`, `githubHome` (tests only), `userName`, `onboarded`, `chatLists`, `movedChats`, and the tutorial's `tutorialOn`, `tutorialProject`, `tutorialReached`, `tutorialDone`.
+- Defaults keys the app uses: `look`, `textSize`, `chatWidth`, `sidebarWidth`, `layout`, `model`, `recentModels`, `secondModel`, `effort`, `toolboxTab`, `tourStage`, `startKind`, `mapStyle`, `toolServers`, `projects`, `currentProject`, `projectsHome`, `githubHome` (tests only), `userName`, `onboarded`, `chatLists`, `movedChats`, `secondModelRefused`, and the tutorial's `tutorialOn`, `tutorialProject`, `tutorialReached`, `tutorialDone`.
 - **Checking project creation without touching Chris's folders:** launch with `-projects '<5b5d>' -currentProject '' -projectsHome $HOME/dighouse-ui-test -githubHome $HOME/dighouse-ui-test-github` (both scratch folders, from loop 8). To list chosen test projects, pass `-projects "<hex of the JSON list>"`. Export the settings first and import them afterwards, then delete `projectsHome`, `githubHome` and `movedChats` if present.
 - **Projects on Chris's Mac:** `~/Documents/Dighouse` holds his own (Angel Mounds, Maiden Castle, Mound City Group, Perry Mesa, Serpent Mound, Middle Usumacinta) and three test projects (`mound-city-review-test`, `serpent-mound-goal-run`, `fort-ancient-ohio`). The Cahokia control run is in `~/Documents/Codex/2026-11-12/vb/work/dighouse-projects`. Scratch projects from loops 4 and 5 are under `~/Documents/Codex/2026-11-14/dighouse-loop4/work` and `~/Documents/Codex/2026-11-14/dighouse-loop5/work` (a finished Mound City search, and a Borre search in Norway that waits for decisions). They are not in his list; open them with File, then Open Project Folder.
 - Pictures in `app/Resources/tour` and `app/Resources/starts` were made with the tools from open data. Keep it that way, and say in the caption where each comes from.
