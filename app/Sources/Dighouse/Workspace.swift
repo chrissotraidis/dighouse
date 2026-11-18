@@ -827,7 +827,7 @@ struct NotesView: View {
 
     var body: some View {
         let list = files(part)
-        let file = picked.flatMap { list.contains($0) ? $0 : nil } ?? list.first
+        let file = picked.flatMap { list.contains($0) ? $0 : nil } ?? app.notesFile.flatMap { list.contains($0) ? $0 : nil } ?? list.first
         let root = store.current?.path ?? ""
         VStack(spacing: 0) {
             HStack(spacing: 8) {
@@ -862,6 +862,7 @@ struct NotesView: View {
                     // The record introduces itself, so it needs no line from the app above it.
                     if part != "record" {
                         Text(part == "runs" ? "What each run did and found, newest first."
+                             : file == "PROJECT.md" ? "The project's question, why this area, the rules agents follow, and how the folder is kept."
                              : part == "method" ? "How searches in this project are done. The agent reads this before every run and follows it; edit it to change the method."
                              : "The running log the tools write as work happens, the sources read, and report drafts.")
                             .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)

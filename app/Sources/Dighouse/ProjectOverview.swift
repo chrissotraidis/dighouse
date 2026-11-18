@@ -280,20 +280,69 @@ struct ProjectOverview: View {
 /// A suggestion the review can make from the record itself, when the agent left none.
 func Review_hasSuggestion(_ c: Candidate) -> Bool { ReviewSheet.suggestion(for: c) != nil }
 
-/// The project's history in its own repository: the last five changes, where the folder is, and publishing it.
+/// The project's folder: what each of its documents holds, with live counts, then its history in its own repository
+/// (the last five changes) and publishing it.
 private struct ProjectHistory: View {
     let root: String
     let refresh: String
     @EnvironmentObject var app: AppState
     @State private var changes: [(what: String, when: String)] = []
     @State private var remote = ""
+    @State private var counts: [String: Int] = [:]
+    @State private var recordUpdated: Date?
+
+    private struct Doc: Identifiable {
+        let name: String, what: String, detail: String
+        let open: () -> Void
+        var id: String { name }
+    }
+
+    private var docs: [Doc] {
+        func n(_ key: String, _ one: String, _ many: String) -> String {
+            let c = counts[key] ?? 0
+            return c == 0 ? "none yet" : "\(c) \(c == 1 ? one : many)"
+        }
+        let updated = recordUpdated.map { "updated " + RelativeDateTimeFormatter().localizedString(for: $0, relativeTo: Date()) } ?? "not written yet"
+        return [
+            Doc(name: "PROJECT.md", what: "The question, why this area, and how the folder is kept", detail: "") { app.showNotes("method", file: "PROJECT.md") },
+            Doc(name: "METHODOLOGY.md", what: "How searches are done here. The agent follows it", detail: "") { app.showNotes("method", file: "METHODOLOGY.md") },
+            Doc(name: "RESEARCH.md", what: "Everything looked at, read and decided, and what is left", detail: updated) { app.showNotes("record") },
+            Doc(name: "candidates/", what: "A page for each find, with its pictures, checks and decision", detail: n("finds", "find", "finds")) { app.showRecords() },
+            Doc(name: "notes/", what: "A summary of each run, and a dated log of every step", detail: n("runs", "run", "runs")) { app.showNotes("runs") },
+            Doc(name: "sources/", what: "Every source, read or could not be opened", detail: n("sources", "source", "sources")) { app.tab = .sources; app.route = .chat; if app.layout == .chat { app.layout = .split } },
+            Doc(name: "reports/", what: "The search report, and drafts only you send", detail: n("reports", "report", "reports")) {
+                if let report = app.latestReport { app.reportShown = report } else { app.showNotes("log") }
+            },
+        ]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("History").font(.system(size: 14 * Theme.scale, weight: .semibold))
-            Text("The project is its own folder with its own history, at \(Paths.short(root)).")
+            Text("The project folder").font(.system(size: 14 * Theme.scale, weight: .semibold))
+            Text("Everything this project does is written here, at \(Paths.short(root)), with its own history. Anyone, person or agent, can open the folder and carry on.")
                 .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                ForEach(Array(docs.enumerated()), id: \.element.id) { i, doc in
+                    if i > 0 { Hairline() }
+                    Button(action: doc.open) {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(doc.name).font(.system(size: 12.5 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.tan)
+                                .frame(width: 128, alignment: .leading)
+                            Text(doc.what).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.85))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            Text(doc.detail).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                            Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 8).contentShape(Rectangle())
+                    }
+                    .buttonStyle(RowButton())
+                    .help("Open \(doc.name) in the workspace")
+                }
+            }
+            .panel()
             if !changes.isEmpty {
+                Text("History").font(.system(size: 12.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim).padding(.top, 6)
                 VStack(spacing: 0) {
                     ForEach(Array(changes.enumerated()), id: \.offset) { i, change in
                         if i > 0 { Hairline() }
@@ -382,6 +431,18 @@ private struct ProjectHistory: View {
     }
 
     private func load() async {
+        let fm = FileManager.default
+        func list(_ dir: String) -> [String] { (try? fm.contentsOfDirectory(atPath: root + "/" + dir)) ?? [] }
+        let read = (try? String(contentsOfFile: root + "/sources/read-log.md", encoding: .utf8)) ?? ""
+        counts = ["finds": list("candidates").filter { $0.hasSuffix(".md") }.count,
+                  "runs": list("notes").filter { $0.contains("-run-") && $0.hasSuffix(".md") }.count,
+                  // The log has a line for each find a source was logged against; count each source once, as the Sources tab does.
+                  "sources": Set(read.split(separator: "\n").filter { $0.hasPrefix("- ") }.map { line -> String in
+                      let parts = line.components(separatedBy: " · ")
+                      return parts.count > 3 ? parts[3] : String(line)
+                  }).count,
+                  "reports": list("reports").filter { $0.hasSuffix(".md") }.count]
+        recordUpdated = FileInfo.modified(root + "/RESEARCH.md")
         let log = await Shell.run("/usr/bin/git", ["-C", root, "log", "-5", "--format=%s%x1f%cr"])
         changes = log.code == 0 ? log.out.split(separator: "\n").compactMap { line in
             let parts = line.split(separator: "\u{1f}", maxSplits: 1).map(String.init)

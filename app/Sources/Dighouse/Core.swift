@@ -156,6 +156,47 @@ enum Paths {
         return dir
     }
 
+    /// The engine's own folder. Codex saves every chat in its home folder, and the Codex app lists that folder, so with
+    /// the shared ~/.codex Dighouse's chats filled the Codex sidebar. Here they stay in Dighouse.
+    static var codexHome: URL {
+        let dir = support.appendingPathComponent("Codex")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// Set up the engine's folder before it starts. The sign-in is shared with Codex through a link to ~/.codex/auth.json,
+    /// so signing in once (codex login) is enough and a refreshed sign-in serves both. From ~/.codex/config.toml it takes
+    /// only how models are reached (the base URL, the model list, providers and profiles) and the plugins the person
+    /// installed, not Codex's own projects, hooks or tool servers. Run at every launch, so a change to the router carries over.
+    static func prepareCodexHome() {
+        let fm = FileManager.default
+        let codex = fm.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
+        let home = codexHome
+        for name in ["auth.json", "plugins"] {
+            let source = codex.appendingPathComponent(name), link = home.appendingPathComponent(name)
+            let present = (try? fm.attributesOfItem(atPath: link.path)) != nil || (try? fm.destinationOfSymbolicLink(atPath: link.path)) != nil
+            if fm.fileExists(atPath: source.path), !present { try? fm.createSymbolicLink(at: link, withDestinationURL: source) }
+        }
+        guard let text = try? String(contentsOf: codex.appendingPathComponent("config.toml"), encoding: .utf8) else { return }
+        let keep = ["model_providers", "profiles", "shell_environment_policy", "features", "plugins", "marketplaces"]
+        var out = ["# Written by Dighouse at each launch from ~/.codex/config.toml: how models are reached, and installed plugins.", ""]
+        var table: String? = nil
+        for line in text.components(separatedBy: "\n") {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            if t.hasPrefix("["), t.hasSuffix("]") {
+                table = t.trimmingCharacters(in: CharacterSet(charactersIn: "[] ")).replacingOccurrences(of: "\"", with: "")
+            }
+            if let table {
+                if keep.contains(where: { table == $0 || table.hasPrefix($0 + ".") }) { out.append(line) }
+            } else if !(t.hasPrefix("notify") || t.hasPrefix("model ") || t.hasPrefix("model=")) {
+                out.append(line)   // the top of the file: the base URL and the model list; Dighouse chooses the model itself
+            }
+        }
+        let written = out.joined(separator: "\n") + "\n"
+        let target = home.appendingPathComponent("config.toml")
+        if (try? String(contentsOf: target, encoding: .utf8)) != written { try? written.write(to: target, atomically: true, encoding: .utf8) }
+    }
+
     /// Folders that macOS keeps in iCloud when Desktop and Documents sync is on. Files there go offline, and every read
     /// of one waits for a download, so Dighouse offers to move projects out of them.
     static var cloudFolders: [String] {

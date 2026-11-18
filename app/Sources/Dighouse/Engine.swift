@@ -110,6 +110,9 @@ final class Engine: ObservableObject {
         p.arguments = arguments
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = path
+        // The engine keeps its chats in Dighouse's own folder, so they do not appear in the Codex app.
+        Paths.prepareCodexHome()
+        env["CODEX_HOME"] = Paths.codexHome.path
         p.environment = env
         let stdin = Pipe(), stdout = Pipe()
         p.standardInput = stdin

@@ -71,6 +71,8 @@ final class AppState: ObservableObject {
     }
     /// Which part of the Notes tab is showing: record, runs, method or log.
     @Published var notesPart = "record"
+    /// A file to show first in the Notes tab, such as PROJECT.md from the project's folder list.
+    @Published var notesFile: String?
     /// The window's size, so sheets fit inside it.
     @Published var windowSize = CGSize(width: 1380, height: 880)
     /// Whether the one-at-a-time review of candidates is open.
@@ -324,8 +326,9 @@ final class AppState: ObservableObject {
         }
     }
 
-    func showNotes(_ part: String) {
+    func showNotes(_ part: String, file: String? = nil) {
         notesPart = part
+        notesFile = file
         tab = .notes
         route = .chat
         if layout == .chat { layout = .split }
