@@ -53,6 +53,10 @@ Chris could not see where to start: the Home cards, the Toolbox's coverage map a
 - **"Pick a place on the map"** is the `choose` workflow, which now opens New project with no chat, from the empty chat, the Workflows menu and the Toolbox's first stage. The guide's "Help me choose" became "Suggest a place" (the research workflow).
 - Checked in the test copy: Home map to New project; world to Ohio to an area named "Bowling Green area" with USGS 3DEP listed; a spot in India with no data; the Toolbox's first stage; the empty chat's card. Create was not pressed.
 
+### Home, refined (2026-11-19)
+
+Chris found Home long and the copy weak ("You decide what each one is"), and the places to start were missed at the bottom. Home is now: the hero with two plain sentences; four ways in on one row (Pick a place, Suggest a place, Test it blind, Open a project); Places to start right below, four known sites (Cahokia, Newark, Lauske, Thunder Bay) with Show all, and Open surveys as the second tab; Where you can search; How it works. "Why not just ask ChatGPT?" is gone from Home.
+
 ## What loop 8 added (2026-11-16)
 
 - **P1, own folder.** Every way of starting a project makes a new folder in `~/Dighouse` (`projects_home()`, `new_folder()` in project.py) with git and a first commit. A taken name gets -2, -3. The engine starts the tool server with a filtered environment, so the folders reach it through `mcp_servers.dighouse.env` in `Engine.swift`.

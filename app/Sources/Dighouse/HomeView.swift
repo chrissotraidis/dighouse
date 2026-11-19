@@ -85,9 +85,11 @@ struct HomeView: View {
     @EnvironmentObject var store: ProjectStore
     @EnvironmentObject var engine: Engine
 
-    private let cards = [GridItem(.adaptive(minimum: 230), spacing: 12, alignment: .top)]
-    private let paths = [GridItem(.adaptive(minimum: 250), spacing: 12, alignment: .top)]
-    @AppStorage("startKind") private var startKind = 0
+    private let cards = [GridItem(.adaptive(minimum: 200), spacing: 12, alignment: .top)]
+    private let paths = [GridItem(.adaptive(minimum: 190), spacing: 12, alignment: .top)]
+    /// 0 shows the known sites, 1 the open surveys.
+    @AppStorage("startTab") private var startKind = 0
+    @State private var allSites = false
 
     var body: some View {
         ScrollView {
@@ -105,25 +107,32 @@ struct HomeView: View {
                         .arrives(1)
                 }
                 LazyVGrid(columns: paths, spacing: 12) {
-                    PathCard(icon: "map", title: "Pick a place on the map",
-                             text: "See where open lidar reaches, click a spot, and start a project there.") {
+                    StartChoice(icon: "map", title: "Pick a place",
+                                text: "Click anywhere on the map with open lidar and start a search there.") {
                         app.startProject()
                     }
-                    PathCard(icon: "sparkle.magnifyingglass", title: "Suggest a place for me",
-                             text: "The agent reads the open archives and proposes three searches worth doing.") {
+                    .help("Opens New project on a map that shades where open lidar reaches.")
+                    StartChoice(icon: "sparkle.magnifyingglass", title: "Suggest a place",
+                                text: "The agent weighs open data against what is on record and proposes three searches.") {
                         if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
                     }
-                    PathCard(icon: "dig.grid", title: "Test it on a known site",
-                             text: "It looks at a famous site without being told which, then is scored against what is published.") {
+                    .help("Starts a chat with your AI model.")
+                    StartChoice(icon: "dig.grid", title: "Test it blind",
+                                text: "It searches a famous site without being told which, then gets a score.") {
                         app.testPicking = true
                     }
+                    .help("Choose a site; the agent's finds are scored against the published features.")
+                    StartChoice(icon: "folder", title: "Open a project",
+                                text: "Carry on from a project folder, yours or one someone shared.") {
+                        app.chooseProjectFolder()
+                    }
+                    .help("A project is a folder of Markdown records, so it opens like any folder.")
                 }
                 .padding(.top, -8)
                 .arrives(1)
+                starts.arrives(2)
                 WhereItReaches().arrives(2)
-                HowItWorks().arrives(2)
-                CompareBoard().arrives(2)
-                starts.arrives(3)
+                HowItWorks().arrives(3)
             }
             .padding(.horizontal, 32).padding(.top, 34).padding(.bottom, 40)
             .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity)
@@ -157,7 +166,7 @@ struct HomeView: View {
             }
             Text("Help find what the forest is hiding.").font(.system(size: 36 * Theme.scale, weight: .bold))
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Dighouse is a free, open tool for searching public lidar, the laser scans that map the ground under the trees, for places people built. AI agents do the patient work and check every find. You decide what each one is.")
+            Text("Dighouse searches public lidar, laser scans that see the ground through the trees, for mounds, walls and earthworks. An AI agent does the slow work and writes down every step, so you can check it.")
                 .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.78)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
             Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton()).padding(.top, 2)
         }
@@ -171,32 +180,32 @@ struct HomeView: View {
         }
     }
 
-    /// Where a first project can begin: surveys that are still worth searching, or known sites to learn on.
+    /// Where a first project can begin: known sites to learn on, or open surveys still worth searching.
     private var starts: some View {
-        PageSection(title: "Places to start") {
-            HStack(spacing: 4) {
-                HStack(spacing: 2) {
-                    startTab(0, "Open surveys to search")
-                    startTab(1, "Known sites to learn on")
-                }
-                .padding(3)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.ink.opacity(0.06)))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
-                Spacer()
-                Button { app.chooseProjectFolder() } label: { Label("Open a project folder…", systemImage: "folder") }
-                    .buttonStyle(SecondaryButton())
-                    .help("Someone shared a project with you? A project is a folder of Markdown records, so it opens like any folder.")
+        PageSection(title: "Places to start",
+                    caption: startKind == 0 ? "Real earthworks, a ring fort and a wreck, each with open data ready. One press sets up the project."
+                        : "Lidar flown for archaeology and published openly, from OpenTopography's live catalog.") {
+            HStack(spacing: 2) {
+                startTab(0, "Known sites")
+                startTab(1, "Open surveys")
             }
+            .padding(3)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.ink.opacity(0.06)))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
             if startKind == 0 {
-                Text("Lidar flown for archaeology and published openly, read from OpenTopography's live catalog. Dighouse fetched each one and built its bare ground first.")
-                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                surveys
-            } else {
-                Text("Nine published sites, one of them a wreck on a lake bed, and one strip of Yucatán forest, each with open data ready to fetch. A run on a known site shows what real earthworks look like, and whether the agents find them again.")
-                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                // A mix first: earthworks, a ring fort in Saxony and a wreck, then the rest.
+                let lead = ["cahokia", "newark", "lauske", "thunder-bay"]
+                let ordered = StartingPoints.all.filter { lead.contains($0.id) } + StartingPoints.all.filter { !lead.contains($0.id) }
+                let shown = allSites ? ordered : Array(ordered.prefix(4))
                 LazyVGrid(columns: cards, alignment: .leading, spacing: 12) {
-                    ForEach(StartingPoints.all) { point in StartCard(point: point) { app.startProject(from: point) } }
+                    ForEach(shown) { point in StartCard(point: point, compact: true) { app.startProject(from: point) } }
                 }
+                Button(allSites ? "Show fewer" : "Show all \(StartingPoints.all.count) sites") {
+                    withAnimation(.easeOut(duration: 0.2)) { allSites.toggle() }
+                }
+                .buttonStyle(SecondaryButton())
+            } else {
+                surveys
             }
         }
     }
@@ -367,7 +376,7 @@ private struct HowItWorks: View {
                 }
             }
             line("It runs as a goal: the agent takes turn after turn until the report is written, about 5 to 15 minutes for a small area. A bar at the top of the chat shows it, with Stop.")
-            line("Then a model from a different maker gives each find a second opinion. What each find is stays your decision.")
+            line("Then a model from another company gives each find a second opinion. Nothing is called a site until you say so.")
         }
     }
 
@@ -404,92 +413,6 @@ private struct HowItWorks: View {
         }
     }
 
-}
-
-/// What a chat app does and what Dighouse does, one question at a time.
-private struct CompareBoard: View {
-    private struct Row {
-        let topic: String, icon: String, chat: String, dig: String, image: String?
-    }
-
-    private let rows = [
-        Row(topic: "Getting the data", icon: "dig.mound", chat: "Can describe lidar, but cannot download a survey.",
-            dig: "Downloads the raw laser points from open archives and builds the bare ground itself.", image: "reveal"),
-        Row(topic: "Looking", icon: "dig.grid", chat: "Given the Mound City area with no tools, it said it could not find or place any features.",
-            dig: "Found all 19 mounds there in a blind test, by looking at every tile in several renderings.", image: "tile"),
-        Row(topic: "Checking a find", icon: "dig.layers", chat: "One model, one opinion.",
-            dig: "Cuts a slice through the raw points, asks a second model, checks open maps, and opens the literature.", image: "section"),
-        Row(topic: "Keeping a record", icon: "dig.brush", chat: "A conversation that scrolls away.",
-            dig: "A project folder with a page per find: its pictures, measurements, checks and sources.", image: "record-relief"),
-        Row(topic: "Making claims", icon: "hand.raised", chat: "May call something a discovery with nothing behind it.",
-            dig: "Cannot mark a find as unmatched until the checks are on its record, and then only you can.", image: nil),
-        Row(topic: "Choosing a model", icon: "cpu", chat: "The models one company sells.",
-            dig: "Any model set up on this Mac, with a different one for the second opinion.", image: nil),
-    ]
-    @State private var picked = 0
-
-    var body: some View {
-        PageSection(title: "Why not just ask ChatGPT?",
-                    caption: "A chat app can talk about archaeology. Dighouse gives the same kind of model the tools to do it, and we tested the difference with the same model on both sides. Pick a task.") {
-            VStack(alignment: .leading, spacing: 0) {
-                Flow(spacing: 6) {
-                    ForEach(rows.indices, id: \.self) { i in
-                        Button { withAnimation(.easeOut(duration: 0.15)) { picked = i } } label: {
-                            Label(rows[i].topic, glyph: rows[i].icon).font(.system(size: 12.5 * Theme.scale, weight: .medium))
-                                .foregroundStyle(picked == i ? .black : Theme.dim)
-                                .padding(.horizontal, 12).frame(height: 30)
-                                .background(Capsule().fill(picked == i ? Theme.tan : Theme.ink.opacity(0.06)))
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(14)
-                Hairline()
-                let row = rows[picked]
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .center, spacing: 18) {
-                        answers(row).frame(minWidth: 340, idealWidth: 340, maxWidth: .infinity, alignment: .leading)
-                        if row.image != nil { picture(row).frame(width: 250) }
-                    }
-                    VStack(alignment: .leading, spacing: 14) {
-                        answers(row)
-                        if row.image != nil { picture(row).frame(maxWidth: 320) }
-                    }
-                }
-                .padding(16).frame(minHeight: 150, alignment: .center)
-            }
-            .panel()
-        }
-    }
-
-    private func answers(_ row: Row) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "bubble.left").font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.faint).frame(width: 22).padding(.top, 2)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("A chat app").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
-                    Text(row.chat).font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            HStack(alignment: .top, spacing: 12) {
-                MoundMark().frame(width: 22, height: 12).padding(.top, 5)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Dighouse").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
-                    Text(row.dig).font(.system(size: 15 * Theme.scale, weight: .medium)).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private func picture(_ row: Row) -> some View {
-        if row.image == "reveal" {
-            ForestReveal(animateIn: false)
-        } else if let name = row.image, let image = Tour.image(name) {
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 170)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-        }
-    }
 }
 
 /// For someone coming back: a greeting by name, the project they last had open, and what it is waiting for.
@@ -576,8 +499,43 @@ private struct PathCard: View {
 }
 
 /// A place to begin, with a picture of its bare ground.
+/// One of the four ways in on Home: an icon, a short title and one line on what happens.
+private struct StartChoice: View {
+    let icon: String, title: String, text: String
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    IconTile(name: icon, size: 36)
+                    Spacer(minLength: 0)
+                    Image(systemName: "arrow.right").font(.system(size: 12 * Theme.scale, weight: .semibold))
+                        .foregroundStyle(hover ? Theme.text : Theme.faint).offset(x: hover ? 3 : 0)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
+                    Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
+                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(16).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Theme.ink.opacity(0.22) : Theme.line))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .animation(.easeOut(duration: 0.12), value: hover)
+    }
+}
+
 struct StartCard: View {
     let point: StartingPoint
+    /// Four to a row on Home: a shorter picture and the description in three lines.
+    var compact = false
     let action: () -> Void
     @State private var hover = false
 
@@ -585,7 +543,7 @@ struct StartCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topTrailing) {
-                    Theme.ink.opacity(0.04).aspectRatio(16 / 9, contentMode: .fit)
+                    Theme.ink.opacity(0.04).aspectRatio(compact ? 3 / 2 : 16 / 9, contentMode: .fit)
                         .overlay {
                             if let image = StartingPoints.image(point) {
                                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill).scaleEffect(hover ? 1.04 : 1)
@@ -602,12 +560,12 @@ struct StartCard: View {
                     Text(point.title).font(.system(size: 14.5 * Theme.scale, weight: .semibold))
                     Text(point.place).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                     Text(point.about).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
-                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+                        .multilineTextAlignment(.leading).lineLimit(compact ? 3 : nil).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
                 }
-                .padding(14)
+                .padding(compact ? 12 : 14)
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, minHeight: 270, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: compact ? 0 : 270, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Theme.ink.opacity(0.22) : Theme.line))
