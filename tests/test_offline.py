@@ -690,3 +690,11 @@ def test_a_refused_second_opinion_is_on_the_record(tmp_path):
     text = next(p.path("reports").glob("*-search-report.md")).read_text()
     assert "asked Other model" in text and "could not answer" in text
 
+
+def test_shizuoka_map_sheets_are_named_and_none_is_skipped():
+    """Japan's 300 by 400 m sheets in zone VIII: a point gets its published name, and a box across sheet borders gets every
+    sheet it touches (Yamanaka Castle's sheet is 08NF1172 in the 2019 survey)."""
+    from dighouse import national
+    assert national._shizuoka_sheets(45100, -95200, 45110, -95190) == ["08NF1172"]
+    assert sorted(national._shizuoka_sheets(44750, -95250, 45100, -94950)) == ["08NF1161", "08NF1162", "08NF1171", "08NF1172"]
+

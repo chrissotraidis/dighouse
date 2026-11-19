@@ -208,6 +208,18 @@ NATIONAL = {
         "landing_page": "https://www.infomar.ie",
         "note": "The seafloor from multibeam sonar, as depth (negative height), about 4 m on the ground. Large wrecks show; small ones may not. Charts of cables and pipelines are not read here.",
     },
+    "jp-22:shizuoka-dem": {
+        "publisher": "Shizuoka Prefecture (Japan)",
+        "title": "VIRTUAL SHIZUOKA, ground model 0.5 m from lidar (Shizuoka, Japan)",
+        "source": "Shizuoka Prefecture", "country": "Shizuoka (Japan)", "maker": "Shizuoka Prefecture",
+        "outline": [(137.47, 34.58), (138.25, 34.58), (138.75, 34.58), (138.85, 34.60), (139.18, 34.85), (139.18, 35.25), (138.95, 35.33), (138.75, 35.45), (138.55, 35.65), (138.20, 35.50), (137.90, 35.20), (137.47, 34.95), (137.47, 34.58)],
+        "epsg": 6676, "res": 0.5, "kind": "xyz-sheets", "chunk_px": 2000, "parallel": 2,
+        "url": "https://virtual-shizuoka.s3.ap-northeast-1.amazonaws.com", "layer": "LP/Grid", "years": (2025, 2022, 2021, 2020, 2019),
+        "sheets": lambda *box: _shizuoka_sheets(*box),   # defined further down
+        "citation": "VIRTUAL SHIZUOKA point cloud data, Shizuoka Prefecture. CC BY 4.0.",
+        "landing_page": "https://github.com/aigidjp/opendata_virtualshizuoka",
+        "note": "Flown in parts between 2019 and 2025; each 300 by 400 m sheet comes from the newest survey that has it.",
+    },
     "us:noaa-bag": {
         "publisher": "NOAA (United States)",
         "title": "NOAA hydrographic surveys, BAG depth grids (US waters and the Great Lakes)",
@@ -453,7 +465,65 @@ def _from_tiles(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np
     return out, x0, y1, res, None
 
 
+def _shizuoka_sheets(x0: float, y0: float, x1: float, y1: float) -> list[str]:
+    """Japan's map sheets in plane zone VIII: 30 by 40 km sheets lettered from 300 km north and 160 km west, each split
+    10 by 10 into 3 by 4 km sheets, and those 10 by 10 into the 300 by 400 m sheets a ground model is published in.
+    "08NF1172" is zone 8, row N, column F, then row 1 column 1, then row 7 column 2."""
+    import math
+    out = []
+    # Step through the sheet grid itself, at the middle of each sheet the box touches.
+    y = 300000 - (math.floor((300000 - y1) / 300) * 300) - 150
+    while y > y0 - 150:
+        x = -160000 + math.floor((x0 + 160000) / 400) * 400 + 200
+        while x < x1 + 200:
+            c, r = int((x + 160000) // 40000), int((300000 - y) // 30000)
+            left, top = -160000 + c * 40000, 300000 - r * 30000
+            c5, r5 = int((x - left) // 4000), int((top - y) // 3000)
+            c2, r2 = int((x - left - c5 * 4000) // 400), int((top - r5 * 3000 - y) // 300)
+            name = f"08{chr(65 + r)}{chr(65 + c)}{r5}{c5}{r2}{c2}"
+            if 0 <= r < 20 and 0 <= c < 8 and name not in out:
+                out.append(name)
+            x += 400
+        y -= 300
+    return out
+
+
+def _from_xyz_sheets(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.ndarray, float, float, float, float | None]:
+    """A ground model published as zipped text (x y z per cell) in one file per map sheet, flown in different years:
+    each sheet is taken from the newest year that has it."""
+    import hashlib
+    import zipfile
+    res = d["res"]
+    out = np.full((int(round((y1 - y0) / res)), int(round((x1 - x0) / res))), np.nan, np.float32)
+    for name in d["sheets"](x0, y0, x1, y1):
+        for year in d["years"]:
+            url = f"{d['url']}/{year}/{d['layer']}/08/{name[2:4]}/{name[4:6]}/{name}.zip"
+            local = sources.cache_dir() / "national" / (hashlib.sha1(url.encode()).hexdigest()[:16] + ".zip")
+            if not local.exists():
+                r = _client.get(url)
+                if r.status_code in (403, 404):
+                    continue
+                r.raise_for_status()
+                local.parent.mkdir(parents=True, exist_ok=True)
+                local.with_suffix(".part").write_bytes(r.content)
+                local.with_suffix(".part").rename(local)
+            with zipfile.ZipFile(local) as z:
+                inner = next((n for n in z.namelist() if n.lower().endswith(".txt")), None)
+                if not inner:
+                    continue
+                xyz = np.loadtxt(z.open(inner), dtype=np.float64, ndmin=2)
+            if xyz.size:
+                col = np.floor((xyz[:, 0] - x0) / res).astype(int)
+                row = np.floor((y1 - xyz[:, 1]) / res).astype(int)
+                ok = (row >= 0) & (row < out.shape[0]) & (col >= 0) & (col < out.shape[1])
+                out[row[ok], col[ok]] = xyz[ok, 2]
+            break
+    return out, x0, y1, res, None
+
+
 def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.ndarray, float, float, float, float | None]:
+    if d["kind"] == "xyz-sheets":
+        return _from_xyz_sheets(d, x0, y0, x1, y1)
     if d["kind"] == "files":
         return _from_files(d, x0, y0, x1, y1)
     if d["kind"] == "tiles":

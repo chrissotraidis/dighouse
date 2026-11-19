@@ -143,16 +143,15 @@ Take the stages one at a time, or press **Find and report back** and the agent c
 
 ## Get started
 
-You need an Apple silicon Mac with macOS 14 or later, [Codex](https://github.com/openai/codex) signed in, and [uv](https://docs.astral.sh/uv/).
+You need a Mac with Apple silicon and macOS 14 or later, a ChatGPT account, and Xcode (free from the App Store). In Terminal:
 
 ~~~sh
 git clone https://github.com/chrissotraidis/dighouse.git
-cd dighouse/app
-./scripts/bundle.sh          # builds app/build/Dighouse.app
-open build/Dighouse.app
+cd dighouse
+./scripts/setup.sh
 ~~~
 
-The first launch walks through setup and builds the tools' Python environment, which takes about a minute. Dighouse runs the newest copy of Codex it finds on the Mac, including the one inside the Codex app, because providers refuse newer models to an older engine. It was last checked with Codex 0.167.
+The script checks for Codex, your sign-in and uv, offers to install what is missing, then builds and opens Dighouse. [docs/SETUP.md](docs/SETUP.md) walks through the first launch, where projects and chats are kept, and what to do if something goes wrong. Dighouse keeps its chats to itself, so they do not appear in the Codex app.
 
 **Use the tools without the app.** They are a Model Context Protocol server:
 
@@ -167,9 +166,9 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (19 tests)
+uv run pytest            # offline, on a synthetic survey (29 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
-uv run pytest -m live    # the same chain against the real data services (8 tests)
+uv run pytest -m live    # the same chain against the real data services (10 tests)
 ~~~
 
 ## The tools
@@ -213,6 +212,7 @@ Everything Dighouse reads is public, and none of it needs an account or a key.
 | [Toitū Te Whenua LINZ](https://registry.opendata.aws/nz-elevation/) | New Zealand's 1 m ground model, where it has been flown |
 | [Dataforsyningen](https://dataforsyningen.dk/data/930) | Denmark's 0.4 m ground model, an option for anyone who pastes a free Dataforsyningen token in Settings |
 | [Natural Resources Canada](https://open.canada.ca/data/en/dataset/0fe65119-e96e-4a57-8bfe-9d9245fba06b) | Canada's 1 m ground model (HRDEM), mostly from lidar, where it has been flown |
+| [VIRTUAL SHIZUOKA](https://github.com/aigidjp/opendata_virtualshizuoka) | Shizuoka Prefecture's 0.5 m ground model, Japan |
 | [INFOMAR](https://www.infomar.ie) | Sonar surveys of the seabed around Ireland, as an about 4 m depth model |
 | [NOAA NCEI](https://www.ncei.noaa.gov/products/nos-hydrographic-survey) | Sonar surveys of the seafloor in US waters and the Great Lakes, as 1 m depth grids |
 | [NOAA charts](https://encdirect.noaa.gov) | Charted cables, pipelines and dumping grounds near a find under water |

@@ -76,7 +76,8 @@ def test_national_ground_models_build(tmp_path):
                                ("varbola", "ee:dtm-1m", [24.512, 59.039, 24.516, 59.042]),
                                ("vindonissa", "ch:swissalti3d-05m", [8.211, 47.475, 8.215, 47.478]),
                                ("zavist", "cz:dmr5g", [14.405, 49.958, 14.411, 49.962]),
-                               ("louisbourg", "ca:hrdem", [-59.990, 45.888, -59.984, 45.892])]:
+                               ("louisbourg", "ca:hrdem", [-59.990, 45.888, -59.984, 45.892]),
+                               ("yamanaka", "jp-22:shizuoka-dem", [138.9925, 35.1405, 138.9965, 35.1430])]:
         root = str(tmp_path / name)
         server.init_project(root, name, "Does the national ground model build?", *box)
         assert dataset in [d.get("id") for d in server.find_data(*box)]
