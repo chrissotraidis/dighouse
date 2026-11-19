@@ -71,6 +71,20 @@ enum StartingPoints {
             box: ["-88.9132", "19.6082", "-88.9085", "19.6128"]),
     ]
 
+    /// One short line for each place, for the cards on Home.
+    static let teaser: [String: String] = [
+        "cahokia": "Monks Mound, the largest earthwork north of Mexico.",
+        "newark": "A Hopewell circle 365 m across, inside a modern town.",
+        "serpent-mound": "A 411 m effigy mound winding along a wooded ridge.",
+        "mound-city": "Two dozen Hopewell mounds inside a low earthen wall.",
+        "moundville": "Platform mounds around a plaza, beside natural ravines.",
+        "etowah": "Three platform mounds by a river, in sparse lidar.",
+        "poverty-point": "Earthen ridges over 3,000 years old, crossed by a road.",
+        "lauske": "A ring fort on a wooded spur, its rampart closing on itself.",
+        "thunder-bay": "A wreck on the bed of Lake Huron, from NOAA sonar.",
+        "yucatan": "Forest over limestone, with a 2026 catalog to check against.",
+    ]
+
     static func image(_ point: StartingPoint) -> NSImage? { image(named: point.id) }
 
     static func image(named id: String) -> NSImage? {
@@ -95,8 +109,10 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 CloudNotice()
-                if !app.offersTutorial { WelcomeBack().padding(.bottom, -8) }
-                hero.arrives()
+                VStack(spacing: 0) {
+                    if !app.offersTutorial { WelcomeBack() }
+                    hero.arrives()
+                }
                 if app.offersTutorial {
                     // For a first visit, and for anyone part-way through: one real search, a step at a time.
                     StartTile(icon: "dig.trowel", title: app.tutorialProject == nil ? "Start your first project" : "Continue your first project",
@@ -283,8 +299,8 @@ private struct WhereItReaches: View {
                 CoverageMap(surveys: app.surveys.map(\.box))
                 VStack(alignment: .leading, spacing: 8) {
                     legend(.dot(Theme.tan), "Lidar, the United States", "raw laser points from USGS 3DEP")
-                    legend(.dot(Theme.green), "Lidar, national ground models",
-                           Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", ") + ", and Denmark with a free token")
+                    legend(.dot(Theme.green), "Lidar, national ground models", "\(Reach.national.count) countries and regions, most of them in Europe, and Denmark with a free token")
+                        .help(Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", "))
                     legend(.dot(Theme.amber), "Lidar, surveys worldwide", "flown for archaeology and published on OpenTopography")
                     legend(.icon("water.waves"), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks")
                     legend(.icon("plus.circle"), "Anywhere else", "give the agent your own ground model or point cloud, and it searches that")
@@ -361,7 +377,7 @@ private struct HowItWorks: View {
 
     private var alone: some View {
         VStack(alignment: .leading, spacing: 14) {
-            line("Type a place, or ask “Search Fort Ancient for anything built.” Press Find and report back, or say yes to the card the agent offers.", strong: true)
+            line("Type a place and press Find and report back. The agent does the rest:", strong: true)
             Flow(spacing: 6) {
                 ForEach(Array(ToolGuide.stages.enumerated()), id: \.offset) { i, stage in
                     HStack(spacing: 6) {
@@ -375,7 +391,7 @@ private struct HowItWorks: View {
                     .background(Capsule().fill(Theme.ink.opacity(0.05)))
                 }
             }
-            line("It runs as a goal: the agent takes turn after turn until the report is written, about 5 to 15 minutes for a small area. A bar at the top of the chat shows it, with Stop.")
+            line("A small area takes 5 to 15 minutes. A bar at the top of the chat shows how far it has got, with Stop.")
             line("Then a model from another company gives each find a second opinion. Nothing is called a site until you say so.")
         }
     }
@@ -430,13 +446,16 @@ private struct WelcomeBack: View {
     }
 
     var body: some View {
-        Group {
+        // A stack rather than a Group: an empty Group is no view at all, so its task would never start.
+        VStack(spacing: 0) {
             if let project {
                 PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
                     .help("Open \(project.name)")
                     .arrives()
+                    .padding(.bottom, 22)
             }
         }
+        .frame(maxWidth: .infinity)
         // The folders are read off the main thread: a project kept in iCloud can take a long time to answer.
         .task(id: store.projects.map(\.path)) { await read() }
     }
@@ -559,8 +578,8 @@ struct StartCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(point.title).font(.system(size: 14.5 * Theme.scale, weight: .semibold))
                     Text(point.place).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-                    Text(point.about).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
-                        .multilineTextAlignment(.leading).lineLimit(compact ? 3 : nil).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+                    Text(compact ? StartingPoints.teaser[point.id] ?? point.about : point.about).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
+                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
                 }
                 .padding(compact ? 12 : 14)
                 Spacer(minLength: 0)
@@ -572,12 +591,11 @@ struct StartCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .help(compact ? point.about : "")
         .onHover { hover = $0 }
         .animation(.easeOut(duration: 0.12), value: hover)
     }
 }
-
-
 
 /// Projects kept in iCloud make Dighouse freeze: their files go offline, and every read waits for a download.
 /// This offers to move them to this Mac, once, and shows how far the move has got.
