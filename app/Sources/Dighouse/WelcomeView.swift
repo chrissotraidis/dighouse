@@ -171,10 +171,11 @@ struct WelcomeView: View {
     @ViewBuilder private var firstActions: some View {
         if app.onboarded { Button("Close guide") { app.showWelcome = false }.buttonStyle(SecondaryButton()) }
         else { Button("Skip for now") { app.finishOnboarding() }.buttonStyle(SecondaryButton()) }
-        Button("Help me choose") {
+        Button("Suggest a place") {
             app.finishOnboarding()
-            if let flow = ToolGuide.workflows.first(where: { $0.id == "choose" }) { app.run(flow) }
+            if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
         }
+        .help("Starts a chat in which the agent reads the open archives and proposes three searches.")
         .buttonStyle(SecondaryButton()).disabled(!engine.ready)
         if busy { DigIndicator() }
         Button(choice.kind == .own ? "Pick an area" : "Create project", action: begin)

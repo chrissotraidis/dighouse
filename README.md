@@ -108,7 +108,7 @@ We checked. Given the Mound City blind test box with no tools, the same model th
 
 <p align="center"><sub>Thunder Bay, Lake Huron. The shore and breakwater come from airborne lidar, which stops at the water; the lake bed and its two wrecks come from NOAA's sonar surveys.</sub></p>
 
-1. **Choose where to look.** Ask "What should I research?" and the agent weighs open lidar, how little is on record, and where earthworks survive, then proposes three searches. Or draw an area on a map, or type a place and press **What is this?** for a one-minute look.
+1. **Choose where to look.** Ask "What should I research?" and the agent weighs open lidar, how little is on record, and where earthworks survive, then proposes three searches. Or press **Pick a place on the map** on Home, where the places with open data are shaded, and click where you want to look. Or type a place and press **What is this?** for a one-minute look.
 2. **Calibrate.** Before searching where nothing is on record, the agent runs a blind test on the nearest known site with the same kind of lidar. If it finds less than half of what is published there, the search stops.
 3. **Take the trees away.** The tools download the raw laser points, or a national ground model, and keep the ground.
 4. **Look at every tile.** The ground is cut into squares called tiles, and agents look at each one in two renderings. A feature guide tells it what mounds, banks and terraces look like, and what to rule out (sinkholes, tree throws, craters, tracks). A tile with too little ground data is marked unreadable, never "nothing found".

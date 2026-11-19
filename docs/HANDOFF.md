@@ -43,6 +43,16 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 - **Tests**: 29 offline, 10 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.
 - **README** has pictures in `docs/images`, retaken on 2026-11-14 at 1440 × 900 in Earth after loop 5. Loop 5's own pictures are in `docs/loop5`.
 
+## Where a person starts (2026-11-19)
+
+Chris could not see where to start: the Home cards, the Toolbox's coverage map and "Help me choose a place" did not lead to a place. Now the map is the way in.
+
+- **Home:** the first card is **Pick a place on the map**; then **Suggest a place for me** (the agent proposes three) and **Test it on a known site**. Right below is **Where you can search**: the coverage map, which starts a project wherever it is clicked, with its legend. How it works keeps two tabs.
+- **The coverage map** (`CoverageMap`, ToolboxView.swift) is clickable on Home, the Toolbox's first stage and the Open data tab. A click opens New project with the map on that region (`startProject(near:lon:)`, `StartingPoint.look`).
+- **New project:** zoomed out, the map shades where open lidar reaches (the `Reach` outlines and the survey dots) with a legend, and a click zooms in. Zoomed in, a click places the area. An unnamed project gets the nearest place's name ("Bowling Green area") and a first question; a typed name is never replaced. With no open data, a button zooms back out to the shaded areas. Under Create, a line says what is missing.
+- **"Pick a place on the map"** is the `choose` workflow, which now opens New project with no chat, from the empty chat, the Workflows menu and the Toolbox's first stage. The guide's "Help me choose" became "Suggest a place" (the research workflow).
+- Checked in the test copy: Home map to New project; world to Ohio to an area named "Bowling Green area" with USGS 3DEP listed; a spot in India with no data; the Toolbox's first stage; the empty chat's card. Create was not pressed.
+
 ## What loop 8 added (2026-11-16)
 
 - **P1, own folder.** Every way of starting a project makes a new folder in `~/Dighouse` (`projects_home()`, `new_folder()` in project.py) with git and a first commit. A taken name gets -2, -3. The engine starts the tool server with a filtered environment, so the folders reach it through `mcp_servers.dighouse.env` in `Engine.swift`.

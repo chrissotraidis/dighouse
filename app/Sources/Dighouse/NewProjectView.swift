@@ -25,6 +25,8 @@ struct NewProjectView: View {
     @State private var box: [String]
     @State private var size: Double
     @State private var camera: MapCameraPosition
+    /// How much of the world the map shows, in degrees of latitude. Zoomed out, it shows where open data reaches.
+    @State private var span: Double
     @State private var query = ""
     @State private var places: [Place] = []
     @State private var searching = false
@@ -35,6 +37,8 @@ struct NewProjectView: View {
     @State private var busy = false
     @State private var problem: String?
     @State private var inGitHub: Bool
+    /// The name Dighouse suggested from the map, replaced while the person has not typed their own.
+    @State private var suggested = ""
 
     private static let sizes: [Double] = [0.3, 0.6, 1, 1.5, 2]
 
@@ -49,11 +53,21 @@ struct NewProjectView: View {
             let km = (n[3] - n[1]) * 110.54
             _size = State(initialValue: Self.sizes.min { abs($0 - km) < abs($1 - km) } ?? 0.6)
             _camera = State(initialValue: Self.region(lat: (n[1] + n[3]) / 2, lon: (n[0] + n[2]) / 2, span: (n[3] - n[1]) * 5))
+            _span = State(initialValue: (n[3] - n[1]) * 5)
+        } else if let look = point.look, look.count == 3 {
+            _size = State(initialValue: 0.6)
+            _camera = State(initialValue: Self.region(lat: look[0], lon: look[1], span: look[2]))
+            _span = State(initialValue: look[2])
         } else {
             _size = State(initialValue: 0.6)
             _camera = State(initialValue: Self.region(lat: 25, lon: -40, span: 110))
+            _span = State(initialValue: 110)
         }
     }
+
+    /// Zoomed out past this, a click zooms in on the spot; closer in, a click places the search area.
+    private static let wide = 1.5
+    private var zoomedOut: Bool { span > Self.wide }
 
     private static func region(lat: Double, lon: Double, span: Double) -> MapCameraPosition {
         .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: lat, longitude: lon),
@@ -90,7 +104,12 @@ struct NewProjectView: View {
             }
         }
         .background(Theme.bg)
-        .task(id: box.joined(separator: ",")) { await checkCoverage() }
+        .task(id: box.joined(separator: ",")) {
+            async let named: Void = suggestName()
+            await checkCoverage()
+            await named
+        }
+        .task { await app.loadSurveys() }
         .task {
             // Started from a typed place name: look it up and take the best match.
             guard let place = point.search, numbers == nil else { return }
@@ -104,6 +123,21 @@ struct NewProjectView: View {
     private var map: some View {
         MapReader { proxy in
             Map(position: $camera) {
+                if zoomedOut {
+                    // Where open data reaches, roughly: enough to choose a region by. The list beside the map is exact.
+                    MapPolygon(coordinates: Self.coordinates(Reach.unitedStates)).foregroundStyle(Theme.tan.opacity(0.35)).stroke(Theme.tan, lineWidth: 1)
+                    ForEach(Reach.national.indices, id: \.self) { i in
+                        MapPolygon(coordinates: Self.coordinates(Reach.national[i].ring)).foregroundStyle(Theme.green.opacity(0.35)).stroke(Theme.green, lineWidth: 1)
+                    }
+                    ForEach(Array(app.surveys.enumerated()), id: \.offset) { _, survey in
+                        if survey.box.count == 4 {
+                            Annotation("", coordinate: CLLocationCoordinate2D(latitude: (survey.box[1] + survey.box[3]) / 2, longitude: (survey.box[0] + survey.box[2]) / 2)) {
+                                Circle().fill(Theme.amber).frame(width: 9, height: 9).overlay(Circle().stroke(.black.opacity(0.5), lineWidth: 0.8))
+                                    .help(survey.title)
+                            }
+                        }
+                    }
+                }
                 if let n = numbers {
                     MapPolygon(coordinates: [
                         CLLocationCoordinate2D(latitude: n[1], longitude: n[0]), CLLocationCoordinate2D(latitude: n[1], longitude: n[2]),
@@ -114,17 +148,47 @@ struct NewProjectView: View {
                 }
             }
             .mapStyle(.hybrid)
+            .onMapCameraChange(frequency: .onEnd) { context in span = context.region.span.latitudeDelta }
             .onTapGesture { spot in
-                if let place = proxy.convert(spot, from: .local) { setCentre(lat: place.latitude, lon: place.longitude) }
+                guard let place = proxy.convert(spot, from: .local) else { return }
+                if zoomedOut {
+                    withAnimation(.easeInOut(duration: 0.6)) { camera = Self.region(lat: place.latitude, lon: place.longitude, span: 0.12) }
+                    span = 0.12
+                } else {
+                    setCentre(lat: place.latitude, lon: place.longitude)
+                }
+            }
+        }
+        .overlay(alignment: .bottomLeading) {
+            if zoomedOut {
+                VStack(alignment: .leading, spacing: 5) {
+                    legend(Theme.tan, "Lidar, the United States")
+                    legend(Theme.green, "Lidar, national ground models")
+                    legend(Theme.amber, "Surveys flown for archaeology")
+                }
+                .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.7))).padding(12)
+                .allowsHitTesting(false)
             }
         }
         .overlay(alignment: .top) {
-            Text(numbers == nil ? "Click the map to place the search area" : "Click the map to move the search area")
+            Text(zoomedOut ? "Shaded areas have open lidar. Click where you want to look."
+                 : numbers == nil ? "Click the map to place the search area" : "Click the map to move the search area")
                 .font(.system(size: 12.5 * Theme.scale, weight: .medium))
                 .padding(.horizontal, 12).frame(height: 28)
                 .background(Capsule().fill(.black.opacity(0.7))).padding(12)
                 .allowsHitTesting(false)
         }
+    }
+
+    private func legend(_ color: Color, _ title: String) -> some View {
+        HStack(spacing: 7) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(title).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.9))
+        }
+    }
+
+    private static func coordinates(_ ring: [Double]) -> [CLLocationCoordinate2D] {
+        stride(from: 0, to: ring.count - 1, by: 2).map { CLLocationCoordinate2D(latitude: ring[$0 + 1], longitude: ring[$0]) }
     }
 
     private func setCentre(lat: Double, lon: Double) {
@@ -163,6 +227,7 @@ struct NewProjectView: View {
                         ForEach(places) { place in
                             Button {
                                 camera = Self.region(lat: place.lat, lon: place.lon, span: place.span)
+                                span = place.span
                                 setCentre(lat: place.lat, lon: place.lon)
                                 places = []
                             } label: {
@@ -238,6 +303,10 @@ struct NewProjectView: View {
                     .help("Creates the project and starts fetching its open lidar straight away.")
                     .coach(.create)
             }
+            if !valid {
+                Text(numbers == nil ? "Click the map to place the area first." : "Give the project a name.")
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity, alignment: .trailing)
+            }
         }
         .font(.system(size: 13 * Theme.scale))
     }
@@ -268,8 +337,15 @@ struct NewProjectView: View {
             Text(coverageProblem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
         } else if let coverage {
             if coverage.isEmpty {
-                Text("No open data Dighouse reads covers this area. The Toolbox's Open data tab shows where it reaches; try a place inside it, or add your own ground model to a project.")
-                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No open data Dighouse reads covers this spot. Try one of the shaded areas, or add your own ground model to a project later.")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                    Button("Show where there is data") {
+                        withAnimation(.easeInOut(duration: 0.6)) { camera = Self.region(lat: 35, lon: -30, span: 100) }
+                        span = 100
+                    }
+                    .buttonStyle(SecondaryButton())
+                }
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(coverage.enumerated()), id: \.element.id) { index, item in
@@ -327,6 +403,23 @@ struct NewProjectView: View {
                 searchProblem = error.localizedDescription
             }
             searching = false
+        }
+    }
+
+    /// Name an unnamed project after the nearest place to its area, and give it a first question, so a click on the
+    /// map is enough to start. A name the person typed is never replaced.
+    private func suggestName() async {
+        let typed = name.trimmingCharacters(in: .whitespaces)
+        guard typed.isEmpty || typed == suggested, let n = numbers else { return }
+        let spot = CLLocation(latitude: (n[1] + n[3]) / 2, longitude: (n[0] + n[2]) / 2)
+        guard let mark = try? await CLGeocoder().reverseGeocodeLocation(spot).first, !Task.isCancelled else { return }
+        guard let place = mark.locality ?? mark.subAdministrativeArea ?? mark.inlandWater ?? mark.ocean ?? mark.administrativeArea else { return }
+        let now = name.trimmingCharacters(in: .whitespaces)
+        guard now.isEmpty || now == suggested else { return }
+        suggested = "\(place) area"
+        name = suggested
+        if question.trimmingCharacters(in: .whitespaces).isEmpty {
+            question = "What built features show in the ground here, and which of them are already published?"
         }
     }
 

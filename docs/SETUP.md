@@ -28,7 +28,7 @@ If the script stops, it says what to install and how. Do that, then run it again
 1. **Welcome.** Dighouse checks that it can reach Codex and the tools, then prepares the tools, which takes about a minute the first time.
 2. **Choose a model** in Settings, Models. The agent model must read images, because the agent looks at pictures of the ground. A cheaper model is fine to start.
 3. **Optional: a second-opinion model.** Each find can get a second opinion from a model made by a different company. Choose one in Settings, Models. It works with any model your Codex setup offers from another maker. Without one, searches still run; finds are marked as having no second opinion.
-4. **Try it.** On Home, type a place such as *Serpent Mound, Ohio* and press **Find and report back**, or start the tutorial. A small search takes 5 to 15 minutes.
+4. **Try it.** On Home, press **Pick a place on the map** and click where you want to look: the shaded areas have open lidar. Or type a place such as *Serpent Mound, Ohio* and press **Find and report back**, or start the tutorial. A small search takes 5 to 15 minutes.
 
 ## Where things go
 
@@ -44,7 +44,7 @@ If the script stops, it says what to install and how. Do that, then run it again
 | "Agent engine not found" | Install Codex (see above), then press Check again. |
 | The tools never finish preparing | Check the Mac is online; quit and reopen Dighouse. |
 | "The second model is refused" | Its provider turned the request down. Choose another model in Settings, Models. |
-| A place "has no open data" | Dighouse only reaches places with open lidar or sonar. Home, How it works, Where it can look, shows them. |
+| A place "has no open data" | Dighouse only reaches places with open lidar or sonar. The map on Home, under Where you can search, shades them. |
 
 ## Updating
 

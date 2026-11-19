@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The Toolbox: what Dighouse gives the agent that a chat app does not. A walk through one real search, the workflows
@@ -147,8 +148,8 @@ private struct HowTab: View {
                     .buttonStyle(SecondaryButton()).help("The tools the agent uses at this stage")
                     .popover(isPresented: $showTools, arrowEdge: .top) { ToolList(pack: pack).popoverSurface() }
                 if let flow, app.state(of: flow).ready {
-                    Button("Run this stage") { app.run(flow) }.buttonStyle(SecondaryButton())
-                        .help(flow.scope == .project ? "Runs on the open project." : "Starts a chat.")
+                    Button(flow.id == "choose" ? "Pick a place on the map" : "Run this stage") { app.run(flow) }.buttonStyle(SecondaryButton())
+                        .help(flow.id == "choose" ? "Opens New project with the map." : flow.scope == .project ? "Runs on the open project." : "Starts a chat.")
                 }
                 if at < packs.count - 1 {
                     Button("Next: \(packs[at + 1].short)") { stage = at + 1 }.buttonStyle(PrimaryButton()).help(packs[at + 1].title)
@@ -263,7 +264,7 @@ private struct ChooseArt: View {
             Chips(names: ["Where lidar is open", "What is on record"], pick: $side)
             if side == 0 {
                 CoverageMap(surveys: app.surveys.map(\.box))
-                caption("Lidar the tools can fetch with no account. The dots are surveys flown for archaeology.")
+                caption("Shaded: lidar the tools can fetch with no account. Dots: surveys flown for archaeology. Click anywhere to start a project there.")
             } else {
                 if let image = Tour.image("data-wikidata") {
                     Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
@@ -609,10 +610,14 @@ private struct RecordArt: View {
 
 /// The world, with the places each kind of open data reaches, and Europe drawn larger beside it.
 struct CoverageMap: View {
+    @EnvironmentObject var app: AppState
     /// The layer to bring forward: "us", "national", "surveys" or "ancient". Nil shows all of them alike.
     var highlight: String? = nil
     /// The boxes of the open surveys flown for archaeology, as west, south, east, north.
     var surveys: [[Double]] = []
+    /// Clicking a spot opens New project with its map on that region.
+    var pickable = true
+    @State private var hover: CGPoint?
 
     private static let land: [[Double]] = {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent("tour/world.json"), let data = try? Data(contentsOf: url) else { return [] }
@@ -626,13 +631,27 @@ struct CoverageMap: View {
             CGPoint(x: rect.minX + rect.width * CGFloat((lon - west) / (east - west)),
                     y: rect.minY + rect.height * CGFloat((north - lat) / (north - south)))
         }
+        func place(_ p: CGPoint) -> (lon: Double, lat: Double) {
+            (west + (east - west) * Double((p.x - rect.minX) / rect.width), north - (north - south) * Double((p.y - rect.minY) / rect.height))
+        }
+    }
+
+    /// The world, and Europe drawn larger at the right.
+    private static func frames(_ size: CGSize) -> (world: Frame, europe: Frame) {
+        let gap: CGFloat = 10, inset = size.height * 1.05
+        return (Frame(west: -168, east: 180, south: -57, north: 76, rect: CGRect(x: 0, y: 0, width: size.width - inset - gap, height: size.height)),
+                Frame(west: -12, east: 33, south: 41.5, north: 66, rect: CGRect(x: size.width - inset, y: 0, width: inset, height: size.height)))
+    }
+
+    private static func place(at p: CGPoint, in size: CGSize) -> (lon: Double, lat: Double)? {
+        let (world, europe) = frames(size)
+        for frame in [europe, world] where frame.rect.contains(p) { return frame.place(p) }
+        return nil
     }
 
     var body: some View {
         Canvas { context, size in
-            let gap: CGFloat = 10, inset = size.height * 1.05
-            let world = Frame(west: -168, east: 180, south: -57, north: 76, rect: CGRect(x: 0, y: 0, width: size.width - inset - gap, height: size.height))
-            let europe = Frame(west: -12, east: 33, south: 41.5, north: 66, rect: CGRect(x: size.width - inset, y: 0, width: inset, height: size.height))
+            let (world, europe) = Self.frames(size)
             for frame in [world, europe] {
                 var layer = context
                 layer.clip(to: Path(roundedRect: frame.rect, cornerRadius: 10))
@@ -657,10 +676,41 @@ struct CoverageMap: View {
             // Where the larger picture of Europe sits on the world.
             let a = world.point(europe.west, europe.north), b = world.point(europe.east, europe.south)
             context.stroke(Path(CGRect(x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y)), with: .color(Theme.faint), lineWidth: 0.8)
+            // Where a click would start a project.
+            if let hover {
+                let ring = CGRect(x: hover.x - 9, y: hover.y - 9, width: 18, height: 18)
+                context.stroke(Path(ellipseIn: ring), with: .color(Theme.text), lineWidth: 1.5)
+                context.fill(Path(ellipseIn: ring.insetBy(dx: 7, dy: 7)), with: .color(Theme.text))
+            }
         }
+        .overlay {
+            if pickable {
+                GeometryReader { geo in
+                    Color.clear.contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let p):
+                                if Self.place(at: p, in: geo.size) != nil {
+                                    if hover == nil { NSCursor.pointingHand.push() }
+                                    hover = p
+                                } else if hover != nil { hover = nil; NSCursor.pop() }
+                            case .ended:
+                                if hover != nil { hover = nil; NSCursor.pop() }
+                            }
+                        }
+                        .onTapGesture(coordinateSpace: .local) { p in
+                            guard let spot = Self.place(at: p, in: geo.size) else { return }
+                            if hover != nil { hover = nil; NSCursor.pop() }
+                            app.startProject(near: spot.lat, lon: spot.lon)
+                        }
+                        .help("Click to start a project here")
+                }
+            }
+        }
+        .onDisappear { if hover != nil { hover = nil; NSCursor.pop() } }
         .aspectRatio(3.7, contentMode: .fit)
         .accessibilityElement()
-        .accessibilityLabel("A map of the world showing where open lidar reaches: the United States, \(Reach.national.map(\.name).joined(separator: ", ")), and \(surveys.count) surveys flown for archaeology.")
+        .accessibilityLabel("A map of the world showing where open lidar reaches: the United States, \(Reach.national.map(\.name).joined(separator: ", ")), and \(surveys.count) surveys flown for archaeology." + (pickable ? " Click a spot to start a project there." : ""))
     }
 
     private func path(_ ring: [Double], _ frame: Frame) -> Path {

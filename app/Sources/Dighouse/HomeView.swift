@@ -86,7 +86,7 @@ struct HomeView: View {
     @EnvironmentObject var engine: Engine
 
     private let cards = [GridItem(.adaptive(minimum: 230), spacing: 12, alignment: .top)]
-    private let paths = [GridItem(.adaptive(minimum: 300), spacing: 12, alignment: .top)]
+    private let paths = [GridItem(.adaptive(minimum: 250), spacing: 12, alignment: .top)]
     @AppStorage("startKind") private var startKind = 0
 
     var body: some View {
@@ -105,21 +105,22 @@ struct HomeView: View {
                         .arrives(1)
                 }
                 LazyVGrid(columns: paths, spacing: 12) {
-                    PathCard(icon: "sparkle.magnifyingglass", title: "What should I research?",
-                             text: "New to this? The agent reads the open archives and proposes three searches worth doing.") {
-                        if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
-                    }
-                    PathCard(icon: "mappin.and.ellipse", title: "I know where to look",
-                             text: "Pick an area on the map, see which open lidar covers it, and start the project.") {
+                    PathCard(icon: "map", title: "Pick a place on the map",
+                             text: "See where open lidar reaches, click a spot, and start a project there.") {
                         app.startProject()
                     }
+                    PathCard(icon: "sparkle.magnifyingglass", title: "Suggest a place for me",
+                             text: "The agent reads the open archives and proposes three searches worth doing.") {
+                        if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
+                    }
                     PathCard(icon: "dig.grid", title: "Test it on a known site",
-                             text: "The agent looks at a famous site without being told which, then is scored against what is published.") {
+                             text: "It looks at a famous site without being told which, then is scored against what is published.") {
                         app.testPicking = true
                     }
                 }
                 .padding(.top, -8)
                 .arrives(1)
+                WhereItReaches().arrives(2)
                 HowItWorks().arrives(2)
                 CompareBoard().arrives(2)
                 starts.arrives(3)
@@ -263,13 +264,57 @@ struct HomeView: View {
     }
 }
 
-/// How Dighouse works, for someone deciding whether to trust it: how a search runs on its own, what it writes down,
-/// and where it can look.
+/// Where a search can go, on a map that starts a project wherever it is clicked.
+private struct WhereItReaches: View {
+    @EnvironmentObject var app: AppState
+
+    var body: some View {
+        PageSection(title: "Where you can search", caption: "Click anywhere on the map to start a project there. The shaded places have open data the tools fetch with no account.") {
+            VStack(alignment: .leading, spacing: 14) {
+                CoverageMap(surveys: app.surveys.map(\.box))
+                VStack(alignment: .leading, spacing: 8) {
+                    legend(.dot(Theme.tan), "Lidar, the United States", "raw laser points from USGS 3DEP")
+                    legend(.dot(Theme.green), "Lidar, national ground models",
+                           Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", ") + ", and Denmark with a free token")
+                    legend(.dot(Theme.amber), "Lidar, surveys worldwide", "flown for archaeology and published on OpenTopography")
+                    legend(.icon("water.waves"), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks")
+                    legend(.icon("plus.circle"), "Anywhere else", "give the agent your own ground model or point cloud, and it searches that")
+                }
+                Button("Every source, and whether it answers now") {
+                    UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxTab")
+                    app.show(.toolbox)
+                }
+                .buttonStyle(SecondaryButton())
+            }
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            .panel()
+        }
+    }
+
+    private enum Mark { case dot(Color), icon(String) }
+
+    /// A row of the legend: a dot in the map's colour for a layer drawn on it, an icon for one that is not.
+    private func legend(_ mark: Mark, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Group {
+                switch mark {
+                case .dot(let color): Circle().fill(color).frame(width: 9, height: 9)
+                case .icon(let name): Image(systemName: name).font(.system(size: 10.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
+                }
+            }
+            .frame(width: 14)
+            (Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold)) + Text(": " + text).font(.system(size: 13 * Theme.scale)).foregroundColor(Theme.dim))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// How Dighouse works, for someone deciding whether to trust it: how a search runs on its own, and what it writes down.
 private struct HowItWorks: View {
     @EnvironmentObject var app: AppState
     @State private var picked = 0
 
-    private let tabs = [("It searches on its own", "dig.trowel"), ("It writes everything down", "dig.brush"), ("Where it can look", "globe")]
+    private let tabs = [("It searches on its own", "dig.trowel"), ("It writes everything down", "dig.brush")]
 
     var body: some View {
         PageSection(title: "How it works", caption: "Ask for a search and leave it. Everything it does is kept in a folder you can read, check and share.") {
@@ -291,8 +336,7 @@ private struct HowItWorks: View {
                 Group {
                     switch picked {
                     case 0: alone
-                    case 1: record
-                    default: reach
+                    default: record
                     }
                 }
                 .padding(16).frame(maxWidth: .infinity, alignment: .leading)
@@ -360,41 +404,6 @@ private struct HowItWorks: View {
         }
     }
 
-    private var reach: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            CoverageMap(surveys: app.surveys.map(\.box))
-            VStack(alignment: .leading, spacing: 8) {
-                legend(.dot(Theme.tan), "Lidar, the United States", "raw laser points from USGS 3DEP")
-                legend(.dot(Theme.green), "Lidar, national ground models",
-                       Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", ") + ", and Denmark with a free token")
-                legend(.dot(Theme.amber), "Lidar, surveys worldwide", "flown for archaeology and published on OpenTopography")
-                legend(.icon("water.waves"), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks")
-                legend(.icon("plus.circle"), "Anywhere else", "give the agent your own ground model or point cloud, and it searches that")
-            }
-            Button("Every source, and whether it answers now") {
-                UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxTab")
-                app.show(.toolbox)
-            }
-            .buttonStyle(SecondaryButton())
-        }
-    }
-
-    private enum Mark { case dot(Color), icon(String) }
-
-    /// A row of the legend: a dot in the map's colour for a layer drawn on it, an icon for one that is not.
-    private func legend(_ mark: Mark, _ title: String, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Group {
-                switch mark {
-                case .dot(let color): Circle().fill(color).frame(width: 9, height: 9)
-                case .icon(let name): Image(systemName: name).font(.system(size: 10.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
-                }
-            }
-            .frame(width: 14)
-            (Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold)) + Text(": " + text).font(.system(size: 13 * Theme.scale)).foregroundColor(Theme.dim))
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
 }
 
 /// What a chat app does and what Dighouse does, one question at a time.

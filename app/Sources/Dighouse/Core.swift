@@ -454,6 +454,8 @@ struct StartingPoint: Identifiable, Hashable {
     let question: String
     let box: [String]
     var dataset: String? = nil
+    /// Where the New project map opens when no area is set yet, as latitude, longitude and span in degrees.
+    var look: [Double]? = nil
     /// A place name to look up when the New project page opens, for a project started from typed text.
     var search: String? = nil
     /// The general chat this project is made from. It moves into the project once the project exists.

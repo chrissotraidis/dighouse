@@ -482,6 +482,13 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Start a project near a spot clicked on the coverage map: New project opens with its map on that region.
+    func startProject(near lat: Double, lon: Double) {
+        startProject(from: StartingPoint(
+            id: "near-\(lat),\(lon)", kind: .own, title: "", place: "", about: "", source: "", name: "", question: "",
+            box: ["", "", "", ""], look: [lat, lon, 3]))
+    }
+
     /// Start a project at a place typed by name: the New project page opens with the place looked up and the area set.
     func startProject(at place: String) {
         let name = place.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -695,6 +702,8 @@ final class AppState: ObservableObject {
 
     func run(_ flow: ToolGuide.Workflow) {
         guard state(of: flow).ready else { return }
+        // Choosing a place is done on the map, not in a chat.
+        if flow.id == "choose" { startProject(); return }
         if flow.scope == .general, store.current != nil { store.close() }
         if flow.id == "second" {
             secondLookQueue = store.candidates
