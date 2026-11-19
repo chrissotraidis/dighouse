@@ -122,8 +122,8 @@ Take the stages one at a time, or press **Find and report back** and the agent c
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.png" alt="Home, Places to start: known sites to learn on, from Cahokia and Newark in the United States to the Lauske ring fort in Saxony and a Thunder Bay wreck from NOAA sonar"><br><sub><b>Home.</b> Places to start, each ready to fetch: mounds and enclosures in the United States, a ring fort in Saxony and a wreck on the bed of Lake Huron.</sub></td>
-    <td width="50%"><img src="docs/images/new-project.png" alt="New project at Mound City Group: name, question, a search area drawn on the map, and the open lidar that covers it"><br><sub><b>New project.</b> Place the area on the map and see which open lidar covers it before you start.</sub></td>
+    <td width="50%"><img src="docs/images/home.png" alt="Home: the headline beside a slider that takes the trees off Serpent Mound, the message box, four ways in (Pick a place, Suggest a place, Test it blind, Open a project) and the start of Places to start"><br><sub><b>Home.</b> Four ways in, and known sites ready to fetch right below them.</sub></td>
+    <td width="50%"><img src="docs/images/new-project.png" alt="New project on a world map shaded where open lidar reaches: the United States, Canada, Europe, and dots for surveys flown for archaeology, with a legend"><br><sub><b>New project.</b> The shaded areas have open lidar. Click to zoom in, click again to place the area, and see which surveys cover it.</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/maiden-castle.png" alt="Maiden Castle in England from Environment Agency lidar: the project overview with what happens next beside the tiled map of the ramparts and five finds"><br><sub><b>A project.</b> Maiden Castle from England's 1 m ground model. The card at the top says what the agent does next, why, and what follows.</sub></td>

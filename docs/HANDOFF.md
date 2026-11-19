@@ -57,6 +57,8 @@ Chris could not see where to start: the Home cards, the Toolbox's coverage map a
 
 Chris found Home long and the copy weak ("You decide what each one is"), and the places to start were missed at the bottom. Home is now: the hero with two plain sentences; four ways in on one row (Pick a place, Suggest a place, Test it blind, Open a project); Places to start right below, four known sites (Cahokia, Newark, Lauske, Thunder Bay) with Show all, and Open surveys as the second tab; Where you can search; How it works. "Why not just ask ChatGPT?" is gone from Home.
 
+- README pictures of Home and New project retaken on 2026-11-19 at 1440 x 900 in Earth, in the test copy with no projects (-projects <5b5d> -tutorialDone YES), the Computer Use indicator painted over. New project now opens on the United States and Europe together (an MKMapRect fitted to the width; a region fitted only the height).
+
 ## What loop 8 added (2026-11-16)
 
 - **P1, own folder.** Every way of starting a project makes a new folder in `~/Dighouse` (`projects_home()`, `new_folder()` in project.py) with git and a first commit. A taken name gets -2, -3. The engine starts the tool server with a filtered environment, so the folders reach it through `mcp_servers.dighouse.env` in `Engine.swift`.

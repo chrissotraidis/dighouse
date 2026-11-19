@@ -60,14 +60,22 @@ struct NewProjectView: View {
             _span = State(initialValue: look[2])
         } else {
             _size = State(initialValue: 0.6)
-            _camera = State(initialValue: Self.region(lat: 25, lon: -40, span: 110))
-            _span = State(initialValue: 110)
+            // Wide enough to show the United States and Europe together, even in a narrow window.
+            _camera = State(initialValue: Self.world)
+            _span = State(initialValue: 100)
         }
     }
 
     /// Zoomed out past this, a click zooms in on the spot; closer in, a click places the search area.
     private static let wide = 1.5
     private var zoomedOut: Bool { span > Self.wide }
+
+    /// From the western United States to eastern Europe, fitted to the map's width: where most of the open lidar is.
+    private static let world: MapCameraPosition = {
+        let a = MKMapPoint(CLLocationCoordinate2D(latitude: 62, longitude: -128))
+        let b = MKMapPoint(CLLocationCoordinate2D(latitude: 12, longitude: 32))
+        return .rect(MKMapRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(b.x - a.x), height: abs(b.y - a.y)))
+    }()
 
     private static func region(lat: Double, lon: Double, span: Double) -> MapCameraPosition {
         .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: lat, longitude: lon),
@@ -341,7 +349,7 @@ struct NewProjectView: View {
                     Text("No open data Dighouse reads covers this spot. Try one of the shaded areas, or add your own ground model to a project later.")
                         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
                     Button("Show where there is data") {
-                        withAnimation(.easeInOut(duration: 0.6)) { camera = Self.region(lat: 35, lon: -30, span: 100) }
+                        withAnimation(.easeInOut(duration: 0.6)) { camera = Self.world }
                         span = 100
                     }
                     .buttonStyle(SecondaryButton())
