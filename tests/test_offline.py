@@ -243,7 +243,7 @@ def test_a_refused_page_says_to_log_it(monkeypatch):
         content = b"Forbidden"
         url = "https://example.org/paper"
 
-    monkeypatch.setattr(checks._client, "get", lambda *args, **kwargs: Refused())
+    monkeypatch.setattr(checks, "_fetch_source", lambda *args, **kwargs: Refused())
     with pytest.raises(RuntimeError, match="could_not_open"):
         checks.read_source("https://example.org/paper")
 
@@ -732,3 +732,31 @@ def test_unmatched_calibration_is_unavailable():
     from dighouse import answers
 
     assert answers.calibration_site([0, 0, 1, 1], "unmatched:acquisition")["available"] is False
+
+
+def test_readable_link_turns_api_addresses_into_pages():
+    from dighouse.ledger import readable_link
+    assert readable_link("https://api.datacite.org/dois/10.6067/xcv808676b") == "https://doi.org/10.6067/xcv808676b"
+    assert readable_link("https://api.crossref.org/works/10.1016/j.jas.2020.105123") == "https://doi.org/10.1016/j.jas.2020.105123"
+    assert readable_link("https://api.openalex.org/works/W2741809807") == "https://openalex.org/W2741809807"
+    assert readable_link("https://api.openalex.org/works/https://doi.org/10.1/x") == "https://doi.org/10.1/x"
+    assert readable_link("https://www.mesoweb.com/a.pdf#page=7") == "https://www.mesoweb.com/a.pdf#page=7"
+    assert readable_link("") == ""
+
+
+def test_sources_refuse_this_mac_and_private_networks():
+    import pytest
+    from dighouse import checks
+    for url in ("http://127.0.0.1:8080/", "http://localhost/", "http://10.0.0.1/", "http://169.254.169.254/", "file:///etc/passwd"):
+        with pytest.raises(RuntimeError):
+            checks._source_response(url)
+
+
+def test_read_source_refuses_an_address_carrying_the_projects_location(tmp_path):
+    import pytest
+    from dighouse import server
+    from dighouse.project import Project
+    p = Project.create(tmp_path / "p", "Test", "Q", [-90.1, 38.6, -90.0, 38.7])
+    with pytest.raises(ValueError, match="coordinates"):
+        server._no_location_in(p, "https://example.org/collect?lat=38.6612&lon=-90.0543")
+    server._no_location_in(p, "https://doi.org/10.1016/j.jas.2020.105123")

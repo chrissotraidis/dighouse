@@ -81,6 +81,7 @@ struct FindChatSheet: View {
         }
         .frame(width: min(620, app.windowSize.width - 40), height: min(440, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
+        .closesOnOutsideClick { dismiss() }
         .onAppear { focused = true }
         .onChange(of: term) { _, value in
             pending?.cancel()

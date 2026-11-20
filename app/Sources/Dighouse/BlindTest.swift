@@ -4,30 +4,32 @@ import SwiftUI
 enum TestSites {
     struct Site: Identifiable {
         let id: String, title: String, place: String, about: String, image: String
+        /// What kind of feature the site tests, in a few words.
+        var tests = ""
         var underwater = false
     }
 
     static let all: [Site] = [
         Site(id: "mound-city", title: "Mound City Group", place: "Ohio, United States",
-             about: "About two dozen Hopewell mounds inside an earthen wall.", image: "mound-city"),
+             about: "About two dozen Hopewell mounds inside an earthen wall.", image: "mound-city", tests: "round mounds and an enclosing wall"),
         Site(id: "angel-mounds", title: "Angel Mounds", place: "Indiana, United States",
-             about: "Mississippian platform mounds beside the Ohio River.", image: "angel-mounds"),
+             about: "Mississippian platform mounds beside the Ohio River.", image: "angel-mounds", tests: "large platform mounds"),
         Site(id: "serpent-mound", title: "Serpent Mound", place: "Ohio, United States",
-             about: "An effigy mound about 411 m long, and burial mounds near it.", image: "serpent-mound"),
+             about: "An effigy mound about 411 m long, and burial mounds near it.", image: "serpent-mound", tests: "a long, low effigy"),
         Site(id: "cahokia", title: "Cahokia", place: "Illinois, United States",
-             about: "Monks Mound, the largest earthwork north of Mexico.", image: "cahokia"),
+             about: "Monks Mound, the largest earthwork north of Mexico.", image: "cahokia", tests: "big mounds among roads and fields"),
         Site(id: "maiden-castle", title: "Maiden Castle", place: "Dorset, England",
-             about: "An Iron Age hillfort with rings of ramparts and two entrances.", image: "maiden-castle"),
+             about: "An Iron Age hillfort with rings of ramparts and two entrances.", image: "maiden-castle", tests: "ramparts and ditches"),
         Site(id: "borre", title: "Borre", place: "Vestfold, Norway",
-             about: "A Viking Age cemetery of more than fifty burial mounds.", image: "borre"),
+             about: "A Viking Age cemetery of more than fifty burial mounds.", image: "borre", tests: "many small, low mounds, the hardest"),
         Site(id: "oberhaching", title: "Oberhaching", place: "Bavaria, Germany",
-             about: "Late Iron Age square enclosures in woodland and at a field edge.", image: "oberhaching"),
+             about: "Late Iron Age square enclosures in woodland and at a field edge.", image: "oberhaching", tests: "square enclosures under trees"),
         Site(id: "lauske", title: "Lauske ring forts", place: "Saxony, Germany",
-             about: "Three ring forts in Upper Lusatia, one on a wooded spur.", image: "lauske"),
+             about: "Three ring forts in Upper Lusatia, one on a wooded spur.", image: "lauske", tests: "ring forts on wooded ground"),
         Site(id: "puketapu", title: "Puketapu Pā", place: "Auckland, New Zealand",
-             about: "A pā on a ridge, with ditches, terraces and storage pits.", image: "puketapu"),
+             about: "A pā on a ridge, with ditches, terraces and storage pits.", image: "puketapu", tests: "terraces, ditches and pits"),
         Site(id: "thunder-bay-east", title: "Thunder Bay wrecks", place: "Lake Huron, United States",
-             about: "Wrecks on the lake bed in a marine sanctuary, from NOAA's sonar surveys.", image: "thunder-bay", underwater: true),
+             about: "Wrecks on the lake bed in a marine sanctuary, from NOAA's sonar surveys.", image: "thunder-bay", tests: "wrecks on the lake bed", underwater: true),
     ]
 }
 
@@ -76,7 +78,7 @@ struct TestPicker: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach([(false, "On land"), (true, "Under water")], id: \.1) { group in
                         Text(group.1).font(.system(size: 12.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 10, alignment: .top)], spacing: 10) {
                             ForEach(TestSites.all.filter { $0.underwater == group.0 }) { site in card(site) }
                         }
                         .padding(.bottom, 6)
@@ -86,14 +88,33 @@ struct TestPicker: View {
             .frame(maxHeight: max(320, app.windowSize.height - 260))
         }
         .padding(22)
-        .frame(width: min(720, app.windowSize.width - 40))
+        .frame(width: min(860, app.windowSize.width - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
+        .closesOnOutsideClick { dismiss() }
+        .onAppear { scores = Self.lastScores(app.store.projects.map(\.path)) }
+    }
+
+    @State private var scores: [String: String] = [:]
+
+    /// The last score on each site, from the blind tests on this Mac: "19 of 19 found".
+    static func lastScores(_ paths: [String]) -> [String: String] {
+        var out: [String: (Date, String)] = [:]
+        for path in paths {
+            guard let t = FileManager.default.contents(atPath: path + "/private/state/test.json"),
+                  let test = (try? JSONSerialization.jsonObject(with: t)) as? JSON, let key = test["key"] as? String,
+                  let s = FileManager.default.contents(atPath: path + "/private/state/score.json"),
+                  let score = (try? JSONSerialization.jsonObject(with: s)) as? JSON,
+                  let found = score["found"] as? Int, let known = score["known"] as? Int else { continue }
+            let when = FileInfo.modified(path + "/private/state/score.json") ?? .distantPast
+            if (out[key]?.0 ?? .distantPast) < when { out[key] = (when, "Last run here: \(found) of \(known) found") }
+        }
+        return out.mapValues(\.1)
     }
 
     private func card(_ site: TestSites.Site) -> some View {
         Button { app.startTest(site) } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                Theme.ink.opacity(0.04).aspectRatio(3 / 2, contentMode: .fit)
+            HStack(alignment: .top, spacing: 0) {
+                Theme.ink.opacity(0.04).frame(width: 112, height: 96)
                     .overlay {
                         if let image = StartingPoints.image(named: site.image) {
                             Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
@@ -101,10 +122,19 @@ struct TestPicker: View {
                     }
                     .clipped()
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(site.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                    Text(site.place).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                    Text(site.about).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
-                        .fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(site.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold)).lineLimit(1)
+                        Text(site.place).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
+                    }
+                    Text(site.about).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !site.tests.isEmpty {
+                        Text("Tests: " + site.tests).font(.system(size: 11.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan)
+                            .lineLimit(1).padding(.top, 2)
+                    }
+                    if let score = scores[site.id] {
+                        Text(score).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                    }
                 }
                 .padding(10).frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -146,6 +176,9 @@ struct Scorecard: View {
                     tally("\(found) of \(known)", "found", Theme.green)
                     tally("\(missed.count)", "missed", missed.isEmpty ? Theme.faint : Theme.amber)
                     tally("\(extra.count)", "not in the key", Theme.tan)
+                    if let perKm = s["extra_per_km2"] as? Double {
+                        tally(String(format: "%g", perKm), "per sq km not in the key", Theme.faint)
+                    }
                     Spacer()
                     if let minutes = s["minutes"] as? Int {
                         Text("\(minutes) min · \(s["model"] as? String ?? "")").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
@@ -166,7 +199,11 @@ struct Scorecard: View {
                     }
                 }
                 if !missed.isEmpty {
-                    section("Missed", missed.map { ($0["feature"] as? String ?? "", "\($0["what"] as? String ?? ""), \($0["source"] as? String ?? "")") }, close)
+                    section("Missed", missed.map { m in
+                        let stage = (m["stage"] as? String).map { " Lost: \($0)." } ?? ""
+                        let relief = (m["relief_m"] as? Double).map { " About \(String(format: "%.1f", $0)) m of relief." } ?? ""
+                        return (m["feature"] as? String ?? "", "\(m["what"] as? String ?? ""), \(m["source"] as? String ?? "").\(stage)\(relief)")
+                    }, close)
                 }
                 if !extra.isEmpty {
                     section("Not in the key", extra.map { ($0, names[$0] ?? "") }, close)

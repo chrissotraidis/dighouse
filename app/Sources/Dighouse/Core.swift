@@ -92,6 +92,8 @@ enum Theme {
     static var tan: Color { palette.tan }
     static var green: Color { palette.green }
     static var amber: Color { palette.amber }
+    /// The seafloor from sonar, the same in every look.
+    static let water = Color(red: 0.38, green: 0.62, blue: 0.86)
     /// The fill of the one main button on a screen.
     static var primary: Color { palette.primary }
 }
@@ -300,12 +302,43 @@ struct Tile: Identifiable {
 struct Source: Identifiable {
     let id = UUID()
     let title: String, status: String, finding: String
-    var link = ""
+    let link: String
+
+    init(title: String, status: String, finding: String, link: String = "") {
+        self.title = title
+        self.status = status
+        self.finding = finding
+        self.link = Self.readable(link)
+    }
 
     /// "could_not_open" reads "Could not open".
     var statusLabel: String {
         let words = status.replacingOccurrences(of: "_", with: " ")
         return words.prefix(1).uppercased() + words.dropFirst()
+    }
+
+    /// The site the link goes to, such as "doi.org" or "mesoweb.com".
+    var host: String { URL(string: link)?.host?.replacingOccurrences(of: "www.", with: "") ?? "" }
+
+    /// The page a person reads for a link an agent copied from a data service: a DOI from DataCite or Crossref's
+    /// API goes to doi.org, an OpenAlex work to its page. Older records hold such links, so they are mended here.
+    static func readable(_ link: String) -> String {
+        guard let url = URL(string: link.trimmingCharacters(in: .whitespaces)), let host = url.host?.lowercased() else { return link }
+        let path = url.path.removingPercentEncoding ?? url.path
+        func doi(after prefix: String) -> String? {
+            guard let range = path.range(of: prefix) else { return nil }
+            let rest = String(path[range.upperBound...])
+            return rest.hasPrefix("10.") ? "https://doi.org/" + rest : nil
+        }
+        if host == "api.datacite.org", let d = doi(after: "/dois/") { return d }
+        if host == "api.crossref.org", let d = doi(after: "/works/") { return d }
+        if host == "api.openalex.org", path.hasPrefix("/works/") {
+            let id = String(path.dropFirst("/works/".count))
+            if id.lowercased().hasPrefix("https://doi.org/") { return id }
+            if id.lowercased().hasPrefix("doi:") { return "https://doi.org/" + id.dropFirst(4) }
+            return "https://openalex.org/" + id
+        }
+        return link
     }
 }
 
@@ -340,8 +373,47 @@ struct Candidate: Identifiable {
     ]
     /// A flag with its section and its modern-features check on record is waiting for the person, not for more checks.
     var statusLabel: String {
+        if waiting, let s = likely, let label = Self.labels[s.status] { return "Suggested: " + label.lowercased() }
         if status == "flagged", checks["section"] != nil, checks["modern"] != nil { return "Needs your decision" }
         return Self.labels[status] ?? status
+    }
+
+    /// Still waiting for a person's decision.
+    var waiting: Bool { status == "flagged" || status == "ground_confirmed" }
+
+    /// What the find probably is: the agent's suggestion, or else a read source whose finding names it, or the map check.
+    var likely: (status: String, reason: String, by: String)? {
+        if let s = suggestion { return s }
+        if let named = sources.first(where: { $0.status == "read" && $0.finding.range(of: "\\b\(id)\\b", options: .regularExpression) != nil }) {
+            return ("already_published", named.title, "the sources on its record")
+        }
+        if (checks["modern"] as? JSON)?["likely_modern"] as? Bool == true, sources.allSatisfy({ $0.status != "read" }),
+           let summary = (checks["modern"] as? JSON)?["summary"] as? String,
+           !summary.contains("historic places mapped") {
+            // Roads and buildings beside a mapped historic place say nothing either way, so the map alone suggests nothing there.
+            return ("modern", summary, "the map check")
+        }
+        return nil
+    }
+
+    /// Where the Records list puts a find: by what it probably is, so the obvious ones can be confirmed together.
+    enum Group: Int, CaseIterable {
+        case published, notAncient, closer, open, decided
+        var title: String {
+            ["Already published", "Modern or natural", "Worth a closer look", "No suggestion yet", "Decided"][rawValue]
+        }
+        /// Groups whose suggestions are routine enough to confirm in one step.
+        var confirmable: Bool { self == .published || self == .notAncient }
+    }
+
+    var group: Group {
+        guard waiting else { return .decided }
+        switch likely?.status {
+        case "already_published": return .published
+        case "modern", "natural": return .notAncient
+        case "no_match_in_sources_read": return .closer
+        default: return .open
+        }
     }
 
     var statusColor: Color {

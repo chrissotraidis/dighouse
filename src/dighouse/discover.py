@@ -411,6 +411,10 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
             text = f"{d.get('name', '')}. {d.get('keywords') or ''}. {d.get('description') or ''}"
             surveys.append((f"ot:{d['alternateName']}", box, bool(ARCHAEOLOGY.search(text))))
     dx, dy = (e - w) / cells, (n - s) / cells
+    # National ground models on land, matched by their rough outlines (the seafloor and token-only services are left out).
+    from . import national
+    lands = [(key, d["outline"]) for key, d in national.NATIONAL.items()
+             if not d.get("seafloor") and not d.get("token") and d.get("outline") and national._overlaps(bbox, d["outline"])]
     grid = []
     for row in range(cells):
         for col in range(cells):
@@ -421,6 +425,7 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
                      if arch and not (box[2] < cell[0] or box[0] > cell[2] or box[3] < cell[1] or box[1] > cell[3])]
             lidar += [sid for sid, box, _ in surveys
                       if not (box[2] < cell[0] or box[0] > cell[2] or box[3] < cell[1] or box[1] > cell[3])]
+            lidar += [f"national:{key}" for key, ring in lands if national._overlaps(cell, ring)]
             inside = [x for x in sites if cell[0] <= x["lon"] < cell[2] and cell[1] <= x["lat"] < cell[3]]
             by_source: dict[str, int] = {}
             for x in inside:
@@ -448,6 +453,9 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
            "sites_on_open_record": len(sites), "by_source": totals, "sources_that_answered": _answered(silent),
            "records_in_open_context": published, "cells_with_open_lidar": len(covered),
            "cells_without_open_lidar": len(grid) - len(covered), "ranked": covered[:8],
+           # Every cell, small enough for a map layer: counts only, never a site's name or place.
+           "cells": [{k: c[k] for k in ("cell", "west", "south", "east", "north", "recorded_sites", "open_lidar_datasets")}
+                     | {"flown_for_archaeology": bool(c["flown_for_archaeology"])} for c in grid],
            "ranking_basis": "Survey coverage and public record density. Assess archaeological research priority separately against published work.",
            "how_to_read": RECORD_CAVEAT}
     if silent:

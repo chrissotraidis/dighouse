@@ -73,6 +73,13 @@ struct MapView: View {
     @State private var terrain: String?
     @State private var zoom = 1.0
     @State private var pinchStart: Double?
+    /// How far the map is moved from where it starts, in screen points, and where a drag began.
+    @State private var pan = CGSize.zero
+    @State private var dragStart: CGSize?
+    /// The pointer over the map, and the map's size, for zooming toward the pointer.
+    @State private var pointer: CGPoint?
+    @State private var mapSize = CGSize.zero
+    @State private var wheel: Any?
     /// How the tiles are drawn, and whether their outlines and the candidates show.
     @AppStorage("mapStyle") private var style = "composite"
     @State private var rendering = false
@@ -179,10 +186,9 @@ struct MapView: View {
                     .frame(width: geo.size.width, height: geo.size.height)
                 }
                 let spots = placed
-                let width = max(spots.map { $0.x + $0.w }.max() ?? 1, 1)
-                let height = max(spots.map { $0.y + $0.h }.max() ?? 1, 1)
-                let scale = min((geo.size.width - 32) / width, (geo.size.height - 72) / height) * zoom
-                ScrollView([.horizontal, .vertical]) {
+                let (width, height, fit, origin) = frame(spots, in: geo.size)
+                let scale = fit * zoom
+                ZStack(alignment: .topLeading) {
                     ZStack(alignment: .topLeading) {
                         ForEach(spots, id: \.tile.id) { spot in
                             TileView(tile: spot.tile, selected: store.selectedTile == spot.tile.id, style: style, outlined: showTiles)
@@ -227,16 +233,36 @@ struct MapView: View {
                     }
                     .frame(width: width * scale, height: height * scale, alignment: .topLeading)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .padding(.horizontal, 16).padding(.top, 56).padding(.bottom, 16)
-                    .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .top)
+                    .offset(x: origin.x + pan.width, y: origin.y + pan.height)
                 }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+                .contentShape(Rectangle())
+                .clipped()
+                // Drag the ground to move it. While drawing a slice, the drag draws instead.
+                .simultaneousGesture(DragGesture(minimumDistance: 3)
+                    .onChanged { g in
+                        guard !drawing else { return }
+                        if dragStart == nil { dragStart = pan }
+                        pan = clamped(CGSize(width: (dragStart?.width ?? 0) + g.translation.width, height: (dragStart?.height ?? 0) + g.translation.height))
+                    }
+                    .onEnded { _ in dragStart = nil })
+                .onContinuousHover(coordinateSpace: .local) { phase in
+                    if case .active(let p) = phase { pointer = p } else { pointer = nil }
+                }
+                .onAppear { mapSize = geo.size }
+                .onChange(of: geo.size) { _, size in mapSize = size }
             }
             .gesture(MagnifyGesture()
                 .onChanged { g in
                     if pinchStart == nil { pinchStart = zoom }
-                    zoom = min(8, max(1, (pinchStart ?? 1) * g.magnification))
+                    zoom(to: (pinchStart ?? 1) * g.magnification, at: pointer)
                 }
                 .onEnded { _ in pinchStart = nil })
+            .onAppear(perform: listenToWheel)
+            .onDisappear {
+                if let wheel { NSEvent.removeMonitor(wheel) }
+                wheel = nil
+            }
             .overlay(alignment: .top) {
                 // The key sits beside the controls when there is room, and under them when the pane is narrow.
                 ViewThatFits(in: .horizontal) {
@@ -261,10 +287,14 @@ struct MapView: View {
 
     private var controls: some View {
         HStack(spacing: 2) {
-            Button { zoom = max(1, zoom / 1.5) } label: { Image(systemName: "minus") }
-                .buttonStyle(IconButton(size: 28)).disabled(zoom <= 1).help("Zoom out")
-            Button { zoom = min(8, zoom * 1.5) } label: { Image(systemName: "plus") }
-                .buttonStyle(IconButton(size: 28)).help("Zoom in")
+            Button { zoom(to: zoom / 1.5, at: nil) } label: { Image(systemName: "minus") }
+                .buttonStyle(IconButton(size: 28)).disabled(zoom <= 1).help("Zoom out. The scroll wheel zooms too.")
+            Button { zoom(to: zoom * 1.5, at: nil) } label: { Image(systemName: "plus") }
+                .buttonStyle(IconButton(size: 28)).help("Zoom in. The scroll wheel zooms toward the pointer.")
+            Button { withAnimation(.easeOut(duration: 0.2)) { zoom = 1; pan = .zero } } label: {
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+            }
+            .buttonStyle(IconButton(size: 28)).disabled(zoom == 1 && pan == .zero).help("Fit the whole area")
             PillMenu(title: Self.styles.first { $0.id == style }?.name ?? "View", quiet: true, width: 200) {
                 [.header("How the ground is drawn")]
                     + Self.styles.map { s in MenuEntry(title: s.name, icon: s.icon, checked: s.id == style) { style = s.id } }
@@ -296,6 +326,59 @@ struct MapView: View {
     }
 
     /// Render every tile in the chosen style, once, through the tools.
+    /// The ground's size in metres, the scale that fits it in the pane, and where it sits at that scale, under the controls.
+    private func frame(_ spots: [Placed], in size: CGSize) -> (Double, Double, Double, CGPoint) {
+        let width = max(spots.map { $0.x + $0.w }.max() ?? 1, 1)
+        let height = max(spots.map { $0.y + $0.h }.max() ?? 1, 1)
+        let fit = max(0.0001, min((size.width - 32) / width, (size.height - 72) / height))
+        let origin = CGPoint(x: (size.width - width * fit) / 2, y: 56 + max(0, (size.height - 72 - height * fit) / 2))
+        return (width, height, fit, origin)
+    }
+
+    /// Zoom to a level between the whole area and eight times closer, keeping the ground under the pointer (or the
+    /// middle of the pane) where it is.
+    private func zoom(to level: Double, at point: CGPoint?) {
+        let next = min(8, max(1, level))
+        guard next != zoom else { return }
+        let origin = frame(placed, in: mapSize).3
+        let p = point ?? CGPoint(x: mapSize.width / 2, y: mapSize.height / 2)
+        let k = next / zoom
+        pan = next == 1 ? .zero : CGSize(width: p.x - origin.x - (p.x - origin.x - pan.width) * k,
+                                         height: p.y - origin.y - (p.y - origin.y - pan.height) * k)
+        zoom = next
+        pan = clamped(pan)
+    }
+
+    /// Scrolling up and down zooms toward the pointer, with a mouse wheel, a Magic Mouse or two fingers on a trackpad;
+    /// scrolling sideways and dragging move the map; a pinch zooms. Only while the pointer is over the map, so the rest
+    /// of the window scrolls as usual.
+    private func listenToWheel() {
+        guard wheel == nil else { return }
+        wheel = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+            guard let p = pointer, event.window?.isKeyWindow == true else { return event }
+            // Pushing the wheel away, or two fingers up, zooms in, whichever way the Mac is set to scroll.
+            let flip: CGFloat = event.isDirectionInvertedFromDevice ? -1 : 1
+            let dx = event.scrollingDeltaX * flip, dy = event.scrollingDeltaY * flip
+            if abs(dy) >= abs(dx), dy != 0 {
+                // A wheel notch is about one line; a trackpad or Magic Mouse reports points, many to a gesture.
+                let step = event.hasPreciseScrollingDeltas ? exp(Double(dy) * 0.006) : pow(1.15, Double(dy))
+                zoom(to: zoom * step, at: p)
+            } else if dx != 0 {
+                pan = clamped(CGSize(width: pan.width + dx * (event.hasPreciseScrollingDeltas ? 1 : 12), height: pan.height))
+            }
+            return nil
+        }
+    }
+
+    /// Keep some of the ground in view, however far it is dragged.
+    private func clamped(_ offset: CGSize) -> CGSize {
+        let (width, height, fit, origin) = frame(placed, in: mapSize)
+        let w = width * fit * zoom, h = height * fit * zoom, keep = 80.0
+        let x = min(max(offset.width, keep - origin.x - w), mapSize.width - keep - origin.x)
+        let y = min(max(offset.height, keep - origin.y - h), mapSize.height - keep - origin.y)
+        return CGSize(width: x, height: y)
+    }
+
     private func render() async {
         guard style != "composite", let root = store.current?.path else { return }
         rendering = true
@@ -495,7 +578,14 @@ private struct Pin: View {
 private struct Decision: Identifiable {
     let candidate: Candidate
     let status: String
+    /// The reason to start from, such as the agent's suggestion.
+    var prefill = ""
     var id: String { candidate.id + status }
+}
+
+private struct GroupConfirm: Identifiable {
+    let group: Candidate.Group
+    var id: Int { group.rawValue }
 }
 
 struct RecordsView: View {
@@ -503,6 +593,7 @@ struct RecordsView: View {
     @EnvironmentObject var store: ProjectStore
     @EnvironmentObject var engine: Engine
     @State private var deciding: Decision?
+    @State private var confirming: GroupConfirm?
 
     private var current: Candidate? {
         store.candidates.first { $0.id == store.selectedCandidate } ?? store.candidates.first
@@ -521,11 +612,9 @@ struct RecordsView: View {
                 HStack(spacing: 0) {
                     if geo.size.width >= 760 {
                         ScrollView {
-                            VStack(spacing: 2) {
-                                ForEach(store.candidates) { c in listRow(c) }
-                            }.padding(8)
+                            list.padding(8)
                         }
-                        .frame(width: 236)
+                        .frame(width: 256)
                         Hairline(vertical: true)
                     }
                     ScrollView {
@@ -549,7 +638,48 @@ struct RecordsView: View {
             .sheet(item: $deciding) { decision in
                 DecisionSheet(decision: decision).withApp(app)
             }
+            .sheet(item: $confirming) { confirm in
+                GroupConfirmSheet(group: confirm.group).withApp(app)
+            }
         }
+    }
+
+    /// The finds, grouped by what they probably are. A blind test lists them plainly, since it is scored, not decided.
+    @ViewBuilder private var list: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if store.isBlindTest {
+                Text("A blind test. Its finds are scored against the published features, so none needs a decision.")
+                    .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                    .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 10).padding(.vertical, 6)
+                ForEach(store.candidates) { c in listRow(c) }
+            } else {
+                ForEach(Candidate.Group.allCases, id: \.self) { group in
+                    let items = store.candidates.filter { $0.group == group }
+                    if !items.isEmpty {
+                        groupHeader(group, count: items.count)
+                        ForEach(items) { c in listRow(c) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func groupHeader(_ group: Candidate.Group, count: Int) -> some View {
+        HStack(spacing: 6) {
+            Text("\(group.title) · \(count)").font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if group.confirmable {
+                Button("Confirm all") { confirming = GroupConfirm(group: group) }
+                    .buttonStyle(.plain).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
+                    .help("Check the suggestions and confirm them together. Your name and each find's reason go into its record.")
+            } else if group == .open, let flow = ToolGuide.workflows.first(where: { $0.id == "decide" }), app.state(of: flow).ready {
+                Button("Suggest") { app.run(flow) }
+                    .buttonStyle(.plain).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
+                    .help("The agent reads each record and its sources and says what each find probably is, and why.")
+            }
+        }
+        .padding(.horizontal, 10).padding(.top, 12).padding(.bottom, 4)
     }
 
     private func listRow(_ c: Candidate) -> some View {
@@ -588,11 +718,22 @@ struct RecordsView: View {
                 figure(c.relief, "Bare-ground relief")
                 figure(c.section, "Slice through the feature")
             }
+            summary(c)
             if !c.evidence.isEmpty {
                 section("Evidence") {
-                    ForEach(c.evidence, id: \.self) { line in
-                        Text(line).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
+                    Text(c.evidence[0]).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if c.evidence.count > 1 {
+                        DisclosureGroup("All the evidence (\(c.evidence.count) notes)") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(c.evidence.dropFirst(), id: \.self) { line in
+                                    Text(line).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(3)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .padding(.top, 6)
+                        }
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
                     }
                 }
             }
@@ -600,11 +741,17 @@ struct RecordsView: View {
             if !c.sources.isEmpty {
                 section("Sources") {
                     ForEach(c.sources) { s in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(s.title).font(.system(size: 13 * Theme.scale))
-                            Text("\(s.statusLabel) · \(s.finding)")
-                                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                        Button { open(s) } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(s.title).font(.system(size: 13 * Theme.scale)).multilineTextAlignment(.leading)
+                                Text("\(s.statusLabel)\(s.host.isEmpty ? "" : " · " + s.host) · \(s.finding)")
+                                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(3)
+                                    .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .buttonStyle(.plain).disabled(s.link.isEmpty)
+                        .help(s.link.isEmpty ? "No address was logged for this source." : "Open it in the Sources tab")
                     }
                 }
             }
@@ -613,20 +760,61 @@ struct RecordsView: View {
                     ForEach(c.decisions, id: \.self) { Text($0).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim) }
                 }
             }
-            section("Your decision") {
-                Text("You decide what this is. Your name and reason are written into the record.")
-                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                Flow(spacing: 8) {
-                    Button("Already published") { deciding = Decision(candidate: c, status: "already_published") }
-                    Button("Natural feature") { deciding = Decision(candidate: c, status: "natural") }
-                    Button("Modern feature") { deciding = Decision(candidate: c, status: "modern") }
-                    Button("No match in sources read") { deciding = Decision(candidate: c, status: "no_match_in_sources_read") }
-                    Button("Show file") { NSWorkspace.shared.selectFile(c.file, inFileViewerRootedAtPath: c.folder) }
+            if !store.isBlindTest {
+                section(c.waiting ? "Decide it yourself" : "Change the decision") {
+                    Text("Pick what you think it is. Your name and reason go into the record.")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                    Flow(spacing: 8) {
+                        Button("Already published") { deciding = Decision(candidate: c, status: "already_published") }
+                        Button("Natural feature") { deciding = Decision(candidate: c, status: "natural") }
+                        Button("Modern feature") { deciding = Decision(candidate: c, status: "modern") }
+                        Button("No match in sources read") { deciding = Decision(candidate: c, status: "no_match_in_sources_read") }
+                        Button("Show file") { NSWorkspace.shared.selectFile(c.file, inFileViewerRootedAtPath: c.folder) }
+                    }
+                    .buttonStyle(SecondaryButton())
                 }
-                .buttonStyle(SecondaryButton())
             }
         }
         .textSelection(.enabled)
+    }
+
+    /// The two sentences a record starts with: what the find probably is, and why, with the one step that settles it.
+    @ViewBuilder private func summary(_ c: Candidate) -> some View {
+        if store.isBlindTest {
+            Text("Part of a blind test. It is scored against the published features when the test ends.")
+                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+                .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14, radius: 12)
+        } else if c.waiting {
+            VStack(alignment: .leading, spacing: 6) {
+                if let s = c.likely, let label = Candidate.labels[s.status] {
+                    Text("Probably \(label.lowercased())").font(.system(size: 15 * Theme.scale, weight: .semibold))
+                    Text(s.reason).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(5)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Suggested by \(s.by). Look at the pictures, then confirm it or decide yourself below.")
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                    Button("Confirm: \(label.lowercased())") { deciding = Decision(candidate: c, status: s.status, prefill: s.reason) }
+                        .buttonStyle(PrimaryButton()).padding(.top, 4)
+                } else {
+                    Text("No suggestion yet").font(.system(size: 15 * Theme.scale, weight: .semibold))
+                    Text("The agent reads the record and its sources, then says what the find probably is and why.")
+                        .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "decide" }), app.state(of: flow).ready {
+                        Button("Suggest decisions") { app.run(flow) }.buttonStyle(PrimaryButton()).padding(.top, 4)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.tan.opacity(0.08)))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.tan.opacity(0.25)))
+        }
+    }
+
+    /// Open a source in the Sources tab.
+    private func open(_ s: Source) {
+        guard let url = URL(string: s.link) else { return }
+        app.browserURL = url
+        app.tab = .sources
     }
 
     private func section(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
@@ -645,9 +833,12 @@ struct RecordsView: View {
         let unread = c.sources.filter { $0.status == "could_not_open" }.count
         VStack(spacing: 0) {
             CheckRow(done: cut?["in_ground"] as? Bool, title: "In the ground",
-                     detail: cut.map { $0["from_ground_model_only"] as? Bool == true
-                        ? "\($0["feature_height_m"] ?? "?") m high, measured on a ready-made ground model. It has no treetops to compare."
-                        : "\($0["feature_height_m"] ?? "?") m high. \($0["ground_returns_within_5m_of_peak"] ?? "?") laser points reached the ground at its top." }
+                     detail: cut.map { cut in
+                        let height = "\(cut["feature_height_m"] ?? "?") m high"
+                        if cut["in_ground"] as? Bool != true { return "\(height). The slice shows no clear rise in the ground, so it may be trees, a gap in the data, or nothing." }
+                        return cut["from_ground_model_only"] as? Bool == true
+                            ? "\(height), measured on a ready-made ground model. That shows the shape but has no treetops to compare."
+                            : "\(height). \(cut["ground_returns_within_5m_of_peak"] ?? "?") laser points reached the ground at its top, so it is a shape in the ground, not trees." }
                         ?? "A slice, straight down through the laser points, shows whether the shape is ground or treetops.") {
                 Button(cut == nil ? "Cut a slice" : "Cut again") {
                     app.ask("Cut a slice through \(c.id), starting and ending on the ground around it, and file it on its record.")
@@ -669,22 +860,50 @@ struct RecordsView: View {
             }
             Hairline()
             CheckRow(done: modern.map { $0["likely_modern"] as? Bool != true }, title: "Open maps",
-                     detail: modern.map { ($0["summary"] as? String ?? "").prefix(1).uppercased() + ($0["summary"] as? String ?? "").dropFirst() }
-                        ?? "Roads, buildings and sites already mapped nearby.") {
-                Button(modern == nil ? "Check" : "Check again") {
-                    app.ask("Check open maps for modern features near \(c.id) and tell me what they show.")
-                }.buttonStyle(SecondaryButton())
+                     detail: modern.map { Self.mapMeaning($0) } ?? "Roads, buildings and sites already mapped nearby.") {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let summary = modern?["summary"] as? String, !summary.isEmpty {
+                        DisclosureGroup("What the maps show") {
+                            Text(summary.prefix(1).uppercased() + summary.dropFirst()).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                                .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                        }
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                    }
+                    Button(modern == nil ? "Check" : "Check again") {
+                        app.ask("Check open maps for modern features near \(c.id) and tell me what they show.")
+                    }.buttonStyle(SecondaryButton())
+                }
             }
             Hairline()
             CheckRow(done: c.sources.isEmpty ? nil : (read > 0 && unread == 0), title: "What is published",
                      detail: c.sources.isEmpty ? "Books, papers and site records, each logged as read or not opened."
-                        : "\(read) read, \(unread) could not be opened") {
-                Button("Search") {
-                    app.ask("Search the literature for \(c.id), starting with studies of this dataset. Read what you find and log every source on its record.")
-                }.buttonStyle(SecondaryButton())
+                        : unread == 0 ? "\(read) read. Each says what it shows about this find, below."
+                        : "\(read) read. \(unread) would not open for the agent. Publishers often let a person in: open \(unread == 1 ? "it" : "them") yourself, then press Give this page to the agent.") {
+                HStack(spacing: 8) {
+                    if let first = c.sources.first(where: { $0.status == "could_not_open" && !$0.link.isEmpty }) {
+                        Button(unread == 1 ? "Open the page" : "Open the first page") { open(first) }.buttonStyle(PrimaryButton())
+                    }
+                    Button(c.sources.isEmpty ? "Search" : "Search again") {
+                        app.ask("Search the literature for \(c.id), starting with studies of this dataset. Read what you find and log every source on its record.")
+                    }.buttonStyle(SecondaryButton())
+                }
             }
         }
         .panel()
+    }
+
+    /// What the open-maps check means for a person, in one or two sentences.
+    static func mapMeaning(_ modern: JSON) -> String {
+        let summary = modern["summary"] as? String ?? ""
+        var known = ""
+        if let range = summary.range(of: "historic places mapped within 2 km:") {
+            let names = summary[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines.union(.init(charactersIn: ".")))
+            if !names.isEmpty { known = " Known places mapped within 2 km: \(names)." }
+        }
+        if modern["likely_modern"] as? Bool == true {
+            return "Roads or buildings are on or beside it, so it may be modern. The slice and the sources settle it." + known
+        }
+        return "Nothing modern is mapped on it." + known
     }
 
     @ViewBuilder private func figure(_ path: String, _ caption: String) -> some View {
@@ -784,6 +1003,80 @@ private struct DecisionSheet: View {
         }
         .padding(24).frame(width: 480)
         .background(Theme.bg).foregroundStyle(Theme.text)
+        .onAppear { if reason.isEmpty { reason = decision.prefill } }
+    }
+}
+
+/// Confirms a group of suggestions together: each find gets its own suggested reason and the person's name.
+private struct GroupConfirmSheet: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+    @Environment(\.dismiss) private var dismiss
+    let group: Candidate.Group
+    /// Fixed when the sheet opens, so finds do not leave the list as they are decided.
+    @State private var finds: [Candidate] = []
+    @State private var left = Set<String>()
+    @State private var done = 0
+    @State private var busy = false
+    @State private var problem: String?
+
+    private var chosen: [Candidate] { finds.filter { !left.contains($0.id) } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Confirm \(finds.count == 1 ? "one find" : "\(finds.count) finds") as \(group.title.lowercased())")
+                .font(.system(size: 18 * Theme.scale, weight: .semibold))
+            Text("Untick any you are unsure of. Each record gets its own reason, as suggested, and your name.")
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(finds.enumerated()), id: \.element.id) { i, c in
+                        if i > 0 { Hairline() }
+                        Toggle(isOn: Binding(get: { !left.contains(c.id) }, set: { if $0 { left.remove(c.id) } else { left.insert(c.id) } })) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(c.id) \(c.name)").font(.system(size: 13 * Theme.scale, weight: .medium)).lineLimit(1)
+                                Text(c.likely.map { "\((Candidate.labels[$0.status] ?? "")). \($0.reason)" } ?? "")
+                                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .toggleStyle(.checkbox).padding(.vertical, 8)
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+            .frame(height: min(380, CGFloat(max(finds.count, 1)) * 74 + 8)).panel()
+            Text(busy ? "Recording \(done + 1) of \(chosen.count)…" : "Recorded as decided by \(app.userName). Change your name in Settings.")
+                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+            if let problem { Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
+            HStack(spacing: 8) {
+                Spacer()
+                Button("Cancel") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction).disabled(busy)
+                Button("Confirm \(chosen.count)") { confirm() }
+                    .buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction).disabled(busy || chosen.isEmpty)
+            }
+        }
+        .padding(24).frame(width: 560)
+        .background(Theme.bg).foregroundStyle(Theme.text)
+        .onAppear { finds = store.candidates.filter { $0.group == group } }
+    }
+
+    private func confirm() {
+        busy = true
+        Task { @MainActor in
+            defer { busy = false }
+            for c in chosen {
+                guard let s = c.likely else { continue }
+                do {
+                    try await app.decide(c, status: s.status, reason: s.reason + " (Confirmed with the suggestion from \(s.by).)")
+                    done += 1
+                } catch {
+                    problem = "\(c.id): " + error.localizedDescription
+                    return
+                }
+            }
+            dismiss()
+        }
     }
 }
 
@@ -924,19 +1217,31 @@ struct WebPage: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let view = WKWebView()
         view.allowsBackForwardNavigationGestures = true
+        view.navigationDelegate = context.coordinator
         handle?.view = view
         return view
     }
 
     func updateNSView(_ view: WKWebView, context: Context) {
-        if let url, view.url != url, context.coordinator.last != url {
+        if let url, Memory.allowed(url), view.url != url, context.coordinator.last != url {
             context.coordinator.last = url
             view.load(URLRequest(url: url))
         }
     }
 
     func makeCoordinator() -> Memory { Memory() }
-    final class Memory { var last: URL? }
+
+    /// Remembers the last page asked for, and keeps the browser on the web: links written into a record or a page can
+    /// name a file on this Mac or another app, and those are not followed.
+    final class Memory: NSObject, WKNavigationDelegate {
+        var last: URL?
+
+        static func allowed(_ url: URL) -> Bool { ["http", "https", "about"].contains(url.scheme?.lowercased() ?? "") }
+
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(action.request.url.map(Self.allowed) ?? false ? .allow : .cancel)
+        }
+    }
 }
 
 /// What the agent has read for this project, and a browser to open any of it yourself.
@@ -1034,6 +1339,7 @@ struct SourcesView: View {
             }
         }
         .onChange(of: app.browserURL) { address = app.browserURL?.absoluteString ?? "" }
+        .onAppear { address = app.browserURL?.absoluteString ?? "" }
         .overlay(alignment: .bottomLeading) {
             if app.browserURL != nil {
                 HStack(spacing: 10) {

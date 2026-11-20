@@ -39,6 +39,20 @@ struct NewProjectView: View {
     @State private var inGitHub: Bool
     /// The name Dighouse suggested from the map, replaced while the person has not typed their own.
     @State private var suggested = ""
+    /// Where the map is looking, for the layer of how much is on open record.
+    @State private var center = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+    @State private var gapsOn = false
+    @State private var gaps: [Gap] = []
+    @State private var gapsBusy = false
+    @State private var gapsNote: String?
+
+    /// A cell of the coarse grid: how many sites are on open record in it, and whether open lidar reaches it.
+    private struct Gap: Identifiable {
+        let id: String
+        let west, south, east, north: Double
+        let sites: Int
+        let lidar: Bool
+    }
 
     private static let sizes: [Double] = [0.3, 0.6, 1, 1.5, 2]
 
@@ -69,6 +83,8 @@ struct NewProjectView: View {
     /// Zoomed out past this, a click zooms in on the spot; closer in, a click places the search area.
     private static let wide = 1.5
     private var zoomedOut: Bool { span > Self.wide }
+    /// Close enough in to count what is on record: the grid is at most 2 degrees across.
+    private var countable: Bool { span <= 3 }
 
     /// From the western United States to eastern Europe, fitted to the map's width: where most of the open lidar is.
     private static let world: MapCameraPosition = {
@@ -137,12 +153,33 @@ struct NewProjectView: View {
                     ForEach(Reach.national.indices, id: \.self) { i in
                         MapPolygon(coordinates: Self.coordinates(Reach.national[i].ring)).foregroundStyle(Theme.green.opacity(0.35)).stroke(Theme.green, lineWidth: 1)
                     }
+                    ForEach(Reach.sonar.indices, id: \.self) { i in
+                        MapPolygon(coordinates: Self.coordinates(Reach.sonar[i])).foregroundStyle(Theme.water.opacity(0.35)).stroke(Theme.water, lineWidth: 1)
+                    }
                     ForEach(Array(app.surveys.enumerated()), id: \.offset) { _, survey in
                         if survey.box.count == 4 {
                             Annotation("", coordinate: CLLocationCoordinate2D(latitude: (survey.box[1] + survey.box[3]) / 2, longitude: (survey.box[0] + survey.box[2]) / 2)) {
                                 Circle().fill(Theme.amber).frame(width: 9, height: 9).overlay(Circle().stroke(.black.opacity(0.5), lineWidth: 0.8))
                                     .help(survey.title)
                             }
+                        }
+                    }
+                }
+                if gapsOn {
+                    // Counts on a coarse grid, never a site's name or place. Cells without open lidar stay clear.
+                    ForEach(gaps) { g in
+                        let most = Double(gaps.map(\.sites).max() ?? 0)
+                        let fewest = g.lidar && most > 0 ? 1 - log(1 + Double(g.sites)) / log(1 + most) : (g.lidar ? 1 : 0)
+                        MapPolygon(coordinates: [
+                            CLLocationCoordinate2D(latitude: g.south, longitude: g.west), CLLocationCoordinate2D(latitude: g.south, longitude: g.east),
+                            CLLocationCoordinate2D(latitude: g.north, longitude: g.east), CLLocationCoordinate2D(latitude: g.north, longitude: g.west),
+                        ])
+                        .foregroundStyle(Theme.amber.opacity(0.08 + 0.4 * fewest))
+                        .stroke(.white.opacity(0.35), lineWidth: 0.6)
+                        Annotation("", coordinate: CLLocationCoordinate2D(latitude: (g.south + g.north) / 2, longitude: (g.west + g.east) / 2)) {
+                            Text(g.lidar ? "\(g.sites)" : "no lidar").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(.white)
+                                .padding(.horizontal, 5).frame(height: 18).background(Capsule().fill(.black.opacity(0.6)))
+                                .help(g.lidar ? "\(g.sites) site\(g.sites == 1 ? "" : "s") on open record in this cell" : "No open lidar the tools read covers this cell")
                         }
                     }
                 }
@@ -156,7 +193,11 @@ struct NewProjectView: View {
                 }
             }
             .mapStyle(.hybrid)
-            .onMapCameraChange(frequency: .onEnd) { context in span = context.region.span.latitudeDelta }
+            .onMapCameraChange(frequency: .onEnd) { context in
+                span = context.region.span.latitudeDelta
+                center = context.region.center
+            }
+            .task(id: gapsOn ? "\(Int(center.latitude * 2)),\(Int(center.longitude * 2)),\(countable)" : "off") { await loadGaps() }
             .onTapGesture { spot in
                 guard let place = proxy.convert(spot, from: .local) else { return }
                 if zoomedOut {
@@ -168,15 +209,39 @@ struct NewProjectView: View {
             }
         }
         .overlay(alignment: .bottomLeading) {
-            if zoomedOut {
-                VStack(alignment: .leading, spacing: 5) {
-                    legend(Theme.tan, "Lidar, the United States")
-                    legend(Theme.green, "Lidar, national ground models")
-                    legend(Theme.amber, "Surveys flown for archaeology")
+            VStack(alignment: .leading, spacing: 8) {
+                if zoomedOut {
+                    VStack(alignment: .leading, spacing: 5) {
+                        legend(Theme.tan, "Lidar, the United States")
+                        legend(Theme.green, "Lidar, national ground models")
+                        legend(Theme.amber, "Surveys flown for archaeology")
+                        legend(Theme.water, "Sonar, the seafloor, for wrecks")
+                    }
+                    .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.7)))
+                    .allowsHitTesting(false)
                 }
-                .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.7))).padding(12)
-                .allowsHitTesting(false)
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: $gapsOn) {
+                        Text("Show how much is on record").font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(.white)
+                    }
+                    .toggleStyle(.switch).controlSize(.small)
+                    .help("Counts the sites already on open record (Wikidata, OpenStreetMap and national registers) on a coarse grid. Brighter cells have fewer.")
+                    if gapsOn {
+                        if !countable {
+                            Text("Zoom in to a region, a couple of hundred kilometres across, to count what is on record there.")
+                                .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.8))
+                                .frame(maxWidth: 300, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                        } else if gapsBusy {
+                            Text("Counting the sites on record…").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.8))
+                        } else if let gapsNote {
+                            Text(gapsNote).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.8))
+                                .frame(maxWidth: 300, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.7)))
             }
+            .padding(12)
         }
         .overlay(alignment: .top) {
             Text(zoomedOut ? "Shaded areas have open lidar. Click where you want to look."
@@ -185,6 +250,35 @@ struct NewProjectView: View {
                 .padding(.horizontal, 12).frame(height: 28)
                 .background(Capsule().fill(.black.opacity(0.7))).padding(12)
                 .allowsHitTesting(false)
+        }
+    }
+
+    /// Count the sites on open record on a 4 by 4 grid around the middle of the map, at least a degree across, so a cell
+    /// is tens of kilometres wide and points at no single place.
+    private func loadGaps() async {
+        guard gapsOn, countable, engine.ready else { gaps = []; return }
+        let side = min(2, max(1, span))
+        let box = [center.longitude - side / 2, center.latitude - side / 2, center.longitude + side / 2, center.latitude + side / 2]
+        gapsBusy = true
+        defer { gapsBusy = false }
+        do {
+            let reply = try await engine.callTool("find_gaps", ["west": box[0], "south": box[1], "east": box[2], "north": box[3]])
+            guard let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON, let cells = info["cells"] as? [JSON] else {
+                gapsNote = "The count did not come back. Try again in a moment."
+                return
+            }
+            gaps = cells.compactMap { c in
+                guard let w = c["west"] as? Double, let s = c["south"] as? Double, let e = c["east"] as? Double, let n = c["north"] as? Double else { return nil }
+                return Gap(id: c["cell"] as? String ?? "\(w),\(s)", west: w, south: s, east: e, north: n,
+                           sites: c["recorded_sites"] as? Int ?? 0, lidar: (c["open_lidar_datasets"] as? Int ?? 0) > 0)
+            }
+            // Show the whole grid, so a person zoomed in on one field sees the cells around it.
+            if span < side * 0.7 {
+                withAnimation(.easeInOut(duration: 0.6)) { camera = Self.region(lat: center.latitude, lon: center.longitude, span: side * 1.15) }
+            }
+            gapsNote = "Brighter cells have fewer sites on open record. Few on record can mean few looked, or few wrote it down; it is not proof that nothing is there."
+        } catch {
+            gapsNote = "The count failed: " + error.localizedDescription
         }
     }
 
@@ -340,7 +434,7 @@ struct NewProjectView: View {
 
     @ViewBuilder private var coverageList: some View {
         if numbers == nil {
-            Text("Place the area to see which open surveys cover it.").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
+            Text("Click the map to see which open surveys cover the area.").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
         } else if let coverageProblem {
             Text(coverageProblem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
         } else if let coverage {

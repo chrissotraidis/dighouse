@@ -36,6 +36,8 @@ struct MainView: View {
             }
         }
         .ignoresSafeArea(edges: .top)
+        // A page from one project's sources does not follow the person into another project.
+        .onChange(of: store.current?.path) { app.browserURL = nil }
         .background(GeometryReader { geo in
             Color.clear.onAppear { app.windowSize = geo.size }.onChange(of: geo.size) { _, size in app.windowSize = size }
         })
@@ -118,12 +120,15 @@ struct TopBar: View {
     @EnvironmentObject var engine: Engine
 
     private var inProject: Bool { app.route == .chat && store.current != nil }
+    @AppStorage("toolboxTab") private var toolboxTab = ToolboxView.Tab.how.rawValue
 
     private var title: String {
         switch app.route {
         case .home: return "Home"
         case .newProject: return "New project"
-        case .toolbox: return "Toolbox"
+        case .toolbox:
+            // Where you are in the Toolbox: its tab, and the source open in it.
+            return (["Toolbox", toolboxTab] + [app.toolboxDetail].compactMap { $0 }).joined(separator: "  ›  ")
         case .settings: return "Settings"
         case .chat: return store.current?.name ?? chat.title
         }
@@ -481,18 +486,24 @@ private struct ResearchDurationSheet: View {
     @EnvironmentObject var app: AppState
     @State private var minutes = 60
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Timed research session").font(.headline)
-            Picker("Duration", selection: $minutes) {
-                ForEach([5, 15, 30, 60, 120, 240, 480], id: \.self) { value in
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Timed research session").font(.system(size: 18 * Theme.scale, weight: .semibold))
+            Text("The agent chooses areas, tests the strongest leads and saves a ranked assessment before the time is up. You can stop it at any point.")
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            Picker("How long", selection: $minutes) {
+                ForEach([5, 15, 30, 60, 120, 240, 300, 480], id: \.self) { value in
                     Text(value < 60 ? "\(value) minutes" : value == 60 ? "1 hour" : "\(value / 60) hours").tag(value)
                 }
             }
-            HStack {
+            .font(.system(size: 13 * Theme.scale))
+            HStack(spacing: 8) {
                 Spacer()
-                Button("Cancel") { app.choosingDuration = false }.keyboardShortcut(.cancelAction)
-                Button("Start session") { app.startTimedResearch(minutes: minutes) }.keyboardShortcut(.defaultAction)
+                Button("Cancel") { app.choosingDuration = false }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
+                Button("Start") { app.startTimedResearch(minutes: minutes) }.buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction)
             }
-        }.padding(24).frame(width: 360)
+        }
+        .padding(24).frame(width: 420)
+        .background(Theme.bg).foregroundStyle(Theme.text)
+        .closesOnOutsideClick { app.choosingDuration = false }
     }
 }

@@ -45,7 +45,10 @@ struct ReportSheet: View {
             })
             Hairline()
             VStack(alignment: .leading, spacing: 8) {
-                if waiting.isEmpty {
+                if store.isBlindTest {
+                    Text("A blind test: its finds are scored against the published key, so none waits for your decision.")
+                        .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+                } else if waiting.isEmpty {
                     Text("Nothing is waiting for your decision.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                 } else {
                     Text(waiting.count == 1 ? "One find is waiting for your decision" : "\(waiting.count) finds are waiting for your decision")
@@ -68,6 +71,7 @@ struct ReportSheet: View {
         }
         .frame(width: min(760, app.windowSize.width - 40), height: min(740, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
+        .closesOnOutsideClick { app.reportShown = nil }
     }
 }
 
@@ -95,17 +99,7 @@ struct ReviewSheet: View {
 
     /// What to suggest for a candidate: the agent's own suggestion, or else a read source whose finding names it.
     static func suggestion(for c: Candidate) -> (status: String, reason: String, by: String)? {
-        if let s = c.suggestion { return s }
-        if let named = c.sources.first(where: { $0.status == "read" && $0.finding.contains(c.id) }) {
-            return ("already_published", named.title, "the sources on its record")
-        }
-        if (c.checks["modern"] as? JSON)?["likely_modern"] as? Bool == true, c.sources.allSatisfy({ $0.status != "read" }),
-           let summary = (c.checks["modern"] as? JSON)?["summary"] as? String,
-           !summary.contains("historic places mapped") {
-            // Roads and buildings beside a mapped historic place say nothing either way, so the map alone suggests nothing there.
-            return ("modern", summary, "the map check")
-        }
-        return nil
+        c.likely
     }
 
     private var current: Candidate? {

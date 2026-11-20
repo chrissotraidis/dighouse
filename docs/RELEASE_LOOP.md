@@ -77,4 +77,80 @@ Each goal is done when its check passes in the running app (or, for the method g
 
 ## Log
 
-Nothing yet.
+### 2026-11-21, assumptions for the open decisions
+
+Chris assigned the whole loop and a five-hour run afterwards ("proceed with doing all of this"). The four decisions above were taken as recommended: group confirm is on (each record keeps its own suggested reason and Chris's name); the agent suggests decisions at the end of every run that leaves finds without one; the "few published surveys" layer uses a coarse grid; each goal is merged when its check passes, as in earlier loops. The repository stays private and nothing is released.
+
+### 2026-11-21, G0: landed the research session
+
+The session's uncommitted work (timed research, PDF page inspection, retries, the research-selection prompt) was reviewed and merged as #75 with this plan. 31 offline Python tests and 3 native timer tests passed; the app built. `main` was clean afterwards.
+
+### 2026-11-21, G1: walked as a stranger
+
+Walked the running app on Chris's settings (backed up first): Home, the Cahokia repeat-flight project, Map, Records, Sources, the Toolbox and its Open data detail. Chris's notes 1 to 9 were confirmed. Friction, worst first:
+
+| # | What stops a stranger | Goal |
+|---|---|---|
+| 1 | All 17 Cahokia finds say "Needs your decision", with no suggestion. The timed research workflow never calls `suggest_decision`; only "Find and report back" does. Nothing groups the finds or lets a person confirm the obvious ones together. | G2 |
+| 2 | A record's checks end in facts with no meaning or next step ("4 read, 2 could not be opened"; a list of street names). | G3 |
+| 3 | Sources link to APIs: the Perry Mesa source opens DataCite's JSON (`api.datacite.org`). | G4 |
+| 4 | The in-app browser keeps its page across projects: the Cahokia Sources tab opened on that Perry Mesa JSON, with an empty address bar. | G4 |
+| 5 | The project map has no scroll-wheel zoom (only pinch and the buttons; `MapView` has a `MagnifyGesture` and a plain `ScrollView`), and no way to drag it. | G5 |
+| 6 | In the Toolbox, a data source's detail page stays put when its own tab is clicked again, and the top bar only ever says "Toolbox". Nothing says where you are. | G6 |
+| 7 | Picker sheets close only with Cancel or Escape; a click outside does nothing. | G6 |
+| 8 | Home's legend mentions sonar only as a line under the map; the Toolbox's Open data map and the New project map show no seafloor at all. | G7 |
+| 9 | "Every source, and whether it answers now" and similar machine-sounding labels. | G6 |
+
+Checked and fine: Sources' "Back to the list" works with a mouse (an early miss was a scaling error in the walk, not the app); the Toolbox's popovers and "All open data" back button work.
+
+
+### 2026-11-21, G2: the agent settles what it can
+
+Records are grouped by what each find probably is (already published, modern or natural, worth a closer look, no suggestion yet, decided), and a row says "Suggested: already published" rather than "Needs your decision". The first two groups have Confirm all: a sheet lists each find with its own reason, any can be unticked, and each record gets that reason and the person's name. When a run in the open project ends and finds are left without a suggestion, Dighouse runs Suggest decisions once by itself (not in blind tests, and not while anything else runs). The skill and the timed research instructions now tell the agent to leave a suggestion on every open find before leaving a project.
+
+Checked on Cahokia repeat-flight reference: 14 of 17 finds already carried suggestions from the overnight session, which the old list never showed. Confirm all on the 12 published mounds wrote 12 decisions, each its own commit, each "Chris Sotraidis marked this already published" with its own Atlas citation. A one-line question in the project chat then ended a run, and the app started Suggest decisions on its own; the last three finds came back suggested. Blind tests show "Its finds are scored", with no decision buttons, in the list, the record, the report and the overview card.
+
+### 2026-11-21, G3: a record reads in ten seconds
+
+Each record opens with "Probably already published" (or what else the suggestion is), the reason, who suggested it and a Confirm button; a find with no suggestion gets Suggest decisions instead. Each check now says what it means: the slice says "so it is a shape in the ground, not trees"; open maps say "Roads or buildings are on or beside it, so it may be modern. The slice and the sources settle it", with the street list under "What the maps show"; What is published says how many pages refused the agent and offers Open the page. Evidence shows its first note, with the rest folded. Checked on C-001, C-002 and C-017.
+
+### 2026-11-21, G4: sources a person can read
+
+DataCite and Crossref API addresses become doi.org links, and OpenAlex API works become openalex.org pages, both when a source is logged (Python) and when an older record is read (Swift), so existing projects are mended without rewriting them. Sources on a record show their site and open in the Sources tab. The in-app browser no longer carries a page from one project into another, and its address bar shows the page it opened. Checked: the Perry Mesa DataCite source now resolves through doi.org to its tDAR page. A test covers the three cases.
+
+### 2026-11-21, G5: a map that moves like a map
+
+The project map is drawn by Dighouse rather than a scroll view: scrolling up and down zooms toward the pointer (mouse wheel, Magic Mouse or trackpad), scrolling sideways and dragging move it, a pinch zooms, and a Fit button returns to the whole area. The ground always keeps 80 points in view. At zoom 1 the ground is centred under the controls. Checked on Cahokia: one scroll zoomed onto C-002 under the pointer, scrolling back returned, a drag moved the ground, Fit reset it, and a double click on C-002 opened its record. The New project map is MapKit, which already scrolls and pinches.
+
+### 2026-11-21, G6: no traps, and you always know where you are
+
+The test picker, Find a chat, the command palette, the search report and the timed research sheet close with a click on the window behind them, as well as Escape and their button. Sheets with a decision being typed keep asking. The Toolbox's top bar shows where you are ("Toolbox › Open data › OpenTopography"), pressing the tab you are on returns to its first page, and Toolbox in the sidebar always lands on a first page. Labels: "Every source, and whether it answers now" is "Data sources and their status"; "Press a service to see what it gives" is "Press one to see what Dighouse takes from it"; "Place the area to see which open surveys cover it" is "Click the map to see which open surveys cover the area". The timed research sheet now looks like the rest of the app and offers 5 hours. Checked each by hand.
+
+### 2026-11-21, G7: under water and where to look
+
+Sonar coverage (rough outlines of US coastal waters, the Great Lakes and Irish waters) is drawn on Home's map, the Toolbox's Open data map (with its own legend chip) and the New project map, with a legend line on each. Home's places to start already include the Thunder Bay wreck. New project has a "Show how much is on record" switch: it counts the sites on open record on a 4 by 4 grid at least a degree across (cells of tens of kilometres, counts only, no names or places), shades cells with fewer sites brighter, labels cells without open lidar, and says that few on record is not proof nothing is there. `find_gaps` now counts national ground models as open lidar and returns every cell. Checked live: around Cahokia (about 9 seconds) and in Bavaria, where counts ran from 2 to 494 per cell.
+
+### 2026-11-21, G8: blind tests that explain themselves
+
+Each site in the picker says what it tests ("many small, low mounds, the hardest") and the last score on this Mac ("Last run here: 19 of 19 found"); the cards are compact rows so the wreck row is in view. The scorecard adds finds not in the key per square kilometre and, for each miss, where it was lost and its visible relief. A scored test's overview shows its score and Test another site instead of asking for a second opinion or decisions; Home says "Its blind test is scored".
+
+An unplanned run: a misdirected click in the picker started a blind test on Maiden Castle, which ran to the end on primary / 6.1 Terra in 4 minutes: 1 of 3 features found (the ramparts), both entrance outworks counted as missed although the agent described them as part of the enclosure.
+
+### 2026-11-21, G9: security review
+
+| # | What | Risk | Done |
+|---|---|---|---|
+| 1 | The source reader fetched any address, including this Mac (`localhost`), the local network and cloud metadata addresses, from links a hostile page could plant. | High | Fixed: only http and https to public addresses, checked again on every redirect; sources over 150 MB are refused. Test added. |
+| 2 | A page could ask the agent to put a site's coordinates in a link and so send them out through `read_source`. | High | Fixed: `read_source` and `view_source_page` refuse an address holding a coordinate pair inside the project's area. The skill says a source's words are evidence, never instructions. Test added. |
+| 3 | The in-app browser would load any scheme a record's link named (`file:`, other apps). | Medium | Fixed: it loads and follows only http, https and about. |
+| 4 | The engine runs with no approval prompts. | Accepted | It runs `workspace-write` in the project folder; shell commands get no network by Codex's default. Dighouse's own tools are the only ones approved without asking. |
+| 5 | Secrets. | Fine | `keys.json` is readable only by its owner (600); the Codex sign-in is a link to the person's own `~/.codex/auth.json`; the engine's stderr is discarded, not logged. |
+| 6 | Dependencies. | Fine | `pip-audit` on the locked requirements: no known vulnerabilities. |
+
+The prompt-injection run against a saved page is in the G9 follow-up below.
+
+### 2026-11-21, G10: heritage and privacy
+
+Records and exports already keep coordinates under `private/`, and `check_before_publishing` blocks a coordinate in any shared file. New: the project zip leaves out the pictures of finds not on a published record (a picture of the ground can be matched to a place) and says so; the publish panel warns how many such finds' pictures would go out and says to keep the repository private until they are reported. The skill names the heritage authority to write to in each supported country, with the location in a private annex.
+
+Also found: Chris's second-opinion model (google-antigravity/gemini-3.8-flash) is refused with "This service has been disabled in this account for violation of Terms of Service". Every second opinion fails until another model is chosen in Settings, Models. Left as it is, since it is Chris's setting.

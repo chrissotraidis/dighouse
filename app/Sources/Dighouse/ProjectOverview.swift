@@ -115,6 +115,18 @@ struct ProjectOverview: View {
         let open = all.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
         let finds = "\(open.count) find\(open.count == 1 ? "" : "s")"
         let whole = ToolGuide.workflows.first { $0.id == "full" }
+        // A scored blind test is finished: it shows its score, and asks for no second opinion or decision.
+        if store.isBlindTest, let root = store.current?.path,
+           let data = FileManager.default.contents(atPath: root + "/private/state/score.json"),
+           let score = (try? JSONSerialization.jsonObject(with: data)) as? JSON {
+            let site = (score["key"] as? JSON)?["name"] as? String ?? score["site"] as? String ?? "a known site"
+            return Next(title: "Blind test scored: \(score["found"] as? Int ?? 0) of \(score["known"] as? Int ?? 0) found",
+                        what: "It was \(site). Each find is scored against the published features, so none waits for your decision.",
+                        after: "The scorecard shows what was missed, where it was lost, and what was found that the key does not list.",
+                        icon: "dig.grid", label: "See the scorecard",
+                        action: { if let report = app.latestReport { app.reportShown = report } else { app.showNotes("record") } },
+                        other: ("Test another site", "Pick another known site to test on.", { app.testPicking = true }))
+        }
         // A project someone shared: the ground was looked at on their Mac, and what is left needs no download.
         if store.terrains.isEmpty, let before = store.screenedBefore {
             return Next(title: "Pick up where it was left",
@@ -286,6 +298,10 @@ private struct ProjectHistory: View {
     let root: String
     let refresh: String
     @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+
+    /// Finds not on any published record, whose pictures would go out with the project.
+    private var unpublishedFinds: Int { store.candidates.filter { !["already_published", "modern", "natural"].contains($0.status) }.count }
     @State private var changes: [(what: String, when: String)] = []
     @State private var remote = ""
     @State private var counts: [String: Int] = [:]
@@ -412,6 +428,10 @@ private struct ProjectHistory: View {
                      + "question, the method, the research record, the finds, notes, sources and reports. private/ and data/, which "
                      + "hold the locations and the downloads, stay on this Mac. Nobody else can see it unless you change that on GitHub.")
                     .foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                if unpublishedFinds > 0 {
+                    Text("The finds' pictures go too, and a picture of the ground can be matched to a place. " + "\(unpublishedFinds) " + (unpublishedFinds == 1 ? "find is" : "finds are") + " not on any published record; keep the repository private until they are reported.")
+                        .foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
+                }
                 HStack(spacing: 8) {
                     Button("Publish privately") { Task { @MainActor in await app.confirmPublish() } }.buttonStyle(PrimaryButton())
                     Button("Cancel") { app.publishing = nil }.buttonStyle(SecondaryButton())

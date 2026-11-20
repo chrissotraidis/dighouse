@@ -27,7 +27,8 @@ struct ToolboxView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 4) {
                             ForEach(Tab.allCases, id: \.self) { item in
-                                Button { tab = item } label: {
+                                // Pressing a tab, even the one already open, goes to its first page.
+                                Button { tab = item; app.toolboxDetail = nil } label: {
                                     Text(item.rawValue).font(.system(size: 13 * Theme.scale, weight: .medium))
                                         .foregroundStyle(tab == item ? Theme.text : Theme.dim)
                                         .padding(.horizontal, 12).frame(height: 30)
@@ -666,6 +667,11 @@ struct CoverageMap: View {
                     layer.fill(shape, with: .color(Theme.green.opacity(0.8 * shade("national"))))
                     layer.stroke(shape, with: .color(Theme.green.opacity(shade("national"))), lineWidth: 1)
                 }
+                for ring in Reach.sonar {
+                    let shape = path(ring, frame)
+                    layer.fill(shape, with: .color(Theme.water.opacity(0.7 * shade("sonar"))))
+                    layer.stroke(shape, with: .color(Theme.water.opacity(shade("sonar"))), lineWidth: 1)
+                }
                 for box in surveys where box.count == 4 {
                     let p = frame.point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
                     layer.fill(Path(ellipseIn: CGRect(x: p.x - 3.5, y: p.y - 3.5, width: 7, height: 7)), with: .color(Theme.amber.opacity(shade("surveys"))))
@@ -728,6 +734,17 @@ struct CoverageMap: View {
 
 /// Rough outlines of where each kind of open data reaches, as longitude and latitude pairs in a row.
 enum Reach {
+    /// Where the seafloor surveys reach, very roughly: US coasts and the Great Lakes (NOAA), and Irish waters (INFOMAR).
+    static let sonar: [[Double]] = [
+        [-92.2, 46.7, -84.5, 46.5, -83.5, 46.0, -79.8, 44.3, -76.2, 44.2, -76.4, 43.4, -79.2, 43.2, -79.0, 42.5, -83.3, 41.6, -82.8, 42.9,
+         -84.7, 45.8, -87.5, 41.6, -88.0, 44.5, -87.0, 46.5],
+        [-67.0, 44.8, -70.0, 42.0, -74.0, 40.0, -75.5, 35.0, -80.5, 31.0, -80.0, 25.0, -79.0, 25.0, -79.5, 31.0, -74.5, 35.0, -72.5, 39.5,
+         -68.5, 41.5, -66.0, 44.5],
+        [-81.8, 25.0, -82.8, 29.0, -85.5, 29.8, -89.5, 29.2, -94.0, 29.5, -97.3, 26.0, -96.5, 25.8, -93.5, 28.5, -89.5, 28.4, -85.5, 29.0,
+         -83.5, 27.0, -82.0, 24.5],
+        [-124.7, 48.4, -124.3, 42.0, -123.8, 39.5, -120.6, 34.5, -117.1, 32.5, -117.8, 32.3, -121.3, 34.3, -124.6, 39.5, -125.2, 42.0, -125.5, 48.3],
+        [-11.0, 51.2, -6.0, 51.3, -5.5, 54.0, -6.0, 55.4, -8.0, 55.6, -10.8, 54.3, -11.2, 52.5],
+    ]
     static let unitedStates: [Double] = [-124.6, 48.4, -95.1, 49.0, -88.0, 48.0, -82.5, 45.3, -82.4, 41.7, -79.0, 43.3, -76.5, 44.2, -71.5, 45.0, -69.2, 47.4,
                                          -67.0, 44.8, -70.7, 41.6, -74.0, 40.5, -75.5, 35.3, -81.0, 31.5, -80.0, 25.3, -81.8, 25.0, -82.8, 29.0, -85.5, 29.8,
                                          -89.5, 29.2, -94.0, 29.5, -97.3, 26.0, -101.5, 29.8, -103.2, 29.0, -106.5, 31.8, -111.0, 31.3, -114.8, 32.5,
@@ -956,12 +973,16 @@ private struct DataTab: View {
     @State private var partly: Set<String> = []
     @State private var checked: Date?
     @State private var checking = false
-    @State private var open: String?
+    @EnvironmentObject private var appState: AppState
+    private var open: String? {
+        get { appState.toolboxDetail }
+        nonmutating set { appState.toolboxDetail = newValue }
+    }
     @State private var layer: String?
     @State private var asking: ToolGuide.DataSource?
 
     private let layers: [(id: String, name: String)] = [("us", "United States"), ("national", "National ground models"),
-                                                         ("surveys", "Surveys flown for archaeology"), ("ancient", "Ancient places on record")]
+                                                         ("surveys", "Surveys flown for archaeology"), ("sonar", "Sonar, the seafloor"), ("ancient", "Ancient places on record")]
 
     var body: some View {
         Group {
@@ -983,7 +1004,7 @@ private struct DataTab: View {
 
     @ViewBuilder private var overview: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("All of it is public and needs no account. Press a service to see what it gives.")
+            Text("All of it is public and needs no account. Press one to see what Dighouse takes from it.")
                 .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             if let checked {
@@ -1031,6 +1052,7 @@ private struct DataTab: View {
         case "us": RoundedRectangle(cornerRadius: 2).fill(Theme.tan).frame(width: 10, height: 10)
         case "national": RoundedRectangle(cornerRadius: 2).fill(Theme.green).frame(width: 10, height: 10)
         case "surveys": Circle().fill(Theme.amber).frame(width: 9, height: 9)
+        case "sonar": RoundedRectangle(cornerRadius: 2).fill(Theme.water).frame(width: 10, height: 10)
         default: RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.dim, style: StrokeStyle(lineWidth: 1.2, dash: [3, 2])).frame(width: 10, height: 10)
         }
     }

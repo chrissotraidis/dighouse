@@ -103,6 +103,8 @@ final class AppState: ObservableObject {
     }
     /// The page shown in a project's Sources tab. It follows what the agent opens.
     @Published var browserURL: URL?
+    /// The data source open in the Toolbox's Open data tab, or nil for the list.
+    @Published var toolboxDetail: String?
     @Published var sidebarWidth = UserDefaults.standard.object(forKey: "sidebarWidth") as? Double ?? 256 {
         didSet { UserDefaults.standard.set(sidebarWidth, forKey: "sidebarWidth") }
     }
@@ -176,7 +178,10 @@ final class AppState: ObservableObject {
         chat.onRunEnded = { [weak self] thread, folder, stopped in
             guard let self else { return }
             let stage = stopped ? self.stage(of: thread).title : nil
-            Task { @MainActor in await self.updateRecord(of: folder, stoppedDuring: stage) }
+            Task { @MainActor in
+                await self.updateRecord(of: folder, stoppedDuring: stage)
+                if !stopped { self.suggestWhereMissing(folder) }
+            }
         }
         chat.onGoalEnded = { [weak self] thread, status in
             Task { @MainActor in await self?.searchEnded(thread, status) }
@@ -208,7 +213,7 @@ final class AppState: ObservableObject {
                 + "goes inside \(Paths.projectsHome.path), then tell the person to open it from the card in the chat. " + shared
         }
         chat.timedInstructions = { [weak self] in
-            (self?.setup.skill ?? "") + "\nThis is a timed research session. Create the session’s research projects directly with init_project and use their returned paths. Keep a dated session record in the general chat folder. Continue independently through the deadline or until the evidence warrants closing. Record which decisions need a person."
+            (self?.setup.skill ?? "") + "\nThis is a timed research session. Create the session’s research projects directly with init_project and use their returned paths. Keep a dated session record in the general chat folder. Continue independently through the deadline or until the evidence warrants closing. Before you leave any project with open finds, call suggest_decision on each of them, so a person only confirms or corrects. Record which decisions need a person."
         }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }
@@ -369,6 +374,8 @@ final class AppState: ObservableObject {
 
     func show(_ page: Route) {
         sidebarPeek = false
+        // Toolbox in the sidebar always lands on a tab's first page, so it is a way back from any detail.
+        if page == .toolbox { toolboxDetail = nil }
         route = page
     }
 
@@ -535,6 +542,8 @@ final class AppState: ObservableObject {
     /// The next part of the search for the open project, or nil when nothing is ready or a run is going.
     var nextStep: ToolGuide.Workflow? {
         guard store.current != nil, chat.live.isEmpty, secondLookBusy == nil else { return nil }
+        // A blind test that has been scored is finished: its finds are scored, not decided.
+        if store.isBlindTest, let root = store.current?.path, FileManager.default.fileExists(atPath: root + "/private/state/score.json") { return nil }
         let order = store.status.tiles == 0 ? ["terrain"] : ["screen", "check", "second", "prior", "decide"]
         // Once every find has been decided, the search is done; nothing is next.
         if !store.candidates.isEmpty, store.candidates.allSatisfy({ $0.status != "flagged" && $0.status != "ground_confirmed" }) { return nil }
@@ -567,11 +576,16 @@ final class AppState: ObservableObject {
         guard panel.runModal() == .OK, let out = panel.url else { return nil }
         if engine.ready { _ = try? await engine.callTool("document_project", ["project": project.path]) }
         try? FileManager.default.removeItem(at: out)
-        let zip = await Shell.run("/usr/bin/zip", ["-r", "-q", out.path, name, "-x", "\(name)/private/*", "\(name)/data/*", "*.DS_Store"],
+        // A picture of the ground can be matched to a place, so pictures of finds not on any published record stay here.
+        let unpublished = project.path == store.current?.path
+            ? store.candidates.filter { !["already_published", "modern", "natural"].contains($0.status) }.map(\.id) : []
+        let pictures = unpublished.map { "\(name)/candidates/img/\($0)-*" }
+        let zip = await Shell.run("/usr/bin/zip", ["-r", "-q", out.path, name, "-x", "\(name)/private/*", "\(name)/data/*", "*.DS_Store"] + pictures,
                                   in: folder.deletingLastPathComponent().path)
         if zip.code == 0 {
             NSWorkspace.shared.selectFile(out.path, inFileViewerRootedAtPath: "")
             return "Saved \(out.lastPathComponent): records, notes, sources and reports, with no downloaded data and nothing from private/."
+                + (unpublished.isEmpty ? "" : " Pictures of the \(unpublished.count) finds not on a published record were left out.")
         }
         let problem = "Could not make the zip. \(zip.out.trimmingCharacters(in: .whitespacesAndNewlines))"
         if !quiet {
@@ -895,6 +909,22 @@ final class AppState: ObservableObject {
             "project": project.path, "candidate": c.id, "status": status, "decided_by": userName, "reason": reason,
         ])
         store.reloadIfChanged()
+    }
+
+    /// Projects whose finds the agent was already asked to suggest decisions for, this session.
+    private var suggestedFor = Set<String>()
+
+    /// After a run leaves finds with no suggestion, ask the agent for them once, so the person starts from a suggestion
+    /// rather than seventeen blank records. Not for blind tests, which are scored, and not while anything else runs.
+    func suggestWhereMissing(_ folder: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [self] in
+            guard store.current?.path == folder, !store.isBlindTest, !suggestedFor.contains(folder),
+                  chat.live.isEmpty, chat.goals.isEmpty, secondLookBusy == nil, secondLookQueue.isEmpty, reportAfterLooks == nil,
+                  store.candidates.contains(where: { $0.waiting && $0.suggestion == nil }),
+                  let flow = ToolGuide.workflows.first(where: { $0.id == "decide" }), state(of: flow).ready else { return }
+            suggestedFor.insert(folder)
+            run(flow)
+        }
     }
 
     private func nextSecondLook() {

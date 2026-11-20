@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import math
+import re
+from urllib.parse import unquote, urlparse
 
 from .project import Project, commit, today
 
@@ -27,6 +29,28 @@ LABELS = {
     "reported": "Reported to the heritage authority",
 }
 NOTES = "## Notes"
+
+
+def readable_link(link: str) -> str:
+    """The page a person reads, for a link copied from a data service: DataCite and Crossref API addresses for a
+    DOI become https://doi.org/..., an OpenAlex API work becomes its openalex.org page. Anything else is kept."""
+    link = (link or "").strip()
+    try:
+        u = urlparse(link)
+    except ValueError:
+        return link
+    host, path = (u.hostname or "").lower(), unquote(u.path)
+    for api, prefix in (("api.datacite.org", "/dois/"), ("api.crossref.org", "/works/")):
+        if host == api and path.startswith(prefix) and path[len(prefix):].startswith("10."):
+            return "https://doi.org/" + path[len(prefix):]
+    if host == "api.openalex.org" and path.startswith("/works/"):
+        work = path[len("/works/"):]
+        if re.match(r"(?i)https?://doi\.org/", work):
+            return work
+        if work.lower().startswith("doi:"):
+            return "https://doi.org/" + work[4:]
+        return "https://openalex.org/" + work
+    return link
 
 
 def _file(p: Project, cid: str):
@@ -147,6 +171,7 @@ def add_source(p: Project, cid: str, title: str, status: str, finding: str, link
         raise ValueError(f"status must be one of {SOURCE_STATUSES}")
     meta, notes = get(p, cid)
     meta["sources"] = [s for s in meta["sources"] if s["title"] != title]
+    link = readable_link(link)
     meta["sources"].append({"title": title, "status": status, "finding": finding, "link": link})
     write(p, meta, notes)
     log_read(p, cid, title, status, finding, link)

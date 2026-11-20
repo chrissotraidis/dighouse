@@ -830,3 +830,30 @@ private struct Arrives: ViewModifier {
             }
     }
 }
+
+/// A sheet with nothing to lose closes with a click on the window behind it, as well as with Escape and its button.
+private struct ClosesOnOutsideClick: ViewModifier {
+    let close: () -> Void
+    @State private var monitor: Any?
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                guard monitor == nil else { return }
+                monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+                    // The click landed on the window the sheet is attached to, not on the sheet.
+                    guard let window = event.window, window.attachedSheet != nil else { return event }
+                    DispatchQueue.main.async { close() }
+                    return nil
+                }
+            }
+            .onDisappear {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+                monitor = nil
+            }
+    }
+}
+
+extension View {
+    func closesOnOutsideClick(_ close: @escaping () -> Void) -> some View { modifier(ClosesOnOutsideClick(close: close)) }
+}

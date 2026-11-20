@@ -9,9 +9,11 @@ from pathlib import Path
 
 import html
 import io
+import ipaddress
 import logging
 import math
 import re
+import socket
 import time
 
 import httpx
@@ -26,6 +28,27 @@ _client = httpx.Client(timeout=40, follow_redirects=True,
                        headers={"User-Agent": "dighouse/0.1 (https://github.com/chrissotraidis/dighouse)"})
 _READER = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
            "Accept": "text/html,application/pdf;q=0.9,*/*;q=0.8"}
+# The largest source the agent downloads. Scanned site reports run to tens of megabytes; nothing a person reads is larger.
+MAX_SOURCE_BYTES = 150_000_000
+
+
+def _public_only(request: httpx.Request) -> None:
+    """Sources come from pages anyone can write, so a link, or a redirect, may point at this Mac or the local network.
+    Those are refused before anything is sent."""
+    url = request.url
+    if url.scheme not in ("http", "https"):
+        raise RuntimeError("Only web addresses (http or https) are opened. Log it as could_not_open.")
+    try:
+        infos = socket.getaddrinfo(url.host, url.port or (443 if url.scheme == "https" else 80), proto=socket.IPPROTO_TCP)
+    except socket.gaierror as e:
+        raise RuntimeError(f"The address {url.host} could not be found. Log it as could_not_open.") from e
+    for info in infos:
+        if not ipaddress.ip_address(info[4][0].split("%")[0]).is_global:
+            raise RuntimeError(f"{url.host} is on this Mac or a private network, so it is not opened. Log it as could_not_open.")
+
+
+_sources_client = httpx.Client(timeout=60, follow_redirects=True, headers=dict(_client.headers),
+                               event_hooks={"request": [_public_only]})
 
 
 def _sort(elements: list[dict], near: set | None = None, far: set | None = None, named: bool = True) -> dict[str, list[str]]:
@@ -181,13 +204,28 @@ def _abstract(index: dict | None) -> str:
 
 
 def _source_response(url: str) -> httpx.Response:
-    r = _client.get(url)
+    r = _fetch_source(url)
     if r.status_code in (401, 402, 403, 406, 429):
-        r = _client.get(url, headers=_READER)  # some publishers only answer a browser
+        r = _fetch_source(url, _READER)  # some publishers only answer a browser
     if r.status_code in (401, 402, 403):
         raise RuntimeError(f"The publisher refused to show this page (status {r.status_code}). Log it as could_not_open.")
     r.raise_for_status()
     return r
+
+
+def _fetch_source(url: str, headers: dict | None = None) -> httpx.Response:
+    """Download a source, public addresses only, and stop at MAX_SOURCE_BYTES."""
+    with _sources_client.stream("GET", url, headers=headers or {}) as r:
+        if int(r.headers.get("content-length") or 0) > MAX_SOURCE_BYTES:
+            raise RuntimeError("The file is too large to read here. Log it as could_not_open.")
+        data = bytearray()
+        for chunk in r.iter_bytes():
+            data += chunk
+            if len(data) > MAX_SOURCE_BYTES:
+                raise RuntimeError("The file is too large to read here. Log it as could_not_open.")
+        # The bytes are already decoded, so the copy carries no content encoding.
+        headers = [(k, v) for k, v in r.headers.items() if k.lower() not in ("content-encoding", "content-length", "transfer-encoding")]
+        return httpx.Response(r.status_code, headers=headers, content=bytes(data), request=r.request)
 
 
 def _pdf_path(folder: Path, url: str) -> Path:

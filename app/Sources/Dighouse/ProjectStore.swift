@@ -17,6 +17,13 @@ final class ProjectStore: ObservableObject {
     /// Nil for a project that has its own data, or none yet.
     @Published var screenedBefore: Int?
 
+    /// A blind test (or a calibration) is scored against a published key, before and after scoring, so its finds wait
+    /// for no decision.
+    var isBlindTest: Bool {
+        guard let root = current?.path else { return false }
+        return FileManager.default.fileExists(atPath: root + "/private/state/test.json")
+    }
+
     struct Download: Equatable {
         let dataset: String
         let done: Int, total: Int

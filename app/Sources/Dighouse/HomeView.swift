@@ -302,10 +302,10 @@ private struct WhereItReaches: View {
                     legend(.dot(Theme.green), "Lidar, national ground models", "\(Reach.national.count) countries and regions, most of them in Europe, and Denmark with a free token")
                         .help(Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", "))
                     legend(.dot(Theme.amber), "Lidar, surveys worldwide", "flown for archaeology and published on OpenTopography")
-                    legend(.icon("water.waves"), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks")
+                    legend(.dot(Theme.water), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks")
                     legend(.icon("plus.circle"), "Anywhere else", "give the agent your own ground model or point cloud, and it searches that")
                 }
-                Button("Every source, and whether it answers now") {
+                Button("Data sources and their status") {
                     UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxTab")
                     app.show(.toolbox)
                 }
@@ -472,8 +472,12 @@ private struct WelcomeBack: View {
         guard let (last, it, all) = found else { project = nil; return }
         func count(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
         project = last
-        waiting = it.tiles == 0 && it.finds == 0 ? "Its search has not started."
+        let test = FileManager.default.fileExists(atPath: last.path + "/private/state/test.json")
+        let scored = FileManager.default.fileExists(atPath: last.path + "/private/state/score.json")
+        waiting = test && scored ? "Its blind test is scored."
+            : it.tiles == 0 && it.finds == 0 ? "Its search has not started."
             : it.unscreened > 0 ? "\(count(it.unscreened, "tile")) \(it.unscreened == 1 ? "is" : "are") still to be looked at."
+            : test ? "Its blind test is not scored yet."
             : it.undecided > 0 ? "\(count(it.undecided, "find")) \(it.undecided == 1 ? "is" : "are") not decided yet."
             : it.finds == 0 ? "Every tile was looked at and nothing was marked."
             : "Every find is decided."

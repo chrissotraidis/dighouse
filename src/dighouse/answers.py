@@ -243,6 +243,10 @@ def score_project(p) -> dict:
     names = {m["id"]: m["name"] for m in ledger.everything(p)}
     finds = {cid: {"lon": v["lon"], "lat": v["lat"]} for cid, v in places.items() if cid in names}
     result = score(k, finds)
+    try:
+        _where_lost(p, k, result)
+    except Exception as exc:  # a score without the breakdown is still a score
+        result["where_lost_problem"] = str(exc)[:200]
     rises = rises_lonlat(p, finds)
     if rises:
         # With the measured rises a person would look over: what a search puts in front of a person, not what it claims.
@@ -315,7 +319,11 @@ def score_lines(p, short: bool = False) -> list[str]:
     if s["missed"]:
         L.append("Missed: " + "; ".join(f"{m['feature']} {m['what']}" for m in s["missed"][:12])
                  + (f"; and {len(s['missed']) - 12} more" if len(s["missed"]) > 12 else "") + ".")
+        if s.get("missed_by_stage"):
+            L.append("Where they were lost: " + "; ".join(f"{n} {stage}" for stage, n in s["missed_by_stage"].items()) + ".")
         L.append("")
+    if s.get("extra_per_km2") is not None:
+        L += [f"{s['extra_per_km2']} finds not in the key per square kilometre searched ({s['area_km2']} sq km).", ""]
     if s["extra"]:
         L.append("Not in the key:")
         L += [f"- {cid} {names.get(cid, '')}: {lab.get(cid, 'not yet labelled')}" for cid in s["extra"]]
@@ -491,3 +499,66 @@ def on_record_near(p, lon: float, lat: float, reach_m: float = 120) -> list[dict
         if d <= reach_m:
             near.append({"name": x["name"], "kind": x.get("kind"), "source": x["source"], "metres": round(d)})
     return sorted(near, key=lambda x: x["metres"])[:5]
+
+
+def _where_lost(p, k: dict, result: dict) -> None:
+    """For each missed feature, the stage that lost it, its size and its visible relief; and how many finds outside the
+    key there are per square kilometre searched. Different stages point to different fixes: a feature never looked at
+    needs coverage, one looked at but not marked needs a better eye or view, one in a gap needs better ground."""
+    import numpy as np
+    import pyproj
+    from . import terrain as T
+    terrains = {tid: t for tid, t in (p.load("terrains", {}) or {}).items()}
+    tiles = p.load("tiles", {}) or {}
+    used = {t["terrain"] for t in tiles.values()}
+    area = sum((terrains[tid].get("area_km2") or 0) for tid in used if tid in terrains)
+    result["area_km2"] = round(area, 2)
+    result["extra_per_km2"] = round(len(result["extra"]) / area, 2) if area else None
+    result["finds_to_review"] = len(result.get("finds", {})) or len(result["matches"]) + len(result["extra"])
+    by_id = {f["id"]: f for f in k["features"]}
+    grids: dict[str, tuple] = {}
+    stages: dict[str, int] = {}
+    for m in result["missed"]:
+        f = by_id[m["feature"]]
+        lon, lat = (f["lon"], f["lat"]) if f["kind"] == "point" else f["lines"][0][len(f["lines"][0]) // 2]
+        m["size_m"] = f.get("size_m")
+        stage = "outside the area searched"
+        for tid in used:
+            t = terrains.get(tid)
+            if not t:
+                continue
+            x, y = pyproj.Transformer.from_crs(4326, t["epsg"], always_xy=True).transform(lon, lat)
+            x0, y0, x1, y1 = t["box"]
+            if not (x0 <= x <= x1 and y0 <= y <= y1):
+                continue
+            col, row = int((x - x0) / t["res"]), int((y1 - y) / t["res"])
+            here = [v for v in tiles.values() if v["terrain"] == tid
+                    and v["window"][0] <= row < v["window"][0] + v["window"][2] and v["window"][1] <= col < v["window"][1] + v["window"][3]]
+            if not here:
+                continue
+            if all(v["status"] == "unreadable" for v in here):
+                stage = "too little ground data"
+            elif all(v["status"] == "unscreened" for v in here if v["status"] != "unreadable"):
+                stage = "its tile was never looked at"
+            else:
+                verdicts = sorted({v.get("verdict") or "" for v in here if v["status"] not in ("unscreened", "unreadable")} - {""})
+                stage = "looked at, not marked" + (f" (tile called {', '.join(verdicts)})" if verdicts else "")
+            if tid not in grids:
+                grids[tid] = T.load_terrain(p.path(t["file"]))[0]
+            dtm, res = grids[tid], t["res"]
+            r = max(2, int(((f.get("size_m") or 20) / 2) / res))
+            win = dtm[max(0, row - 2 * r):row + 2 * r + 1, max(0, col - 2 * r):col + 2 * r + 1].astype(float)
+            if win.size:
+                yy, xx = np.ogrid[:win.shape[0], :win.shape[1]]
+                cy, cx = min(row, 2 * r), min(col, 2 * r)
+                d = np.hypot(yy - cy, xx - cx)
+                inner, ring = win[d <= r], win[(d > r) & (d <= 2 * r)]
+                inner, ring = inner[np.isfinite(inner)], ring[np.isfinite(ring)]
+                if inner.size and ring.size:
+                    m["relief_m"] = round(float(inner.max() - np.median(ring)), 2)
+            break
+        m["stage"] = stage
+        key = stage.split(" (")[0]
+        stages[key] = stages.get(key, 0) + 1
+    result["missed_by_stage"] = stages
+
