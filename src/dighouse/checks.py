@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import tempfile
+import threading
+from pathlib import Path
+
 import html
 import io
 import logging
@@ -175,28 +180,76 @@ def _abstract(index: dict | None) -> str:
     return " ".join(word for _, word in words)[:1500]
 
 
-def read_source(url: str, start: int = 0, max_chars: int = 12000) -> dict:
-    """Open a web page or a PDF and return its text, a part at a time."""
+def _source_response(url: str) -> httpx.Response:
     r = _client.get(url)
     if r.status_code in (401, 402, 403, 406, 429):
         r = _client.get(url, headers=_READER)  # some publishers only answer a browser
     if r.status_code in (401, 402, 403):
         raise RuntimeError(f"The publisher refused to show this page (status {r.status_code}). Log it as could_not_open.")
     r.raise_for_status()
-    if r.content[:5] == b"%PDF-" or "pdf" in r.headers.get("content-type", ""):
-        from pypdf import PdfReader
+    return r
 
-        text = "\n".join(page.extract_text() or "" for page in PdfReader(io.BytesIO(r.content)).pages)
+
+def _pdf_path(folder: Path, url: str) -> Path:
+    return folder / (hashlib.sha256(url.encode()).hexdigest() + ".pdf")
+
+
+def _keep_pdf(path: Path, data: bytes):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as tmp:
+        tmp.write(data)
+    Path(tmp.name).replace(path)
+
+
+def read_source(url: str, start: int = 0, max_chars: int = 12000, folder: Path | None = None) -> dict:
+    """Read text and retain original PDF pages privately for figure inspection."""
+    from pypdf import PdfReader
+
+    path = _pdf_path(folder, url) if folder else None
+    cached = path is not None and path.exists()
+    r = None if cached else _source_response(url)
+    fields = {}
+    if cached or r.content.startswith(b"%PDF-") or "pdf" in r.headers.get("content-type", ""):
+        reader = PdfReader(path if cached else io.BytesIO(r.content))
+        if path and not cached:
+            _keep_pdf(path, r.content)
+        fields = {"pages": len(reader.pages), "figure_tool": "view_source_page"}
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
     else:
         body = re.sub(r"(?is)<(script|style|nav|header|footer)\b.*?</\1>", " ", r.text)
         text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", body))
     text = re.sub(r"[^\S\n]+", " ", text)
     text = re.sub(r"\s*\n\s*", "\n", text).strip()
-    if len(text) < 200:
+    if len(text) < 200 and not fields:
         raise RuntimeError("The page opened but held no readable text. It may need a sign-in or be a scanned image. "
                            "Log it as could_not_open.")
-    return {"url": str(r.url), "characters": len(text), "start": start, "text": text[start:start + max_chars],
+    return {**fields, "url": url if cached or fields else str(r.url), "characters": len(text), "start": start, "text": text[start:start + max_chars],
             "more_from": start + max_chars if len(text) > start + max_chars else None}
+
+
+_pdf_render_lock = threading.Lock()  # PDFium is not thread-safe.
+
+
+def source_page(folder: Path, url: str, page: int) -> tuple[dict, bytes]:
+    """Render from the same private original used for reading text, including image-only PDFs."""
+    import pypdfium2 as pdfium
+
+    path = _pdf_path(folder, url)
+    if not path.exists():
+        response = _source_response(url)
+        if not response.content.startswith(b"%PDF-"):
+            raise ValueError("Use the link to the original PDF.")
+        with _pdf_render_lock, pdfium.PdfDocument(response.content):
+            _keep_pdf(path, response.content)
+    with _pdf_render_lock, pdfium.PdfDocument(path) as document:
+        if not 1 <= page <= len(document):
+            raise ValueError(f"Choose a PDF page from 1 to {len(document)}.")
+        leaf = document[page - 1]
+        scale = min(2.5, 2200 / max(leaf.get_size()))
+        bitmap = leaf.render(scale=scale)
+        buffer = io.BytesIO()
+        bitmap.to_pil().save(buffer, format="PNG")
+        return {"url": url, "page": page, "pages": len(document)}, buffer.getvalue()
 
 
 def _openalex(query: str, limit: int) -> list[dict] | None:

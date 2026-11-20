@@ -39,6 +39,7 @@ struct MainView: View {
         .background(GeometryReader { geo in
             Color.clear.onAppear { app.windowSize = geo.size }.onChange(of: geo.size) { _, size in app.windowSize = size }
         })
+        .sheet(isPresented: $app.choosingDuration) { ResearchDurationSheet().environmentObject(app) }
         .sheet(isPresented: $app.reviewing) { ReviewSheet().withApp(app) }
         .sheet(isPresented: $app.testPicking) { TestPicker().withApp(app) }
         // On the window, not the sidebar, so they open when the sidebar is hidden too.
@@ -473,5 +474,25 @@ private struct RenameChat: ViewModifier {
                 }
                 Button("Cancel", role: .cancel) {}
             }
+    }
+}
+
+private struct ResearchDurationSheet: View {
+    @EnvironmentObject var app: AppState
+    @State private var minutes = 60
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Timed research session").font(.headline)
+            Picker("Duration", selection: $minutes) {
+                ForEach([5, 15, 30, 60, 120, 240, 480], id: \.self) { value in
+                    Text(value < 60 ? "\(value) minutes" : value == 60 ? "1 hour" : "\(value / 60) hours").tag(value)
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { app.choosingDuration = false }.keyboardShortcut(.cancelAction)
+                Button("Start session") { app.startTimedResearch(minutes: minutes) }.keyboardShortcut(.defaultAction)
+            }
+        }.padding(24).frame(width: 360)
     }
 }

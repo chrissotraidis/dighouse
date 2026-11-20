@@ -29,7 +29,7 @@ Other people, many of them new to archaeology, and other agents will continue th
 - Record a verdict for every tile you look at, including nothing and natural. A blank result is still a result.
 - Log every source you find as read, could not open, or not relevant, with what it says about this place, even when it says nothing.
 - Literature searches are logged by the tool; search with specific queries so the log is useful to the next person.
-- When you learn something about this place or this survey, add it under Lessons in `METHODOLOGY.md`.
+- When you learn something about this place or this survey, pass it as `lesson` to `write_summary` to save it under Lessons in `METHODOLOGY.md`.
 - End with `write_summary`. It rebuilds `RESEARCH.md`; call `document_project` yourself after other work the record should show, and read the "still to do" it returns.
 - When you were asked to report back, call `write_report` after `write_summary`. It builds the search report from the records, so it can say only what they hold: finish the records first. Pass as advice two or three plain sentences on what you would try next.
 
@@ -47,6 +47,7 @@ A blind test checks the method on a known site whose features are published. `ru
 Before searching an area where nothing is on record, prove the method works on this kind of lidar.
 
 1. `start_calibration` with a folder beside the project, the project, and the dataset `find_data` offers. It starts a blind test on the nearest known site with lidar from the same source, without telling you which; do not try to work it out.
+If the tool reports no matching reference, record the missing calibration. A provider match still needs comparable feature type, relief and acquisition conditions.
 2. Run that test blind to `score_test`, exactly as a blind test. (`calibration_site` names the site, for proposals to a person; do not call it for a project you are about to calibrate.)
 3. `record_calibration` on the search project with the test's folder.
 4. If it passed, search as usual and say the calibration score in the summary. If it failed, `flag_candidate` refuses: say plainly that the method found too little on the known site to trust it here, and suggest another survey, view or area.
@@ -61,9 +62,15 @@ When there is no project yet, help the person choose one. Ask what region, perio
 - `find_place` turns a place name into an area.
 - `survey_area` shows which open lidar covers an area and which sites are already recorded there.
 
-Offer two or three areas, each with what lidar covers it, what is already recorded, and what a search could add. Areas with open lidar and few recorded sites add most. A published site is a good first project for someone learning. When the person picks one, make it a project with a box under 6 square km. In the Dighouse app, call `suggest_project` with the name, the question, why this area and the box: the person presses Make this a project and this chat moves into it. Elsewhere, or when the person asks you to create it yourself, call `init_project` with a new folder name; it goes in the projects folder.
+Offer two or three areas, each with what lidar covers it, what is already recorded, and what a search could add. Sparse public records identify places to investigate; check field literature and archive completeness before claiming a research gap. A published site is a good first project for someone learning. When the person picks one, make it a project with a box under 6 square km. In the Dighouse app, call `suggest_project` with the name, the question, why this area and the box: the person presses Make this a project and this chat moves into it. Elsewhere, or when the person asks you to create it yourself, call `init_project` with a new folder name; it goes in the projects folder.
 
 ## When someone asks what to research
+
+Lead the recommendation with the archaeological question and the closest published work. Label each proposal **open research question**, **benchmark**, or **defer**. A benchmark tests whether the method can recover or measure a known result. A genuinely open question has competing archaeological interpretations, an observation that could distinguish them and a cited reason the closest field study has left that issue unresolved. Open flights, accessible maps and reproducible heights establish feasibility. These can make an excellent benchmark. They establish no research gap by themselves. A well-studied place can qualify when a specific unanswered question survives comparison with prior work.
+
+For each finalist show the contribution and feasibility separately. On the project offer set purpose to the label, put the closest study and decisive next test in why_here, and describe usable data separately in feasibility. Before spending another pass, record which result would change the recommendation and the strongest alternative use of that pass. If every plausible outcome leaves the same decision, checkpoint and switch areas or close. It is valid to finish with benchmarks and no sufficiently supported open question.
+
+For a published map, use read_source and view_source_page to inspect its legend, scale and independent landmarks. Record separately the text read, the actual page inspected, and whether it can place a held-out feature precisely enough. Use log_source with candidate "project" for area-level evidence. A rendered page alone does not verify registration. During a timed session, end each pass with the evidence, changed decision, remaining blockers and next action in a durable session record. Close with the two or three human decisions that matter most, counts of advisory suggestions and missing suggestions, independent opinions and human decisions. Identify known controls and repeat acquisitions in totals.
 
 Do not answer from memory alone. Work it out from the open data, then add what you know about archaeology.
 
@@ -123,3 +130,5 @@ Flat dark grey in a tile means the laser did not reach the ground there. Say so;
 - A person decides before a find is marked `no_match_in_sources_read` or `reported`. Ask, then pass their name as `decided_by`.
 - When pushing records to Notion or elsewhere, push the Markdown record and its images only. Nothing from `private/` or `data/`.
 - Cite each dataset the way `find_data` says its publisher asks.
+
+For map evidence pass the PDF page and `figure_status` to `log_source`. Record registration only after checking it against terrain.

@@ -264,6 +264,17 @@ class Project:
             fh.write(f"- {dt.datetime.now():%H:%M} {text}\n")
 
 
+    def add_lesson(self, lesson: str):
+        with self.locked("methodology"):
+            path = self.path("METHODOLOGY.md")
+            text = path.read_text() if path.exists() else METHODOLOGY_MD
+            line = f"- {today()} · " + " ".join(lesson.split())
+            if line in text.splitlines():
+                return
+            before, heading, after = text.partition("\n## Lessons\n")
+            section, next_heading, rest = after.partition("\n## ")
+            path.write_text(before.rstrip() + "\n\n## Lessons\n" + section.rstrip() + "\n\n" + line + "\n" + next_heading + rest)
+
     def summary(self, text: str) -> str:
         """Write the end-of-run summary as its own file in notes/, beside the dated log."""
         f = self.path("notes", f"{today()}-run-{dt.datetime.now():%H%M}.md")

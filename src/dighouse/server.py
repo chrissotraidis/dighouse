@@ -189,7 +189,8 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
 def suggest_project(name: str, question: str, why_here: str = "", place: str = "",
                     west: float = 0.0, south: float = 0.0, east: float = 0.0, north: float = 0.0,
                     sources: list[str] | None = None, ruled_out: list[str] | None = None,
-                    work_in_github: bool = False, search_now: bool = False) -> dict:
+                    work_in_github: bool = False, search_now: bool = False,
+                    purpose: str = "", feasibility: str = "") -> dict:
     """Offer the person a project made from this chat, once the chat has settled a place and a question.
 
     It creates nothing. The Dighouse app shows a card with "Make this a project"; only the person presses it, and the
@@ -198,6 +199,9 @@ def suggest_project(name: str, question: str, why_here: str = "", place: str = "
     area is worth searching, from what the chat found. sources lists what the chat read, one line each: title, link,
     and what it says about this place. ruled_out lists places the chat considered and set aside, one line each with
     why. These become the project's first records. No coordinates in any of these words.
+
+    For a research recommendation set purpose to open research question, benchmark or defer. In why_here name the
+    closest study, remaining uncertainty and decisive observation. Describe available data in feasibility.
 
     Projects go in the projects folder (~/Dighouse). Set work_in_github only when the person has said they want to
     work out of their GitHub folder; never choose it yourself. The reply's folder is where the project would go:
@@ -215,7 +219,9 @@ def suggest_project(name: str, question: str, why_here: str = "", place: str = "
     if has_box:
         answers.guard_box(box)
     folder = new_folder((github_home() if work_in_github else projects_home()) / slug(name))
-    return {"offered": True, "name": name.strip(), "question": question.strip(), "why_here": why_here.strip(),
+    if purpose and purpose not in ("open research question", "benchmark", "defer"):
+        raise ValueError("Choose open research question, benchmark or defer.")
+    return {"purpose": purpose, "feasibility": feasibility.strip(), "offered": True, "name": name.strip(), "question": question.strip(), "why_here": why_here.strip(),
             "place": place.strip(), "box": box if has_box else None,
             "sources": [s.strip() for s in sources or [] if s.strip()],
             "ruled_out": [s.strip() for s in ruled_out or [] if s.strip()],
@@ -653,21 +659,56 @@ def read_source(project: str, url: str, start: int = 0) -> dict:
                "start": start, "text": body[start:start + 12000],
                "more_from": start + 12000 if len(body) > start + 12000 else None}
     else:
-        out = checks.read_source(url, start)
+        out = checks.read_source(url, start, folder=p.path("private", "source-pdfs"))
     p.note(f"Opened {out['url']} ({out['characters']} characters)" + (" from the copy the person saved" if saved else ""))
     return out
 
 
 @tool
-def log_source(project: str, candidate: str, title: str, status: str, finding: str, link: str = "") -> dict:
-    """Log one source against a candidate. status is read, could_not_open or not_relevant.
-
-    finding says what the source shows about this place, without coordinates. candidate may be one id,
-    several separated by commas, or "all" when the source bears on every candidate in the project.
+def view_source_page(project: str, url: str, page: int) -> list:
+    """Return an original PDF page as an image with its citation. Pages start at 1.
+    Inspect maps and legends before judging whether a published figure can place a feature.
+    Log the page and what was legible or too imprecise using log_source.
     """
     p = Project(project).check()
     answers.guard_project(p)
+    info, png = checks.source_page(p.path("private", "source-pdfs"), url, page)
+    p.note(f"Rendered source figure page {page} of {info['pages']}: {url}")
+    return [json.dumps(info), Image(data=png, format="png")]
+
+
+@tool
+def log_source(project: str, candidate: str, title: str, status: str, finding: str, link: str = "",
+               figure_status: str = "", page: int = 0) -> dict:
+    """Log one source against a candidate. status is read, could_not_open or not_relevant.
+
+    finding says what the source shows about this place, without coordinates. candidate may be one id,
+    several separated by commas, "all", or "project" for evidence used to select an area before finds exist.
+    For map evidence record figure_status as text_only, inspected, registered, or unavailable. For an inspected
+    or registered figure give its one-based PDF page. A rendered page alone does not establish registration.
+    """
+    p = Project(project).check()
+    answers.guard_project(p)
+    if figure_status:
+        if figure_status not in ("text_only", "inspected", "registered", "unavailable"):
+            raise ValueError("Unknown figure status")
+        if figure_status in ("inspected", "registered") and page < 1:
+            raise ValueError("Give the inspected PDF page.")
+        finding = f"Figure {figure_status.replace('_', ' ')}" + (f" (PDF page {page})" if page else "") + ". " + finding
     ids = [c["id"] for c in ledger.everything(p)] if candidate.strip().lower() == "all" else [c.strip() for c in candidate.split(",") if c.strip()]
+    if candidate.strip().lower() == "project" or (candidate.strip().lower() == "all" and not ids):
+        if status not in ledger.SOURCE_STATUSES:
+            raise ValueError(f"status must be one of {ledger.SOURCE_STATUSES}")
+        with p.locked("project_sources"):
+            sources = ledger.project_sources(p)
+            sources[title] = {"title": title, "status": status, "finding": finding, "link": link}
+            path = p.path("sources", "project.json")
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(sources, indent=2))
+            tmp.replace(path)
+        ledger.log_read(p, "project", title, status, finding, link)
+        p.note(f"Logged a project source ({status}): {title}")
+        return {"logged_on": "project"}
     counts = {cid: len(ledger.add_source(p, cid, title, status, finding, link)["sources"]) for cid in ids}
     return {"logged_on": counts}
 
@@ -728,15 +769,17 @@ def add_control(project: str, name: str, lon: float, lat: float) -> dict:
 
 
 @tool
-def write_summary(project: str, text: str) -> dict:
+def write_summary(project: str, text: str, lesson: str = "") -> dict:
     """Write the run summary in Markdown at the end of every run, even one that stopped early.
 
     Say what was done, what each candidate's checks show, which sources were read or could not be opened,
-    what is left, and what is waiting for the person. No coordinates.
+    what is left, and what is waiting for the person. An optional lesson adds a reusable observation to METHODOLOGY.md. No coordinates.
     """
     p = Project(project).check()
-    if re.search(r"-?\d{1,3}\.\d{4,}", text):
+    if re.search(r"-?\d{1,3}\.\d{4,}", text + " " + lesson):
         raise ValueError("The summary looks like it holds coordinates. Refer to places by candidate id instead.")
+    if lesson.strip():
+        p.add_lesson(lesson)
     return {"written": f"notes/{p.summary(text)}"}
 
 
@@ -783,8 +826,10 @@ def start_calibration(folder: str, project: str, dataset: str) -> dict:
     if not box:
         raise ValueError("The search project has no area.")
     site = answers.calibration_site(box, dataset)
+    if site["same_source"] is False:
+        return {"available": False, "reason": "No blind reference for this lidar source. The target remains uncalibrated."}
     out = answers.start(folder, site["site"])
-    p.save("calibrating", {"test": out["project"]})
+    p.save("calibrating", {"test": out["project"], "target_dataset": dataset})
     return {"project": out["project"], "name": out["name"],
             "note": "The site is kept from you until score_test, so the test stays blind. Search it as a blind test, then "
                     "call record_calibration with this folder."}

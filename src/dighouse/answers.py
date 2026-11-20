@@ -412,7 +412,9 @@ def calibration_site(box: list[float], dataset: str = "") -> dict:
         kx, ky = (k["box"][0] + k["box"][2]) / 2, (k["box"][1] + k["box"][3]) / 2
         km = math.hypot((kx - cx) * 111.32 * math.cos(math.radians(cy)), (ky - cy) * 110.54)
         rows.append((not want or _key_source(k) == want, -km, k))
-    same = [r for r in rows if r[0]] or rows
+    same = [r for r in rows if r[0]]
+    if not same:
+        return {"available": False, "same_source": False, "how": "No blind reference for this lidar source."}
     _, neg_km, k = max(same, key=lambda r: r[1])
     return {"site": k["id"], "name": k["name"], "place": k["place"], "data": k["data"], "km_away": round(-neg_km),
             "same_source": _key_source(k) == want if want else None,
@@ -430,6 +432,11 @@ def record_calibration(p, test_root: str) -> dict:
     out = {"site": s["site"], "found": s["found"], "known": s["known"], "missed": len(s["missed"]), "extra": len(s["extra"]),
            "found_share": share, "passed": share >= PASS_SHARE, "pass_mark": PASS_SHARE, "scored": s.get("scored"),
            "model": s.get("model", ""), "test": test.root.name}
+    context = p.load("calibrating", {}) or {}
+    if context.get("test") == str(test.root) and context.get("target_dataset"):
+        out["target_dataset"] = context["target_dataset"]
+    out["reference_sources"] = sorted({t["dataset"] for t in test.load("terrains", {}).values() if t.get("dataset")})
+    out["scope"] = "Recovery of the keyed features at the reference site. Transfer to different features or acquisitions remains untested."
     p.save("calibration", out)
     p.note(f"Calibrated on {s['site']}: {s['found']} of {s['known']} found" + ("" if out["passed"] else ", below the pass mark; the search stops here"))
     return out
@@ -453,7 +460,9 @@ def calibration_lines(p) -> list[str]:
         return []
     verdict = "passed" if c["passed"] else f"failed (the pass mark is {int(c['pass_mark'] * 100)}%), so the search stopped"
     return ["## Calibration", "", f"Before searching here, the method was tested blind on {c['site']}: {c['found']} of {c['known']} "
-            f"known features found, {c['missed']} missed, {c['extra']} not in the key. The calibration {verdict}.", ""]
+            f"known features found, {c['missed']} missed, {c['extra']} not in the key. The reference test {verdict}.",
+            "Reference acquisition: " + (", ".join(c.get("reference_sources", [])) or "unrecorded") + ". " +
+            "Target acquisition: " + (c.get("target_dataset") or "unrecorded") + ". Transfer to other surveys and feature types remains unverified.", ""]
 
 
 # ---------------------------------------------------------------- early check against open records

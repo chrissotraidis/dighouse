@@ -186,7 +186,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
     # Handed over: the record lists ground that this Mac holds no data for.
     handed = any(t.get("earlier") for t in terrains.values()) and not any(not t.get("earlier") for t in terrains.values())
     records = ledger.everything(p)
-    sources: dict[str, dict] = {}
+    sources = {title: {**item, "for": ["project"]} for title, item in ledger.project_sources(p).items()}
     for m in records:
         for s in m["sources"]:
             entry = sources.setdefault(s["title"], {**s, "for": []})
@@ -221,6 +221,9 @@ def document(p: Project, commit_it: bool = True) -> dict:
     else:
         short.append("No ground has been looked at yet.")
     if records:
+        suggestions = sum(bool(m.get("suggestion")) for m in records)
+        opinions = sum(bool(m["checks"].get("second_look")) for m in records)
+        short.append(f"{suggestions} have decision suggestions, {len(records) - suggestions} lack suggestions, and {opinions} have second opinions.")
         short.append(f"A person has decided {len(decided)} of {len(records)}.")
     if sources:
         short.append(f"{n_status['read']} published source{'s' if n_status['read'] != 1 else ''} "

@@ -44,6 +44,7 @@ final class AppState: ObservableObject {
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
     @Published var jumping = false
+    @Published var choosingDuration = false
     /// Whole searches under way ("Find and report back"): the chat each runs in, and its project's folder.
     @Published var investigating: [String: String] = [:]
     /// The search report on show, as a file, or nil.
@@ -206,6 +207,9 @@ final class AppState: ObservableObject {
                 + "Call init_project yourself only when the person asks you to create the project; pass a new folder name and it "
                 + "goes inside \(Paths.projectsHome.path), then tell the person to open it from the card in the chat. " + shared
         }
+        chat.timedInstructions = { [weak self] in
+            (self?.setup.skill ?? "") + "\nThis is a timed research session. Create the session’s research projects directly with init_project and use their returned paths. Keep a dated session record in the general chat folder. Continue independently through the deadline or until the evidence warrants closing. Record which decisions need a person."
+        }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }
             if tool == "init_project", let path = args["project"] as? String { self.store.register(path: path) }
@@ -283,6 +287,7 @@ final class AppState: ObservableObject {
                 await chat.open(project: store.current?.path)
                 if let project = store.current { store.open(project) }
                 if let open { await chat.select(open) }
+                chat.timed.restore()
             }
         }
         starting = false
@@ -522,7 +527,7 @@ final class AppState: ObservableObject {
             id: "chat-\(id)-\(UUID().uuidString)", kind: .chat, title: title, place: offer.place, about: "", source: "",
             name: offer.name, question: offer.question,
             box: offer.box.map { $0.map { String(format: "%.5f", $0) } } ?? ["", "", "", ""],
-            search: offer.box == nil && !offer.place.isEmpty ? offer.place : nil, chat: id, whyHere: offer.whyHere,
+            search: offer.box == nil && !offer.place.isEmpty ? offer.place : nil, chat: id, whyHere: [offer.purpose.capitalized, offer.whyHere, offer.feasibility].filter { !$0.isEmpty }.joined(separator: "\n\n"),
             sources: offer.sources, ruledOut: offer.ruledOut, conversation: ProjectOffer.conversation(chat.items),
             inGitHub: offer.inGitHub, searchNow: offer.searchNow))
     }
@@ -703,6 +708,7 @@ final class AppState: ObservableObject {
     func run(_ flow: ToolGuide.Workflow) {
         guard state(of: flow).ready else { return }
         // Choosing a place is done on the map, not in a chat.
+        if flow.id == "timed-research" { choosingDuration = true; return }
         if flow.id == "choose" { startProject(); return }
         if flow.scope == .general, store.current != nil { store.close() }
         if flow.id == "second" {
@@ -729,6 +735,21 @@ final class AppState: ObservableObject {
             }
         } else {
             ask(flow.prompt, title: flow.title)
+        }
+    }
+
+    func startTimedResearch(minutes: Int) {
+        guard minutes > 0, let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) else { return }
+        choosingDuration = false
+        store.close()
+        route = .chat
+        if layout == .workspace { layout = .split }
+        let end = Date().addingTimeInterval(TimeInterval(minutes) * 60)
+        Task {
+            await chat.open(project: nil)
+            let objective = flow.prompt + " The deadline is " + ISO8601DateFormatter().string(from: end)
+                + ". Save progress after every pass, including the next action and the strongest competing area. Use the existing session records after any interruption."
+            await chat.setGoal(objective, title: flow.title, deadline: end)
         }
     }
 

@@ -447,7 +447,9 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
     out = {"grid": f"{cells} by {cells}, rows A (north) to {'ABCDEFGH'[cells - 1]} (south), columns 1 (west) to {cells} (east)",
            "sites_on_open_record": len(sites), "by_source": totals, "sources_that_answered": _answered(silent),
            "records_in_open_context": published, "cells_with_open_lidar": len(covered),
-           "cells_without_open_lidar": len(grid) - len(covered), "ranked": covered[:8], "how_to_read": RECORD_CAVEAT}
+           "cells_without_open_lidar": len(grid) - len(covered), "ranked": covered[:8],
+           "ranking_basis": "Survey coverage and public record density. Assess archaeological research priority separately against published work.",
+           "how_to_read": RECORD_CAVEAT}
     if silent:
         out["sources_that_did_not_answer"] = silent
     return out

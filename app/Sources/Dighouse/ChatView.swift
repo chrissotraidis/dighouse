@@ -14,7 +14,7 @@ struct ChatView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if chat.items.isEmpty { EmptyChat() } else {
-                if let id = chat.active, chat.goals.contains(id) { GoalBar(objective: chat.objectives[id] ?? "") }
+                if let id = chat.active, (chat.goals.contains(id) || chat.timed.model(for: id) != nil) { GoalBar(objective: chat.objectives[id] ?? "") }
                 Messages()
             }
             RecoveryBar()
@@ -48,7 +48,7 @@ private struct GoalBar: View {
             Glyph(name: "dig.trowel", size: 14 * Theme.scale).foregroundStyle(Theme.tan)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Goal: " + title).font(.system(size: 13 * Theme.scale, weight: .semibold)).lineLimit(1)
-                Text("The agent keeps working, turn after turn, until this is done or it needs you.")
+                Text(chat.active.flatMap { chat.timed.status(for: $0) } ?? "The agent keeps working, turn after turn, until this is done or it needs you.")
                     .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
             }
             .help(objective)
@@ -115,8 +115,11 @@ private struct RecoveryBar: View {
         if has("not supported when using codex") {
             return ("This model needs a newer Codex engine", "The provider refuses this model to the engine on this Mac. Update Codex, then restart Dighouse, or choose another model.")
         }
-        if has("rate limit", "usage limit", "quota", "429", "too many requests") {
+        if has("usage limit", "quota") {
             return ("The usage limit was reached", "Wait until it resets (/status says when), or choose a model that runs through another provider.")
+        }
+        if has("rate limit", "429", "too many requests") {
+            return ("The provider limited this request", raw)
         }
         if has("model") && has("not found", "not supported", "does not exist", "unsupported", "unknown model", "no access", "not available") {
             return ("This model could not run the request", "Choose another model. Looking at tiles needs a model that reads images.")
@@ -447,6 +450,11 @@ private struct OfferCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(offer.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Text(offer.question).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                if !offer.purpose.isEmpty {
+                    Text(offer.purpose.capitalized).font(.subheadline.weight(.semibold))
+                    if !offer.whyHere.isEmpty { Text(offer.whyHere).font(.subheadline) }
+                    if !offer.feasibility.isEmpty { Text("Data: " + offer.feasibility).font(.caption) }
+                }
                 if store.current == nil, !offer.folder.isEmpty {
                     Label(Paths.short(offer.folder) + (offer.inGitHub ? ", in your GitHub folder as you asked" : ""), systemImage: "folder")
                         .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)

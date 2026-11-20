@@ -16,6 +16,7 @@ dependencies = [
     "httpx",
     "pyshp",
     "pypdf>=7.0.1",
+    "pypdfium2>=4.30,<6",
 ]
 
 [project.scripts]

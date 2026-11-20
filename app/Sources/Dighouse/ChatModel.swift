@@ -65,9 +65,24 @@ final class ChatModel: ObservableObject {
     /// The share of the account's usage left, as the engine last reported it.
     @Published var usageLeft: Int?
 
+    lazy var timed: TimedResearch = {
+        let timer = TimedResearch()
+        timer.request = { [weak self] method, params in
+            guard let self, let engine = self.engine else { throw EngineError(message: "The engine is offline.") }
+            if let thread = params["threadId"] as? String { try await self.resume(thread) }
+            return try await engine.request(method, params)
+        }
+        timer.turn = { [weak self] in self?.live[$0] }
+        timer.announce = { [weak self] id, message in
+            if self?.active == id { self?.note(message) }
+        }
+        return timer
+    }()
+
     var engine: Engine?
     var instructions: () -> String = { "" }
     var model: () -> ModelInfo? = { nil }
+    var timedInstructions: () -> String = { "" }
     var modelID: () -> String? = { nil }
     var effort: () -> String? = { nil }
     /// Called for a chat that has no name yet, with the text it began with.
@@ -248,7 +263,13 @@ final class ChatModel: ObservableObject {
     /// The engine has to load a stored chat before it can take another message.
     private func resume(_ id: String) async throws {
         guard let engine, !resumed.contains(id) else { return }
-        _ = try await engine.request("thread/resume", threadSettings(["threadId": id]))
+        var settings = threadSettings(["threadId": id])
+        if let pinned = timed.model(for: id) {
+            settings["model"] = pinned
+            settings["cwd"] = Paths.general.path
+            settings["developerInstructions"] = timedInstructions()
+        }
+        _ = try await engine.request("thread/resume", settings)
         resumed.insert(id)
     }
 
@@ -392,15 +413,21 @@ final class ChatModel: ObservableObject {
 
     /// Give the chat a goal. The engine keeps taking turns until the goal is met or it needs the person.
     /// A workflow sets its name as the title, so the chat and its note show the name rather than the instructions.
-    func setGoal(_ objective: String, title: String? = nil) async {
+    func setGoal(_ objective: String, title: String? = nil, deadline: Date? = nil) async {
         let objective = objective.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let engine, !objective.isEmpty else { return }
         let title = title.map(fresh)
+        var selectedModel = modelID() ?? engine.defaultModel
+        var goalThread = active
         do {
             if active == nil {
-                let started = try await engine.request("thread/start", threadSettings([:]))
+                var settings = threadSettings([:])
+                if deadline != nil { settings["developerInstructions"] = timedInstructions() }
+                let started = try await engine.request("thread/start", settings)
                 guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
                 active = id
+                goalThread = id
+                selectedModel = settings["model"] as? String ?? started["model"] as? String ?? selectedModel
                 resumed.insert(id)
                 startedHere.insert(id)
                 let new = ChatThread(id: id, title: String((title ?? objective).prefix(80)), named: title != nil)
@@ -411,14 +438,17 @@ final class ChatModel: ObservableObject {
             } else if let active {
                 try await resume(active)
             }
-            guard let active else { return }
+            guard let active = goalThread else { return }
+            if deadline != nil && selectedModel == nil { throw EngineError(message: "Choose a model to start timed research.") }
             note(Self.goalNote(objective))
             running = true
             objectives[active] = objective
             goals.insert(active)
+            if let deadline, let selectedModel { timed.start(active, model: selectedModel, deadline: deadline) }
             _ = try await engine.request("thread/goal/set", ["threadId": active, "objective": objective, "status": "active"])
         } catch {
             running = false
+            if let goalThread, deadline != nil { timed.remove(goalThread); goals.remove(goalThread) }
             note("Could not set the goal: \(error.localizedDescription)")
         }
     }
@@ -605,7 +635,7 @@ final class ChatModel: ObservableObject {
             }
             running = true
             var params: JSON = ["threadId": active ?? "", "input": input]
-            if let model = modelID() { params["model"] = model }
+            if let model = active.flatMap({ timed.model(for: $0) }) ?? modelID() { params["model"] = model }
             if let effort = effort() { params["effort"] = effort }
             _ = try await engine.request("turn/start", params)
         } catch {
@@ -616,6 +646,7 @@ final class ChatModel: ObservableObject {
 
     func stop() async {
         guard let engine, let active, let turn else { return }
+        timed.remove(active)
         // A chat with a goal would start its next turn on its own, so pause the goal first.
         if goals.contains(active) { _ = try? await engine.request("thread/goal/set", ["threadId": active, "status": "paused"]) }
         _ = try? await engine.request("turn/interrupt", ["threadId": active, "turnId": turn])
@@ -624,6 +655,7 @@ final class ChatModel: ObservableObject {
     /// Stop the goal in the chat on screen: pause it so no next turn starts, and end the turn running now, if any.
     func stopGoal() async {
         guard let engine, let active else { return }
+        timed.remove(active)
         _ = try? await engine.request("thread/goal/set", ["threadId": active, "status": "paused"])
         goals.remove(active)
         if let turn = live[active], !turn.isEmpty { _ = try? await engine.request("turn/interrupt", ["threadId": active, "turnId": turn]) }
@@ -631,18 +663,20 @@ final class ChatModel: ObservableObject {
 
     /// Stop the run in one chat, whichever chat is on screen.
     func stop(chat thread: String) async {
-        guard let engine, let turn = live[thread] else { return }
-        if goals.contains(thread) { _ = try? await engine.request("thread/goal/set", ["threadId": thread, "status": "paused"]) }
-        if !turn.isEmpty { _ = try? await engine.request("turn/interrupt", ["threadId": thread, "turnId": turn]) }
+        guard let engine else { return }
+        let hadTimer = timed.model(for: thread) != nil
+        let currentTurn = live[thread]
+        timed.remove(thread)
+        if hadTimer || goals.contains(thread) {
+            _ = try? await engine.request("thread/goal/set", ["threadId": thread, "status": "paused"])
+        }
+        if let currentTurn, !currentTurn.isEmpty {
+            _ = try? await engine.request("turn/interrupt", ["threadId": thread, "turnId": currentTurn])
+        }
     }
 
-    /// Stop every run, in whichever chat it is, such as a download started from another chat.
     func stopAll() async {
-        guard let engine else { return }
-        for (thread, turn) in live where !turn.isEmpty {
-            if goals.contains(thread) { _ = try? await engine.request("thread/goal/set", ["threadId": thread, "status": "paused"]) }
-            _ = try? await engine.request("turn/interrupt", ["threadId": thread, "turnId": turn])
-        }
+        for thread in Set(live.keys).union(goals).union(timed.threadIDs) { await stop(chat: thread) }
     }
 
     func answer(_ allow: Bool) {
@@ -697,12 +731,16 @@ final class ChatModel: ObservableObject {
             let goal = params["goal"] as? JSON
             let status = goal?["status"] as? String ?? ""
             if let objective = goal?["objective"] as? String { objectives[thread] = objective }
+            timed.goalChanged(thread, status: status)
             if status == "active" { goals.insert(thread) } else {
                 goals.remove(thread)
                 onGoalEnded?(thread, status)
             }
         }
-        if method == "thread/goal/cleared" { goals.remove(thread) }
+        if method == "thread/goal/cleared" { timed.remove(thread); goals.remove(thread) }
+        if method == "turn/completed", let failure = (params["turn"] as? JSON)?["error"] as? JSON {
+            timed.failed(thread, error: failure)
+        }
         guard thread == active else { return }
         switch method {
         case "turn/started":

@@ -481,6 +481,8 @@ struct StartingPoint: Identifiable, Hashable {
 struct ProjectOffer {
     var name: String
     var question: String
+    var purpose = ""
+    var feasibility = ""
     var whyHere = ""
     var place = ""
     var box: [Double]? = nil
@@ -501,6 +503,8 @@ struct ProjectOffer {
               info["offered"] as? Bool == true, let name = info["name"] as? String, let question = info["question"] as? String else { return nil }
         self.name = name
         self.question = question
+        purpose = info["purpose"] as? String ?? ""
+        feasibility = info["feasibility"] as? String ?? ""
         whyHere = info["why_here"] as? String ?? ""
         place = info["place"] as? String ?? ""
         box = (info["box"] as? [Any])?.compactMap { ($0 as? NSNumber)?.doubleValue }

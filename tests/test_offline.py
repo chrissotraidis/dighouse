@@ -698,3 +698,37 @@ def test_shizuoka_map_sheets_are_named_and_none_is_skipped():
     assert national._shizuoka_sheets(45100, -95200, 45110, -95190) == ["08NF1172"]
     assert sorted(national._shizuoka_sheets(44750, -95250, 45100, -94950)) == ["08NF1161", "08NF1162", "08NF1171", "08NF1172"]
 
+
+
+def test_original_figure_and_project_evidence(tmp_path, monkeypatch):
+    import io
+    import httpx
+    from PIL import Image
+
+    root = str(tmp_path / "figure-test")
+    server.init_project(root, "Figure test", "Is the plan usable?", 0, 0, .001, .001)
+    p = Project(root)
+    pdf = io.BytesIO()
+    Image.new("RGB", (80, 50), "orange").save(pdf, format="PDF")
+    url = "https://example.org/field-plan.pdf"
+    monkeypatch.setattr(checks, "_source_response", lambda _: httpx.Response(200, content=pdf.getvalue()))
+    folder = p.path("private", "source-pdfs")
+    assert checks.read_source(url, folder=folder)["pages"] == 1
+    monkeypatch.setattr(checks, "_source_response", lambda _: pytest.fail("Fetched a cached original"))
+    info, png = checks.source_page(folder, url, 1)
+    assert info["page"] == 1 and Image.open(io.BytesIO(png)).format == "PNG"
+    with pytest.raises(ValueError, match="from 1 to 1"):
+        checks.source_page(folder, url, 2)
+    server.log_source(root, "project", "Field plan", "read", "Contours visible.", url, "inspected", 1)
+    lesson = "Register this plan against two withheld landmarks."
+    server.write_summary(root, "Map inspected.", lesson)
+    p.add_lesson(lesson)
+    assert p.path("METHODOLOGY.md").read_text().count(lesson) == 1
+    for path in ["sources/read-log.md", "RESEARCH.md", "sources/project.json"]:
+        assert "Figure inspected (PDF page 1)" in p.path(path).read_text()
+
+
+def test_unmatched_calibration_is_unavailable():
+    from dighouse import answers
+
+    assert answers.calibration_site([0, 0, 1, 1], "unmatched:acquisition")["available"] is False

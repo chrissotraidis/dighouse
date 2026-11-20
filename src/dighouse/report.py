@@ -165,7 +165,7 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     from .answers import calibration_lines
     L += calibration_lines(p)
     L += ["## What is already published", ""]
-    sources: dict[str, dict] = {}
+    sources = {title: {**item, "for": ["project"]} for title, item in ledger.project_sources(p).items()}
     for m in records:
         for s in m["sources"]:
             entry = sources.setdefault(s["title"], {**s, "for": []})

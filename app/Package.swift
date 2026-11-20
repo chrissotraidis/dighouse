@@ -4,5 +4,8 @@ import PackageDescription
 let package = Package(
     name: "Dighouse",
     platforms: [.macOS(.v14)],
-    targets: [.executableTarget(name: "Dighouse", path: "Sources/Dighouse")]
+    targets: [
+        .executableTarget(name: "Dighouse", path: "Sources/Dighouse"),
+        .testTarget(name: "DighouseTests", dependencies: ["Dighouse"])
+    ]
 )

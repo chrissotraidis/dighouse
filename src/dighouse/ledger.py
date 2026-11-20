@@ -137,6 +137,11 @@ def set_check(p: Project, cid: str, key: str, value: dict) -> dict:
     return meta
 
 
+def project_sources(p: Project) -> dict:
+    path = p.path("sources", "project.json")
+    return json.loads(path.read_text()) if path.exists() else p.load("project_sources", {})
+
+
 def add_source(p: Project, cid: str, title: str, status: str, finding: str, link: str = "") -> dict:
     if status not in SOURCE_STATUSES:
         raise ValueError(f"status must be one of {SOURCE_STATUSES}")
@@ -144,12 +149,16 @@ def add_source(p: Project, cid: str, title: str, status: str, finding: str, link
     meta["sources"] = [s for s in meta["sources"] if s["title"] != title]
     meta["sources"].append({"title": title, "status": status, "finding": finding, "link": link})
     write(p, meta, notes)
+    log_read(p, cid, title, status, finding, link)
+    return meta
+
+
+def log_read(p, cid, title, status, finding, link):
     log = p.path("sources", "read-log.md")
     if not log.exists():
         log.write_text("# Sources read\n\n")
     with log.open("a") as fh:
         fh.write(f"- {today()} · {cid} · {status} · {title}" + (f" · {link}" if link else "") + f" · {finding}\n")
-    return meta
 
 
 def distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
