@@ -208,6 +208,12 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
         L.append("Nothing more: the decisions are what is left.")
     L += ["", "The full record of this project is in [RESEARCH.md](../RESEARCH.md).", ""]
 
+    from .answers import test_state
+    if test_state(p):
+        # A blind test is scored against its key; its finds wait for no decision, and the score says what each was.
+        D = ["## The finds", "", f"{_s(len(records), 'find')} marked. This is a blind test, so each is scored against the published "
+             "key rather than decided; the scorecard above says which matched.", ""]
+        return "\n".join(top + D + L), 0
     D = ["## What needs your decision", ""]
     # When the map service was down for every find, that is said once, under the finds.
     no_maps = bool(open_) and all("modern" not in m["checks"] and m["id"] in failed_maps for m in open_)
