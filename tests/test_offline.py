@@ -760,3 +760,22 @@ def test_read_source_refuses_an_address_carrying_the_projects_location(tmp_path)
     with pytest.raises(ValueError, match="coordinates"):
         server._no_location_in(p, "https://example.org/collect?lat=38.6612&lon=-90.0543")
     server._no_location_in(p, "https://doi.org/10.1016/j.jas.2020.105123")
+
+
+def test_shape_tells_a_mound_from_a_tree_throw_and_openness_lights_both():
+    import numpy as np
+    from dighouse import mounds, terrain as T
+    res = 0.5
+    yy, xx = np.mgrid[:160, :160]
+    d = np.hypot(yy - 80, xx - 80) * res
+    mound = np.where(d < 6, 0.8 * (1 - (d / 6) ** 2), 0.0).astype(np.float32)
+    throw = mound.copy()
+    dp = np.hypot(yy - 80, xx - 100) * res
+    throw -= np.where(dp < 3, 0.6 * (1 - (dp / 3) ** 2), 0.0).astype(np.float32)
+    gap = np.zeros_like(mound)
+    a = mounds.shape(mound, gap, res, 80, 80, 12)
+    b = mounds.shape(throw, gap, res, 80, 80, 12)
+    assert a["hints"] == ["a coherent, round rise"] and a["symmetry"] > 0.8
+    assert any("tree throw" in h for h in b["hints"])
+    pos, neg = T.openness(throw, res)
+    assert pos[80, 80] > pos[80, 20] and neg[80, 100] > neg[80, 20]

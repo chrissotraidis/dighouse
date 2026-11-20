@@ -134,7 +134,36 @@ def _stretch(a: np.ndarray, lo: float = 2, hi: float = 98) -> np.ndarray:
     return np.clip((a - p0) / max(p1 - p0, 1e-9), 0, 1)
 
 
-STYLES = ("composite", "hillshade", "slope", "local_relief", "sky_view")
+def openness(dtm: np.ndarray, res: float, radius_m: float = 15.0, directions: int = 8) -> tuple[np.ndarray, np.ndarray]:
+    """Positive and negative openness, in degrees (Yokoyama et al. 2002): how open each cell is to the sky above it,
+    and to the ground below it, out to radius_m. Positive openness is high on raised forms such as a mound's top;
+    negative openness is high in hollows, so a pit beside a heap (a tree throw) shows in it when a hillshade hides it."""
+    h = dtm.astype(np.float32)
+    rows, cols = h.shape
+    reach = max(int(radius_m / res), 2)
+    steps = sorted({max(1, int(round(reach * f))) for f in np.geomspace(1 / reach, 1, 10)})
+    pad = reach + 1
+    big = np.pad(h, pad, mode="edge")
+    pos = np.zeros_like(h)
+    neg = np.zeros_like(h)
+    for a in np.linspace(0, 2 * np.pi, directions, endpoint=False):
+        up = np.full_like(h, -np.pi / 2)
+        down = np.full_like(h, np.pi / 2)
+        for k in steps:
+            dr, dc = int(round(-np.sin(a) * k)), int(round(np.cos(a) * k))
+            dist = np.hypot(dr, dc) * res
+            if dist == 0:
+                continue
+            angle = np.arctan((big[pad + dr:pad + dr + rows, pad + dc:pad + dc + cols] - h) / dist)
+            up = np.maximum(up, angle)
+            down = np.minimum(down, angle)
+        pos += np.pi / 2 - up
+        neg += np.pi / 2 + down
+    return np.degrees(pos / directions), np.degrees(neg / directions)
+
+
+STYLES = ("composite", "hillshade", "slope", "local_relief", "sky_view",
+          "relief_small", "relief_large", "positive_openness", "negative_openness")
 
 
 def render(dtm: np.ndarray, gap: np.ndarray, outside: np.ndarray, res: float, style: str = "composite") -> Image.Image:
@@ -153,6 +182,13 @@ def render(dtm: np.ndarray, gap: np.ndarray, outside: np.ndarray, res: float, st
         img = np.clip(local_relief(dtm, res) / 2.0 + 0.5, 0, 1)
     elif style == "sky_view":
         img = _stretch(sky_view(dtm, res), 1, 99) ** 1.6
+    elif style in ("relief_small", "relief_large"):
+        # Windows sized to the mounds looked for: 5 to 15 m across, and 15 to 40 m across.
+        radius, span = (4.0, 1.0) if style == "relief_small" else (12.0, 2.0)
+        img = np.clip(local_relief(dtm, res, radius) / span + 0.5, 0, 1)
+    elif style in ("positive_openness", "negative_openness"):
+        pos, neg = openness(dtm, res)
+        img = _stretch(pos if style == "positive_openness" else neg, 1, 99)
     else:
         lrm = np.clip(local_relief(dtm, res) / 2.0 + 0.5, 0, 1)
         img = (0.6 * _stretch(many) + 0.4 * lrm) * (1 - 0.35 * np.clip(slope_degrees(dtm, res) / 35, 0, 1))

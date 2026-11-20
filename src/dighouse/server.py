@@ -577,6 +577,31 @@ def second_look_failed(project: str, candidate: str, model: str, reason: str) ->
 
 
 @tool
+def shape_check(project: str, candidate: str, diameter_m: float = 12.0) -> dict:
+    """Measure a find the way a person checks a small mound: its rise above the ground around it, any pit beside it (a
+    tree throw leaves a pit beside its heap), its width east-west and north-south, how rough the ground around it is, and
+    how much of it sits over cells with no ground returns. Pass the diameter you expect. Files the result on the record as
+    a ranking aid: it rules nothing in or out, so a low or irregular mound can still be real."""
+    import pyproj
+    from . import mounds, terrain as T
+    p = Project(project).check()
+    lon, lat = ledger.location(p, candidate)
+    tile = (p.load("locations", {}) or {}).get(candidate, {}).get("tile")
+    tid = (p.load("tiles", {}) or {}).get(tile, {}).get("terrain") if tile else None
+    meta = (p.load("terrains", {}) or {}).get(tid) if tid else None
+    if not meta:
+        raise ValueError(f"{candidate} has no ground model on this Mac to measure.")
+    x, y = pyproj.Transformer.from_crs(4326, meta["epsg"], always_xy=True).transform(lon, lat)
+    x0, _, _, y1 = meta["box"]
+    dtm, gap, _ = T.load_terrain(p.path(meta["file"]))
+    out = mounds.shape(dtm, gap, meta["res"], int((y1 - y) / meta["res"]), int((x - x0) / meta["res"]), diameter_m)
+    out["diameter_m"] = diameter_m
+    ledger.set_check(p, candidate, "shape", out)
+    p.note(f"Measured the shape of {candidate}: rise {out.get('rise_m')} m, pit beside {out.get('pit_beside_m')} m")
+    return {"candidate": candidate, **out}
+
+
+@tool
 def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     """Check OpenStreetMap around a candidate for roads, buildings and land use, and for sites already mapped nearby."""
     p = Project(project).check()

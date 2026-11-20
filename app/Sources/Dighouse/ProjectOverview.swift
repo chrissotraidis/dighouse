@@ -177,7 +177,7 @@ struct ProjectOverview: View {
                         coach: flow.id == "terrain" && app.layout != .workspace ? .getTerrain : nil)
         }
         if !open.isEmpty { return decide }
-        guard store.status.tiles > 0, app.chat.running == false else { return nil }
+        guard store.status.tiles > 0, app.chat.live.isEmpty, app.chat.goals.isEmpty else { return nil }
         let widen: (label: String, help: String, action: () -> Void) =
             ("Widen the search", "Fetch the ground around this area and look at it too.", { app.ask(ToolGuide.widen, title: "Widen the search") })
         if all.isEmpty {

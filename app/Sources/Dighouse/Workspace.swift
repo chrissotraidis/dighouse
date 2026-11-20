@@ -875,6 +875,14 @@ struct RecordsView: View {
                 }
             }
             Hairline()
+            if let shape = c.checks["shape"] as? JSON, shape["rise_m"] != nil {
+                let hints = (shape["hints"] as? [String]) ?? []
+                let said = hints.joined(separator: "; ")
+                CheckRow(done: hints == ["a coherent, round rise"], title: "Shape",
+                         detail: "Rises \(shape["rise_m"] ?? "?") m above the ground around it, \(shape["width_ew_m"] ?? "?") by \(shape["width_ns_m"] ?? "?") m: "
+                            + said + ". This ranks finds; it rules none out.") { EmptyView() }
+                Hairline()
+            }
             CheckRow(done: c.sources.isEmpty ? nil : (read > 0 && unread == 0), title: "What is published",
                      detail: c.sources.isEmpty ? "Books, papers and site records, each logged as read or not opened."
                         : unread == 0 ? "\(read) read. Each says what it shows about this find, below."
