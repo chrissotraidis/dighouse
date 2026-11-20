@@ -49,6 +49,8 @@ A blind test checks the method on a known site whose features are published. `ru
 
 Before searching an area where nothing is on record, prove the method works on this kind of lidar.
 
+One calibration per lidar source is enough for a session: reuse its score for every area on that source and say its limits once. A calibration site that differs from the area (open ground against woodland, restored mounds against eroded ones) lowers your confidence in what you find there; it is not a reason to skip the area. Search areas of 1 to 2 square km, fetched in parts, rather than many small windows.
+
 1. `start_calibration` with a folder beside the project, the project, and the dataset `find_data` offers. It starts a blind test on the nearest known site with lidar from the same source, without telling you which; do not try to work it out.
 If the tool reports no matching reference, record the missing calibration. A provider match still needs comparable feature type, relief and acquisition conditions.
 2. Run that test blind to `score_test`, exactly as a blind test. (`calibration_site` names the site, for proposals to a person; do not call it for a project you are about to calibrate.)

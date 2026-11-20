@@ -108,6 +108,9 @@ final class ChatModel: ObservableObject {
 
     private(set) var project: String?
     private var turn: String?
+    /// Chats whose current turn the person stopped. An interrupted turn the person did not stop (the engine moving a
+    /// goal on, or a message sent mid-turn) is not written into the record as their stop.
+    private var stoppedByPerson: Set<String> = []
     private var resumed: Set<String> = []
     /// Chats started since launch. The engine can take a while to list a new chat, so these are kept until it does.
     private var startedHere: Set<String> = []
@@ -646,6 +649,7 @@ final class ChatModel: ObservableObject {
 
     func stop() async {
         guard let engine, let active, let turn else { return }
+        stoppedByPerson.insert(active)
         timed.remove(active)
         // A chat with a goal would start its next turn on its own, so pause the goal first.
         if goals.contains(active) { _ = try? await engine.request("thread/goal/set", ["threadId": active, "status": "paused"]) }
@@ -655,6 +659,7 @@ final class ChatModel: ObservableObject {
     /// Stop the goal in the chat on screen: pause it so no next turn starts, and end the turn running now, if any.
     func stopGoal() async {
         guard let engine, let active else { return }
+        stoppedByPerson.insert(active)
         timed.remove(active)
         _ = try? await engine.request("thread/goal/set", ["threadId": active, "status": "paused"])
         goals.remove(active)
@@ -664,6 +669,7 @@ final class ChatModel: ObservableObject {
     /// Stop the run in one chat, whichever chat is on screen.
     func stop(chat thread: String) async {
         guard let engine else { return }
+        stoppedByPerson.insert(thread)
         let hadTimer = timed.model(for: thread) != nil
         let currentTurn = live[thread]
         timed.remove(thread)
@@ -715,8 +721,9 @@ final class ChatModel: ObservableObject {
             // The chat on screen belongs to the open project; a run elsewhere is found by the list its chat is in.
             let folder = thread == active ? project : known.first { $0.value.contains { $0.id == thread } }?.key
             if let folder, folder != Paths.general.path {
-                onRunEnded?(thread, folder, ((params["turn"] as? JSON)?["status"] as? String) == "interrupted")
+                onRunEnded?(thread, folder, ((params["turn"] as? JSON)?["status"] as? String) == "interrupted" && stoppedByPerson.contains(thread))
             }
+            stoppedByPerson.remove(thread)
         }
         if method == "item/started", let item = params["item"] as? JSON, item["type"] as? String == "mcpToolCall",
            item["server"] as? String == "dighouse", let tool = item["tool"] as? String {

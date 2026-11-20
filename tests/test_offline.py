@@ -779,3 +779,6 @@ def test_shape_tells_a_mound_from_a_tree_throw_and_openness_lights_both():
     assert any("tree throw" in h for h in b["hints"])
     pos, neg = T.openness(throw, res)
     assert pos[80, 80] > pos[80, 20] and neg[80, 100] > neg[80, 20]
+    pond = -mound
+    c = mounds.shape(pond, gap, res, 80, 80, 12)
+    assert any("hollow" in h for h in c["hints"]) and c["rank"] == 0

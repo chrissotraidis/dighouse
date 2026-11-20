@@ -11,6 +11,8 @@ final class TimedResearch {
         var closing = false
         var retries = 0
         var retryAt: Date?
+        /// Whether an early close has already been turned back once.
+        var reopened: Bool? = nil
     }
 
     typealias Request = (String, JSON) async throws -> JSON
@@ -63,6 +65,18 @@ final class TimedResearch {
     }
 
     func goalChanged(_ id: String, status: String) {
+        // A session the agent closes long before its deadline is reopened once, with the next thing to do: the person
+        // chose the time, and an early "complete" in the first session left four hours unused.
+        if status == "complete", let s = sessions[id], !s.closing, s.reopened != true, s.closeAt.timeIntervalSinceNow > 20 * 60, let request {
+            sessions[id]?.reopened = true
+            let end = s.deadline.formatted(date: .omitted, time: .shortened)
+            let prompt = "Dighouse's timer: the session runs until \(end), which is more than 20 minutes away. Keep the assessment you saved, "
+                + "then use the time on the next most useful pass: search a new area of open lidar where little is on record, or test a lead you listed. "
+                + "Checkpoint as before. Dighouse will ask you to close shortly before the deadline."
+            Task { _ = try? await request("thread/goal/set", ["threadId": id, "objective": prompt, "status": "active"]) }
+            announce(id, "The agent closed the session early; Dighouse asked it to keep going until \(end).")
+            return
+        }
         if ["complete", "paused", "budgetLimited", "usageLimited", "usage_limited", "budget_limited"].contains(status) {
             remove(id)
         }
@@ -139,7 +153,7 @@ final class TimedResearch {
                 sessions[id]?.retryAt = nil
             }
             if now >= s.closeAt, !s.closing, sessions[id]?.retryAt == nil {
-                let prompt = "Close this timed research session now. Use the latest checkpoint. Save the ranked assessment, the decisive next test, benchmark and deferred work, interventions and human decisions. Mark the goal complete after saving. Do not start another acquisition."
+                let prompt = "Dighouse's timer, not the person: the deadline is near, so close this timed research session now. Use the latest checkpoint. Save the ranked assessment, the decisive next test, benchmark and deferred work, interventions and human decisions. Mark the goal complete after saving. Do not start another acquisition."
                 if let turn = turn(id), !turn.isEmpty {
                     _ = try await request("turn/steer", ["threadId": id, "expectedTurnId": turn, "input": [["type": "text", "text": prompt]]])
                 } else if canClose {

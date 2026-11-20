@@ -116,8 +116,12 @@ def shape(dtm: np.ndarray, gap: np.ndarray, res: float, row: int, col: int, diam
     detrended = z - ndimage.gaussian_filter(np.where(finite, z, base), max(2.0, 5 / res))
     roughness = float(np.std(detrended[around])) if around.any() else 0.0
     no_ground = float(np.mean(g[d <= r] > GAP_M)) if (d <= r).any() else 0.0
+    # A hollow (a pit, a pond, a quarry) sits below the ground around it; the rest of the measure is for raised shapes.
+    sink = float(base - np.median(z[inner]))
     hints = []
-    if rise < 0.2:
+    if sink > 0.2 and sink > rise:
+        hints.append(f"a hollow, {sink:.1f} m below the ground around it, not a rise")
+    elif rise < 0.2:
         hints.append("barely rises above the ground around it")
     if pit > 0.25 and pit > 0.4 * rise and np.hypot(pit_at[0] - cy, pit_at[1] - cx) < 1.8 * r:
         hints.append("a pit lies beside it, as beside a tree throw")
@@ -127,8 +131,9 @@ def shape(dtm: np.ndarray, gap: np.ndarray, res: float, row: int, col: int, diam
         hints.append("the ground around it is as rough as the shape is high")
     if no_ground > 0.3:
         hints.append("much of it lies over cells with no ground returns, so the shape may be smoothed across a gap")
-    score = max(0.0, rise) * (symmetry or 0.5) * (1 - no_ground) / (1 + roughness / max(rise, 0.05))
-    return {"rise_m": round(rise, 2), "pit_beside_m": round(max(pit, 0.0), 2), "width_ew_m": round(float(ew), 1), "width_ns_m": round(float(ns), 1),
+    score = 0.0 if sink > rise else max(0.0, rise) * (symmetry or 0.5) * (1 - no_ground) / (1 + roughness / max(rise, 0.05))
+    default = "a coherent, round rise" if symmetry >= 0.5 and rise >= 0.2 else "no clear shape either way"
+    return {"rise_m": round(rise, 2), "sink_m": round(max(sink, 0.0), 2), "pit_beside_m": round(max(pit, 0.0), 2), "width_ew_m": round(float(ew), 1), "width_ns_m": round(float(ns), 1),
             "symmetry": symmetry, "roughness_m": round(roughness, 2), "share_without_ground": round(no_ground, 2),
-            "rank": round(float(score), 3), "hints": hints or ["a coherent, round rise"]}
+            "rank": round(float(score), 3), "hints": hints or [default]}
 

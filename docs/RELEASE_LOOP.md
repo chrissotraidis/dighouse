@@ -186,3 +186,9 @@ A fresh copy of the app (its own settings, an empty projects folder) went from f
 
 Not done in this loop: README pictures were not retaken (the screens changed in detail, not in layout), and the three looks at three window sizes were checked only in Earth at full size.
 
+
+
+### 2026-11-21, the five-hour run
+
+Run on primary / 6.1 Terra after this loop was merged, from 02:00 to 06:58, with two coordinator steps. The full account is [2026-11-21-five-hour-run.md](2026-11-21-five-hour-run.md). In short: the first timed session ended itself after 52 minutes; the second, once told to reuse one calibration and search 1 to 2 km² areas, searched 9.4 km² in eight windows and logged 42 finds (17 modern, 8 natural, 17 with no match in the sources read, almost all hollows and cuts). Four problems it showed are fixed here: an early "complete" is turned back once; `shape_check` no longer calls a hollow a round rise; an interrupted turn is no longer recorded as the person's stop; the closeout says it comes from the timer. The skill now says one calibration per source and 1 to 2 km² areas.
+
