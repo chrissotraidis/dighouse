@@ -102,6 +102,8 @@ final class ChatModel: ObservableObject {
     }
     /// Called when a run in a project ends, with the project's folder and whether the person stopped it.
     var onRunEnded: ((String, String, Bool) -> Void)?
+    /// Called with the folder of a project the agent made, in whichever chat.
+    var onProjectMade: ((String) -> Void)?
     /// Called when a chat's goal stops being worked on, with the chat and how it ended: complete, paused, blocked,
     /// usageLimited or budgetLimited.
     var onGoalEnded: ((String, String) -> Void)?
@@ -745,6 +747,12 @@ final class ChatModel: ObservableObject {
             }
         }
         if method == "thread/goal/cleared" { timed.remove(thread); goals.remove(thread) }
+        // A project made in any chat joins the list, including one a timed session makes while another page is showing.
+        if method == "item/completed", let raw = params["item"] as? JSON, raw["type"] as? String == "mcpToolCall",
+           raw["server"] as? String == "dighouse", raw["tool"] as? String == "init_project",
+           let path = Self.withMadeFolder(raw)["project"] as? String {
+            onProjectMade?(path)
+        }
         if method == "turn/completed", let failure = (params["turn"] as? JSON)?["error"] as? JSON {
             timed.failed(thread, error: failure)
         }
@@ -825,8 +833,10 @@ final class ChatModel: ObservableObject {
     static func describe(command: String) -> String {
         let words = command.split(whereSeparator: { $0.isWhitespace }).map(String.init)
         guard let program = words.first.map({ URL(fileURLWithPath: $0).lastPathComponent }) else { return "Ran a command" }
-        let files = words.dropFirst().filter { !$0.hasPrefix("-") && ($0.contains(".") || $0.contains("/")) && !$0.contains("'") }
-            .map { URL(fileURLWithPath: $0.trimmingCharacters(in: CharacterSet(charactersIn: ";|&)\"'"))).lastPathComponent }
+        // A file is a path, or a name with a short lettered extension (RESEARCH.md); "1.46," and "C-003." are not.
+        let files = words.dropFirst().map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ";|&),\"'")) }
+            .filter { !$0.hasPrefix("-") && !$0.contains("'") && ($0.contains("/") || $0.range(of: #"^[\w.-]+\.[A-Za-z][A-Za-z0-9]{0,4}$"#, options: .regularExpression) != nil) }
+            .map { URL(fileURLWithPath: $0).lastPathComponent }
         let named = files.prefix(2).joined(separator: ", ")
         switch program {
         case "cat", "sed", "head", "tail", "less", "nl": return named.isEmpty ? "Read a file" : "Read \(named)"

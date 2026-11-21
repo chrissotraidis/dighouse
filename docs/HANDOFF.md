@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-16 after loop 8. This file is the prompt for whoever continues the work. Read it, then the Log at the end of [PROJECT_LOOP.md](PROJECT_LOOP.md), which says what was checked and how, and what was not.
+Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-16 after loop 8 and on 2026-11-21 after the second-opinion loop. This file is the prompt for whoever continues the work. Read it, then the Log at the end of [SECOND_OPINION_LOOP.md](SECOND_OPINION_LOOP.md), which says what was checked and how, and what was not.
 
 ## Your brief
 
@@ -35,13 +35,26 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 ## Where things stand
 
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes, Sources and Data tabs. Three looks; Earth is the default. The mark at the top of the sidebar opens Home.
-- **Tools** (`src/dighouse`, Python, MCP): 46 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
+- **Tools** (`src/dighouse`, Python, MCP): 51 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Open lidar:** the United States (USGS 3DEP), surveys on OpenTopography, and ready-made ground models for England, the Netherlands, France, Flanders, Norway, Estonia, Switzerland, Navarre and the Basque Country (Spain), Bavaria, Saxony, New Zealand, Czechia (2 m, ČÚZK's image service), Canada (HRDEM 1 m, a WCS 1.1 service, kind `wcs11`) and Denmark (Denmark needs a free token pasted in Settings, Data and privacy). Each is one entry in `NATIONAL` in national.py; Bavaria, Saxony and New Zealand use the `tiles` kind (files on a grid of map sheets).
 - **Seafloor:** NOAA's sonar surveys of US waters and the Great Lakes (`us:noaa-bag`), offered only where a 2 m or finer survey covers the box, and INFOMAR's seabed model of Irish waters (`ie:infomar`, about 4 m: large wrecks only). The modern check reads NOAA's charts in US waters; elsewhere it records the charts as not checked.
 - **Project state** is saved atomically and changed under a file lock (`Project.change`), because the agent records verdicts from parallel helpers.
 - **Engine**: `codex app-server` as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse starts the **newest** copy of Codex on the Mac (`Setup.detect`); on Chris's Mac that is 0.167 inside the ChatGPT app, because 0.146 on the PATH is refused GPT-6.1 Terra. Dighouse's own tools are approved at launch (`default_tools_approval_mode`), since newer engines ask before every tool call.
 - **Tests**: 29 offline, 10 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.
 - **README** has pictures in `docs/images`, retaken on 2026-11-14 at 1440 × 900 in Earth after loop 5. Loop 5's own pictures are in `docs/loop5`.
+
+## What the second-opinion loop added (2026-11-21)
+
+The goals and every check are in [SECOND_OPINION_LOOP.md](SECOND_OPINION_LOOP.md).
+
+- **S1, no Google models.** `ModelInfo.unsupported` drops any model whose id mentions google, gemini or antigravity as the list loads. `reconcileModels()` replaces a saved agent or second model that is no longer offered and shows a one-line notice in Settings (`modelNotice`).
+- **S2, a second opinion that falls through.** `ModelInfo.secondOpinionOrder`: Claude Sonnet 5.5, then GLM-5.3, then Kimi K3 (opencode-go). A model that fails is set aside for the run and the next is asked about the same find; the record names the model that answered. Settings, Models lists them in that order, each with Check.
+- **S3, how good the reviewers are.** `scripts/rate_reviewers.py` scores models on crops of known ground. Sonnet's "not built" was right 91% of the time, its "built" 40%. The record says a disagreeing opinion counts and an agreeing one is a weak check (`secondMeaning`).
+- **S4, opinions on old work.** `scripts/second_opinions.py` asks for opinions outside the app, the same way the app does. Every open find in the ground-search and Cahokia projects has one.
+- **S5, measured rises.** `add_measured_rises` opens the best-shaped rises on possible or built tiles as finds marked "measured, not seen", at most 50 per km². The whole search calls it once after every tile has a verdict.
+- **S6, old maps.** `history.py`: `check_old_maps` shows the find on the oldest USGS topographic sheets (TNM) and lists mines within 300 m from MRDS; `record_old_maps` files the result and the record gets an Old maps row. Of 17 leads, 2 were explained (a 1955 building, a section-line cut).
+- **S7, searching alone.** The timed session's prompt asks for 1 to 2 km² areas, one calibration per source, measured rises, old maps and a running tally. When a timed session ends (`searchEnded`, defaults `timedThread` and `timedStart`), second opinions are queued for every non-test project it touched (`askSecondOpinions(in:)`). An early "complete" or a self-declared "blocked" is turned back once (`reopenIfEarly`). A project made in any chat joins the list (`onProjectMade`). For scripted runs, `open Dighouse.app --args -startTimedResearch 120` starts one at launch. The two-hour run searched 3.2 km² and every one of its 224 open finds got a Sonnet opinion; it is slow on new ground (about 25 minutes per 1.5 km²).
+- **Where the leads stand.** Four leads remain that Sonnet calls built and old maps do not explain: Darby Prairie C-008, Lusk Creek Woodland C-003, Shawnee Woodland Larger C-003 and C-008. Each needs the state site file (Ohio, Illinois), which is not public.
 
 ## Where a person starts (2026-11-19)
 
@@ -114,7 +127,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 - **The GitHub folder in iCloud or missing,** in the app. The refusal is covered by the offline test only.
 - **Two sign-in refreshes at once.** Dighouse's engine and the Codex app share `auth.json` through a link but not Codex's lock file, so if both refresh the sign-in at the same moment one may be refused and need `codex login`. Not seen.
 - **A moved chat whose archived original is deleted.** The copy reads its earlier turns from the original, so deleting archived chats in Codex would cut that history.
-- **A second opinion** in loop 5, for the reason above. It was last seen working in loop 4.
+- **A second opinion from GLM-5.3 or Kimi K3 inside a real search.** Both answered Check in Settings and the S3 rating; in the S4 runs Sonnet always answered, so the fallback was seen only with Grok chosen by hand.
 - **The map check's second way in** in a town dense enough for the map service to refuse the 4 km square, other than in the offline test.
 - **The "Nothing here looked built" card** on a project where no tile was marked, and Widen the search.
 - **Reduce Motion with the Mac's own setting.** The indicator was checked with SwiftUI's flag outside the app. The mark in the sidebar and the tutorial's ring were not checked at all.

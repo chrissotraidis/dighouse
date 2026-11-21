@@ -1,6 +1,6 @@
 # Dighouse goal loop: second opinions that work, and finding more
 
-Written 2026-11-21 as a proposal. Not started: Chris reviews it first.
+Written 2026-11-21. Chris said begin; the Log at the end says what was done and checked.
 
 Read [RELEASE_LOOP.md](RELEASE_LOOP.md) and [2026-11-21-five-hour-run.md](2026-11-21-five-hour-run.md) first. The app now holds up for a stranger. The run showed where the work is now: no find has ever had a second opinion, the agent leaves most small mounds on tiles it calls "possible", and its 17 open leads are mostly hollows and cuts that old maps could explain.
 
@@ -123,4 +123,46 @@ Run on all 17 leads (sheets from 1923 to 1961; read by eye):
 | Nothing drawn, no mine on record within 300 m | 13 others |
 
 The two explained finds now suggest "modern", citing the sheet. No mine or prospect is on record within 300 m of any lead, so prospect pits, the obvious guess in the Shawnee hills, are not supported by the records (small pits often went unrecorded). After S4 and S6, the leads that still stand are the four that Sonnet called built and old maps do not explain: **Darby Prairie C-008, Lusk Creek C-003, Shawnee Woodland Larger C-003 and C-008**. They are straight-edged hollows and banks, and the record says what to check next (the Illinois and Ohio state site files, which are not public).
+
+
+### 2026-11-21, S7: a two-hour session without a coordinator
+
+Started at 11:27 with `open Dighouse.app --args -startTimedResearch 120` (the new launch argument), deadline 13:27, primary / 6.1 Terra. Nobody typed into it.
+
+What it did:
+
+| Time | Work |
+|---|---|
+| 11:28–12:03 | Finished the 5 tiles left at Lusk Creek East, then went back over the earlier ground-search projects with the new tools: 109 measured rises opened as finds there, and old maps checked on their hollows and cuts. |
+| 12:03–12:31 | Prairie Oaks, Ohio: 1.46 km², 6 finds marked by eye, 25 measured rises, old maps on all 6. A park page named a recorded mound in the window, which the agent took as a control. |
+| 12:31–12:45 | Tried to place that mound from public sources, could not, and called the goal **blocked**, 40 minutes before closing time. |
+| 12:55 | Step-in (see below); the app turned the session back once. |
+| 12:55–13:09 | Paint Creek, Ohio: 1.48 km², 8 finds marked by eye, 25 measured rises, old maps on 22. |
+| 13:09–13:21 | Zaleski, Ohio: 27 of 36 tiles looked at, no finds yet. Closed at the app's 13:17 prompt. |
+
+| Check | Result |
+|---|---|
+| At least 3 km² searched | **3.2 km²** finished (Prairie Oaks, Paint Creek, the end of Lusk Creek East), plus about 1.1 km² of Zaleski looked at and not finished. Without the turn-back it would have been about 1.7 km². |
+| Every find has a second opinion | **224 of 224** open finds in the projects it touched, all from Claude Sonnet 5.5, none refused. 191 were asked by the app on its own when the session ended; Paint Creek's 33 by `scripts/second_opinions.py` (step-in 2). |
+| An early close turned back once | Yes, by the app, after the fix in step-in 1. |
+| add_measured_rises and check_old_maps used | Both, on every project it touched: 165 measured rises in all. |
+
+The agent's suggestions against Sonnet's opinions, on all 224 finds:
+
+| Agent's suggestion | Sonnet: built | Sonnet: not built |
+|---|---|---|
+| Modern (79) | 63 | 16 |
+| Natural (137) | 49 | 88 |
+| No match in the sources read (8) | 4 | 4 |
+
+None of the new finds became a lead: everything at Prairie Oaks and Paint Creek was suggested modern or natural. The four leads Sonnet calls built are the same four as after S6: Darby Prairie C-008, Lusk Creek Woodland C-003, Shawnee Woodland Larger C-003 and C-008.
+
+Step-ins, with the reason:
+
+1. **12:54, rebuilt and relaunched the app.** The early-close rule reopened a session only when the agent marked it complete; this agent marked it blocked (no provider error), so the app would have left it idle until 13:27. `TimedResearch.reopenIfEarly` now turns back a self-declared block the same way, once, and a relaunch checks a restored session for it. On relaunch it did: `reopened: true`, and the agent started Paint Creek.
+2. **13:33, ran `scripts/second_opinions.py` on Paint Creek.** A project the agent makes was added to the project list only when its chat was on screen. After the relaunch Home was showing, so Paint Creek and Zaleski were never listed and the end-of-session second opinions skipped them. Projects made in any chat now join the list (`onProjectMade`).
+
+Also fixed from watching it: every tool now has a plain name in the chat (`add_measured_rises` and others showed raw), and step names no longer take "1.46," or "C-003." for file names.
+
+What this says: the session searched on its own and kept the method (calibration, measured rises, old maps, sources, a suggestion on every find), but it is slow on new ground: about 25 minutes per 1.5 km² window, after half an hour spent going back over earlier projects. It stops on a check it cannot finish unless the app turns it back.
 

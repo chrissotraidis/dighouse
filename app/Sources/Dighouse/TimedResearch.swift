@@ -65,21 +65,26 @@ final class TimedResearch {
     }
 
     func goalChanged(_ id: String, status: String) {
-        // A session the agent closes long before its deadline is reopened once, with the next thing to do: the person
-        // chose the time, and an early "complete" in the first session left four hours unused.
-        if status == "complete", let s = sessions[id], !s.closing, s.reopened != true, s.closeAt.timeIntervalSinceNow > 20 * 60, let request {
-            sessions[id]?.reopened = true
-            let end = s.deadline.formatted(date: .omitted, time: .shortened)
-            let prompt = "Dighouse's timer: the session runs until \(end), which is more than 20 minutes away. Keep the assessment you saved, "
-                + "then use the time on the next most useful pass: search a new area of open lidar where little is on record, or test a lead you listed. "
-                + "Checkpoint as before. Dighouse will ask you to close shortly before the deadline."
-            Task { _ = try? await request("thread/goal/set", ["threadId": id, "objective": prompt, "status": "active"]) }
-            announce(id, "The agent closed the session early; Dighouse asked it to keep going until \(end).")
-            return
-        }
+        if status == "complete" || status == "blocked", reopenIfEarly(id) { return }
         if ["complete", "paused", "budgetLimited", "usageLimited", "usage_limited", "budget_limited"].contains(status) {
             remove(id)
         }
+    }
+
+    /// A session the agent closes, or calls blocked, long before its deadline is reopened once with the next thing to do:
+    /// the person chose the time. An early "complete" left four hours unused in the first session, and a "blocked" on one
+    /// unplaceable control left 40 minutes unused in the third. A block from a provider limit waits for its retry instead.
+    @discardableResult
+    private func reopenIfEarly(_ id: String) -> Bool {
+        guard let s = sessions[id], !s.closing, s.reopened != true, s.retryAt == nil, s.closeAt.timeIntervalSinceNow > 10 * 60, let request else { return false }
+        sessions[id]?.reopened = true
+        let end = s.deadline.formatted(date: .omitted, time: .shortened)
+        let prompt = "Dighouse's timer: the session runs until \(end). Keep the assessment you saved and leave aside what you cannot resolve, "
+            + "then use the time on the next most useful pass: search a new area of open lidar where little is on record, or test a lead you listed. "
+            + "Checkpoint as before. Dighouse will ask you to close shortly before the deadline."
+        Task { _ = try? await request("thread/goal/set", ["threadId": id, "objective": prompt, "status": "active"]) }
+        announce(id, "The agent stopped the session early; Dighouse asked it to keep going until \(end).")
+        return true
     }
 
     func failed(_ id: String, error: JSON, now: Date = Date()) {
@@ -134,6 +139,8 @@ final class TimedResearch {
             guard sessions[id] != nil else { return }
             let status = (reply["goal"] as? JSON)?["status"] as? String
             guard status == "active" || status == "blocked" else { remove(id); return }
+            // Blocked by the agent itself (found after a relaunch, or missed while the app was busy): turn it back once.
+            if status == "blocked", turn(id) == nil, reopenIfEarly(id) { schedule(id); return }
             if now >= s.deadline {
                 let currentTurn = turn(id)
                 _ = try await request("thread/goal/set", ["threadId": id, "status": "paused"])

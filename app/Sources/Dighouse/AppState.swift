@@ -246,6 +246,7 @@ final class AppState: ObservableObject {
         chat.onGoalEnded = { [weak self] thread, status in
             Task { @MainActor in await self?.searchEnded(thread, status) }
         }
+        chat.onProjectMade = { [weak self] path in self?.store.register(path: path) }
         chat.effort = { [weak self] in
             guard let self, let effort = self.effort, self.model?.efforts.contains(effort) == true else { return nil }
             return effort
@@ -277,7 +278,6 @@ final class AppState: ObservableObject {
         }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }
-            if tool == "init_project", let path = args["project"] as? String { self.store.register(path: path) }
             self.store.reloadIfChanged()
             if ["view_tile", "cut_section", "flag_candidate", "record_verdict"].contains(tool), let tile = args["tile"] as? String {
                 self.store.selectedTile = tile
@@ -377,6 +377,10 @@ final class AppState: ObservableObject {
                 if let project = store.current { store.open(project) }
                 if let open { await chat.select(open) }
                 chat.timed.restore()
+                // A scripted run (open Dighouse.app --args -startTimedResearch 120) starts a timed session on its own.
+                // The argument lives only for this launch, so nothing is saved.
+                let minutes = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["startTimedResearch"]
+                if let minutes = (minutes as? String).flatMap(Int.init) ?? minutes as? Int, minutes > 0 { startTimedResearch(minutes: minutes) }
             }
         }
         starting = false
