@@ -44,6 +44,15 @@ final class ChatModel: ObservableObject {
     @Published var generalThreads: [ChatThread] = []
     @Published var active: String?
     @Published var items: [ChatItem] = []
+    /// The last few chats shown, so going back to one is instant.
+    private var shown: [String: [ChatItem]] = [:]
+    private var shownOrder: [String] = []
+    private func remember(_ id: String, _ list: [ChatItem]) {
+        shown[id] = list
+        shownOrder.removeAll { $0 == id }
+        shownOrder.append(id)
+        while shownOrder.count > 8 { shown[shownOrder.removeFirst()] = nil }
+    }
     @Published var running = false
     @Published var preparing = false
     @Published var loading = false
@@ -214,11 +223,13 @@ final class ChatModel: ObservableObject {
 
     func select(_ thread: ChatThread) async {
         guard let engine else { return }
+        if let previous = active, !items.isEmpty { remember(previous, items) }
         active = thread.id
-        items = []
+        // A chat opened before shows at once from memory while the engine reads it again.
+        items = shown[thread.id] ?? []
         running = live[thread.id] != nil
         turn = live[thread.id]
-        loading = true
+        loading = items.isEmpty
         defer { if active == thread.id { loading = false } }
         do {
             let turns = try await readTurns(thread.id, engine)

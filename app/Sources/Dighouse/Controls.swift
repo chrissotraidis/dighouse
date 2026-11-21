@@ -364,52 +364,78 @@ struct WindowDragArea: NSViewRepresentable {
 /// Renders the Markdown agents write: paragraphs, headings, lists and code blocks.
 struct MarkdownText: View {
     let text: String
+    private let blocks: [Block]
 
-    private enum Block {
-        case paragraph(String), heading(String), bullet(String, String), code(String), table([[String]])
+    init(text: String) {
+        self.text = text
+        blocks = Self.parsed(text)
     }
 
-    private var blocks: [Block] {
+    private enum Block {
+        case paragraph(AttributedString), heading(AttributedString), bullet(String, AttributedString), code(String), table([[AttributedString]])
+    }
+
+    /// Parsing is the slow part (a research record holds hundreds of table cells), and views are rebuilt often, so each
+    /// text is parsed once and kept. The cache is emptied when it grows, which costs only a parse.
+    @MainActor private static var cache: [String: [Block]] = [:]
+
+    @MainActor private static func parsed(_ text: String) -> [Block] {
+        if let hit = cache[text] { return hit }
+        if cache.count > 300 { cache.removeAll() }
+        let made = parse(text)
+        cache[text] = made
+        return made
+    }
+
+    private static func parse(_ text: String) -> [Block] {
         var out: [Block] = []
         var paragraph: [String] = []
         var code: [String]?
         var table: [[String]] = []
         func flush() {
-            if !paragraph.isEmpty { out.append(.paragraph(paragraph.joined(separator: " "))); paragraph = [] }
-            if !table.isEmpty { out.append(.table(table)); table = [] }
+            if !paragraph.isEmpty { out.append(.paragraph(paragraph.joined(separator: " ").inlineMarkdown)); paragraph = [] }
+            if !table.isEmpty { out.append(.table(table.map { $0.map(\.inlineMarkdown) })); table = [] }
         }
+        var lastBullet: (String, String)?
         for raw in text.components(separatedBy: "\n") {
             let line = raw.trimmingCharacters(in: .whitespaces)
             if line.hasPrefix("```") {
                 if let done = code { out.append(.code(done.joined(separator: "\n"))); code = nil } else { flush(); code = [] }
+                lastBullet = nil
                 continue
             }
             if code != nil { code?.append(raw); continue }
-            if line.isEmpty { flush(); continue }
+            if line.isEmpty { flush(); lastBullet = nil; continue }
             if line.hasPrefix("|"), line.hasSuffix("|"), line.count > 1 {
                 if table.isEmpty { flush() }
                 let cells = line.dropFirst().dropLast().split(separator: "|", omittingEmptySubsequences: false)
                     .map { $0.trimmingCharacters(in: .whitespaces) }
                 // The row of dashes under the header only marks it as a header.
                 if !cells.allSatisfy({ !$0.isEmpty && $0.allSatisfy { "-: ".contains($0) } }) { table.append(cells) }
+                lastBullet = nil
                 continue
             }
             if !table.isEmpty { flush() }
             if line.hasPrefix("#") {
                 flush()
-                out.append(.heading(line.drop { $0 == "#" }.trimmingCharacters(in: .whitespaces)))
+                out.append(.heading(line.drop { $0 == "#" }.trimmingCharacters(in: .whitespaces).inlineMarkdown))
+                lastBullet = nil
             } else if line.hasPrefix("- ") || line.hasPrefix("* ") || line.hasPrefix("• ") {
                 flush()
-                out.append(.bullet("•", String(line.dropFirst(2))))
+                lastBullet = ("•", String(line.dropFirst(2)))
+                out.append(.bullet("•", lastBullet!.1.inlineMarkdown))
             } else if let dot = line.firstIndex(of: "."), line[..<dot].allSatisfy(\.isNumber), !line[..<dot].isEmpty,
                       line[line.index(after: dot)...].hasPrefix(" ") {
                 flush()
-                out.append(.bullet(String(line[...dot]), String(line[line.index(dot, offsetBy: 2)...])))
-            } else if raw.hasPrefix("  "), paragraph.isEmpty, case .bullet(let mark, let text)? = out.last {
+                lastBullet = (String(line[...dot]), String(line[line.index(dot, offsetBy: 2)...]))
+                out.append(.bullet(lastBullet!.0, lastBullet!.1.inlineMarkdown))
+            } else if raw.hasPrefix("  "), paragraph.isEmpty, let (mark, item) = lastBullet {
                 // An indented line under a list item is the rest of that item.
-                out[out.count - 1] = .bullet(mark, text + " " + line)
+                lastBullet = (mark, item + " " + line)
+                out[out.count - 1] = .bullet(mark, lastBullet!.1.inlineMarkdown)
             } else {
                 paragraph.append(line)
+                lastBullet = nil
             }
         }
         if let open = code { out.append(.code(open.joined(separator: "\n"))) }
@@ -418,17 +444,18 @@ struct MarkdownText: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        // Lazy, so a long record lays out only what is on screen.
+        LazyVStack(alignment: .leading, spacing: 10) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .paragraph(let s):
-                    Text(s.inlineMarkdown).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+                    Text(s).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                 case .heading(let s):
-                    Text(s.inlineMarkdown).font(.system(size: 15 * Theme.scale, weight: .semibold)).padding(.top, 4)
+                    Text(s).font(.system(size: 15 * Theme.scale, weight: .semibold)).padding(.top, 4)
                 case .bullet(let mark, let s):
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(mark).foregroundStyle(Theme.dim).frame(minWidth: 14, alignment: .trailing)
-                        Text(s.inlineMarkdown).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+                        Text(s).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                     }
                 case .code(let s):
                     Text(s).font(.system(size: 12 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.dim)
@@ -440,7 +467,7 @@ struct MarkdownText: View {
                             if index > 0 { Hairline().gridCellUnsizedAxes(.horizontal) }
                             GridRow {
                                 ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
-                                    Text(cell.inlineMarkdown).font(.system(size: 13 * Theme.scale, weight: index == 0 ? .semibold : .regular))
+                                    Text(cell).font(.system(size: 13 * Theme.scale, weight: index == 0 ? .semibold : .regular))
                                         .foregroundStyle(index == 0 ? Theme.text : Theme.dim)
                                         .fixedSize(horizontal: false, vertical: true).padding(.vertical, 7)
                                 }

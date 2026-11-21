@@ -80,3 +80,19 @@ The agent, from the S7 notes (3.2 km² in about 114 minutes of work, 36 minutes 
 
 Paint Creek, with none of the detours, took 14 minutes for 1.48 km² (9.5 minutes per km²). So the search itself is not slow; the detours are. F2 aims at the first three rows: no going back unless asked, a ten-minute limit on any one check, and sources once per area.
 
+### 2026-11-21, F1: a window that does not stall
+
+The Notes tab spent its 0.6 s parsing the research record's Markdown (a record of 48 finds has about 400 table cells, each run through the Markdown parser) and laying out every block, and did it again on every redraw. `MarkdownText` now parses each text once and keeps it (emptied past 300 texts), and lays its blocks out lazily, so only what is on screen is measured. The Sources list is lazy too. A chat opened before shows at once from memory while the engine reads it again (the last eight are kept). For checks, `-openProject <folder> -openTab Notes` opens a project on a tab at launch.
+
+The same tour after the change:
+
+| Action | Before | After |
+|---|---|---|
+| Notes tab | stalled 551–614 ms | no stall |
+| Sources tab | stalled 284–322 ms | no stall |
+| Go back to the longest chat | 1.3–1.8 s | **36 ms** |
+| Open the longest chat the first time | 1.3–1.8 s | 1.7 s (the engine reading it; nothing stalls) |
+| Everything else | at once | at once |
+
+The research record was checked by eye in the Notes tab of Darby Prairie: headings, lists and the finds read as before. Still to check: no stall in ten minutes with a search running, which F2's run measures.
+

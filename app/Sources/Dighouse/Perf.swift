@@ -91,6 +91,13 @@ extension AppState {
             await Perf.step("Open the chat \(thread.title)", ready: { opened && !self.chat.loading }) {
                 Task { @MainActor in await self.chat.select(thread); opened = true }
             }
+            if let other = chat.generalThreads.first(where: { $0.id != thread.id }) {
+                await chat.select(other)
+                var back = false
+                await Perf.step("Go back to \(thread.title)", ready: { self.chat.active == thread.id && !self.chat.items.isEmpty }) {
+                    Task { @MainActor in await self.chat.select(thread); back = true }
+                }
+            }
         }
         await Perf.step("Home again") { self.route = .home }
         Perf.log("tour end")

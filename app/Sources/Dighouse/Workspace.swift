@@ -1377,7 +1377,7 @@ struct SourcesView: View {
     }
 
     private func list(_ all: [Source]) -> some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(Array(all.enumerated()), id: \.element.id) { index, source in
                 if index > 0 { Hairline() }
                 Button { if !source.link.isEmpty { go(source.link) } } label: {

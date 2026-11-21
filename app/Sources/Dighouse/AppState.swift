@@ -386,6 +386,15 @@ final class AppState: ObservableObject {
                 Perf.log("launch: engine and chats ready in \(Int(Date().timeIntervalSince(launched) * 1000)) ms")
                 Perf.label = "idle"
                 if Perf.tour { Task { @MainActor in await measureTour() } }
+                // For checks: open Dighouse.app --args -openProject <folder> -openTab Notes opens that project on that tab.
+                let arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+                if let folder = arguments["openProject"] as? String {
+                    store.register(path: folder)
+                    if let project = store.projects.first(where: { $0.path == folder }) {
+                        self.open(project)
+                        if let name = arguments["openTab"] as? String, let tab = WorkTab(rawValue: name) { self.tab = tab }
+                    }
+                }
                 // A scripted run (open Dighouse.app --args -startTimedResearch 120) starts a timed session on its own.
                 // The argument lives only for this launch, so nothing is saved.
                 let minutes = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["startTimedResearch"]
