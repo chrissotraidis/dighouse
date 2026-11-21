@@ -184,7 +184,7 @@ uv run pytest -m live    # the same chain against the real data services (10 tes
 | Fetch open lidar, or use your own | `find_data`, `fetch_terrain`, `import_terrain` |
 | Draw the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `next_tiles`, `view_tile` |
 | Look at every tile | `record_verdict`, `flag_candidate`, `find_mounds`, `add_measured_rises` |
-| Check each find | `cut_section`, `second_look`, `check_modern`, `check_old_maps`, `record_old_maps`, `add_control` |
+| Check each find | `check_finds`, `cut_section`, `second_look`, `check_modern`, `check_old_maps`, `record_old_maps`, `add_control` |
 | Test the method on a known site | `list_tests`, `start_test`, `score_test`, `calibration_site`, `start_calibration`, `record_calibration` |
 | A quick look at one place | `quick_look` |
 | Know what to look for | `feature_guide` |

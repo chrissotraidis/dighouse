@@ -96,3 +96,20 @@ The same tour after the change:
 
 The research record was checked by eye in the Notes tab of Darby Prairie: headings, lists and the finds read as before. Still to check: no stall in ten minutes with a search running, which F2's run measures.
 
+### 2026-11-21, F2: a faster search
+
+`check_finds` slices every open find east to west (three times its width, 30 to 120 m), measures its shape and checks open maps, three map checks at a time, in one call: 9 finds took 35 s on a copy of Prairie Oaks, about 4 s each against 11 s one by one. The skill and both prompts now say: check_finds once after add_measured_rises; sources searched for the area as a whole and logged on "all" or the finds they bear on; at most ten minutes on any one check, then note it as open and move on, never stop over it; the summary written once per area. A timed session starts on new ground, hands tiles to helper agents in batches of about 8, and leaves earlier projects alone unless asked.
+
+One-hour timed session, started 14:55 with `-startTimedResearch 60 -measure YES`, nobody steering:
+
+| Area | km² | Tiles | Finds (measured rises) | Slices, maps, shapes | Old maps | Literature searches | Summaries |
+|---|---|---|---|---|---|---|---|
+| Muskingum A1 | 1.33 | 30 | 14 (11) | 14 of 14 | 5 | 2 | 1 |
+| Pike B2 | 1.35 | 30 | 39 (31) | 39 of 39 | 16 | 2 | 1 |
+| Knox A2 | 1.32 | 30 | 13 (9) | 13 of 13 | 13 | 2 | 1 |
+| Athens A2 | 1.34 | fetched and cut, not looked at when time ran out | | | | | |
+
+**4.0 km² searched fully in 60 minutes, 15 minutes per km²**, against 36 in S7: the target was half (18). The first new ground was cut two minutes after the start (S7: 35 minutes). Every find has a slice, an open-map check, a shape, logged sources and a suggestion; each area took one check_finds call and one summary. Second opinions were queued by the app when the session ended.
+
+The window is not yet right: the watcher logged 9 stalls over 250 ms during the hour (worst 998 ms), all while the session's chat was showing and the agent was looking at tiles or old maps. F1 continues below.
+

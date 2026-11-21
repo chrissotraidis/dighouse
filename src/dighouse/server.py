@@ -608,7 +608,14 @@ def cut_section(project: str, tile: str, x1: float, y1: float, x2: float, y2: fl
     ax, ay, _ = tiles.tile_xy(p, tile, x1, y1)
     bx, by, _ = tiles.tile_xy(p, tile, x2, y2)
     terrain = p.load("tiles", {})[tile]["terrain"]
-    img, stats = section.cut(p, terrain, (ax, ay), (bx, by), width_m)
+    stats, f = _file_section(p, terrain, tile, (ax, ay), (bx, by), width_m, candidate)
+    return _reply(stats, f)
+
+
+def _file_section(p: Project, terrain: str, tile: str, a, b, width_m: float, candidate: str = "") -> tuple[dict, object]:
+    """Cut a slice between two points in the terrain's coordinates, judge whether the feature is in the ground, and file
+    it on the candidate's record (or beside the tile when there is no candidate)."""
+    img, stats = section.cut(p, terrain, a, b, width_m)
     if stats.get("from_ground_model_only") and p.load("terrains", {}).get(terrain, {}).get("seafloor"):
         stats["in_ground"] = None
         stats["seafloor"] = True
@@ -628,7 +635,55 @@ def cut_section(project: str, tile: str, x1: float, y1: float, x2: float, y2: fl
     else:
         f = p.path("data", "tiles", f"{tile}-section.png")
         img.save(f)
-    return _reply(stats, f)
+    return stats, f
+
+
+@tool
+def check_finds(project: str, candidates: str = "all") -> dict:
+    """Check many finds in one call. For each open find with no slice yet (or the ids given, separated by commas): cut a
+    slice east to west through its centre, three times its width and 30 to 120 m long; measure its shape; and check open
+    maps for modern features nearby. Each result is filed on the record as cut_section, shape_check and check_modern
+    would file it. Call it once after add_measured_rises instead of checking find by find, then cut a slice of your own
+    with cut_section where a find is long or needs another direction. A check that fails is listed for that find and
+    the rest carry on."""
+    p = Project(project).check()
+    wanted = None if candidates.strip().lower() == "all" else {c.strip() for c in candidates.split(",") if c.strip()}
+    places = p.load("locations", {}) or {}
+    tile_state = p.load("tiles", {}) or {}
+    rows, failed = [], []
+    for m in ledger.everything(p):
+        cid = m["id"]
+        if wanted is not None and cid not in wanted:
+            continue
+        if wanted is None and (m["status"] not in ("flagged", "ground_confirmed") or "section" in m["checks"]):
+            continue
+        row = {"candidate": cid}
+        try:
+            shape = m["checks"].get("shape") or shape_check(project, cid)
+            width = max(shape.get("width_ew_m") or 0, shape.get("width_ns_m") or 0) or shape.get("diameter_m") or 12
+            length = min(120.0, max(30.0, 3 * width))
+            place = places[cid]
+            x, y, _ = tiles.tile_xy(p, place["tile"], place["x"], place["y"])
+            stats, _ = _file_section(p, tile_state[place["tile"]]["terrain"], place["tile"], (x - length / 2, y), (x + length / 2, y), 4.0, cid)
+            row.update(height_m=stats.get("feature_height_m"), in_ground=stats.get("in_ground"), rise_m=shape.get("rise_m"),
+                       pit_beside_m=shape.get("pit_beside_m"), symmetry=shape.get("symmetry"), hints=shape.get("hints", []))
+        except Exception as exc:
+            failed.append(f"{cid}: slice or shape, {str(exc)[:120]}")
+        rows.append(row)
+
+    # The map checks wait on a public server, so three run at once; each writes only its own find's record.
+    def maps(row: dict) -> None:
+        try:
+            row["open_maps"] = check_modern(project, row["candidate"])["summary"]
+        except Exception as exc:
+            failed.append(f"{row['candidate']}: open maps, {str(exc)[:120]}")
+
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(3) as pool:
+        list(pool.map(maps, rows))
+    p.note(f"Checked {len(rows)} finds in one pass: slices, shapes and open maps" + (f"; {len(failed)} checks failed" if failed else ""))
+    return {"checked": rows, "failed": failed,
+            "next": "Look at the rows; cut_section again where a find needs another direction; check_old_maps on hollows, cuts and straight edges in the United States."}
 
 
 @tool
