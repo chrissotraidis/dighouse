@@ -100,7 +100,7 @@ struct HomeView: View {
     @EnvironmentObject var engine: Engine
 
     private let cards = [GridItem(.adaptive(minimum: 200), spacing: 12, alignment: .top)]
-    private let paths = [GridItem(.adaptive(minimum: 190), spacing: 12, alignment: .top)]
+    private let paths = [GridItem(.adaptive(minimum: 160), spacing: 12, alignment: .top)]
     /// 0 shows the known sites, 1 the open surveys.
     @AppStorage("startTab") private var startKind = 0
     @State private var allSites = false
@@ -133,6 +133,11 @@ struct HomeView: View {
                         if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
                     }
                     .help("Starts a chat with your AI model.")
+                    StartChoice(icon: "clock", title: "Search on its own",
+                                text: "The agent picks fresh ground with open lidar and searches it for as long as you choose.") {
+                        if let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) { app.run(flow) }
+                    }
+                    .help("A timed session: choose how long, and it searches area by area and checks every find.")
                     StartChoice(icon: "dig.grid", title: "Test it blind",
                                 text: "It searches a famous site without being told which, then gets a score.") {
                         app.testPicking = true
@@ -438,6 +443,7 @@ private struct WelcomeBack: View {
     @State private var waiting = ""
     @State private var totals = ""
     @State private var project: ProjectRef?
+    @State private var session: (text: String, foot: String)?
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -448,7 +454,12 @@ private struct WelcomeBack: View {
     var body: some View {
         // A stack rather than a Group: an empty Group is no view at all, so its task would never start.
         VStack(spacing: 0) {
-            if let project {
+            if let session {
+                PathCard(icon: "clock", title: "Searching on its own", text: session.text, foot: session.foot) { app.showTimedSession() }
+                    .help("Open the session's chat")
+                    .arrives()
+                    .padding(.bottom, 22)
+            } else if let project {
                 PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
                     .help("Open \(project.name)")
                     .arrives()
@@ -457,10 +468,38 @@ private struct WelcomeBack: View {
         }
         .frame(maxWidth: .infinity)
         // The folders are read off the main thread: a project kept in iCloud can take a long time to answer.
-        .task(id: store.projects.map(\.path)) { await read() }
+        .task(id: store.projects.map(\.path)) {
+            // Read again every half minute, so a session's progress moves while Home is showing.
+            while !Task.isCancelled {
+                await read()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+    }
+
+    /// What a running timed session has done so far: the areas it fetched since it started, their size and finds.
+    private func readSession() async -> (text: String, foot: String)? {
+        guard let thread = UserDefaults.standard.string(forKey: "timedThread"), let status = app.chat.timed.status(for: thread) else { return nil }
+        let start = Date(timeIntervalSince1970: UserDefaults.standard.double(forKey: "timedStart"))
+        let refs = store.projects
+        let (areas, km2, finds) = await Task.detached { () -> (Int, Double, Int) in
+            var areas = 0, km2 = 0.0, finds = 0
+            for ref in refs where (FileInfo.modified(ref.path + "/private/state/terrains.json") ?? .distantPast) >= start {
+                let terrains = (FileManager.default.contents(atPath: ref.path + "/private/state/terrains.json")
+                    .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: JSON]) ?? [:]
+                areas += 1
+                km2 += terrains.values.compactMap { $0["area_km2"] as? Double }.reduce(0, +)
+                finds += ProjectStore.glance(ref.path).finds
+            }
+            return (areas, km2, finds)
+        }.value
+        let ends = status.components(separatedBy: " · ").last ?? status
+        return (areas == 0 ? "Choosing the first area." : "\(areas) area\(areas == 1 ? "" : "s"), \(String(format: "%.1f", km2)) square km, \(finds) find\(finds == 1 ? "" : "s") so far.",
+                ends.hasSuffix(".") ? ends : ends + ".")
     }
 
     private func read() async {
+        session = await readSession()
         let refs = store.projects
         let found: (ProjectRef, (tiles: Int, unscreened: Int, finds: Int, undecided: Int), [(tiles: Int, unscreened: Int, finds: Int, undecided: Int)])? = await Task.detached {
             func written(_ ref: ProjectRef) -> Date {

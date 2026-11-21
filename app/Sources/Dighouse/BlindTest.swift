@@ -59,6 +59,33 @@ extension AppState {
     }
 }
 
+extension AppState {
+    /// For benchmark runs: open Dighouse.app --args -startBlindTests borre,mound-city runs the listed answer keys one after
+    /// another, each until it is scored or its run stops, and logs each score line to the session notes.
+    func runBlindTests(_ ids: [String]) async {
+        for id in ids {
+            let site = TestSites.all.first { $0.id == id } ?? TestSites.Site(id: id, title: id, place: "", about: "", image: "")
+            let before = Set(store.projects.map(\.path))
+            startTest(site)
+            // Wait for the test's project, then for its score or for its run to stop, at most 90 minutes.
+            var project: String?
+            for _ in 0..<120 where project == nil {
+                try? await Task.sleep(for: .seconds(1))
+                project = store.projects.map(\.path).first { !before.contains($0) }
+            }
+            guard let project else { continue }
+            var quiet = 0
+            for _ in 0..<(90 * 6) {
+                try? await Task.sleep(for: .seconds(10))
+                if FileManager.default.fileExists(atPath: project + "/private/state/score.json") { break }
+                quiet = chat.live.isEmpty && chat.goals.isEmpty ? quiet + 1 : 0
+                if quiet >= 18 { break }   // three minutes with nothing running: the run stopped without a score
+            }
+            try? await Task.sleep(for: .seconds(20))   // let the report and record finish
+        }
+    }
+}
+
 /// The list of known sites, one press each.
 struct TestPicker: View {
     @EnvironmentObject var app: AppState

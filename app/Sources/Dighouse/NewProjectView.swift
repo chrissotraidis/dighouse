@@ -42,6 +42,8 @@ struct NewProjectView: View {
     /// Where the map is looking, for the layer of how much is on open record.
     @State private var center = CLLocationCoordinate2D(latitude: 0, longitude: 0)
     @State private var gapsOn = false
+    /// The search boxes of the person's own projects, shaded on the map.
+    @State private var searched: [[Double]] = []
     @State private var gaps: [Gap] = []
     @State private var gapsBusy = false
     @State private var gapsNote: String?
@@ -183,6 +185,22 @@ struct NewProjectView: View {
                         }
                     }
                 }
+                // Ground your own projects have searched (not blind tests), so a new search can go elsewhere.
+                ForEach(Array(searched.enumerated()), id: \.offset) { _, n in
+                    MapPolygon(coordinates: [
+                        CLLocationCoordinate2D(latitude: n[1], longitude: n[0]), CLLocationCoordinate2D(latitude: n[1], longitude: n[2]),
+                        CLLocationCoordinate2D(latitude: n[3], longitude: n[2]), CLLocationCoordinate2D(latitude: n[3], longitude: n[0]),
+                    ])
+                    .foregroundStyle(.white.opacity(0.25))
+                    .stroke(.white, lineWidth: 1.5)
+                    if zoomedOut {
+                        // A square km is invisible across a continent, so each searched area is also a dot.
+                        Annotation("", coordinate: CLLocationCoordinate2D(latitude: (n[1] + n[3]) / 2, longitude: (n[0] + n[2]) / 2)) {
+                            Circle().fill(.white).frame(width: 7, height: 7).overlay(Circle().stroke(.black.opacity(0.6), lineWidth: 0.8))
+                                .allowsHitTesting(false)
+                        }
+                    }
+                }
                 if let n = numbers {
                     MapPolygon(coordinates: [
                         CLLocationCoordinate2D(latitude: n[1], longitude: n[0]), CLLocationCoordinate2D(latitude: n[1], longitude: n[2]),
@@ -198,6 +216,7 @@ struct NewProjectView: View {
                 center = context.region.center
             }
             .task(id: gapsOn ? "\(Int(center.latitude * 2)),\(Int(center.longitude * 2)),\(countable)" : "off") { await loadGaps() }
+            .task(id: app.store.projects.count) { await loadSearched() }
             .onTapGesture { spot in
                 guard let place = proxy.convert(spot, from: .local) else { return }
                 if zoomedOut {
@@ -216,6 +235,7 @@ struct NewProjectView: View {
                         legend(Theme.green, "Lidar, national ground models")
                         legend(Theme.amber, "Surveys flown for archaeology")
                         legend(Theme.water, "Sonar, the seafloor, for wrecks")
+                        if !searched.isEmpty { legend(.white, "Ground you have searched") }
                     }
                     .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.7)))
                     .allowsHitTesting(false)
@@ -251,6 +271,20 @@ struct NewProjectView: View {
                 .background(Capsule().fill(.black.opacity(0.7))).padding(12)
                 .allowsHitTesting(false)
         }
+    }
+
+    /// The search boxes of the person's projects, read off the main thread. Blind tests are left out: they are known sites.
+    private func loadSearched() async {
+        let refs = app.store.projects
+        searched = await Task.detached {
+            refs.compactMap { ref -> [Double]? in
+                guard !FileManager.default.fileExists(atPath: ref.path + "/private/state/test.json"),
+                      let data = FileManager.default.contents(atPath: ref.path + "/private/state/project.json"),
+                      let info = (try? JSONSerialization.jsonObject(with: data)) as? JSON,
+                      let box = info["bbox"] as? [Double], box.count == 4 else { return nil }
+                return box
+            }
+        }.value
     }
 
     /// Count the sites on open record on a 4 by 4 grid around the middle of the map, at least a degree across, so a cell

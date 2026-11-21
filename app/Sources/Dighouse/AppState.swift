@@ -213,7 +213,7 @@ final class AppState: ObservableObject {
     /// The model each second-opinion chat was started on.
     private var secondLookModel: [String: String] = [:]
     private var secondLookOf: [String: SecondLookItem] = [:]
-    private var secondLookQueue: [String] = []
+    @Published private(set) var secondLookQueue: [String] = []
 
     var model: ModelInfo? {
         let id = modelID ?? engine.defaultModel
@@ -399,6 +399,9 @@ final class AppState: ObservableObject {
                 // The argument lives only for this launch, so nothing is saved.
                 let minutes = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["startTimedResearch"]
                 if let minutes = (minutes as? String).flatMap(Int.init) ?? minutes as? Int, minutes > 0 { startTimedResearch(minutes: minutes) }
+                if let tests = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["startBlindTests"] as? String {
+                    Task { @MainActor in await runBlindTests(tests.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }) }
+                }
             }
         }
         starting = false
@@ -1171,8 +1174,23 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Second opinions still to come, in the open project and in projects a timed session touched.
+    var secondOpinionsLeft: Int { secondLookQueue.count + sessionLooks.count + (secondLookBusy == nil ? 0 : 1) }
+
+    /// Show the running timed session's chat.
+    func showTimedSession() {
+        guard let id = UserDefaults.standard.string(forKey: "timedThread") else { return }
+        store.close()
+        route = .chat
+        Task { @MainActor in
+            await chat.open(project: nil)
+            for _ in 0..<50 where !chat.generalThreads.contains(where: { $0.id == id }) { try? await Task.sleep(for: .milliseconds(100)) }
+            if let thread = chat.generalThreads.first(where: { $0.id == id }) { await chat.select(thread) }
+        }
+    }
+
     /// Finds waiting for a second opinion in projects that are not open, such as those a timed session made.
-    private var sessionLooks: [SecondLookItem] = []
+    @Published private(set) var sessionLooks: [SecondLookItem] = []
 
     private func nextSessionLook() {
         guard secondLookBusy == nil, secondLookQueue.isEmpty, !sessionLooks.isEmpty else { return }

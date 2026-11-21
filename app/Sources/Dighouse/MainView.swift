@@ -315,6 +315,15 @@ struct Sidebar: View {
                 }
                 .buttonStyle(RowButton())
             }
+            // Work going on in the background, from every page: one quiet line with a count.
+            if app.secondOpinionsLeft > 0 {
+                HStack(spacing: 8) {
+                    DigIndicator()
+                    Text("Second opinions: \(app.secondOpinionsLeft) left").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                }
+                .padding(.horizontal, 12).padding(.bottom, 4)
+                .help("A second model is looking at each open find on its own. The records fill in as the answers come back.")
+            }
             nav("gearshape", "Settings", selected: app.route == .settings) { app.show(.settings) }
         }
         .padding(.horizontal, 8).padding(.bottom, 10)
@@ -487,8 +496,8 @@ private struct ResearchDurationSheet: View {
     @State private var minutes = 60
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Timed research session").font(.system(size: 18 * Theme.scale, weight: .semibold))
-            Text("The agent chooses areas, tests the strongest leads and saves a ranked assessment before the time is up. You can stop it at any point.")
+            Text("Search on its own").font(.system(size: 18 * Theme.scale, weight: .semibold))
+            Text("The agent picks fresh ground with open lidar, searches it area by area and checks every find, until the time is up. Second opinions follow when it ends. You can stop it at any point.")
                 .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             Picker("How long", selection: $minutes) {
                 ForEach([5, 15, 30, 60, 120, 240, 300, 480], id: \.self) { value in

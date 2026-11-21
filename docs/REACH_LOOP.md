@@ -134,3 +134,9 @@ Records now open on what needs a person, in this order: **Worth a closer look** 
 
 Checked on a scratch copy of Prairie Oaks (31 finds, 30 routine and 1 to look again), with Chris's settings backed up and restored afterwards: from the first click to the last record written, **86 seconds**, including screenshots. 30 records were written 13 seconds after "Agree with 30", each "decided by Chris Sotraidis" with the agent's reason; C-019, the disagreement, was decided alone through its own sheet.
 
+### 2026-11-21, F6: easier to start and to follow (part)
+
+Home has a fifth way in, **Search on its own**, which opens the length picker (now titled the same, starting at one hour): two presses to a running search. While a timed session runs, Home's top card says what it has done so far (areas, square km, finds, when it ends) and opens its chat; it reads the project folders every half minute, off the main thread. A line above Settings in the sidebar counts the second opinions still to come, on every page. Pick a place shades the search box of every project you made (not blind tests) and, zoomed out, marks each with a white dot, with "Ground you have searched" in the legend. The five Home cards fit on one row.
+
+Seen in the app: the five cards, and the dots over Ohio, Illinois, Mexico and England with the legend. Still to see: the session card and the background line during F7's run, started from the new card.
+
