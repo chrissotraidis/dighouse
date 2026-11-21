@@ -363,6 +363,9 @@ final class AppState: ObservableObject {
     /// Find the engine and the tools, then start the engine if everything is in place.
     func boot() async {
         starting = true
+        let launched = Date()
+        Perf.startWatching()
+        Perf.label = "launch"
         let quick = setup.restore()
         if !quick { await setup.detect() }
         // After an update the tools may need new parts. Fetch them without asking, since nothing else works until then.
@@ -380,6 +383,9 @@ final class AppState: ObservableObject {
                 if let project = store.current { store.open(project) }
                 if let open { await chat.select(open) }
                 chat.timed.restore()
+                Perf.log("launch: engine and chats ready in \(Int(Date().timeIntervalSince(launched) * 1000)) ms")
+                Perf.label = "idle"
+                if Perf.tour { Task { @MainActor in await measureTour() } }
                 // A scripted run (open Dighouse.app --args -startTimedResearch 120) starts a timed session on its own.
                 // The argument lives only for this launch, so nothing is saved.
                 let minutes = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["startTimedResearch"]

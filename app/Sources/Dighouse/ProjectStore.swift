@@ -170,6 +170,9 @@ final class ProjectStore: ObservableObject {
         return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, records.count, undecided)
     }
 
+    /// Read the open project again even if nothing changed (for measuring).
+    func reloadNow() { signature = ""; reloadIfChanged() }
+
     func reloadIfChanged() {
         guard let root = current?.path else {
             terrains = []; tiles = []; candidates = []; status = RunStatus(); download = nil
