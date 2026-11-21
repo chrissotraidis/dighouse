@@ -93,3 +93,17 @@ The seven open Cahokia finds got second opinions from the app's Get a second opi
 
 Recall rose on both sites with misses and false finds stayed under the cap of 50 per km², so it is kept. At 100 per km² Borre reaches 28/53 with 17–18 extra. Seafloor projects are skipped, so the Thunder Bay wreck test is unchanged by design. Limit: this is scored offline on saved runs, not a fresh agent run; S7's session uses it live.
 
+
+
+### 2026-11-21, S4: second opinions on the ground-search finds
+
+`scripts/second_opinions.py` gives every open find in the given projects a second opinion the way the app does (Sonnet, then GLM-5.3, then Kimi K3; the 120 m composite and local relief crops rated in S3; written through `second_look`, so each record names the model). Run on the nine ground-search projects: all 42 finds answered by Claude Sonnet 5.5, none needed a fallback.
+
+| Agent's suggestion | Sonnet: built | Sonnet: not built |
+|---|---|---|
+| Modern (17) | 11 | 6 |
+| Natural (8) | 0 | 8 |
+| No match in the sources read (17) | **6** | **11** |
+
+Sonnet agreed with every "natural" call. Of the 17 open leads it called 11 not built (natural hollows, gullies, a lidar artefact); since its "no" was right nine times in ten on known ground, those 11 drop to low priority. The 6 it called built are all straight-edged or rectangular (Darby Prairie C-001 and C-008, Lusk Creek C-003 and C-005, Shawnee Woodland Larger C-003 and C-008): regular geometry, which fits a modern pond, foundation or field work as well as anything older. Those six are what S6 checks against old maps. With the Cahokia seven, every open find in the session's projects has a second opinion.
+
