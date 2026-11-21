@@ -107,3 +107,20 @@ Recall rose on both sites with misses and false finds stayed under the cap of 50
 
 Sonnet agreed with every "natural" call. Of the 17 open leads it called 11 not built (natural hollows, gullies, a lidar artefact); since its "no" was right nine times in ten on known ground, those 11 drop to low priority. The 6 it called built are all straight-edged or rectangular (Darby Prairie C-001 and C-008, Lusk Creek C-003 and C-005, Shawnee Woodland Larger C-003 and C-008): regular geometry, which fits a modern pond, foundation or field work as well as anything older. Those six are what S6 checks against old maps. With the Cahokia seven, every open find in the session's projects has a second opinion.
 
+
+
+### 2026-11-21, S6: clear the hollows with old maps
+
+`check_old_maps` (new `history.py`) shows a find on the USGS historical topographic sheets that cover it (the oldest 1:24,000 sheet and the oldest of any scale, 200 m each way, the find ringed in red; sheets cached once in Application Support) and lists mines and prospects from the USGS Mineral Resources Data System within 300 m. `record_old_maps` files what they show, and the record gets an Old maps row. The skill and the whole search call it on every hollow, cut or straight-edged find in the United States. A test point in the fluorspar district came back with "Prospect" and a mine symbol drawn beside it on the 1959 Karbers Ridge sheet, which is the kind of thing the 17 leads needed.
+
+Run on all 17 leads (sheets from 1923 to 1961; read by eye):
+
+| Result | Finds |
+|---|---|
+| Explained: a building drawn on the spot (Galloway, OH 1955) | Darby Prairie C-001 |
+| Explained: a straight cut along a section line (Eddyville, IL 1961) | Lusk Creek C-005 |
+| Something nearby, not at the find: a farmstead about 70 m away; disturbed ground or a pit about 50 m away | Lusk Creek C-003, Darby Prairie C-002 |
+| Nothing drawn, no mine on record within 300 m | 13 others |
+
+The two explained finds now suggest "modern", citing the sheet. No mine or prospect is on record within 300 m of any lead, so prospect pits, the obvious guess in the Shawnee hills, are not supported by the records (small pits often went unrecorded). After S4 and S6, the leads that still stand are the four that Sonnet called built and old maps do not explain: **Darby Prairie C-008, Lusk Creek C-003, Shawnee Woodland Larger C-003 and C-008**. They are straight-edged hollows and banks, and the record says what to check next (the Illinois and Ohio state site files, which are not public).
+

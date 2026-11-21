@@ -679,6 +679,40 @@ def shape_check(project: str, candidate: str, diameter_m: float = 12.0) -> dict:
 
 
 @tool
+def check_old_maps(project: str, candidate: str, radius_m: int = 300) -> list:
+    """For a find in the United States, look at what old maps and mining records show there: the USGS historical
+    topographic sheets that cover it (the oldest 1:24,000 sheet and the oldest of any scale, 200 m each way, the find
+    ringed in red) and mines and prospects on record nearby. Look at the pictures for ponds (blue), quarries and pits
+    (crossed picks, hachured hollows), buildings, roads and dams at the ring. Then call record_old_maps with what they
+    show. Use it on every hollow, cut or straight-edged find before suggesting a decision."""
+    from . import history
+    p = Project(project).check()
+    lon, lat = ledger.location(p, candidate)
+    sheets = history.maps(lon, lat)
+    near = history.mines(lon, lat, radius_m)
+    info = {"candidate": candidate, "sheets": [{"title": s["title"], "page": s["page"]} for s in sheets],
+            "mines_and_prospects_within_m": radius_m, "mines": near,
+            "how_to_read": "Blue is water; a crossed pick is a mine, an X a prospect; hachures mark pits and quarries; black squares are buildings."}
+    out = [json.dumps(info)]
+    for s in sheets:
+        out += [s["title"], Image(data=history.crop(s, lon, lat), format="png")]
+    p.note(f"Looked at {len(sheets)} old map sheet(s) and the mine records around {candidate}")
+    return out
+
+
+@tool
+def record_old_maps(project: str, candidate: str, finding: str, explains: bool, sheets: str = "") -> dict:
+    """File what the old maps and mine records show at a find. explains is true when they account for it (a pond,
+    pit, quarry, building, road or dam drawn there, or a mine or prospect on record at it). finding says what, citing
+    the sheet title and year or the mine record. No coordinates."""
+    p = Project(project).check()
+    from .project import today, without_coordinates
+    ledger.set_check(p, candidate, "old_maps", {"explains": explains, "finding": without_coordinates(finding)[:400],
+                                                "sheets": sheets[:300], "date": today()})
+    return {"candidate": candidate, "old_maps_explain_it": explains}
+
+
+@tool
 def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     """Check OpenStreetMap around a candidate for roads, buildings and land use, and for sites already mapped nearby."""
     p = Project(project).check()

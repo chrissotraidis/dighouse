@@ -875,6 +875,11 @@ struct RecordsView: View {
                 }
             }
             Hairline()
+            if let old = c.checks["old_maps"] as? JSON, let finding = old["finding"] as? String {
+                CheckRow(done: old["explains"] as? Bool == true ? false : true, title: "Old maps",
+                         detail: (old["explains"] as? Bool == true ? "Explained by old maps: " : "Old maps show nothing here that explains it. ") + finding) { EmptyView() }
+                Hairline()
+            }
             if let shape = c.checks["shape"] as? JSON, shape["rise_m"] != nil {
                 let hints = (shape["hints"] as? [String]) ?? []
                 let said = hints.joined(separator: "; ")
