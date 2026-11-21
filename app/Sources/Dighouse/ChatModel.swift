@@ -258,6 +258,17 @@ final class ChatModel: ObservableObject {
 
     /// Older chats come back whole from `thread/read`. Newer ones are stored page by page,
     /// and the engine refuses to return their turns that way, so read those a page at a time.
+    /// Read the most recent chats into memory after launch, so the first open of a long one is as quick as going back
+    /// to it. Only the engine's own record is read; no model is asked anything.
+    func prefetchRecent() async {
+        guard let engine else { return }
+        for _ in 0..<50 where generalThreads.isEmpty { try? await Task.sleep(for: .milliseconds(200)) }
+        for thread in (threads.prefix(1) + generalThreads.prefix(2)) where shown[thread.id] == nil && thread.id != active {
+            guard let turns = try? await readTurns(thread.id, engine) else { continue }
+            remember(thread.id, Self.items(of: turns) { self.item(from: $0, finished: true) })
+        }
+    }
+
     private func readTurns(_ id: String, _ engine: Engine) async throws -> [JSON] {
         do {
             let read = try await engine.request("thread/read", ["threadId": id, "includeTurns": true])

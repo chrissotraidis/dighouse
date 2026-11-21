@@ -385,6 +385,7 @@ final class AppState: ObservableObject {
                 chat.timed.restore()
                 Perf.log("launch: engine and chats ready in \(Int(Date().timeIntervalSince(launched) * 1000)) ms")
                 Perf.label = "idle"
+                Task { @MainActor in await chat.prefetchRecent() }
                 if Perf.tour { Task { @MainActor in await measureTour() } }
                 // For checks: open Dighouse.app --args -openProject <folder> -openTab Notes opens that project on that tab.
                 let arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)

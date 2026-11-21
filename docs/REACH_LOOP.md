@@ -196,3 +196,9 @@ README: 52 tools in the badge; **Search on its own** and the review groups descr
 
 Checked: offline tests (37), swift test (3), smoke test, swift build. The app rebuilt from main and launched with Chris's settings: agent primary / 6.1 Terra, second model Claude Sonnet 5.5, split layout (put back after the checks), 56 projects (the new ones are the sessions' and blind tests'; the scratch copy used for F4 was taken out by restoring his settings). The worktree used for F5 was removed after its branch merged.
 
+### 2026-11-21, after F8: the last rough edges
+
+- **Measured rises fold by tile.** In the routine group, finds a model marked keep a row each; measured rises on the same tile fold into one row ("5 measured rises · Tile r002c000") that opens on a click. Vinton's 35 routine finds now take about half the rows. They are agreed with together like the rest.
+- **The first open of a recent chat is instant too.** After launch the app reads the last two general chats and the open project's latest into memory, from the engine's record only. The tour: opening the longest chat (428 items) **131 ms**, against 1.3 s before and up to 10 s at the start of the loop; going back to it 38 ms.
+- **A newcomer's Home**, launched with no projects and the tutorial done: five ways in, Search on its own among them, two presses to a running search. Chris's settings were not touched (launch arguments only).
+

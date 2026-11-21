@@ -89,7 +89,8 @@ extension AppState {
         if let thread = chat.generalThreads.first(where: { $0.title.hasPrefix("Timed research session") }) ?? chat.generalThreads.first {
             route = .chat
             var opened = false
-            await Perf.step("Open the chat \(thread.title)", ready: { opened && !self.chat.loading }) {
+            // Ready when its steps are on screen; the engine's fresh copy may still be on its way.
+            await Perf.step("Open the chat \(thread.title)", ready: { opened || (self.chat.active == thread.id && !self.chat.items.isEmpty) }) {
                 Task { @MainActor in await self.chat.select(thread); opened = true }
             }
             if let other = chat.generalThreads.first(where: { $0.id != thread.id }) {

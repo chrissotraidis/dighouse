@@ -594,6 +594,8 @@ struct RecordsView: View {
     @EnvironmentObject var engine: Engine
     @State private var deciding: Decision?
     @State private var confirming: GroupConfirm?
+    /// Tiles whose folded measured rises are open in the list.
+    @State private var openTiles = Set<String>()
 
     /// The chosen find, or else the first that needs a person, in the order the list shows them.
     private var current: Candidate? {
@@ -659,7 +661,7 @@ struct RecordsView: View {
                     let items = store.candidates.filter { $0.group == group }
                     if !items.isEmpty {
                         groupHeader(group, count: items.count)
-                        ForEach(items) { c in listRow(c) }
+                        if group == .notAncient { routineRows(items) } else { ForEach(items) { c in listRow(c) } }
                     }
                 }
             }
@@ -682,6 +684,36 @@ struct RecordsView: View {
             }
         }
         .padding(.horizontal, 10).padding(.top, 12).padding(.bottom, 4)
+    }
+
+    /// The routine group: finds a model marked, one row each, then the measured rises folded into one row per tile.
+    @ViewBuilder private func routineRows(_ items: [Candidate]) -> some View {
+        let seen = items.filter { !$0.flaggedBy.hasPrefix("measured") }
+        let rises = Dictionary(grouping: items.filter { $0.flaggedBy.hasPrefix("measured") }, by: \.tile)
+        ForEach(seen) { c in listRow(c) }
+        ForEach(rises.keys.sorted(), id: \.self) { tile in
+            let group = rises[tile] ?? []
+            if group.count == 1, let only = group.first {
+                listRow(only)
+            } else {
+                Button { if openTiles.contains(tile) { openTiles.remove(tile) } else { openTiles.insert(tile) } } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: openTiles.contains(tile) ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 9 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint).frame(width: 7)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(group.count) measured rises").font(.system(size: 13 * Theme.scale)).lineLimit(1)
+                            Text("Tile \(tile.split(separator: "-").last.map(String.init) ?? tile)").font(.system(size: 11.5 * Theme.scale))
+                                .foregroundStyle(Theme.faint).lineLimit(1)
+                        }
+                    }
+                    .padding(.vertical, 5)
+                }
+                .buttonStyle(RowButton(selected: false))
+                if openTiles.contains(tile) {
+                    ForEach(group) { c in listRow(c).padding(.leading, 12) }
+                }
+            }
+        }
     }
 
     private func listRow(_ c: Candidate) -> some View {
