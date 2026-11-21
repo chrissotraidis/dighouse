@@ -59,3 +59,17 @@ Any model whose id contains google, gemini or antigravity is dropped as the mode
 
 Settings, Models now lists the second-opinion models in the order they are asked, each with Check, which sends a Borre picture in a throwaway chat. All three answered correctly in the app: Sonnet ("round burial mounds, some with ditches"), GLM-5.3 ("a cluster of prehistoric round burial mounds") and Kimi K3 ("the royal Viking Age barrows of Borre"). When a second-opinion model fails or answers without an opinion, it is set aside for this run and the next model is asked about the same find. Checked by choosing xAI Grok 4.7 (out of credit) and asking on Cahokia C-009: Grok was refused, Sonnet answered, and the record says "Cl · Sonnet 5.5: … looks built by people, though the surrounding road-and-parcel grid means a modern structure should be ruled out." Sonnet was put back as the second model.
 
+
+
+### 2026-11-21, S3: are the second opinions any good?
+
+`scripts/rate_reviewers.py` takes ground whose truth the blind tests know (Mound City, Borre, Angel Mounds, Cahokia): published features from the answer keys, measured rises the keys do not list, and plain ground away from both. It renders a 120 m crop in composite and local relief (the views the app sends) and asks each model through the router whether the thing at the centre was built. 102 crops:
+
+| Model | Answered | Published features called built | Look-alike rises called not built | Plain ground called not built | When it says built, right | When it says not built, right |
+|---|---|---|---|---|---|---|
+| Claude Sonnet 5.5 | 102/102 | 19/24 | 24/38 | 26/40 | 40% | **91%** |
+| GLM-5.3 | 102/102 | 6/24 | 34/38 | 37/40 | 46% | 80% |
+| Kimi K3 | 88/102 (14 timed out) | 15/24 | 22/35 | 23/29 | 44% | 83% |
+
+Sonnet stays the default: it finds most real features and is the most trustworthy when it says no. GLM almost never says yes, so it misses three real features in four. No model's "yes" is worth much: all three call plenty of plain and modern ground built (at Mound City and Cahokia the "plain" crops include roads and houses, which are built, just not ancient, so the true rate is a little better than this). The app now says so on each record: a disagreeing second opinion "counts", an agreeing one is "a weak check". The second opinion is useful as a filter, not as a confirmation.
+

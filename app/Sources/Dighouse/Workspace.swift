@@ -847,7 +847,7 @@ struct RecordsView: View {
             Hairline()
             CheckRow(done: look?["agrees"] as? Bool, title: "Second opinion",
                      detail: app.secondLookProblem[c.id].map { "The second opinion did not run: " + ProjectOverview.shortReason($0) + " Choose another model in Settings, Models." }
-                        ?? look.map { "\($0["model"] as? String ?? ""): \($0["note"] as? String ?? "")" }
+                        ?? look.map { "\($0["model"] as? String ?? ""): \($0["note"] as? String ?? "") " + Self.secondMeaning($0["agrees"] as? Bool == true) }
                         ?? (c.checks["second_look_tried"] as? JSON).map { "\($0["model"] as? String ?? "The second model") could not answer: \($0["reason"] as? String ?? ""). Choose another in Settings, Models." }
                         ?? "A different model looks at the tile without seeing the first opinion.") {
                 HStack(spacing: 6) {
@@ -901,6 +901,13 @@ struct RecordsView: View {
     }
 
     /// What the open-maps check means for a person, in one or two sentences.
+    /// What a second opinion is worth, from testing the reviewers on known ground (SECOND_OPINION_LOOP S3): a "no" was
+    /// right nine times in ten, a "yes" only four in ten, since they call much plain or modern ground built.
+    static func secondMeaning(_ agrees: Bool) -> String {
+        agrees ? "A yes is a weak check: on known ground these models also said yes to much that was not built."
+               : "A no counts: on known ground these models were right nine times in ten when they said no."
+    }
+
     static func mapMeaning(_ modern: JSON) -> String {
         let summary = modern["summary"] as? String ?? ""
         var known = ""

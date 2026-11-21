@@ -235,7 +235,7 @@ struct ReviewSheet: View {
         let read = c.sources.filter { $0.status == "read" }.count
         let rows: [(Bool?, String)] = [
             (cut?["in_ground"] as? Bool, cut.map { ($0["from_ground_model_only"] as? Bool == true ? "On a ready-made ground model" : "In the ground") + ": \($0["feature_height_m"] ?? "?") m high" } ?? "No slice yet"),
-            (look?["agrees"] as? Bool, look.map { ($0["agrees"] as? Bool == true ? "A second model agrees" : "A second model disagrees") + " (\($0["model"] as? String ?? ""))" }
+            (look?["agrees"] as? Bool, look.map { ($0["agrees"] as? Bool == true ? "A second model agrees (a weak check)" : "A second model disagrees (this counts)") + " (\($0["model"] as? String ?? ""))" }
                 ?? ((c.checks["second_look_tried"] as? JSON).map { "Second model could not answer (\($0["model"] as? String ?? ""))" } ?? "No second opinion yet")),
             (modern.map { $0["likely_modern"] as? Bool != true }, modern == nil ? "Open maps not checked"
                 : (modern?["likely_modern"] as? Bool == true ? "Open maps: \(((modern?["near"] as? [String]) ?? []).isEmpty ? "modern features" : ListFormatter.localizedString(byJoining: (modern?["near"] as? [String]) ?? [])) close by" : "Open maps: nothing modern on it")),
