@@ -113,3 +113,18 @@ One-hour timed session, started 14:55 with `-startTimedResearch 60 -measure YES`
 
 The window is not yet right: the watcher logged 9 stalls over 250 ms during the hour (worst 998 ms), all while the session's chat was showing and the agent was looking at tiles or old maps. F1 continues below.
 
+### 2026-11-21, F5: more of the world
+
+Four regions added to `national.py`, each fetched live and looked at on a known site with `quick_look`:
+
+| Region | Source | How it is read | Live check |
+|---|---|---|---|
+| North Rhine-Westphalia | Geobasis NRW, 1 m | WCS 2.0 (`nw_dgm`, EPSG:25832), like Flanders | Hünenburg, Bielefeld: earthworks on the hilltop, 2 s |
+| Scotland | Scottish Remote Sensing Portal, 0.5 to 1 m | files on AWS by Ordnance Survey sheet, newest first: the National LiDAR Programme (1 km sheets), then phases 6 to 3 (5 km quarter sheets) and 2 to 1 (10 km sheets) | Torhouse stone circle (national programme), Traprain Law ramparts (earlier phases), 28 s each |
+| Wales | DataMapWales, 1 m | one cloud-optimised GeoTIFF for all of Wales (48.6 GB), read only where needed | Pen Dinas hillfort, Aberystwyth, 26 s |
+| Slovenia | ARSO, 1 m | x;y;z text per 1 km sheet (27 MB each); each sheet's flight block (b_11 to b_39) is found by asking each once, then kept, because ARSO's block index service is "temporarily unavailable" | Magdalenska gora: terraced ramparts and the mounds beside them, 18 s |
+
+Old maps now also answer in **France**: `check_old_maps` shows IGN's État-major map (1820 to 1866, zoom 15) and its aerial photographs of 1950 to 1965 (zoom 17), 200 m each way with the find ringed, from IGN's tile service. Checked at Alise-Sainte-Reine (Alesia): the village's buildings in red on the État-major map and the village and fields in the 1950s photograph. France has no open mine register here, and the reply says so. The skill and prompts say "in the United States and France".
+
+The Toolbox's coverage map and Open data pages list the four regions with a picture from each live check; Scotland, Wales and Slovenia leave the "not read yet" list. The README's open-data table and the national module's description list them. A test checks Ordnance Survey sheet names, since a wrong letter would read the wrong place silently.
+

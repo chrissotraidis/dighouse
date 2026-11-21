@@ -735,23 +735,30 @@ def shape_check(project: str, candidate: str, diameter_m: float = 12.0) -> dict:
 
 @tool
 def check_old_maps(project: str, candidate: str, radius_m: int = 300) -> list:
-    """For a find in the United States, look at what old maps and mining records show there: the USGS historical
-    topographic sheets that cover it (the oldest 1:24,000 sheet and the oldest of any scale, 200 m each way, the find
-    ringed in red) and mines and prospects on record nearby. Look at the pictures for ponds (blue), quarries and pits
-    (crossed picks, hachured hollows), buildings, roads and dams at the ring. Then call record_old_maps with what they
-    show. Use it on every hollow, cut or straight-edged find before suggesting a decision."""
+    """Look at what old maps show at a find, 200 m each way with the find ringed in red. In the United States: the USGS
+    historical topographic sheets (the oldest 1:24,000 and the oldest of any scale) and mines and prospects on record
+    nearby. In France: IGN's État-major map (1820 to 1866) and its aerial photographs of 1950 to 1965. Look at the pictures
+    for ponds, quarries and pits, buildings, roads and dams at the ring, then call record_old_maps with what they show. Use
+    it on every hollow, cut or straight-edged find in those two countries before suggesting a decision."""
     from . import history
     p = Project(project).check()
     lon, lat = ledger.location(p, candidate)
+    country = history.where(lon, lat)
+    if not country:
+        return [json.dumps({"candidate": candidate, "sheets": [], "note": "Old maps are read in the United States and France only; none here."})]
     sheets = history.maps(lon, lat)
-    near = history.mines(lon, lat, radius_m)
-    info = {"candidate": candidate, "sheets": [{"title": s["title"], "page": s["page"]} for s in sheets],
-            "mines_and_prospects_within_m": radius_m, "mines": near,
-            "how_to_read": "Blue is water; a crossed pick is a mine, an X a prospect; hachures mark pits and quarries; black squares are buildings."}
+    info = {"candidate": candidate, "sheets": [{"title": s["title"], "page": s["page"]} for s in sheets]}
+    if country == "us":
+        info.update(mines_and_prospects_within_m=radius_m, mines=history.mines(lon, lat, radius_m),
+                    how_to_read="Blue is water; a crossed pick is a mine, an X a prospect; hachures mark pits and quarries; black squares are buildings.")
+    else:
+        info.update(mines="not read: France has no open mine register in Dighouse",
+                    how_to_read="On the État-major map, blue is water, pink blocks are buildings, hachures mark slopes, quarries and pits; "
+                                "the photographs show the ground in the 1950s: fresh pits, ponds and spoil are pale or dark patches with sharp edges.")
     out = [json.dumps(info)]
     for s in sheets:
         out += [s["title"], Image(data=history.crop(s, lon, lat), format="png")]
-    p.note(f"Looked at {len(sheets)} old map sheet(s) and the mine records around {candidate}")
+    p.note(f"Looked at {len(sheets)} old map sheet(s)" + (" and the mine records" if country == "us" else "") + f" around {candidate}")
     return out
 
 

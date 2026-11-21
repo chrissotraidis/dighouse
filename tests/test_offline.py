@@ -805,3 +805,11 @@ def test_measured_rises_go_on_possible_tiles_and_skip_existing_finds(tmp_path):
     got = server.measured_rises(p, 1000)
     assert len(got) == 1 and got[0]["tile"] == "t-a"
     assert server.measured_rises(p, 1000, exclude={"C-001": {"lon": got[0]["lon"], "lat": got[0]["lat"]}}) == []
+
+def test_os_grid_names():
+    """Scotland's sheets are named by Ordnance Survey grid reference; a wrong letter reads the wrong place silently."""
+    from dighouse import national
+    assert national._os_name(120_500, 804_500, 2) == "NG2004"
+    assert national._os_name(358_100, 674_600, 2) == "NT5874"
+    assert national._os_name(316_500, 666_500, 1) == "NT16"
+    assert national._os_name(390_000, 1_010_000, 1) == "HY91"

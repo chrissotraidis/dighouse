@@ -1,5 +1,6 @@
 """National lidar published as ready-made ground models: England, the Netherlands, France, Flanders, Norway, Estonia,
-Switzerland, Navarre and the Basque Country (Spain), Bavaria, Saxony, New Zealand and Denmark (with a free token).
+Switzerland, Navarre and the Basque Country (Spain), Bavaria, Saxony, North Rhine-Westphalia, Scotland, Wales, Slovenia,
+New Zealand and Denmark (with a free token).
 
 These services hand out a bare-ground raster (a DTM) built by the national mapping agency,
 not raw points. The terrain is as good as their ground classification; a section through it
@@ -27,6 +28,37 @@ def _km_grid(step_km: int, url: str):
                 for e in range(math.floor(x0 / k), math.ceil(x1 / k)) for n in range(math.floor(y0 / k), math.ceil(y1 / k))]
     return sheets
 
+
+_OS_LETTERS = "ABCDEFGHJKLMNOPQRSTUVWXYZ"  # the Ordnance Survey grid skips I
+
+
+def _os_name(e: float, n: float, digits: int) -> str:
+    """The Ordnance Survey grid reference of a point, such as NG2004 (digits=2, 1 km) or NG20 (digits=1, 10 km)."""
+    e, n = int(e), int(n)
+    e100, n100 = e // 100_000, n // 100_000
+    first = (19 - n100) - (19 - n100) % 5 + (e100 + 10) // 5
+    second = (19 - n100) * 5 % 25 + e100 % 5
+    step = 10 ** (5 - digits)
+    return f"{_OS_LETTERS[first]}{_OS_LETTERS[second]}{(e % 100_000) // step:0{digits}d}{(n % 100_000) // step:0{digits}d}"
+
+
+def _scotland(base: str):
+    """Scotland's open lidar, newest first for each part of a box: the National LiDAR Programme (0.5 m, 1 km sheets), then
+    the earlier phases 6 to 3 (0.5 m, 5 km quarter sheets such as NS16NE) and 2 to 1 (1 m, 10 km sheets such as NS16)."""
+    def cells(x0, y0, x1, y1, size):
+        return [(e * size, n * size) for e in range(math.floor(x0 / size), math.ceil(x1 / size))
+                for n in range(math.floor(y0 / size), math.ceil(y1 / size))]
+
+    def sheets(x0: float, y0: float, x1: float, y1: float) -> list[str]:
+        out = [f"{base}/national-lidar-programme/dtm/27700/gridded/{_os_name(e, n, 2)}_50cm_DTM_ScotlandNationalLiDAR.tif"
+               for e, n in cells(x0, y0, x1, y1, 1000)]
+        quarters = [_os_name(e, n, 1) + ("N" if n % 10_000 >= 5000 else "S") + ("E" if e % 10_000 >= 5000 else "W")
+                    for e, n in cells(x0, y0, x1, y1, 5000)]
+        out += [f"{base}/phase-{ph}/dtm/27700/gridded/{q}_50CM_DTM_PHASE{ph}.tif" for ph in (6, 5, 4, 3) for q in quarters]
+        tens = [_os_name(e, n, 1) for e, n in cells(x0, y0, x1, y1, 10_000)]
+        out += [f"{base}/phase-{ph}/dtm/27700/gridded/{t}_1M_DTM_PHASE{ph}.tif" for ph in (2, 1) for t in tens]
+        return out
+    return sheets
 
 _TOPO50_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"  # New Zealand's Topo50 sheet rows skip I and O
 
@@ -142,6 +174,49 @@ NATIONAL = {
         "sheets": _km_grid(2, "https://geocloud.landesvermessung.sachsen.de/public.php/dav/files/JCcXyifaNdLDnxZ/dgm1_33{e}_{n}_2_sn_tiff.zip"),
         "citation": "DGM1, © GeoSN, Staatsbetrieb Geobasisinformation und Vermessung Sachsen. Data licence Germany, attribution, version 2.0 (dl-de/by-2-0).",
         "landing_page": "https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html",
+    },
+    "de-nw:dgm1": {
+        "publisher": "Geobasis NRW (Germany)",
+        "title": "DGM1, digital terrain model 1 m (North Rhine-Westphalia, Germany)",
+        "source": "Geobasis NRW, Bezirksregierung Köln", "country": "North Rhine-Westphalia (Germany)", "maker": "Geobasis NRW",
+        "outline": [(5.87, 51.05), (6.1, 50.75), (6.4, 50.32), (6.8, 50.32), (7.2, 50.55), (7.9, 50.6), (8.2, 50.9), (8.6, 51.3), (9.15, 51.45), (9.45, 51.65), (8.9, 52.05), (8.7, 52.5), (7.95, 52.35), (7.0, 52.25), (6.7, 51.9), (5.95, 51.75), (5.87, 51.05)],
+        "epsg": 25832, "res": 1.0, "kind": "wcs", "axes": ("x", "y"), "chunk_px": 1000, "parallel": 2,
+        "url": "https://www.wcs.nrw.de/geobasis/wcs_nw_dgm", "coverage": "nw_dgm",
+        "citation": "DGM1, © Geobasis NRW. Data licence Germany, zero, version 2.0 (dl-de/zero-2-0).",
+        "landing_page": "https://www.bezreg-koeln.nrw.de/geobasis-nrw/produkte-und-dienste/hoehenmodelle/digitale-gelaendemodelle/digitales-gelaendemodell",
+    },
+    "uk-sc:lidar-dtm": {
+        "publisher": "the Scottish Government (Scotland)",
+        "title": "Scottish Public Sector LiDAR, DTM 0.5 to 1 m (Scotland)",
+        "source": "Scottish Government, Scottish Remote Sensing Portal", "country": "Scotland", "maker": "the Scottish Government",
+        "outline": [(-5.1, 54.6), (-3.1, 54.95), (-2.05, 55.8), (-1.6, 55.9), (-2.5, 56.3), (-1.75, 57.6), (-3.0, 58.7), (-5.0, 58.65), (-6.3, 57.6), (-7.7, 57.0), (-7.6, 56.8), (-6.4, 56.2), (-5.8, 55.3), (-5.1, 54.6)],
+        "epsg": 27700, "res": 0.5, "kind": "tiles", "chunk_px": 2000, "parallel": 2,
+        "sheets": _scotland("https://srsp-open-data.s3.eu-west-2.amazonaws.com/lidar"),
+        "citation": "Scotland National LiDAR Programme, © Scottish Government, via the Scottish Remote Sensing Portal. Open Government Licence v3.0.",
+        "landing_page": "https://remotesensingdata.gov.scot",
+        "note": "Read newest first: the National LiDAR Programme, then phases 6 to 1. Some of Scotland has not been flown; it comes back as outside the survey.",
+    },
+    "uk-wa:lidar-dtm": {
+        "publisher": "the Welsh Government (Wales)",
+        "title": "Wales lidar composite, DTM 1 m (Wales)",
+        "source": "Welsh Government, DataMapWales", "country": "Wales", "maker": "the Welsh Government",
+        "outline": [(-5.35, 51.75), (-4.9, 51.6), (-4.1, 51.55), (-3.35, 51.38), (-2.65, 51.6), (-2.7, 52.0), (-3.1, 52.35), (-3.05, 52.9), (-2.75, 52.95), (-3.0, 53.3), (-3.4, 53.35), (-4.3, 53.45), (-4.7, 53.3), (-4.75, 52.8), (-4.1, 52.6), (-4.15, 52.25), (-4.65, 52.1), (-5.35, 51.75)],
+        "epsg": 27700, "res": 1.0, "kind": "tiles", "chunk_px": 2000, "parallel": 2,
+        # One cloud-optimised file for all of Wales; only the part a box needs is read.
+        "sheets": lambda x0, y0, x1, y1: ["https://dmwproductionblob.blob.core.windows.net/cogs/lidar/wales_dtm_32bit_cog.tif"],
+        "citation": "Lidar composite DTM, © Welsh Government, DataMapWales. Open Government Licence v3.0.",
+        "landing_page": "https://datamap.gov.wales/maps/lidar-viewer/",
+    },
+    "si:dmr1": {
+        "publisher": "ARSO, the Slovenian Environment Agency",
+        "title": "Lidar DMR, digital terrain model 1 m (Slovenia)",
+        "source": "ARSO, Slovenian Environment Agency", "country": "Slovenia", "maker": "the Slovenian Environment Agency",
+        "outline": [(13.65, 45.6), (13.9, 45.45), (14.6, 45.5), (15.3, 45.45), (15.7, 45.8), (15.6, 46.2), (16.3, 46.4), (16.6, 46.5), (16.1, 46.85), (15.0, 46.65), (14.5, 46.42), (13.7, 46.53), (13.4, 46.35), (13.65, 46.15), (13.5, 45.95), (13.65, 45.6)],
+        "epsg": 3794, "res": 1.0, "kind": "xyz-text", "chunk_px": 2000, "parallel": 1,
+        "sheets": lambda *box: _slovenia_sheets(*box),   # defined further down
+        "citation": "Lidar data, Slovenian Environment Agency (ARSO), Ministry of the Environment and Spatial Planning. Open data, CC BY 4.0.",
+        "landing_page": "https://gis.arso.gov.si/evode/profile.aspx?id=atlas_voda_Lidar@Arso",
+        "note": "Read as text, about 27 MB for each square km, so a first fetch is slower than elsewhere; sheets are kept after that.",
     },
     "nz:dem-1m": {
         "publisher": "Toitū Te Whenua Land Information New Zealand",
@@ -521,7 +596,60 @@ def _from_xyz_sheets(d: dict, x0: float, y0: float, x1: float, y1: float) -> tup
     return out, x0, y1, res, None
 
 
+def _slovenia_sheets(x0: float, y0: float, x1: float, y1: float) -> list[str]:
+    """Slovenia's 1 km sheets (TM1_462_101: east and north in km, D96/TM). Each sits in one of the flight blocks b_11 to
+    b_39, which follow the survey rather than a grid, so the block is found once by asking for the sheet in each, and kept."""
+    import json
+    store = sources.cache_dir() / "national" / "slovenia-blocks.json"
+    known = json.loads(store.read_text()) if store.exists() else {}
+    base = "https://gis.arso.gov.si/lidar/dmr1"
+
+    def block(name: str) -> int | None:
+        def has(b: int) -> int | None:
+            return b if _client.head(f"{base}/b_{b}/D96TM/{name}.asc").status_code == 200 else None
+        with ThreadPoolExecutor(10) as pool:
+            return next((b for b in pool.map(has, range(11, 40)) if b), None)
+
+    out = []
+    for e in range(math.floor(x0 / 1000), math.ceil(x1 / 1000)):
+        for n in range(math.floor(y0 / 1000), math.ceil(y1 / 1000)):
+            name = f"TM1_{e}_{n}"
+            if name not in known:
+                known[name] = block(name)
+            if known[name]:
+                out.append(f"{base}/b_{known[name]}/D96TM/{name}.asc")
+    store.parent.mkdir(parents=True, exist_ok=True)
+    store.write_text(json.dumps(known))
+    return out
+
+
+def _from_xyz_text(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.ndarray, float, float, float, float | None]:
+    """A ground model published as plain text, one "x;y;z" line per cell, one file per sheet. Files are kept in the cache."""
+    import hashlib
+    res = d["res"]
+    out = np.full((int(round((y1 - y0) / res)), int(round((x1 - x0) / res))), np.nan, np.float32)
+    for url in d["sheets"](x0, y0, x1, y1):
+        local = sources.cache_dir() / "national" / (hashlib.sha1(url.encode()).hexdigest()[:16] + ".xyz")
+        if not local.exists():
+            r = _client.get(url, timeout=300)
+            if r.status_code in (403, 404):
+                continue
+            r.raise_for_status()
+            local.parent.mkdir(parents=True, exist_ok=True)
+            local.with_suffix(".part").write_bytes(r.content)
+            local.with_suffix(".part").rename(local)
+        xyz = np.loadtxt(local, delimiter=d.get("delimiter", ";"), dtype=np.float64, ndmin=2)
+        if xyz.size:
+            col = np.floor((xyz[:, 0] - x0) / res).astype(int)
+            row = np.floor((y1 - xyz[:, 1]) / res).astype(int)
+            ok = (row >= 0) & (row < out.shape[0]) & (col >= 0) & (col < out.shape[1])
+            out[row[ok], col[ok]] = xyz[ok, 2]
+    return out, x0, y1, res, None
+
+
 def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.ndarray, float, float, float, float | None]:
+    if d["kind"] == "xyz-text":
+        return _from_xyz_text(d, x0, y0, x1, y1)
     if d["kind"] == "xyz-sheets":
         return _from_xyz_sheets(d, x0, y0, x1, y1)
     if d["kind"] == "files":

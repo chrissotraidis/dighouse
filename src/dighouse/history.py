@@ -1,6 +1,7 @@
-"""What old maps and mining records say about a place: USGS historical topographic maps (what was drawn there then:
-ponds, pits, quarries, buildings, roads) and the USGS Mineral Resources Data System (mines and prospects). United States
-only. Map sheets are kept in a shared cache so each is downloaded once."""
+"""What old maps and mining records say about a place. In the United States: USGS historical topographic maps (what was
+drawn there then: ponds, pits, quarries, buildings, roads) and the USGS Mineral Resources Data System (mines and
+prospects). In France: IGN's État-major map (1820 to 1866) and its aerial photographs of 1950 to 1965. Map sheets are kept
+in a shared cache so each is downloaded once."""
 
 from __future__ import annotations
 
@@ -40,8 +41,35 @@ def mines(lon: float, lat: float, radius_m: float = 300) -> list[dict]:
     return sorted(out, key=lambda m: m["distance_m"])
 
 
+IGN_WMTS = "https://data.geopf.fr/wmts"
+# France's old maps on IGN's tile service: (title, layer, style, format, zoom). Zoom 15 is the finest the État-major map has.
+FRANCE = [("État-major map, 1820 to 1866 (IGN)", "GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40", "normal", "image/jpeg", 15),
+          ("Aerial photographs, 1950 to 1965 (IGN)", "ORTHOIMAGERY.ORTHOPHOTOS.1950-1965", "BDORTHOHISTORIQUE", "image/png", 17)]
+
+
+def in_france(lon: float, lat: float) -> bool:
+    from . import national
+    return national._inside(lon, lat, national.NATIONAL["fr:lidarhd-mnt"]["outline"])
+
+
+def in_us(lon: float, lat: float) -> bool:
+    return -170 <= lon <= -65 and 17 <= lat <= 72
+
+
+def where(lon: float, lat: float) -> str | None:
+    """Which old maps cover a point: "us", "fr", or None."""
+    return "us" if in_us(lon, lat) else "fr" if in_france(lon, lat) else None
+
+
 def maps(lon: float, lat: float) -> list[dict]:
-    """The historical topographic sheets that cover a point: the oldest at 1:24,000, and the oldest of any scale."""
+    """The old maps that cover a point. In the United States, the historical topographic sheets (the oldest at 1:24,000,
+    and the oldest of any scale); in France, the État-major map and the 1950s aerial photographs."""
+    if where(lon, lat) == "fr":
+        return [{"title": t, "layer": layer, "style": style, "format": fmt, "zoom": z,
+                 "page": "https://www.geoportail.gouv.fr/donnees/carte-de-letat-major-1820-1866" if "ETATMAJOR" in layer
+                 else "https://www.geoportail.gouv.fr/donnees/photographies-aeriennes-1950-1965"} for t, layer, style, fmt, z in FRANCE]
+    if where(lon, lat) != "us":
+        return []
     r = _client.get(TNM, params={"datasets": "Historical Topographic Maps", "bbox": f"{lon - 0.0005},{lat - 0.0005},{lon + 0.0005},{lat + 0.0005}",
                                  "max": 100, "outputFormat": "JSON"})
     r.raise_for_status()
@@ -62,8 +90,48 @@ def maps(lon: float, lat: float) -> list[dict]:
     return picks
 
 
+def _tiles(sheet: dict, lon: float, lat: float, half_m: float):
+    """The tile-service map around a point, half_m each way, as an RGB array (web Mercator tiles, cached)."""
+    import numpy as np
+    from PIL import Image
+    z = sheet["zoom"]
+    n = 2 ** z
+
+    def px(lo, la):  # the point in pixels of the whole map at this zoom
+        return ((lo + 180) / 360 * n * 256, (1 - math.asinh(math.tan(math.radians(la))) / math.pi) / 2 * n * 256)
+
+    dlon, dlat = half_m / (111_320 * math.cos(math.radians(lat))), half_m / 110_540
+    x0, y0 = px(lon - dlon, lat + dlat)
+    x1, y1 = px(lon + dlon, lat - dlat)
+    cols, rows = range(int(x0 // 256), int(x1 // 256) + 1), range(int(y0 // 256), int(y1 // 256) + 1)
+    mosaic = Image.new("RGB", (256 * len(cols), 256 * len(rows)), (255, 255, 255))
+    folder = CACHE / "ign" / sheet["layer"] / str(z)
+    folder.mkdir(parents=True, exist_ok=True)
+    for i, c in enumerate(cols):
+        for j, r in enumerate(rows):
+            f = folder / f"{c}_{r}"
+            if not f.exists():
+                got = _client.get(IGN_WMTS, params={"SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0", "LAYER": sheet["layer"],
+                                                    "STYLE": sheet["style"], "TILEMATRIXSET": "PM", "TILEMATRIX": z, "TILEROW": r,
+                                                    "TILECOL": c, "FORMAT": sheet["format"]})
+                if got.status_code != 200 or not got.headers.get("content-type", "").startswith("image"):
+                    continue
+                f.write_bytes(got.content)
+            mosaic.paste(Image.open(f).convert("RGB"), (i * 256, j * 256))
+    left, top = cols[0] * 256, rows[0] * 256
+    return np.asarray(mosaic.crop((int(x0 - left), int(y0 - top), int(x1 - left), int(y1 - top))))
+
+
 def crop(sheet: dict, lon: float, lat: float, half_m: float = 200) -> bytes:
     """A PNG of the sheet around the point, half_m each way, with a small ring at the centre."""
+    if "layer" in sheet:
+        from PIL import Image, ImageDraw
+        img = Image.fromarray(_tiles(sheet, lon, lat, half_m).astype("uint8")).resize((512, 512))
+        d = ImageDraw.Draw(img)
+        d.ellipse([244, 244, 268, 268], outline=(230, 30, 30), width=3)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
     import rasterio
     from rasterio.warp import transform
     from rasterio.windows import from_bounds
