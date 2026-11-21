@@ -855,7 +855,7 @@ struct RecordsView: View {
                     ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
                                 current: app.secondModelID) { app.secondModelID = $0.id }
                     Button("Ask") { app.secondLook(c) }.buttonStyle(SecondaryButton())
-                        .disabled(app.secondLookBusy != nil || app.secondModelID == nil)
+                        .disabled(app.secondLookBusy != nil || app.secondOpinionModels.isEmpty)
                 }
             }
             Hairline()

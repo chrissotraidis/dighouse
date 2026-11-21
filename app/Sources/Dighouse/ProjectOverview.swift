@@ -141,7 +141,7 @@ struct ProjectOverview: View {
                           after: "About a minute each. Nothing is final until you decide.",
                           icon: "dig.brush", label: "Decide \(finds)") { app.reviewing = true }
         // The second model refuses: asking again would fail the same way, so the card says why and offers the way out.
-        if let refusal = app.refusedSecondModel, open.contains(where: { $0.checks["second_look"] == nil }), app.chat.live.isEmpty,
+        if let refusal = app.refusedSecondModel, app.secondOpinionModels.isEmpty, open.contains(where: { $0.checks["second_look"] == nil }), app.chat.live.isEmpty,
            app.nextStep == nil || app.nextStep?.id == "decide" {
             return Next(title: "The second model is refused", what: "\(app.secondModelName) answered the last request with: \(Self.shortReason(refusal))",
                         after: "Choose a model from a different maker in Settings, then ask again. Or decide without a second opinion.",

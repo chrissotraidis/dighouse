@@ -134,6 +134,63 @@ final class AppState: ObservableObject {
         guard let r = secondModelRefusal, r["model"] == secondModelID else { return nil }
         return r["reason"]
     }
+    /// Said once when a saved model was no longer offered and Dighouse chose another, until the person picks one.
+    @Published var modelNotice: String? = UserDefaults.standard.string(forKey: "modelNotice") {
+        didSet { UserDefaults.standard.set(modelNotice, forKey: "modelNotice") }
+    }
+    /// Second-opinion models that failed during this run of the app, so the next find goes straight to one that works.
+    @Published var secondFailed: [String: String] = [:]
+    /// The last check of each second-opinion model from Settings: whether it answered, and what it said.
+    @Published var modelCheck: [String: (ok: Bool, text: String)] = [:]
+    private var checkJobs: [String: String] = [:]
+
+    /// Ask a model what one lidar picture shows, in a throwaway chat, to see that it answers and can read images.
+    func checkModel(_ id: String) {
+        guard engine.ready, let picture = Bundle.main.resourceURL?.appendingPathComponent("starts/borre.jpg").path else { return }
+        modelCheck[id] = (true, "Asking…")
+        Task { @MainActor in
+            do {
+                let started = try await engine.request("thread/start", ["ephemeral": true, "approvalPolicy": "never", "sandbox": "read-only", "model": id])
+                guard let thread = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
+                checkJobs[thread] = id
+                _ = try await engine.request("turn/start", ["threadId": thread, "model": id, "input": [
+                    ["type": "text", "text": "This is a lidar picture of bare ground. In one short sentence, what does it show? Use no tools."],
+                    ["type": "localImage", "path": picture]]])
+            } catch {
+                modelCheck[id] = (false, error.localizedDescription)
+            }
+        }
+    }
+
+    /// The models a second opinion is asked of, in order: the person's choice, then Dighouse's order, keeping only
+    /// models on offer that read images and have not failed this run.
+    var secondOpinionModels: [String] {
+        let offered = Set(engine.models.filter(\.readsImages).map(\.id))
+        var seen = Set<String>()
+        return ([secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder)
+            .filter { offered.contains($0) && secondFailed[$0] == nil && seen.insert($0).inserted }
+    }
+
+    /// After the model list loads: a saved model that is no longer offered (Google's, for one) is replaced.
+    func reconcileModels() {
+        guard !engine.models.isEmpty else { return }
+        let offered = Set(engine.models.map(\.id))
+        var notes: [String] = []
+        if let id = modelID, !offered.contains(id) || ModelInfo.unsupported(id) {
+            modelID = nil
+            notes.append("The agent model \(id) is no longer offered, so the default model runs searches now.")
+        }
+        if secondModelID == nil || !offered.contains(secondModelID ?? "") || ModelInfo.unsupported(secondModelID ?? "") {
+            let old = secondModelID
+            if let next = ModelInfo.secondOpinionOrder.first(where: { id in engine.models.contains { $0.id == id && $0.readsImages } }) {
+                secondModelID = next
+                notes.append((old.map { "The second opinion model \($0) is no longer offered" } ?? "No second opinion model was chosen")
+                             + ", so Dighouse chose \(secondModelName). You can change it here.")
+            }
+        }
+        recentModels.removeAll { !offered.contains($0) || ModelInfo.unsupported($0) }
+        if !notes.isEmpty { modelNotice = notes.joined(separator: " ") }
+    }
     @Published var effort: String? = UserDefaults.standard.string(forKey: "effort") {
         didSet { UserDefaults.standard.set(effort, forKey: "effort") }
     }
@@ -153,6 +210,8 @@ final class AppState: ObservableObject {
     private var titled: Set<String> = []
 
     private var secondLooks: [String: String] = [:]
+    /// The model each second-opinion chat was started on.
+    private var secondLookModel: [String: String] = [:]
     private var secondLookQueue: [String] = []
 
     var model: ModelInfo? {
@@ -229,6 +288,22 @@ final class AppState: ObservableObject {
         }
         engine.onNotification = { [weak self] method, params in
             guard let self else { return }
+            if let thread = params["threadId"] as? String, let model = self.checkJobs[thread] {
+                if method == "item/completed", let item = params["item"] as? JSON, item["type"] as? String == "agentMessage" {
+                    self.modelCheck[model] = (true, String((item["text"] as? String ?? "").prefix(160)))
+                } else if method == "turn/completed" {
+                    self.checkJobs[thread] = nil
+                    if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
+                        self.modelCheck[model] = (false, ProjectOverview.shortReason(EngineError.plain(failure)))
+                        self.secondFailed[model] = failure
+                    } else if self.modelCheck[model]?.text == "Asking…" {
+                        self.modelCheck[model] = (false, "It finished without a reply.")
+                    } else {
+                        self.secondFailed[model] = nil
+                    }
+                }
+                return
+            }
             if let thread = params["threadId"] as? String, let chat = self.titleJobs[thread] {
                 if method == "item/completed", let item = params["item"] as? JSON, item["type"] as? String == "agentMessage" {
                     self.titleReplies[thread] = item["text"] as? String
@@ -245,12 +320,17 @@ final class AppState: ObservableObject {
             if method == "turn/completed", let thread = params["threadId"] as? String,
                let candidate = self.secondLooks.removeValue(forKey: thread) {
                 self.secondLookBusy = nil
+                let used = self.secondLookModel.removeValue(forKey: thread)
                 if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
+                    if self.secondLookFellThrough(candidate, model: used, reason: EngineError.plain(failure)) { return }
                     self.secondLookProblem[candidate] = EngineError.plain(failure)
                     self.secondLookQueue = []
                     self.recordSecondLookFailure(candidate, EngineError.plain(failure))
                 } else {
                     self.secondModelRefusal = nil   // it answered, so whatever stopped it before is over
+                    self.store.reloadIfChanged()
+                    if let c = self.store.candidates.first(where: { $0.id == candidate }), c.checks["second_look"] == nil,
+                       self.secondLookFellThrough(candidate, model: used, reason: "It answered without giving an opinion.") { return }
                 }
                 self.store.reloadIfChanged()
                 if let path = self.store.current?.path { Task { @MainActor in await self.updateRecord(of: path) } }
@@ -284,6 +364,7 @@ final class AppState: ObservableObject {
         if let codex = setup.codex, setup.toolsReady {
             await engine.start(codex: codex, toolsBinary: setup.toolsBinary, path: setup.path, extraServers: toolServers)
             if engine.ready {
+                reconcileModels()
                 if let read = try? await engine.request("account/rateLimits/read"), let limits = read["rateLimits"] as? JSON {
                     chat.usageLeft = ChatModel.left(limits)
                 }
@@ -704,8 +785,8 @@ final class AppState: ObservableObject {
             return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to check"))
         case "second":
             let n = open.filter { $0.checks["second_look"] == nil }.count
-            if n > 0, refusedSecondModel != nil { return (false, "Second model refused") }
-            return (n > 0 && secondModelID != nil, all.isEmpty ? "Needs finds" : secondModelID == nil ? "Choose a second model" : count(n, "to ask"))
+            if n > 0, secondOpinionModels.isEmpty, secondModelID != nil { return (false, "No second model answers") }
+            return (n > 0 && !secondOpinionModels.isEmpty, all.isEmpty ? "Needs finds" : secondOpinionModels.isEmpty ? "Choose a second model" : count(n, "to ask"))
         case "prior":
             let n = open.filter { $0.sources.isEmpty }.count
             return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to search"))
@@ -844,7 +925,7 @@ final class AppState: ObservableObject {
         }
         store.reloadIfChanged()
         // The second look has to come from a different model, so Dighouse asks for it itself, then writes the report.
-        if store.current?.path == path, secondModelID != nil, refusedSecondModel == nil, let flow = ToolGuide.workflows.first(where: { $0.id == "second" }), state(of: flow).ready {
+        if store.current?.path == path, !secondOpinionModels.isEmpty, let flow = ToolGuide.workflows.first(where: { $0.id == "second" }), state(of: flow).ready {
             reportAfterLooks = path
             run(flow)
         } else {
@@ -989,8 +1070,19 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// When a second-opinion model fails, set it aside for this run and ask the next one about the same find. Returns
+    /// false when no model is left, so the failure is recorded as before.
+    private func secondLookFellThrough(_ candidate: String, model: String?, reason: String) -> Bool {
+        guard let model else { return false }
+        secondFailed[model] = reason
+        guard !secondOpinionModels.isEmpty, let c = store.candidates.first(where: { $0.id == candidate }) else { return false }
+        secondLook(c)
+        return true
+    }
+
     func secondLook(_ c: Candidate) {
-        guard let project = store.current, let model = secondModelID, secondLookBusy == nil else { return }
+        guard let project = store.current, let model = secondOpinionModels.first, secondLookBusy == nil else { return }
+        let modelName = engine.models.first { $0.id == model }?.name ?? model
         secondLookBusy = c.id
         secondLookProblem[c.id] = nil
         let prompt = """
@@ -998,7 +1090,7 @@ final class AppState: ObservableObject {
         record, the notes, or any other file. Call view_tile for tile \(c.tile) of project \(project.path) in the \
         composite style, then again in the local_relief style. The feature sits about \(Int(c.x * 100)) percent across \
         and \(Int(c.y * 100)) percent down the tile. Decide whether what is there looks built by people. Then call \
-        second_look with candidate \(c.id), your verdict as agrees, model "\(secondModelName)", and a one-sentence note. \
+        second_look with candidate \(c.id), your verdict as agrees, model "\(modelName)", and a one-sentence note. \
         Do nothing else.
         """
         Task { @MainActor in
@@ -1008,9 +1100,11 @@ final class AppState: ObservableObject {
                 ])
                 guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
                 secondLooks[id] = c.id
+                secondLookModel[id] = model
                 _ = try await engine.request("turn/start", ["threadId": id, "model": model, "input": [["type": "text", "text": prompt]]])
             } catch {
                 secondLookBusy = nil
+                if secondLookFellThrough(c.id, model: model, reason: error.localizedDescription) { return }
                 secondLookQueue = []
                 secondLookProblem[c.id] = error.localizedDescription
                 recordSecondLookFailure(c.id, error.localizedDescription)

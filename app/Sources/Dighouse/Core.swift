@@ -260,6 +260,16 @@ struct ModelInfo: Identifiable, Hashable {
     let defaultEffort: String?
     /// What the model list says each thinking step is for, by step.
     var effortNotes: [String: String] = [:]
+
+    /// Google's models, through any route, no longer run through the router on this Mac, so Dighouse never offers them.
+    static func unsupported(_ id: String) -> Bool {
+        let id = id.lowercased()
+        return ["google", "gemini", "antigravity"].contains { id.contains($0) }
+    }
+
+    /// The second opinion, in the order Dighouse tries them: each from a different maker than the GPT models that
+    /// run searches, and each checked on a lidar tile through the router on 2026-11-21.
+    static let secondOpinionOrder = ["anthropic/claude-sonnet-5-5", "opencode-go-secondary/glm-5.3", "opencode-go/kimi-k3"]
 }
 
 struct ProjectRef: Identifiable, Codable, Hashable {

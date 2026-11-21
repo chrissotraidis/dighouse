@@ -212,7 +212,7 @@ private struct ModelSettings: View {
     /// The maker behind a model, from its id, so two choices from the same maker can be pointed out.
     private func maker(_ id: String?) -> String? {
         guard let id = id?.lowercased() else { return nil }
-        for (key, name) in [("claude", "Anthropic"), ("anthropic", "Anthropic"), ("gpt", "OpenAI"), ("gemini", "Google"),
+        for (key, name) in [("claude", "Anthropic"), ("anthropic", "Anthropic"), ("gpt", "OpenAI"),
                             ("grok", "xAI"), ("kimi", "Moonshot"), ("glm", "Zhipu"), ("qwen", "Alibaba"), ("deepseek", "DeepSeek")] where id.contains(key) {
             return name
         }
@@ -222,9 +222,10 @@ private struct ModelSettings: View {
     /// Plain warnings about the two choices, or none when they are sound.
     private var warnings: [String] {
         var out: [String] = []
+        if let notice = app.modelNotice { out.append(notice) }
         if let m = app.model, !m.readsImages { out.append("\(m.name) cannot read images, so it cannot look at tiles. Choose a model that reads images.") }
         if app.secondModelID == nil { out.append("No second opinion model is chosen, so finds cannot get an independent second opinion.") }
-        if let refusal = app.refusedSecondModel {
+        if let refusal = app.refusedSecondModel, app.secondOpinionModels.isEmpty {
             out.append("\(app.secondModelName) refused the last second opinion: \(ProjectOverview.shortReason(refusal)) Choose another model.")
         }
         if app.secondModelID != nil, app.secondModelID == app.model?.id { out.append("The second opinion uses the same model as the agent. A different model gives a truly independent opinion.") }
@@ -249,21 +250,56 @@ private struct ModelSettings: View {
         }
         VStack(spacing: 0) {
             SettingRow(title: "Agent model", note: "Runs the search. It must be able to read images.") {
-                ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id }
+                ModelPicker(title: app.modelName, models: engine.models, current: app.model?.id) { app.modelID = $0.id; app.modelNotice = nil }
             }
             Hairline()
             effortRow
             Hairline()
-            SettingRow(title: "Second opinion model", note: "Gives the second opinion on each find.") {
+            SettingRow(title: "Second opinion model", note: "Gives the second opinion on each find. If it does not answer, the next one below is asked.") {
                 ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
-                            current: app.secondModelID) { app.secondModelID = $0.id }
+                            current: app.secondModelID) { app.secondModelID = $0.id; app.modelNotice = nil }
             }
+            Hairline()
+            secondOrder
         }
         .panel()
         Text(setup.ocxRunning || engine.models.contains { $0.id.contains("/") }
              ? "\(engine.models.count) models, from the OpenCodex router on this Mac. The start of each name is the provider or account it runs through."
              : "\(engine.models.count) models, from the Codex sign-in on this Mac. The OpenCodex router adds models from other providers.")
             .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The second-opinion models in the order they are asked, each with a check that sends it one lidar picture.
+    private var secondOrder: some View {
+        let ids = ([app.secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Asked in this order").font(.system(size: 13.5 * Theme.scale, weight: .medium))
+            ForEach(Array(ids.enumerated()), id: \.element) { i, id in
+                let model = engine.models.first { $0.id == id }
+                HStack(alignment: .top, spacing: 10) {
+                    Text("\(i + 1)").font(.system(size: 12 * Theme.scale, weight: .bold, design: .monospaced)).foregroundStyle(Theme.faint).frame(width: 14)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model?.name ?? id).font(.system(size: 13 * Theme.scale))
+                        if model == nil {
+                            Text("Not offered by the router on this Mac.").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                        } else if let check = app.modelCheck[id] {
+                            Text(check.text).font(.system(size: 12 * Theme.scale)).foregroundStyle(check.ok ? Theme.dim : Theme.amber)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else if let failed = app.secondFailed[id] {
+                            Text("Did not answer last time: " + ProjectOverview.shortReason(failed)).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if model != nil {
+                        Button("Check") { app.checkModel(id) }.buttonStyle(SecondaryButton())
+                            .disabled(app.modelCheck[id]?.text == "Asking…")
+                            .help("Sends the model one lidar picture and shows what it says.")
+                    }
+                }
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// How long the model thinks. The steps, what each is for and the default all come from the model list.
@@ -296,7 +332,7 @@ private struct EngineSettings: View {
 
     /// The makers behind the models on offer, read from each model's name, with how many of theirs there are.
     private var makers: [(family: String, count: Int)] {
-        let known: [(String, String)] = [("claude", "Claude"), ("gpt", "GPT"), ("gemini", "Gemini"), ("grok", "Grok"), ("kimi", "Kimi"),
+        let known: [(String, String)] = [("claude", "Claude"), ("gpt", "GPT"), ("grok", "Grok"), ("kimi", "Kimi"),
                                          ("glm", "GLM"), ("qwen", "Qwen"), ("deepseek", "DeepSeek"), ("llama", "Llama")]
         var counts: [String: Int] = [:]
         for m in engine.models {

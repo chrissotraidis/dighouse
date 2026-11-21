@@ -365,7 +365,7 @@ private struct ChecksArt: View {
                         Text("“…distinct rectilinear terraces, sharp artificial slope breaks, and flat platforms…”")
                             .font(.system(size: 15 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.92)).lineSpacing(4)
                             .fixedSize(horizontal: false, vertical: true)
-                        result("A different model agrees", "Gemini 3.8 Flash saw the tile, and not the first model's note.")
+                        result("A different model agrees", "Claude Sonnet 5.5 saw the tile, and not the first model's note.")
                     }
                 }
             default:
@@ -574,7 +574,7 @@ struct PapersArt: View {
 private struct RecordArt: View {
     private let lines: [(String, String)] = [
         ("In the ground", "27.6 m high"),
-        ("Second opinion", "Gemini 3.8 Flash agrees"),
+        ("Second opinion", "Claude Sonnet 5.5 agrees"),
         ("Open maps", "Paths and stairs on it; already mapped"),
         ("Decided by a person", "“This is Monks Mound at Cahokia Mounds State Historic Site.”"),
     ]

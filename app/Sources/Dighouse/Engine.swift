@@ -179,7 +179,7 @@ final class Engine: ObservableObject {
             var params: JSON = ["limit": 100]
             if let cursor { params["cursor"] = cursor }
             let page = try await request("model/list", params)
-            for m in page["data"] as? [JSON] ?? [] where (m["hidden"] as? Bool) != true {
+            for m in page["data"] as? [JSON] ?? [] where (m["hidden"] as? Bool) != true && !ModelInfo.unsupported(m["id"] as? String ?? "") {
                 let inputs = m["inputModalities"] as? [String] ?? []
                 found.append(ModelInfo(
                     id: m["id"] as? String ?? "",
