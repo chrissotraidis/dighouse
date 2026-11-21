@@ -129,7 +129,9 @@ struct ReviewSheet: View {
         .frame(width: min(900, app.windowSize.width - 40), height: min(720, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .onAppear {
+            // In the order the Records list shows them: leads, then disagreements, then the routine ones.
             let open = store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
+                .sorted { ($0.group.rawValue, $0.id) < ($1.group.rawValue, $1.id) }
             queue = (open.isEmpty ? store.candidates : open).map(\.id)
             if let picked = store.selectedCandidate, let i = queue.firstIndex(of: picked) { index = i }
             prefill()

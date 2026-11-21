@@ -595,8 +595,10 @@ struct RecordsView: View {
     @State private var deciding: Decision?
     @State private var confirming: GroupConfirm?
 
+    /// The chosen find, or else the first that needs a person, in the order the list shows them.
     private var current: Candidate? {
-        store.candidates.first { $0.id == store.selectedCandidate } ?? store.candidates.first
+        store.candidates.first { $0.id == store.selectedCandidate }
+            ?? Candidate.Group.allCases.lazy.compactMap { g in store.candidates.first { $0.group == g } }.first
     }
 
     var body: some View {
@@ -665,14 +667,14 @@ struct RecordsView: View {
     }
 
     private func groupHeader(_ group: Candidate.Group, count: Int) -> some View {
-        HStack(spacing: 6) {
+        // The title keeps its whole line, so its count always shows; the group's button sits under it.
+        VStack(alignment: .leading, spacing: 3) {
             Text("\(group.title) · \(count)").font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                 .lineLimit(1)
-            Spacer(minLength: 4)
             if group.confirmable {
-                Button("Confirm all") { confirming = GroupConfirm(group: group) }
+                Button("Agree with these") { confirming = GroupConfirm(group: group) }
                     .buttonStyle(.plain).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
-                    .help("Check the suggestions and confirm them together. Your name and each find's reason go into its record.")
+                    .help("Check the suggestions and agree with them together. Your name and each find's reason go into its record.")
             } else if group == .open, let flow = ToolGuide.workflows.first(where: { $0.id == "decide" }), app.state(of: flow).ready {
                 Button("Suggest") { app.run(flow) }
                     .buttonStyle(.plain).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
@@ -1044,7 +1046,7 @@ private struct GroupConfirmSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Confirm \(finds.count == 1 ? "one find" : "\(finds.count) finds") as \(group.title.lowercased())")
+            Text("Agree that \(finds.count == 1 ? "one find is" : "\(finds.count) finds are") \(group.title.lowercased())")
                 .font(.system(size: 18 * Theme.scale, weight: .semibold))
             Text("Untick any you are unsure of. Each record gets its own reason, as suggested, and your name.")
                 .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -1072,7 +1074,7 @@ private struct GroupConfirmSheet: View {
             HStack(spacing: 8) {
                 Spacer()
                 Button("Cancel") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction).disabled(busy)
-                Button("Confirm \(chosen.count)") { confirm() }
+                Button("Agree with \(chosen.count)") { confirm() }
                     .buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction).disabled(busy || chosen.isEmpty)
             }
         }

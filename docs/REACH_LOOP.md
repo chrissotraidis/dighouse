@@ -128,3 +128,9 @@ Old maps now also answer in **France**: `check_old_maps` shows IGN's État-major
 
 The Toolbox's coverage map and Open data pages list the four regions with a picture from each live check; Scotland, Wales and Slovenia leave the "not read yet" list. The README's open-data table and the national module's description list them. A test checks Ordnance Survey sheet names, since a wrong letter would read the wrong place silently.
 
+### 2026-11-21, F4: a review list a person can finish
+
+Records now open on what needs a person, in this order: **Worth a closer look** (the leads), **Look again** (the agent says natural but the second model says built: a real disagreement), **No suggestion yet**, **Already published**, **Modern or natural**, **Decided**. A modern find the second model calls built is an agreement, since modern things are built. The two routine groups have **Agree with these**: a sheet lists each find with its reason, anything can be unticked, and each record gets the person's name and its own reason. A lead has no group button; it is decided alone. Review and decide (one at a time, from the keyboard) follows the same order. The group title keeps its line so its count shows.
+
+Checked on a scratch copy of Prairie Oaks (31 finds, 30 routine and 1 to look again), with Chris's settings backed up and restored afterwards: from the first click to the last record written, **86 seconds**, including screenshots. 30 records were written 13 seconds after "Agree with 30", each "decided by Chris Sotraidis" with the agent's reason; C-019, the disagreement, was decided alone through its own sheet.
+

@@ -408,19 +408,25 @@ struct Candidate: Identifiable {
 
     /// Where the Records list puts a find: by what it probably is, so the obvious ones can be confirmed together.
     enum Group: Int, CaseIterable {
-        case published, notAncient, closer, open, decided
+        case closer, lookAgain, open, published, notAncient, decided
         var title: String {
-            ["Already published", "Modern or natural", "Worth a closer look", "No suggestion yet", "Decided"][rawValue]
+            ["Worth a closer look", "Look again", "No suggestion yet", "Already published", "Modern or natural", "Decided"][rawValue]
         }
-        /// Groups whose suggestions are routine enough to confirm in one step.
+        /// Groups whose suggestions are routine enough to agree with in one step. A lead is always decided alone.
         var confirmable: Bool { self == .published || self == .notAncient }
     }
 
+    /// Whether the second model called it built (nil when there is no second opinion yet).
+    var secondSaysBuilt: Bool? { (checks["second_look"] as? JSON)?["agrees"] as? Bool }
+
+    /// Leads first, then the finds where the agent and the second model disagree, then the routine ones. A find the agent
+    /// calls natural that the second model calls built is a disagreement; a modern find is built, so "built" agrees with it.
     var group: Group {
         guard waiting else { return .decided }
         switch likely?.status {
         case "already_published": return .published
-        case "modern", "natural": return .notAncient
+        case "natural": return secondSaysBuilt == true ? .lookAgain : .notAncient
+        case "modern": return .notAncient
         case "no_match_in_sources_read": return .closer
         default: return .open
         }
