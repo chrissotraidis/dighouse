@@ -166,3 +166,33 @@ F2's hour logged 9 stalls (worst 998 ms) while the session's chat was showing. T
 
 Whether a two-hour search now runs with no stall is checked in F7, which runs with `-measure YES`.
 
+### 2026-11-21, F7: two hours, no step-ins
+
+Started at 17:08 from Home on the new build: **Search on its own** (one press opens the picker with Start ready; "2 hours" chosen there), measuring on. Nobody steered it; it ended at 19:08 on its own.
+
+| Area | km² | Finds | Sliced and suggested | Second opinions | To decide alone (Look again) |
+|---|---|---|---|---|---|
+| Hocking A1 | 1.60 | 16 | 16 | 16 | 1 |
+| Vinton A2 | 1.73 | 40 | 40 | 40 | 5 |
+| Highland A1 | 1.73 | 4 | 4 | 4 | 0 |
+| Licking A1 | 1.70 | 7 | 7 | 7 | 1 |
+| Mohican Region | 1.69 | 35 | 35 | 35 | 2 |
+| **Total** | **8.45** | **102** | **102** | **102** | 9 |
+
+| Check | Result |
+|---|---|
+| At least 6 km² | **8.45 km²**, every tile looked at, 14 minutes per km² |
+| No step-ins | none |
+| Every find has a second opinion | **102 of 102**, all from Claude Sonnet 5.5, asked by the app when the session ended, none refused (the queue took 79 minutes; Sonnet slowed to about a minute each near the end) |
+| The review list fits on one screen | yes: at most 5 finds to look again in a project, then one routine group with **Agree with these**; seen in the app for Vinton |
+
+Also seen during the run, finishing F6: Home's top card read "Searching on its own · 2 areas, 3.3 square km, 56 finds so far · Ends at 7:08 PM" half an hour in, and the sidebar showed "Second opinions: 67 left" when the session ended. And finishing F1: the watcher logged two stalls in the first minute (301 ms while the length menu was open, which holds the main thread by design, and 297 ms as the session's chat started its tools) and **none in the two hours of searching**.
+
+One mismatch found and fixed: the project header's "12 need you" counted finds ready for a no-match decision, not the review list beside it (5 to look again). The badge now counts what the list shows: finds to decide alone, or else "N to agree with", and opens Records.
+
+### 2026-11-21, F8: hand over
+
+README: 52 tools in the badge; **Search on its own** and the review groups described; the benchmark table carries the five reruns (marked *), now 60 of 105 on land; the open-data table lists North Rhine-Westphalia, Scotland, Wales, Slovenia and IGN's old maps; check_finds in the tools table. HANDOFF: "What the reach loop added" (F0 to F7, with the measuring arguments), 52 tools, the benchmark line. ROADMAP: the small-mounds item brought up to date, the Scotland/Wales/Slovenia item removed. The workflow is named Search on its own everywhere.
+
+Checked: offline tests (37), swift test (3), smoke test, swift build. The app rebuilt from main and launched with Chris's settings: agent primary / 6.1 Terra, second model Claude Sonnet 5.5, split layout (put back after the checks), 56 projects (the new ones are the sessions' and blind tests'; the scratch copy used for F4 was taken out by restoring his settings). The worktree used for F5 was removed after its branch merged.
+
