@@ -179,7 +179,7 @@ enum ToolGuide {
                          Handoff(who: "You", does: "Pick one"), Handoff(who: "Agent", does: "Creates the project")]),
         Workflow(id: "timed-research", title: "Timed research session", icon: "clock",
                  summary: "Compare research questions and test the strongest leads until a deadline you choose.",
-                 prompt: "Run a timed research session. Choose areas and create fresh projects as needed. Follow the research-selection method in the Dig House skill. Compare open archaeological questions and benchmarks, cite prior work and checkpoint each pass. Save a final ranked assessment before the deadline.",
+                 prompt: "Run a timed research session that searches ground. Choose areas with open lidar where earthworks survive and little is on record (find_gaps), and create a fresh project for each. Calibrate once per lidar source with a blind test and reuse it. Search areas of 1 to 2 square km fully: look at every tile, add_measured_rises, slice and check each find, check_old_maps on hollows and straight-edged finds in the United States, search what is published, and suggest a decision on every find. Keep a running tally (areas, square km, finds, matches, leads) and checkpoint each pass. Cite prior work, call nothing new, and save a final assessment before the deadline. Dighouse asks a second model for opinions when the session ends.",
                  scope: .general, steps: []),
         Workflow(id: "choose", title: "Pick a place on the map", icon: "map",
                  summary: "The map shows where open lidar reaches. Click a spot and start a project there.",

@@ -212,6 +212,7 @@ final class AppState: ObservableObject {
     private var secondLooks: [String: String] = [:]
     /// The model each second-opinion chat was started on.
     private var secondLookModel: [String: String] = [:]
+    private var secondLookOf: [String: SecondLookItem] = [:]
     private var secondLookQueue: [String] = []
 
     var model: ModelInfo? {
@@ -321,20 +322,22 @@ final class AppState: ObservableObject {
                let candidate = self.secondLooks.removeValue(forKey: thread) {
                 self.secondLookBusy = nil
                 let used = self.secondLookModel.removeValue(forKey: thread)
+                let look = self.secondLookOf.removeValue(forKey: thread)
                 if let failure = ((params["turn"] as? JSON)?["error"] as? JSON)?["message"] as? String {
-                    if self.secondLookFellThrough(candidate, model: used, reason: EngineError.plain(failure)) { return }
+                    if let look, self.secondLookFellThrough(look, model: used, reason: EngineError.plain(failure)) { return }
                     self.secondLookProblem[candidate] = EngineError.plain(failure)
                     self.secondLookQueue = []
-                    self.recordSecondLookFailure(candidate, EngineError.plain(failure))
+                    self.recordSecondLookFailure(candidate, EngineError.plain(failure), in: look?.path)
                 } else {
                     self.secondModelRefusal = nil   // it answered, so whatever stopped it before is over
                     self.store.reloadIfChanged()
-                    if let c = self.store.candidates.first(where: { $0.id == candidate }), c.checks["second_look"] == nil,
-                       self.secondLookFellThrough(candidate, model: used, reason: "It answered without giving an opinion.") { return }
+                    if let look, !Self.hasSecondLook(look),
+                       self.secondLookFellThrough(look, model: used, reason: "It answered without giving an opinion.") { return }
                 }
                 self.store.reloadIfChanged()
                 if let path = self.store.current?.path { Task { @MainActor in await self.updateRecord(of: path) } }
                 self.nextSecondLook()
+                self.nextSessionLook()
                 self.afterSecondLooks()
             }
             self.chat.handle(method, params)
@@ -845,6 +848,10 @@ final class AppState: ObservableObject {
             let objective = flow.prompt + " The deadline is " + ISO8601DateFormatter().string(from: end)
                 + ". Save progress after every pass, including the next action and the strongest competing area. Use the existing session records after any interruption."
             await chat.setGoal(objective, title: flow.title, deadline: end)
+            if let id = chat.active {
+                UserDefaults.standard.set(id, forKey: "timedThread")
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "timedStart")
+            }
         }
     }
 
@@ -918,6 +925,21 @@ final class AppState: ObservableObject {
 
     /// A whole search's goal has stopped being worked on. Unless the person stopped it, report what there is.
     private func searchEnded(_ thread: String, _ status: String) async {
+        // A timed session that is over (its timer gone, its goal no longer worked on): every find it made gets a second
+        // opinion, since the agent may not record one itself and the person should not have to ask project by project.
+        if thread == UserDefaults.standard.string(forKey: "timedThread"), status != "active", chat.timed.model(for: thread) == nil {
+            UserDefaults.standard.removeObject(forKey: "timedThread")
+            let start = Date(timeIntervalSince1970: UserDefaults.standard.double(forKey: "timedStart"))
+            let touched = store.projects.map(\.path).filter { path in
+                [path + "/candidates", path + "/PROJECT.md"].contains { (FileInfo.modified($0) ?? .distantPast) >= start }
+                    && !FileManager.default.fileExists(atPath: path + "/private/state/test.json")
+            }
+            if !touched.isEmpty {
+                chat.note("The session is over. Dighouse is asking for second opinions on the open finds in \(touched.count) project\(touched.count == 1 ? "" : "s").")
+                askSecondOpinions(in: touched)
+            }
+            return
+        }
         guard let path = investigating.removeValue(forKey: thread), status != "paused" else { return }
         if status != "complete", chat.active == thread {
             let why = ["usageLimited": "the account's usage ran out", "budgetLimited": "it reached its limit"][status] ?? "the agent could not go on"
@@ -1056,13 +1078,13 @@ final class AppState: ObservableObject {
 
     /// Ask a different model for an independent opinion on a candidate, in its own short conversation.
     /// A second opinion that could not be had goes on the project's record, so the report says it was asked for.
-    private func recordSecondLookFailure(_ candidate: String, _ reason: String) {
+    private func recordSecondLookFailure(_ candidate: String, _ reason: String, in folder: String? = nil) {
         // A refusal by the provider will happen again on the next find, so remember it until the person chooses another model.
         let lower = reason.lowercased()
         if let id = secondModelID, ["403", "401", "permission", "disabled", "forbidden", "not found", "unauthorized", "access denied"].contains(where: lower.contains) {
             secondModelRefusal = ["model": id, "reason": String(reason.prefix(300))]
         }
-        guard let path = store.current?.path else { return }
+        guard let path = folder ?? store.current?.path else { return }
         let model = secondModelName
         Task { @MainActor in
             _ = try? await engine.callTool("second_look_failed", ["project": path, "candidate": candidate, "model": model, "reason": reason])
@@ -1070,47 +1092,86 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// One find to ask a second opinion about, in any project folder.
+    struct SecondLookItem { let path: String; let id: String; let tile: String; let x: Double; let y: Double }
+
     /// When a second-opinion model fails, set it aside for this run and ask the next one about the same find. Returns
     /// false when no model is left, so the failure is recorded as before.
-    private func secondLookFellThrough(_ candidate: String, model: String?, reason: String) -> Bool {
+    private func secondLookFellThrough(_ look: SecondLookItem, model: String?, reason: String) -> Bool {
         guard let model else { return false }
         secondFailed[model] = reason
-        guard !secondOpinionModels.isEmpty, let c = store.candidates.first(where: { $0.id == candidate }) else { return false }
-        secondLook(c)
+        guard !secondOpinionModels.isEmpty else { return false }
+        ask(look)
         return true
     }
 
+    /// Whether a find's record already holds a second opinion, read from its file.
+    static func hasSecondLook(_ look: SecondLookItem) -> Bool {
+        ((try? String(contentsOfFile: look.path + "/candidates/" + look.id + ".md", encoding: .utf8)) ?? "").contains("\"second_look\": {")
+    }
+
     func secondLook(_ c: Candidate) {
-        guard let project = store.current, let model = secondOpinionModels.first, secondLookBusy == nil else { return }
+        guard let project = store.current else { return }
+        ask(SecondLookItem(path: project.path, id: c.id, tile: c.tile, x: c.x, y: c.y))
+    }
+
+    private func ask(_ look: SecondLookItem) {
+        guard let model = secondOpinionModels.first, secondLookBusy == nil else { return }
         let modelName = engine.models.first { $0.id == model }?.name ?? model
-        secondLookBusy = c.id
-        secondLookProblem[c.id] = nil
+        secondLookBusy = look.id
+        secondLookProblem[look.id] = nil
         let prompt = """
         You are giving an independent second opinion on a possible archaeological feature. Do not read the candidate's \
-        record, the notes, or any other file. Call view_tile for tile \(c.tile) of project \(project.path) in the \
-        composite style, then again in the local_relief style. The feature sits about \(Int(c.x * 100)) percent across \
-        and \(Int(c.y * 100)) percent down the tile. Decide whether what is there looks built by people. Then call \
-        second_look with candidate \(c.id), your verdict as agrees, model "\(modelName)", and a one-sentence note. \
+        record, the notes, or any other file. Call view_tile for tile \(look.tile) of project \(look.path) in the \
+        composite style, then again in the local_relief style. The feature sits about \(Int(look.x * 100)) percent across \
+        and \(Int(look.y * 100)) percent down the tile. Decide whether what is there looks built by people. Then call \
+        second_look with candidate \(look.id), your verdict as agrees, model "\(modelName)", and a one-sentence note. \
         Do nothing else.
         """
         Task { @MainActor in
             do {
                 let started = try await engine.request("thread/start", [
-                    "cwd": project.path, "ephemeral": true, "approvalPolicy": "never", "sandbox": "read-only", "model": model,
+                    "cwd": look.path, "ephemeral": true, "approvalPolicy": "never", "sandbox": "read-only", "model": model,
                 ])
                 guard let id = (started["thread"] as? JSON)?["id"] as? String else { throw EngineError(message: "No chat was created.") }
-                secondLooks[id] = c.id
+                secondLooks[id] = look.id
                 secondLookModel[id] = model
+                secondLookOf[id] = look
                 _ = try await engine.request("turn/start", ["threadId": id, "model": model, "input": [["type": "text", "text": prompt]]])
             } catch {
                 secondLookBusy = nil
-                if secondLookFellThrough(c.id, model: model, reason: error.localizedDescription) { return }
+                if secondLookFellThrough(look, model: model, reason: error.localizedDescription) { return }
                 secondLookQueue = []
-                secondLookProblem[c.id] = error.localizedDescription
-                recordSecondLookFailure(c.id, error.localizedDescription)
+                secondLookProblem[look.id] = error.localizedDescription
+                recordSecondLookFailure(look.id, error.localizedDescription, in: look.path)
                 afterSecondLooks()
             }
         }
+    }
+
+    /// Finds waiting for a second opinion in projects that are not open, such as those a timed session made.
+    private var sessionLooks: [SecondLookItem] = []
+
+    private func nextSessionLook() {
+        guard secondLookBusy == nil, secondLookQueue.isEmpty, !sessionLooks.isEmpty else { return }
+        ask(sessionLooks.removeFirst())
+    }
+
+    /// Queue a second opinion for every open find without one in these project folders, and start.
+    func askSecondOpinions(in folders: [String]) {
+        for folder in folders {
+            let places = (try? JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: folder + "/private/state/locations.json")))) as? [String: JSON] ?? [:]
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: folder + "/candidates")) ?? []
+            for file in files.sorted() where file.hasSuffix(".md") {
+                let id = String(file.dropLast(3))
+                guard let place = places[id], let tile = place["tile"] as? String,
+                      let text = try? String(contentsOfFile: folder + "/candidates/" + file, encoding: .utf8),
+                      text.contains("status: \"flagged\"") || text.contains("status: \"ground_confirmed\""),
+                      !text.contains("\"second_look\": {") else { continue }
+                sessionLooks.append(SecondLookItem(path: folder, id: id, tile: tile, x: place["x"] as? Double ?? 0.5, y: place["y"] as? Double ?? 0.5))
+            }
+        }
+        nextSessionLook()
     }
 }
 
