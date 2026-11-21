@@ -85,7 +85,8 @@ extension AppState {
         store.close()
         await chat.open(project: nil)
         for _ in 0..<100 where chat.generalThreads.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }
-        if let thread = chat.generalThreads.first(where: { $0.title.hasPrefix("Timed research session 3") }) ?? chat.generalThreads.first {
+        // The longest chat on this Mac: a timed session.
+        if let thread = chat.generalThreads.first(where: { $0.title.hasPrefix("Timed research session") }) ?? chat.generalThreads.first {
             route = .chat
             var opened = false
             await Perf.step("Open the chat \(thread.title)", ready: { opened && !self.chat.loading }) {
@@ -98,6 +99,20 @@ extension AppState {
                     Task { @MainActor in await self.chat.select(thread); back = true }
                 }
             }
+        }
+        // What a running agent does to a long chat: a new step every few hundred milliseconds.
+        if !chat.items.isEmpty {
+            let count = chat.items.count
+            await Perf.step("Ten new steps in a chat of \(count) items") {
+                Task { @MainActor in
+                    for i in 0..<10 {
+                        self.chat.items.append(ChatItem(id: "perf-\(i)", kind: .step, text: "Looked at tile r00\(i)", icon: "eye", state: .done))
+                        try? await Task.sleep(for: .milliseconds(300))
+                    }
+                }
+            }
+            try? await Task.sleep(for: .seconds(2))
+            chat.items.removeAll { $0.id.hasPrefix("perf-") }
         }
         await Perf.step("Home again") { self.route = .home }
         Perf.log("tour end")

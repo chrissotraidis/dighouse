@@ -723,6 +723,7 @@ final class ChatModel: ObservableObject {
     // MARK: what the engine tells us
 
     func handle(_ method: String, _ params: JSON) {
+        if Perf.on { Perf.label = "engine message " + method }
         if method == "account/rateLimits/updated", let limits = params["rateLimits"] as? JSON {
             usageLeft = Self.left(limits)
         }
@@ -840,6 +841,16 @@ final class ChatModel: ObservableObject {
     }
 
 
+    /// A tool's reply as kept in the chat: a source read in full can be hundreds of thousands of characters, which the
+    /// chat never shows and which slows every update of the list, so only the start is kept. The agent has the rest.
+    static func shortened(_ text: String) -> String {
+        // Measured in bytes, which a Swift string knows at once; counting characters walks the whole text.
+        let limit = 40_000
+        guard text.utf8.count > limit else { return text }
+        let end = text.unicodeScalars.index(text.unicodeScalars.startIndex, offsetBy: limit, limitedBy: text.unicodeScalars.endIndex) ?? text.endIndex
+        return String(text.unicodeScalars[..<end]) + "\n\n… \(text.utf8.count / 1000) KB in all; the rest is not shown here."
+    }
+
     /// A plain name for a shell command the agent ran, from its first program and the files it names.
     static func describe(command: String) -> String {
         let words = command.split(whereSeparator: { $0.isWhitespace }).map(String.init)
@@ -892,7 +903,7 @@ final class ChatModel: ObservableObject {
             var s = step(icon, text, tool: tool)
             s.details = args.filter { $0.key != "project" }.sorted { $0.key < $1.key }.map { "\($0.key): \($0.value)" }
             let content = (raw["result"] as? JSON)?["content"] as? [JSON] ?? []
-            s.result = content.compactMap { $0["text"] as? String }.joined(separator: "\n")
+            s.result = Self.shortened(content.compactMap { $0["text"] as? String }.joined(separator: "\n"))
             if let failure = (raw["error"] as? JSON)?["message"] as? String { s.result = failure }
             if ours, finished, !failed {
                 s.images = pictures(tool, args)
@@ -912,7 +923,7 @@ final class ChatModel: ObservableObject {
             }
             var s = step("terminal", Self.describe(command: command), tool: "shell")
             s.details = [command]
-            s.result = raw["aggregatedOutput"] as? String
+            s.result = (raw["aggregatedOutput"] as? String).map(Self.shortened)
             return s
         case "fileChange":
             let changes = raw["changes"] as? [JSON] ?? []

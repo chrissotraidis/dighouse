@@ -189,6 +189,7 @@ final class ProjectStore: ObservableObject {
         }.joined(separator: "|")
         guard now != signature else { return }
         signature = now
+        if Perf.on { Perf.label = "reading the open project (\(records.count) finds)" }
         load(root, records)
         Task {
             if let fresh = await fetchStatus?(root), current?.path == root { status = fresh }

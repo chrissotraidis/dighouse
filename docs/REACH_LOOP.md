@@ -140,3 +140,29 @@ Home has a fifth way in, **Search on its own**, which opens the length picker (n
 
 Seen in the app: the five cards, and the dots over Ohio, Illinois, Mexico and England with the legend. Still to see: the session card and the background line during F7's run, started from the new card.
 
+### 2026-11-21, F3: the method holds
+
+The five blind tests rerun on the F2 build, one after another, with `open Dighouse.app --args -startBlindTests borre,mound-city,maiden-castle,cahokia,andia -measure YES` (new: runs the listed answer keys in turn, each until it is scored). Primary / 6.1 Terra, the whole search as a person would start it. Last runs are those in SECOND_OPINION_LOOP (Borre, Maiden Castle) and the README (Mound City, Cahokia, Andía).
+
+| Site | Last run | Now | Extra finds | Extra per km² | Where the misses were lost | Minutes |
+|---|---|---|---|---|---|---|
+| Borre | 21 of 53 | **25 of 53** | 9 | 24 | 28 looked at, not marked | 6 |
+| Mound City | 19 of 19 | 19 of 19 | 11 | 44 | — | 4 |
+| Maiden Castle | 1 of 3 | **3 of 3** | 32 | 36 | — | 4 |
+| Cahokia | 1 of 1 | 1 of 1 | 4 | 16 | — | 3 |
+| Sierra de Andía (Navarre) | 0 of 11 | **1 of 11** | 63 | 29 | 10 looked at, not marked | 10 |
+
+Recall is no worse on any site and better on three; extra finds stay under the cap of 50 per km² everywhere. The gains come from the measured rises (S5) now running inside the whole search, and the speed changes cost nothing measurable. Every miss was lost the same way: the tile was looked at and the mound not marked. Nothing was lost to the records check or to a second model. That is where the next gain lies (small, low mounds a picture does not show), as before.
+
+### 2026-11-21, F1 continued: the stalls during a search
+
+F2's hour logged 9 stalls (worst 998 ms) while the session's chat was showing. The watcher now names what the app was last doing (the last engine message, or reading the open project), and the tour opens the longest chat (a timed session, 428 items) and adds ten steps to it the way a running agent does. That tour showed opening the chat stalling 1.2 to 2.3 s, and a sample of the main thread put nearly all of it in building the chat's steps from the engine's record, where a step's text was being shortened by counting its characters (a Swift string counts characters by walking the whole text; some results are hundreds of kilobytes). The text is now measured in bytes, which a string knows at once, and cut after 40,000 characters with a note of the full size.
+
+| The same tour | Before | After |
+|---|---|---|
+| Open the longest chat (428 items) | 1.3–10 s, stalls of 1.2–7.5 s | 1.3 s, no stall |
+| Ten new steps in that chat | no stall | no stall |
+| Everything else | no stall | no stall |
+
+Whether a two-hour search now runs with no stall is checked in F7, which runs with `-measure YES`.
+
