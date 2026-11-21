@@ -202,3 +202,10 @@ Checked: offline tests (37), swift test (3), smoke test, swift build. The app re
 - **The first open of a recent chat is instant too.** After launch the app reads the last two general chats and the open project's latest into memory, from the engine's record only. The tour: opening the longest chat (428 items) **131 ms**, against 1.3 s before and up to 10 s at the start of the loop; going back to it 38 ms.
 - **A newcomer's Home**, launched with no projects and the tutorial done: five ways in, Search on its own among them, two presses to a running search. Chris's settings were not touched (launch arguments only).
 
+### 2026-11-21, F5: what was not added, and why
+
+- **Thuringia**: its 1 m model is free, but only through a download page where tiles are picked by hand and the address is built in the browser; its map service is based on a coarser 2 to 5 m model. Not scriptable as found.
+- **Hesse and Brandenburg**: not probed in this loop. Four regions met the goal first; they are next in line.
+- **Navarre's newer 0.5 m model**: not probed; Navarre stays on IDENA's 2 m model.
+- **England's old Ordnance Survey sheets**: not probed for an open tile service; old maps answer in the United States and France.
+
