@@ -335,7 +335,10 @@ final class AppState: ObservableObject {
                        self.secondLookFellThrough(look, model: used, reason: "It answered without giving an opinion.") { return }
                 }
                 self.store.reloadIfChanged()
-                if let path = self.store.current?.path { Task { @MainActor in await self.updateRecord(of: path) } }
+                // Rebuild the research record of the find's project, once its queued opinions are done when it is not open.
+                if let path = look?.path ?? self.store.current?.path, self.sessionLooks.first?.path != path {
+                    Task { @MainActor in await self.updateRecord(of: path) }
+                }
                 self.nextSecondLook()
                 self.nextSessionLook()
                 self.afterSecondLooks()

@@ -334,6 +334,9 @@ def document(p: Project, commit_it: bool = True) -> dict:
                             else "nothing modern nearby")
             else:
                 modern_t = (f"not yet: the map service did not answer on {failed_maps[m['id']]}" if m["id"] in failed_maps else "not yet")
+            old = c.get("old_maps")
+            if isinstance(old, dict):
+                modern_t += "; old maps " + ("explain it" if old.get("explains") else "do not explain it") + (f" ({old['sheets']})" if old.get("sheets") else "")
             read = sum(s["status"] == "read" for s in m["sources"])
             if m.get("decisions"):
                 d = m["decisions"][-1]

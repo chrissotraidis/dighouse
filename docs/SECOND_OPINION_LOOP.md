@@ -166,3 +166,8 @@ Also fixed from watching it: every tool now has a plain name in the chat (`add_m
 
 What this says: the session searched on its own and kept the method (calibration, measured rises, old maps, sources, a suggestion on every find), but it is slow on new ground: about 25 minutes per 1.5 km² window, after half an hour spent going back over earlier projects. It stops on a check it cannot finish unless the app turns it back.
 
+
+### 2026-11-21, S8: hand over
+
+README and HANDOFF describe second opinions, the reviewer rating, measured rises, old maps and timed search; the Toolbox example names Sonnet. Two gaps found while checking the records: a second opinion asked in the background (after a timed session) left its project's research record stale until the project was opened, and old-map results showed on the app's record page but not in RESEARCH.md. The record of a find's project is now rebuilt once its queued opinions are done, and the map cell adds "old maps explain it / do not explain it (sheets)". The ten session projects' records were rebuilt. The session re-checked Darby Prairie C-001 and filed "old maps do not explain it" over the S6 reading (the 1955 sheet shows buildings beside it, not the outline itself); its suggestion stays modern. Paint Creek and Zaleski were added to the project list, which the fixed app now does by itself. The app was rebuilt from main and launched with Chris's settings: agent primary / 6.1 Terra, second model Claude Sonnet 5.5 (replaced from the Antigravity Gemini in S1), 42 projects.
+
