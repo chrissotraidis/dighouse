@@ -494,6 +494,83 @@ def record_verdict(project: str, tile: str, verdict: str, note: str, model: str)
     return tiles.record_verdict(Project(project).check(), tile, verdict, note, model)
 
 
+MEASURED_BY = "measured (find_mounds), not seen by a model"
+
+
+def measured_rises(p, per_km2: float = 50.0, verdicts: tuple = ("possible", "built"), exclude: dict | None = None) -> list[dict]:
+    """The measured rises worth a person's look on tiles a model called possible or built, best first by shape
+    (mounds.shape rank), at most per_km2 for every square km of those tiles, and none within 10 m of a find already
+    made. Each is {"tile", "x", "y", "lon", "lat", "diameter_m", "height_m", "shape"}. Nothing is written here."""
+    import math
+    from . import mounds, terrain as T
+    tiles_ = p.load("tiles", {}) or {}
+    terrains = p.load("terrains", {}) or {}
+    places = exclude if exclude is not None else (p.load("locations", {}) or {})
+    picked: list[dict] = []
+    area = 0.0
+    grids: dict[str, tuple] = {}
+    for tid, t in tiles_.items():
+        if t.get("verdict") not in verdicts:
+            continue
+        meta = terrains.get(t["terrain"])
+        if not meta or meta.get("seafloor"):
+            continue
+        res = meta["res"]
+        r, c, h, w = t["window"]
+        area += h * w * res * res / 1e6
+        if t["terrain"] not in grids:
+            grids[t["terrain"]] = T.load_terrain(p.path(meta["file"]))
+        dtm, gap, out = grids[t["terrain"]]
+        valid = ~((gap > T.GAP_M) | out.astype(bool))
+        pad = int(40 / res)
+        r0, c0 = max(r - pad, 0), max(c - pad, 0)
+        sub = (slice(r0, r + h + pad), slice(c0, c + w + pad))
+        for b in mounds.bumps(dtm[sub], res, min_h=0.25, valid=valid[sub]):
+            rr, cc = b["row"] + r0, b["col"] + c0
+            if not (r <= rr < r + h and c <= cc < c + w):
+                continue
+            s = mounds.shape(dtm, gap, res, rr, cc, max(6.0, b["diameter_m"]))
+            if not s.get("rank"):
+                continue
+            fx, fy = (cc - c + 0.5) / w, (rr - r + 0.5) / h
+            lon, lat = tiles.tile_lonlat(p, tid, fx, fy)
+            picked.append({"tile": tid, "x": round(fx, 3), "y": round(fy, 3), "lon": lon, "lat": lat,
+                           "diameter_m": b["diameter_m"], "height_m": b["height_m"], "shape": s})
+    picked.sort(key=lambda m: -m["shape"]["rank"])
+    keep: list[dict] = []
+    near = lambda a, b: math.hypot((a["lon"] - b["lon"]) * 111_320 * math.cos(math.radians(a["lat"])), (a["lat"] - b["lat"]) * 110_540) < 10
+    for m in picked:
+        if len(keep) >= max(1, int(per_km2 * area)):
+            break
+        if any(near(m, v) for v in places.values()) or any(near(m, k) for k in keep):
+            continue
+        keep.append(m)
+    return keep
+
+
+@tool
+def add_measured_rises(project: str, per_km2: float = 50.0) -> dict:
+    """Open a find for each of the best measured rises on tiles you called possible or built: round rises the
+    ground model shows that a picture can hide, ranked by shape, at most per_km2 for each square km of those tiles,
+    and never within 10 m of a find already made. Each is marked as measured, not seen, so a person knows where it
+    came from. Call it once after every tile has a verdict, then slice, check and suggest a decision on each like any
+    other find."""
+    p = Project(project).check()
+    answers.guard_calibration(p)
+    made = []
+    for m in measured_rises(p, per_km2):
+        s = m["shape"]
+        note = (f"Measured, not seen: a rise {m['diameter_m']:.0f} m across and {m['height_m']:.1f} m high, "
+                f"symmetry {s.get('symmetry')}, {'; '.join(s.get('hints', []))}.")
+        meta = ledger.create(p, f"Measured rise, {m['diameter_m']:.0f} m across", m["tile"], (m["lon"], m["lat"]), note, MEASURED_BY,
+                             at=(m["x"], m["y"]))
+        ledger.set_check(p, meta["id"], "shape", s)
+        tiles.tile_image(p, m["tile"], "composite", mark=(m["x"], m["y"])).save(p.path("candidates", "img", f"{meta['id']}-relief.png"))
+        made.append(meta["id"])
+    p.note(f"Added {len(made)} measured rises as finds for review" + (f": {', '.join(made)}" if made else ""))
+    return {"added": made, "count": len(made), "per_km2": per_km2}
+
+
 @tool
 def flag_candidate(project: str, tile: str, x: float, y: float, name: str, note: str, model: str) -> list:
     """Open a candidate record for something that looks built.

@@ -782,3 +782,26 @@ def test_shape_tells_a_mound_from_a_tree_throw_and_openness_lights_both():
     pond = -mound
     c = mounds.shape(pond, gap, res, 80, 80, 12)
     assert any("hollow" in h for h in c["hints"]) and c["rank"] == 0
+
+
+def test_measured_rises_go_on_possible_tiles_and_skip_existing_finds(tmp_path):
+    import numpy as np
+    from dighouse import server, terrain as T
+    from dighouse.project import Project
+    p = Project.create(tmp_path / "p", "T", "Q", [-90.1, 38.6, -90.09, 38.61])
+    res = 1.0
+    yy, xx = np.mgrid[:200, :200]
+    dtm = np.zeros((200, 200), np.float32)
+    for cy, cx in ((50, 50), (150, 150)):
+        d = np.hypot(yy - cy, xx - cx) * res
+        dtm += np.where(d < 6, 1.0 * (1 - (d / 6) ** 2), 0).astype(np.float32)
+    gap = np.zeros_like(dtm); out = np.zeros_like(dtm, dtype=bool)
+    T.save_terrain(p.path("data", "t.tif"), dtm, gap, out, 0, 200, res, 32616) if hasattr(T, "save_terrain") else None
+    if not p.path("data", "t.tif").exists():
+        import pytest; pytest.skip("no terrain writer")
+    p.save("terrains", {"t": {"file": "data/t.tif", "res": res, "box": [0, 0, 200, 200], "epsg": 32616, "area_km2": 0.04}})
+    p.save("tiles", {"t-a": {"terrain": "t", "window": [0, 0, 100, 100], "status": "screened", "verdict": "possible"},
+                     "t-b": {"terrain": "t", "window": [100, 100, 100, 100], "status": "screened", "verdict": "nothing"}})
+    got = server.measured_rises(p, 1000)
+    assert len(got) == 1 and got[0]["tile"] == "t-a"
+    assert server.measured_rises(p, 1000, exclude={"C-001": {"lon": got[0]["lon"], "lat": got[0]["lat"]}}) == []

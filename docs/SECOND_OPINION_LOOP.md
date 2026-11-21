@@ -73,3 +73,23 @@ Settings, Models now lists the second-opinion models in the order they are asked
 
 Sonnet stays the default: it finds most real features and is the most trustworthy when it says no. GLM almost never says yes, so it misses three real features in four. No model's "yes" is worth much: all three call plenty of plain and modern ground built (at Mound City and Cahokia the "plain" crops include roads and houses, which are built, just not ancient, so the true rate is a little better than this). The app now says so on each record: a disagreeing second opinion "counts", an agreeing one is "a weak check". The second opinion is useful as a filter, not as a confirmation.
 
+
+
+### 2026-11-21, S4 (part): Cahokia
+
+The seven open Cahokia finds got second opinions from the app's Get a second opinion, all from Claude Sonnet 5.5. The twelve published mounds were already decided.
+
+### 2026-11-21, S5: mark the mounds left on possible tiles
+
+`add_measured_rises` opens a find for each of the best measured rises on tiles called possible or built, ranked by `shape_check` (hollows rank last), at most 50 per sq km of those tiles, never within 10 m of an existing find, each marked "measured, not seen". The whole-search workflow and the skill call it once after every tile has a verdict. Scored on the five blind tests on this Mac by adding its rises to the agent's finds:
+
+| Test | Agent alone | With rises (cap 50/km²) | Extra finds per km² after |
+|---|---|---|---|
+| Borre, run 11-21 #2 | 20/53, 0 extra | **24/53**, 9 extra | 24 |
+| Borre, run 11-21 #3 | 21/53, 0 extra | **25/53**, 9 extra | 24 |
+| Mound City | 19/19, 3 extra | 19/19, 9 extra | 36 |
+| Maiden Castle | 1/3, 2 extra | **3/3**, 31 extra | 35 |
+| Cahokia | 1/1, 4 extra | 1/1, 6 extra | 24 |
+
+Recall rose on both sites with misses and false finds stayed under the cap of 50 per km², so it is kept. At 100 per km² Borre reaches 28/53 with 17–18 extra. Seafloor projects are skipped, so the Thunder Bay wreck test is unchanged by design. Limit: this is scored offline on saved runs, not a fresh agent run; S7's session uses it live.
+
