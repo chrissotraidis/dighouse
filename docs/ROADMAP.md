@@ -4,7 +4,7 @@ Where Dighouse goes next, in rough order. Nothing here is promised by a date. Wh
 
 ## Next, for archaeology
 
-- **Finding small mounds.** Borre 29 of 53 and Andía 4 of 11 on 2026-11-22. A mound-only look at quarter tiles did not help, and finer ground models do not show more mounds. Of Borre's misses, most are not in the 1 m ground model at all, so the next lever is the raw points: a ground model built from them with a lower ground-filter threshold, or a slice and shape check that reads the points directly.
+- **Finding small mounds.** Borre 29 of 53 and Andía 4 of 11 on 2026-11-22. A mound-only look at quarter tiles did not help, and finer ground models do not show more mounds. Of Borre's misses, most are not in the 1 m ground model at all, so the next lever is the raw points: a ground model built from them with a lower ground-filter threshold, or a slice and shape check that reads the points directly. Norway's points are open (LAZ from hoydedata.no, COPC for newer surveys), so Borre is the place to start.
 - **More answer keys.** Six sites today, five of them partial. Official registers like Norway's give complete keys; England's and the Netherlands' would add more.
 - **A download.** A signed, notarized build, so nobody has to compile the app to try it.
 - **An OpenAlex key in Settings.** Without a key, one network address shares about 100 literature searches a day; a free key lifts that to about 1,000. Dighouse falls back to Crossref today.
