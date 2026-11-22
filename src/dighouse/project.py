@@ -218,6 +218,36 @@ class Project:
         commit(p.root, f"Start the project: {name}")
         return p
 
+    def grow_area(self, bbox: list[float]) -> list[float]:
+        """Widen the project's box to cover new ground, so the location guard and calibration follow every area.
+        Sites already on record were read for the old box, so they are read again when next needed."""
+        info = self.load("project", {}) or {}
+        old = info.get("bbox") or []
+        if len(old) == 4 and any(old):
+            box = [min(old[0], bbox[0]), min(old[1], bbox[1]), max(old[2], bbox[2]), max(old[3], bbox[3])]
+        else:
+            box = list(bbox)
+        if box != old:
+            info["bbox"] = box
+            self.save("project", info)
+            self.path("private", "state", "recorded.json").unlink(missing_ok=True)
+        return box
+
+    def rename(self, name: str, question: str) -> None:
+        """Give the project a new name and question. The folder keeps its name, so paths and history stay as they are."""
+        info = self.load("project", {}) or {}
+        old_name, old_question = info.get("name", ""), info.get("question", "")
+        info["name"], info["question"] = name, question
+        self.save("project", info)
+        f = self.path("PROJECT.md")
+        text = f.read_text()
+        nl = chr(10)
+        if old_name and text.startswith("# " + old_name + nl):
+            text = "# " + name + nl + text[len("# " + old_name + nl):]
+        if old_question:
+            text = text.replace("## Question" + nl * 2 + old_question + nl, "## Question" + nl * 2 + question + nl, 1)
+        f.write_text(text)
+
     def check(self) -> Project:
         if not self.path("PROJECT.md").exists():
             raise ValueError(f"{self.root} is not a Dighouse project. Call init_project first.")

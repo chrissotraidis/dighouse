@@ -24,6 +24,32 @@ def tile_at(p, xy):
     raise AssertionError("no tile holds the point")
 
 
+def test_a_project_holds_named_areas_and_follows_them(tmp_path, survey):
+    """A region project: named, its box widened by each area fetched into it, each area named in the record."""
+    from dighouse import record
+
+    root = str(tmp_path / "region")
+    w, s, e, n = survey["bbox"]
+    server.init_project(root, "Search on its own", "To be named", w, s, w + 0.0005, s + 0.0005)
+    p = Project(root)
+    p.save("recorded", [])   # a cached reading of the sites on record for the old box
+    got = server.name_project(root, "Petén lowland", "What built ground survives in the lowland forest?")
+    assert got["name"] == "Petén lowland" and p.load("project")["name"] == "Petén lowland"
+    head = p.path("PROJECT.md").read_text()
+    assert head.startswith("# Petén lowland\n") and "What built ground survives in the lowland forest?" in head
+    with pytest.raises(ValueError, match="coordinates"):
+        server.name_project(root, "Area at 17.12345", "q")
+    with pytest.raises(ValueError, match="coordinates"):
+        server.fetch_terrain(root, "usgs:synthetic", *survey["bbox"], area="spot -89.50123")
+
+    t = server.fetch_terrain(root, "usgs:synthetic", *survey["bbox"], area="Plaza A1")
+    assert "lonlat" not in t and p.load("terrains")[t["terrain"]]["area"] == "Plaza A1"
+    assert p.load("project")["bbox"] == [w, s, e, n] and p.load("recorded") is None
+    assert record.areas(p.load("terrains")) == ["Plaza A1"]
+    p.grow_area([e, n, e + 0.01, n + 0.01])
+    assert p.load("project")["bbox"] == [w, s, e + 0.01, n + 0.01]
+
+
 def test_full_chain(tmp_path, survey, monkeypatch):
     root = str(tmp_path / "proj")
     server.init_project(root, "Synthetic", "Is there a mound?", *survey["bbox"])

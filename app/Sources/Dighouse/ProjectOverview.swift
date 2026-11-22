@@ -50,7 +50,8 @@ struct ProjectOverview: View {
         return [
             Stage(id: "terrain", icon: "dig.mound", title: "Bare ground", plain: "The laser scans, with the trees taken away.",
                   done: !store.terrains.isEmpty || before != nil,
-                  detail: before != nil ? "Done on the other Mac" : store.terrains.isEmpty ? "Not yet" : "\(s.tiles) tile\(s.tiles == 1 ? "" : "s")"),
+                  detail: before != nil ? "Done on the other Mac" : store.terrains.isEmpty ? "Not yet"
+                    : (store.areaCount > 1 ? "\(store.areaCount) areas, " : "") + "\(s.tiles) tile\(s.tiles == 1 ? "" : "s")"),
             Stage(id: "screen", icon: "dig.grid", title: "A first look", plain: "The agent looks at every tile for shapes people built.",
                   done: (s.tiles > 0 && s.unscreened == 0) || before != nil,
                   detail: before.map { "\($0) tile\($0 == 1 ? "" : "s") on the other Mac, \(finds)" }

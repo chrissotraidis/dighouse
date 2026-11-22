@@ -174,7 +174,12 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
                  + (f"{record.density(t)} laser points per square metre reached the ground."
                     if isinstance(t.get("ground_points_per_m2"), (int, float)) else "a depth model built from it." if t.get("seafloor")
                     else "a ground model that was already built."))
-    if len(terrains) > 1:
+    named = record.areas(terrains)
+    if len(named) > 1:
+        shown = named[:4]
+        L.append(f"- {len(named)} areas searched: {', '.join(shown)}" + (f" and {len(named) - 4} more" if len(named) > 4 else "")
+                 + f", {sum((t.get('area_km2') or 0) for t in terrains.values()):.2f} sq km in all.")
+    elif len(terrains) > 1:
         L.append(f"- And {_s(len(terrains) - 1, 'more survey')}.")
     if tiles:
         parts = [f"{counts[v]} {w}" for v, w in record.VERDICT_WORDS.items() if counts[v]]

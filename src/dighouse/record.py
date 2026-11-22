@@ -99,7 +99,7 @@ def facts(p: Project) -> tuple[dict, dict]:
         kept = json.loads(f.read_text()) if f.exists() else {}
     except ValueError:
         kept = {}
-    terrains = {k: {x: v.get(x) for x in ("dataset", "source", "collected", "area_km2", "ground_points_per_m2", "res", "survey_details")}
+    terrains = {k: {x: v.get(x) for x in ("dataset", "source", "collected", "area_km2", "ground_points_per_m2", "res", "survey_details", "area")}
                 for k, v in (p.load("terrains", {}) or {}).items()}
     tiles = {k: {"terrain": v.get("terrain"), "status": v.get("status"), "verdict": v.get("verdict"),
                  "note": _clean(v.get("note") or ""), "model": v.get("model")}
@@ -258,7 +258,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
           f"Updated {now:%Y-%m-%d %H:%M}. Started {info.get('created') or 'on another Mac'}.", ""]
     area = sum(t.get("area_km2") or 0 for t in terrains.values())
     L += ["## Where things stand", "",
-          f"- **Ground:** {len(terrains)} survey download{'s' if len(terrains) != 1 else ''}, {area:.2f} sq km.",
+          f"- **Ground:** {len(terrains)} survey download{'s' if len(terrains) != 1 else ''}, {area:.2f} sq km"
+          + (f", in {len(areas(terrains))} areas: {', '.join(areas(terrains))}" if len(areas(terrains)) > 1 else "") + ".",
           f"- **Tiles looked at:** {len(screened)} of {len(tiles)}"
           + (f", {sum(t['status'] == 'unreadable' for t in tiles.values())} unreadable" if tiles else "") + ".",
           f"- **Finds:** {len(records)}, of which {len(decided)} decided by a person"
@@ -415,6 +416,17 @@ def document(p: Project, commit_it: bool = True) -> dict:
             commit(p.root, "Update the research record")
     return {"written": "RESEARCH.md", "changed": changed, "still_to_do": todo, "handed_over": handed,
             "screened_before": sum(t["status"] == "screened" and bool(t.get("earlier")) for t in tiles.values())}
+
+
+def areas(terrains: dict) -> list[str]:
+    """The named areas of a project's ground, in the order they were fetched. Ground fetched without a name counts once,
+    as "unnamed ground"."""
+    out: list[str] = []
+    for t in terrains.values():
+        name = t.get("area") or "unnamed ground"
+        if name not in out:
+            out.append(name)
+    return out
 
 
 def _title(p: Project) -> str:

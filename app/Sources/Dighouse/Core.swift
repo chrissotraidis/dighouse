@@ -291,6 +291,10 @@ struct Terrain: Identifiable {
     var collected = ""
     var file = ""
     var points: String?
+    /// The area of the project this ground belongs to, when the agent named it (such as "Perry A1").
+    var area: String?
+    /// Its box in degrees: west, south, east, north. Empty for ground fetched before areas were kept.
+    var lonlat: [Double] = []
 
     /// The survey's name, without the "usgs:" or "own:" in front.
     var name: String { dataset.split(separator: ":", maxSplits: 1).last.map(String.init) ?? dataset }

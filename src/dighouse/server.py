@@ -19,7 +19,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from . import answers, checks, discover, ledger, national, record, report, section, sources, tiles
 from . import terrain as T
-from .project import Project
+from .project import Project, commit
 
 mcp = MCPServer(
     "dighouse",
@@ -187,6 +187,29 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
 
 
 @tool
+def name_project(project: str, name: str, question: str, west: float = 0.0, south: float = 0.0, east: float = 0.0,
+                 north: float = 0.0) -> dict:
+    """Name a project after the region it works on, with its question, and optionally give the region's box in degrees.
+
+    For a project that will hold several areas, such as a timed session's: call it once the region is chosen. The box
+    lets calibration find the nearest known site before any ground is fetched. The folder keeps its name. No
+    coordinates in the name or question."""
+    p = Project(project).check()
+    name, question = " ".join(name.split())[:80], " ".join(question.split())
+    if not name or not question:
+        raise ValueError("Give the project a name and a question.")
+    if record.COORD.search(name + " " + question):
+        raise ValueError("The name or question looks like it holds coordinates. Name the region in words instead.")
+    p.rename(name, question)
+    if any((west, south, east, north)):
+        p.grow_area([west, south, east, north])
+    p.note(f"Named the project {name}")
+    record.document(p, commit_it=False)
+    commit(p.root, f"Name the project: {name}")
+    return {"project": str(p.root), "name": name}
+
+
+@tool
 def suggest_project(name: str, question: str, why_here: str = "", place: str = "",
                     west: float = 0.0, south: float = 0.0, east: float = 0.0, north: float = 0.0,
                     sources: list[str] | None = None, ruled_out: list[str] | None = None,
@@ -271,14 +294,18 @@ def find_data(west: float, south: float, east: float, north: float) -> list[dict
 
 @tool
 def fetch_terrain(project: str, dataset: str, west: float, south: float, east: float, north: float,
-                  resolution_m: float = 0.5) -> dict:
+                  resolution_m: float = 0.5, area: str = "") -> dict:
     """Download one dataset's points for a lon/lat box and build the bare-ground model.
 
     Keep each box under 6 square km and fetch large areas in parts. The reply says how
     dense the ground returns are and how much of the area has no ground data at all.
+    A project can hold several areas of a region: give each a short name in area (such as "Perry A1"), never coordinates.
     """
     p = Project(project).check()
     bbox = [west, south, east, north]
+    area = " ".join(area.split())[:40]
+    if record.COORD.search(area):
+        raise ValueError("The area's name looks like it holds coordinates. Name it after the place instead.")
     km2 = ledger.distance_m((west, south), (east, south)) * ledger.distance_m((west, south), (west, north)) / 1e6
     if km2 > MAX_KM2:
         raise ValueError(f"The box covers {km2:.1f} square km. Fetch at most {MAX_KM2} at a time.")
@@ -302,14 +329,16 @@ def fetch_terrain(project: str, dataset: str, west: float, south: float, east: f
     sources.progress = report
     sources.cancelled = lambda: bool(stopped) or stop.exists()
     try:
-        return _fetch(p, dataset, bbox, km2, tid, resolution_m)
+        got = _fetch(p, dataset, bbox, km2, tid, resolution_m, area)
+        p.grow_area(bbox)
+        return got
     finally:
         sources.progress = lambda done, total: None
         sources.cancelled = lambda: False
         p.path("private", "state", "progress.json").unlink(missing_ok=True)
 
 
-def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_m: float) -> dict:
+def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_m: float, area: str = "") -> dict:
     west, south, east, north = bbox
     if dataset in national.NATIONAL:  # a ready-made ground model, not points
         dtm, outside, x0, y1, resolution_m, epsg, how = national.fetch_dtm(dataset, bbox, resolution_m)
@@ -333,7 +362,8 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
         summary = f"{stats['ground_points']:,} ground returns, {stats['share_without_ground_data']:.0%} of the area without ground data"
     T.save_terrain(p.path("data", "terrain", f"{tid}.tif"), dtm, gap, outside, x0, y1, resolution_m, epsg)
     meta = {"dataset": dataset, "file": f"data/terrain/{tid}.tif", "points": points,
-            "epsg": epsg, "res": resolution_m, "box": [x0, y0, x1, y1], "area_km2": round(km2, 2), **stats, **how}
+            "epsg": epsg, "res": resolution_m, "box": [x0, y0, x1, y1], "area_km2": round(km2, 2), **stats, **how,
+            "lonlat": bbox, **({"area": area} if area else {})}
     year = re.search(r"(?<!\d)(19|20)\d\d(?!\d)", dataset)  # most survey names carry the year they were flown
     if year:
         meta["collected"] = year.group(0)
@@ -351,7 +381,7 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
                         + (f" Record: {x['record']}" if x.get("record") else ""))
     elif points is None:
         warn.append("This is a national agency's ready-made ground model. There are no raw points, so a section shows the ground profile only and cannot tell a feature in the ground from one in the trees.")
-    return {"terrain": tid, **{k: v for k, v in meta.items() if k not in ("box", "file", "points", "epsg")}, "warnings": warn}
+    return {"terrain": tid, **{k: v for k, v in meta.items() if k not in ("box", "file", "points", "epsg", "lonlat")}, "warnings": warn}
 
 
 @tool

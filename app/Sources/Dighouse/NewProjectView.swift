@@ -277,12 +277,18 @@ struct NewProjectView: View {
     private func loadSearched() async {
         let refs = app.store.projects
         searched = await Task.detached {
-            refs.compactMap { ref -> [Double]? in
-                guard !FileManager.default.fileExists(atPath: ref.path + "/private/state/test.json"),
-                      let data = FileManager.default.contents(atPath: ref.path + "/private/state/project.json"),
+            refs.flatMap { ref -> [[Double]] in
+                guard !FileManager.default.fileExists(atPath: ref.path + "/private/state/test.json") else { return [] }
+                // Each area's own box where the project kept it: a region project's box is far bigger than what was searched.
+                if let data = FileManager.default.contents(atPath: ref.path + "/private/state/terrains.json"),
+                   let all = (try? JSONSerialization.jsonObject(with: data)) as? [String: JSON] {
+                    let boxes = all.values.compactMap { $0["lonlat"] as? [Double] }.filter { $0.count == 4 }
+                    if !boxes.isEmpty { return boxes }
+                }
+                guard let data = FileManager.default.contents(atPath: ref.path + "/private/state/project.json"),
                       let info = (try? JSONSerialization.jsonObject(with: data)) as? JSON,
-                      let box = info["bbox"] as? [Double], box.count == 4 else { return nil }
-                return box
+                      let box = info["bbox"] as? [Double], box.count == 4 else { return [] }
+                return [box]
             }
         }.value
     }

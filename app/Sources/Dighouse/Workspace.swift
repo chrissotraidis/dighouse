@@ -89,7 +89,8 @@ private struct EmptyPane<Action: View>: View {
 struct MapView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
-    @State private var terrain: String?
+    /// The area picked from the menu (Area.id); nil shows the first area with tiles.
+    @State private var areaChoice: String?
     @State private var zoom = 1.0
     @State private var pinchStart: Double?
     /// How far the map is moved from where it starts, in screen points, and where a drag began.
@@ -119,22 +120,44 @@ struct MapView: View {
         ("composite", "Composite", "square.3.layers.3d"), ("hillshade", "Hillshade", "sun.max"),
         ("local_relief", "Local relief", "water.waves"), ("sky_view", "Sky view", "circle.dotted")]
 
-    /// The terrain picked from the menu, or the first one with tiles. With no pick, every tiled terrain in the same
-    /// coordinate system is shown together, so fetching more of an area adds its tiles beside the old ones.
-    private var current: String? {
-        terrain ?? store.terrains.first { t in store.tiles.contains { $0.terrain == t.id } }?.id ?? store.terrains.first?.id
+    /// One area of the project's ground: everything fetched under one area name, or else one survey's ground that lies
+    /// close together. Areas far apart are shown one at a time, so neither shrinks to specks.
+    private struct Area: Identifiable {
+        let id: String
+        let name: String
+        var terrains: [Terrain]
     }
 
-    private var shownTerrains: [Terrain] {
-        if let terrain { return store.terrains.filter { $0.id == terrain } }
-        guard let first = store.terrains.first(where: { $0.id == current }) else { return [] }
-        // Terrains near each other only: a far-off one would shrink everything else to specks.
-        func near(_ t: Terrain) -> Bool {
-            guard t.box.count == 4, first.box.count == 4 else { return t.id == first.id }
-            return abs(t.box[0] - first.box[0]) < 5000 && abs(t.box[1] - first.box[1]) < 5000
-        }
-        return store.terrains.filter { t in t.epsg == first.epsg && near(t) && store.tiles.contains { $0.terrain == t.id } }
+    private static func near(_ a: Terrain, _ b: Terrain) -> Bool {
+        a.epsg == b.epsg && a.box.count == 4 && b.box.count == 4 && abs(a.box[0] - b.box[0]) < 5000 && abs(a.box[1] - b.box[1]) < 5000
     }
+
+    private var areas: [Area] {
+        var out: [Area] = []
+        for t in store.terrains {
+            if let name = t.area, !name.isEmpty {
+                if let i = out.firstIndex(where: { $0.id == "named:" + name }) { out[i].terrains.append(t) }
+                else { out.append(Area(id: "named:" + name, name: name, terrains: [t])) }
+            } else if let i = out.firstIndex(where: { a in a.id.hasPrefix("ground:") && a.terrains[0].dataset == t.dataset && Self.near(a.terrains[0], t) }) {
+                out[i].terrains.append(t)
+            } else {
+                out.append(Area(id: "ground:" + t.id, name: t.name, terrains: [t]))
+            }
+        }
+        return out
+    }
+
+    private func tiled(_ t: Terrain) -> Bool { store.tiles.contains { $0.terrain == t.id } }
+
+    private var currentArea: Area? {
+        let all = areas
+        return all.first { $0.id == areaChoice } ?? all.first { $0.terrains.contains(where: tiled) } ?? all.first
+    }
+
+    /// The ground the map shows first: the current area's tiled ground, or its first if none is cut yet.
+    private var current: String? { (currentArea?.terrains.first(where: tiled) ?? currentArea?.terrains.first)?.id }
+
+    private var shownTerrains: [Terrain] { currentArea?.terrains.filter(tiled) ?? [] }
 
     private var shown: [Tile] {
         let ids = Set(shownTerrains.map(\.id))
@@ -156,11 +179,10 @@ struct MapView: View {
         return raw.map { Placed(tile: $0.tile, x: $0.x - minX, y: maxY - $0.y, w: $0.w, h: $0.h) }
     }
 
-    /// A terrain's name in the menu: its survey, its size, and whether it has been cut into tiles yet.
-    private func label(_ t: Terrain) -> String {
-        let name = t.dataset.split(separator: ":").last.map(String.init) ?? t.id
-        let cut = store.tiles.contains { $0.terrain == t.id }
-        return "\(name), \(String(format: "%.1f", t.areaKm2)) sq km" + (cut ? "" : ", not cut into tiles")
+    /// An area's name in the menu: its name, its size, and whether it has been cut into tiles yet.
+    private func label(_ a: Area) -> String {
+        let km2 = a.terrains.reduce(0) { $0 + $1.areaKm2 }
+        return "\(a.name), \(String(format: "%.1f", km2)) sq km" + (a.terrains.contains(where: tiled) ? "" : ", not cut into tiles")
     }
 
     var body: some View {
@@ -303,6 +325,12 @@ struct MapView: View {
                 }
             }
             .task(id: style) { await render() }
+            // A find chosen elsewhere (Records, Decide) on another area brings that area onto the map.
+            .onChange(of: store.selectedTile) { _, tile in
+                guard let tile, let terrain = store.tiles.first(where: { $0.id == tile })?.terrain,
+                      let area = areas.first(where: { $0.terrains.contains { $0.id == terrain } }), area.id != currentArea?.id else { return }
+                areaChoice = area.id
+            }
         }
     }
 
@@ -354,14 +382,13 @@ struct MapView: View {
                 cut = nil
             } label: { Image(systemName: "line.diagonal") }
                 .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a slice through the ground")
-            if store.terrains.count > 1 {
-                PillMenu(title: short ? "Ground" : terrain == nil && shownTerrains.count > 1 ? "All ground"
-                         : store.terrains.first { $0.id == current }?.name ?? "Ground", quiet: true, width: 340) {
-                    [MenuEntry(title: "All of it, side by side", icon: "square.grid.2x2", checked: terrain == nil) { terrain = nil }, .divider]
-                        + store.terrains.map { t in
-                            MenuEntry(title: label(t), icon: "dig.mound", checked: terrain == t.id) { terrain = t.id }
-                        }
+            let all = areas
+            if all.count > 1 {
+                PillMenu(title: (short ? "" : "Show: ") + (currentArea?.name ?? "Ground"), quiet: true, width: 340) {
+                    [.header("\(all.count) areas in this project")]
+                        + all.map { a in MenuEntry(title: label(a), icon: "dig.mound", checked: a.id == currentArea?.id) { areaChoice = a.id } }
                 }
+                .help("Which area of the project the map shows")
             }
     }
 

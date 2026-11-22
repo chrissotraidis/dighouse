@@ -45,3 +45,9 @@ A project is a place you work on, usually a region. It holds its areas of ground
 ## Log
 
 - **2026-11-23, H0.** Probe above. Plan written.
+- **H1, areas in one project.**
+  - **Tools.** `fetch_terrain` takes `area` (refused if it looks like coordinates) and keeps each area's box in degrees (`lonlat`, left out of the reply). `Project.grow_area` widens the project's box after every fetch and drops the cached sites on record, so the location guard and calibration follow every area. `name_project` renames the project and its question in `project.json` and PROJECT.md, and can set the region's box; the folder keeps its name.
+  - **Record and report.** RESEARCH.md's Ground line names the areas ("in 2 areas: Perry A1, Athens A1"), and the search report lists them.
+  - **App.** The map groups ground into areas: one area name, or one survey's ground lying close together. It shows one area at a time, from a menu headed "2 areas in this project", whose button names the area shown. Choosing a find on another area brings that area onto the map. The overview's Bare ground row says "2 areas, 18 tiles". Pick a place shades each area's own box, and older projects keep their project box.
+  - **Checked.** A probe project was made the way a session would: started as "Search on its own, 23 Nov", named "Hocking Hills region, Ohio" with `name_project`, with two named areas about 30 km apart fetched into it. Its box covered both, RESEARCH.md named both, PROJECT.md took the new name, and in the test copy the menu listed both areas and switched the map between them. A new offline test covers naming, the box growing, the cache dropped, the area kept, and names with coordinates refused. The offline tests pass (41).
+  - **Not checked:** the shading on Pick a place for a project with areas (no such project was in the list when it was looked at).

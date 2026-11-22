@@ -187,6 +187,9 @@ final class ProjectStore: ObservableObject {
     /// About how long deciding takes: some 20 seconds a find looked at alone, a few seconds each in the grid.
     var decideMinutes: Int { max(1, Int((Double(needsYou.count) * 20 + Double(toAgree.count) * 3) / 60 + 0.5)) }
 
+    /// How many named areas the project's ground is in (unnamed ground counts as one).
+    var areaCount: Int { Set(terrains.map { $0.area ?? "" }).count }
+
     /// How wide the close view of a find is, the same for every find so sizes can be compared by eye.
     static let closeMetres = 60.0
 
@@ -233,7 +236,8 @@ final class ProjectStore: ObservableObject {
                     groundPerM2: t["ground_points_per_m2"] as? Double ?? 0, res: t["res"] as? Double ?? 0.5,
                     box: (t["box"] as? [Double]) ?? [], epsg: t["epsg"] as? Int ?? 0,
                     source: t["source"] as? String ?? "", collected: t["collected"] as? String ?? "",
-                    file: t["file"] as? String ?? "", points: t["points"] as? String)
+                    file: t["file"] as? String ?? "", points: t["points"] as? String,
+                    area: t["area"] as? String, lonlat: (t["lonlat"] as? [Double]) ?? [])
         }.sorted { $0.id < $1.id }
 
         let tileState = json(root + "/private/state/tiles.json") as? [String: JSON] ?? [:]
