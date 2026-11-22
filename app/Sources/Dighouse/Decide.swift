@@ -147,6 +147,10 @@ struct DecideView: View {
                 Hairline()
                 decisionBar(c).padding(.horizontal, 22).padding(.vertical, 12)
             }
+            // Draw the next find's views while this one is looked at.
+            .task(id: c.id) {
+                if let next = needs.dropFirst(index + 1).compactMap(find).first(where: \.waiting) { await app.ensureViews(next) }
+            }
         } else if !bulkLeft.isEmpty {
             message("Nothing more needs you one at a time. \(bulkLeft.count) routine find\(bulkLeft.count == 1 ? "" : "s") to agree with.",
                     button: ("Agree in bulk", { step = .bulk }))
@@ -438,6 +442,18 @@ struct FindCard: View {
     @EnvironmentObject var store: ProjectStore
     let candidate: Candidate
     var position = ""
+    /// The view last chosen, kept from find to find and between launches.
+    @AppStorage("decideView") private var view = "composite"
+    @State private var drawn = 0
+
+    static let views: [(style: String, title: String)] = [
+        ("composite", "Composite"), ("relief_small", "Local relief"), ("sky_view", "Sky view"),
+        ("hillshade", "Hillshade"), ("positive_openness", "Openness up"), ("negative_openness", "Openness down"),
+    ]
+
+    static func viewPath(_ c: Candidate, _ style: String) -> String {
+        (c.folder as NSString).deletingLastPathComponent + "/data/views/\(c.id)-\(style).png"
+    }
 
     var body: some View {
         let c = candidate
@@ -460,8 +476,14 @@ struct FindCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack(alignment: .bottom, spacing: 14) {
-                picture(Images.crop(c.relief, x: c.x, y: c.y, side: store.closeSide(c)), "\(Int(ProjectStore.closeMetres)) m across, find ringed")
-                    .frame(maxWidth: 300)
+                VStack(alignment: .leading, spacing: 6) {
+                    viewPicker
+                    let title = Self.views.first { $0.style == view }?.title ?? "Composite"
+                    picture(Images.load(Self.viewPath(c, view)) ?? Images.crop(c.relief, x: c.x, y: c.y, side: store.closeSide(c)),
+                            "\(title), \(Int(ProjectStore.closeMetres)) m across, find ringed")
+                        .id(drawn)
+                }
+                .frame(maxWidth: 320)
                 picture(Images.load(c.relief), "The whole tile, \(Int(store.tileMetres(c))) m").frame(maxWidth: 300)
                 picture(Images.load(c.section), "Slice straight down through the laser points")
             }
@@ -469,6 +491,28 @@ struct FindCard: View {
             details(c)
         }
         .textSelection(.enabled)
+        .task(id: c.id) {
+            await app.ensureViews(c)
+            drawn += 1
+        }
+    }
+
+    /// The six ways of drawing the close view, on the keys 1 to 6.
+    private var viewPicker: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(Self.views.enumerated()), id: \.element.style) { i, v in
+                Button { view = v.style } label: {
+                    Text("\(i + 1)").font(.system(size: 11 * Theme.scale, weight: view == v.style ? .bold : .regular, design: .monospaced))
+                        .frame(width: 22, height: 20)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(view == v.style ? Theme.ink.opacity(0.14) : .clear))
+                        .foregroundStyle(view == v.style ? Theme.text : Theme.dim)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: [])
+                .help("\(v.title) (\(i + 1))")
+                .accessibilityLabel(v.title)
+            }
+        }
     }
 
     /// "Agent: natural · Second model: built · they disagree", in words, with no tick that could read as agreement.
@@ -500,7 +544,10 @@ struct FindCard: View {
             }
         }
         .font(.system(size: 13.5 * Theme.scale))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("The agent says \(agentWord). The second model says \(secondWord)."
+                            + (together.map { " \($0.0.capitalizedFirst)." } ?? "")
+                            + (c.flaggedBy.hasPrefix("measured") ? " Measured, not seen by a model." : ""))
     }
 
     private func chips(_ c: Candidate) -> [String] {

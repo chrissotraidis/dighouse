@@ -1082,6 +1082,19 @@ final class AppState: ObservableObject {
         reviewing = true
     }
 
+    /// Finds whose close views are being drawn now, so each is asked for once.
+    private var drawingViews = Set<String>()
+
+    /// Draw a find's close views (find_views) if they are not on disk yet. Returns once they are, or on failure.
+    func ensureViews(_ c: Candidate) async {
+        let root = (c.folder as NSString).deletingLastPathComponent
+        guard engine.ready, !FileManager.default.fileExists(atPath: FindCard.viewPath(c, FindCard.views.last!.style)),
+              !drawingViews.contains(root + c.id) else { return }
+        drawingViews.insert(root + c.id)
+        defer { drawingViews.remove(root + c.id) }
+        _ = try? await engine.callTool("find_views", ["project": root, "candidate": c.id])
+    }
+
     /// Projects whose finds the agent was already asked to suggest decisions for, this session.
     private var suggestedFor = Set<String>()
 

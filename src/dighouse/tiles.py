@@ -76,6 +76,43 @@ def cached_tile(p: Project, tile_id: str, style: str = "composite") -> Path:
     return f
 
 
+# The views a person can switch between when deciding a find, in the order of the keys 1 to 6.
+FIND_VIEWS = ("composite", "relief_small", "sky_view", "hillshade", "positive_openness", "negative_openness")
+
+
+def find_views(p: Project, cid: str, metres: float = 60.0, size: int = 480, styles: tuple[str, ...] = FIND_VIEWS) -> dict:
+    """Close views of one find, every one the same square of ground (metres across, the find in the middle and
+    ringed as on its record), in each style. Kept under data/views, out of the project's history. Views already
+    drawn are not drawn again."""
+    loc = p.load("locations", {})[cid]
+    tile = p.load("tiles", {})[loc["tile"]]
+    meta = p.load("terrains", {})[tile["terrain"]]
+    res = meta["res"]
+    out_dir = p.path("data", "views")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    files = {s: out_dir / f"{cid}-{s}.png" for s in styles}
+    todo = [s for s, f in files.items() if not f.exists()]
+    if todo:
+        import rasterio
+        r, c, h, w = tile["window"]
+        cy, cx = r + loc["y"] * h, c + loc["x"] * w
+        half, pad = int(round(metres / 2 / res)), int(PAD_M / res)
+        with rasterio.open(p.path(meta["file"])) as src:
+            rows, cols = src.height, src.width
+        r0, c0 = max(int(cy) - half - pad, 0), max(int(cx) - half - pad, 0)
+        r1, c1 = min(int(cy) + half + pad, rows), min(int(cx) + half + pad, cols)
+        layers = T.load_terrain(p.path(meta["file"]), (r0, c0, r1 - r0, c1 - c0))
+        # The same ring as the record's picture: 3.5% of the tile's width, in metres, drawn at this scale.
+        ring = 0.035 * w * res / metres * size
+        box = (int(cx) - half - c0, int(cy) - half - r0, int(cx) + half - c0, int(cy) + half - r0)
+        for s in todo:
+            img = T.render(*layers, res, s).crop(box).resize((size, size), Image.LANCZOS).convert("RGB")
+            ImageDraw.Draw(img).ellipse([size / 2 - ring, size / 2 - ring, size / 2 + ring, size / 2 + ring],
+                                        outline=(80, 160, 255), width=3)
+            img.save(files[s])
+    return {"metres": metres, "views": {s: str(f.relative_to(p.root)) for s, f in files.items()}}
+
+
 def tile_xy(p: Project, tile_id: str, fx: float, fy: float) -> tuple[float, float, int]:
     """A point given as fractions of a tile image (0,0 top left; 1,1 bottom right) to projected metres."""
     tile = p.load("tiles", {})[tile_id]

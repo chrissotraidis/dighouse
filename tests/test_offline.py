@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from dighouse import checks, server
+from dighouse import checks, server, tiles
 from dighouse.project import Project
 
 
@@ -48,6 +48,16 @@ def test_full_chain(tmp_path, survey, monkeypatch):
     server.record_verdict(root, tile, "built", "regular mound beside a flat rectangle", "model-a")
     flagged = server.flag_candidate(root, tile, fx, fy, "Mound group", "Oval mound beside a levelled plaza", "model-a")
     assert '"C-001"' in flagged[0] and p.path("candidates", "img", "C-001-relief.png").exists()
+
+    # close views for the person: the same 60 m square in every style, kept out of the history, drawn once
+    views = server.find_views(root, "C-001")
+    from PIL import Image as _Image
+    assert set(views["views"]) == set(tiles.FIND_VIEWS) and views["metres"] == 60
+    first = p.root / views["views"]["sky_view"]
+    assert first.parent == p.path("data", "views") and _Image.open(first).size == (480, 480)
+    stamp = first.stat().st_mtime_ns
+    server.find_views(root, "C-001")
+    assert first.stat().st_mtime_ns == stamp
 
     # nothing may be claimed before the checks exist
     with pytest.raises(ValueError, match="no slice"):

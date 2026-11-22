@@ -149,3 +149,20 @@ So the target for D1: Perry A1 in 10 minutes or less (a third of 32), in no more
 - Undo on C-001 returned it to waiting with no decision on its record, logged "Test person undid the decision 'natural feature'", and committed "C-001: decision undone by Test person".
 - Found and fixed while checking: the reason field did not take focus in the sheet, and Escape in it closed Decide.
 - **Not checked:** the first-project tutorial end to end (Decide puts all of the tutorial project's finds under Needs you, so its words still fit), and VoiceOver (D2).
+
+### D2: a find that reads at a glance
+
+**What changed.**
+
+- **Six views on keys 1 to 6:** composite, local relief (5 to 15 m), sky view, hillshade, openness up and openness down. Each is the same 60 m square with the find in the middle and the same ring as its record. The view chosen stays from find to find.
+- **`find_views`** (tiles.py, and a tool) draws them from the ground model, under `data/views` so they stay out of the project's history, and never draws a view twice. Six views of one find took 0.28 s. Decide asks for them when a find opens and draws the next find's while this one is read.
+- **The card** shows the close view, the whole tile with its width, and the slice. Below come chips for height, size, open maps, old maps and sources, then the second model's words, the sources and the agent's notes folded away. The suggestion's reason is shown once.
+- **VoiceOver** reads the verdict as one sentence: "The agent says worth reporting. The second model says not built. They disagree."
+
+**Checked** in the test copy at 1440 × 900 on the Shawnee copy:
+
+- **No scrolling.** The lead C-001, with views, chips and the decision bar, fits with room to spare.
+- **Views switch.** Key 2 switched to local relief, where the hollow stands out as a dark oval.
+- **The verdict line reads as one sentence.** The accessibility tree gives the sentence above. Before the fix it read the separating dots aloud.
+- **The keyboard alone cleared 20 finds.** The sequence was ⌘R to open Decide, Return to agree, M with a typed reason and Return, S to skip, ← to go back and ⌘Z to undo. The history shows 21 decisions and 1 undo, and Done shows 20.
+- **Found, not fixed here.** The shape chip on hollows says "a coherent, round rise", because the shape check measures rises. A hollow needs its own wording, and its own check.
