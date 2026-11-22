@@ -76,7 +76,16 @@ Work them in order. Each is done when its check passes in the running test copy,
 
 D0 to D4 are the review work and come first. D5 is what lets a find get past "lead". D6 to D8 can follow in any order.
 
-## Decisions for Chris before starting
+## Decisions (Chris, 2026-11-22: "go with your recommendations on all six")
+
+1. **Measured rises come off the list (D3).** They stay on the map and in scoring, and are not finds until raised.
+2. **Search on its own goes where a register is open (D5),** unless a person picks the place.
+3. **Accounts (D8):** Sweden and Finland are read once Chris makes the free accounts himself. Nothing is signed up for him.
+4. **Site-file requests (D5)** are drafts that Chris sends.
+5. **One pull request per goal,** merged when its check passes.
+6. **Borre closes at 29 of 53** for the mound loop. Ordering the raw points stays on the roadmap; it needs Chris's e-mail address, and he sends it.
+
+## The questions as they were put
 
 1. **Measured rises off the list (D3).** They stay on the map and in scoring, but are not finds until raised. Agree?
 2. **Where Search on its own goes (D5).** Default to regions with open registers (Norway, England, Bavaria, Navarre), or keep searching Ohio?
@@ -93,3 +102,26 @@ As in [AGENTS.md](../AGENTS.md): few words, a person decides, nothing is called 
 
 - **2026-11-22.** Plan written from a count of all 66 projects and a look at Perry A1's overview and Review in the running app. Repository hygiene added in the same change: AGENTS.md (credit to people only), CLAUDE.md, CONTRIBUTING.md, SECURITY.md, docs/DESIGN.md, pull request and issue templates, and a CI workflow that runs the offline tests and `scripts/check_human_authors.sh`. No app code changed.
 - **CI has not run yet.** On the first pull request (#107), GitHub did not start the jobs: "recent account payments have failed or your spending limit needs to be increased". Both jobs were run by hand instead: the offline tests pass after `uv sync --locked`, and the people-only check passes on #107's commits and description. It catches Claude, ChatGPT and Copilot attribution lines, and lets prose that mentions the rule through. The workflow runs as soon as Actions billing is fixed, or for free once the repository is public.
+- **Decisions taken.** Chris chose the recommendations on all six (above). The mound loop is closed at Borre 29 of 53.
+
+### D0: the person's time, before
+
+Checked in the test copy (`DighouseTest.app`, its own settings) on copies of Perry A1 and Shawnee Woodland Larger in `~/dighouse-ui-test/decide`, with the window at 1440 × 900 and chat and workspace side by side, as Chris uses it.
+
+| | Perry A1 | Shawnee Woodland Larger |
+|---|---|---|
+| Finds waiting | 90 (84 measured rises) | 36 (27 measured rises) |
+| As the app groups them | 1 look again, 89 modern or natural | 4 leads, 21 look again, 11 modern or natural |
+| What the header says | "1 needs you" | "25 need you" |
+| What the overview offers | "Decide 90 finds" | "Decide 36 finds" |
+| The way the overview leads: Review, one at a time | 91 presses, 90 pages | 37 presses, 36 pages |
+| The app's own wait per decision | about 1.2 s (one tool call and one commit each; commits 1 to 2 s apart when Return was pressed straight away) | the same |
+| A person's time, at about 20 s to look at one find's pictures and checks | about 32 minutes | about 13 minutes |
+
+- **The quick way is hidden.** "Agree with these" exists only in the Records list, and the Records list shows its groups only when the workspace is at least 760 points wide. Side by side with the chat at 1440 × 900 it is narrower, so Records shows one find and a menu, with no groups and no way to agree in bulk.
+- **Agreeing in bulk is blind.** Where it does show, its sheet lists names and reasons with no pictures. A careful person must still open every record: 89 for Perry A1.
+- **The overview and the header count different things.** The header counts the leads and disagreements; the overview counts every waiting find.
+- **Review always opens on all waiting finds,** leads and routine ones alike, so the few that matter are mixed in with the 89 that do not.
+- **Seven decisions were recorded in the test copy** while timing (C-057 and C-001 to C-006). That copy was set aside, and a fresh copy is used for the D1 check.
+
+So the target for D1: Perry A1 in 10 minutes or less (a third of 32), in no more than 31 presses, with pictures for every find a person agrees with.
