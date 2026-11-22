@@ -802,9 +802,11 @@ def test_measured_rises_go_on_possible_tiles_and_skip_existing_finds(tmp_path):
     p.save("terrains", {"t": {"file": "data/t.tif", "res": res, "box": [0, 0, 200, 200], "epsg": 32616, "area_km2": 0.04}})
     p.save("tiles", {"t-a": {"terrain": "t", "window": [0, 0, 100, 100], "status": "screened", "verdict": "possible"},
                      "t-b": {"terrain": "t", "window": [100, 100, 100, 100], "status": "screened", "verdict": "nothing"}})
-    got = server.measured_rises(p, 1000)
+    got = server.measured_rises(p, 1000, verdicts=("possible", "built"))
     assert len(got) == 1 and got[0]["tile"] == "t-a"
-    assert server.measured_rises(p, 1000, exclude={"C-001": {"lon": got[0]["lon"], "lat": got[0]["lat"]}}) == []
+    assert server.measured_rises(p, 1000, verdicts=("possible", "built"), exclude={"C-001": {"lon": got[0]["lon"], "lat": got[0]["lat"]}}) == []
+    # By default every tile looked at counts, so the rise on the tile called nothing is listed too.
+    assert {m["tile"] for m in server.measured_rises(p, 1000)} == {"t-a", "t-b"}
 
 def test_os_grid_names():
     """Scotland's sheets are named by Ordnance Survey grid reference; a wrong letter reads the wrong place silently."""

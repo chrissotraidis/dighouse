@@ -497,9 +497,11 @@ def record_verdict(project: str, tile: str, verdict: str, note: str, model: str)
 MEASURED_BY = "measured (find_mounds), not seen by a model"
 
 
-def measured_rises(p, per_km2: float = 50.0, verdicts: tuple = ("possible", "built"), exclude: dict | None = None) -> list[dict]:
-    """The measured rises worth a person's look on tiles a model called possible or built, best first by shape
-    (mounds.shape rank), at most per_km2 for every square km of those tiles, and none within 10 m of a find already
+def measured_rises(p, per_km2: float = 40.0, verdicts: tuple = tiles.VERDICTS, exclude: dict | None = None,
+                   order: str = "travel") -> list[dict]:
+    """The measured rises worth a person's look on tiles a model looked at (every verdict by default: on rough ground
+    most missed mounds sat on tiles called natural), best first by mounds.travel_rank (or by the older shape rank with
+    order="shape"), at most per_km2 for every square km of those tiles, and none within 10 m of a find already
     made. Each is {"tile", "x", "y", "lon", "lat", "diameter_m", "height_m", "shape"}. Nothing is written here."""
     import math
     from . import mounds, terrain as T
@@ -532,6 +534,12 @@ def measured_rises(p, per_km2: float = 50.0, verdicts: tuple = ("possible", "bui
             s = mounds.shape(dtm, gap, res, rr, cc, max(6.0, b["diameter_m"]))
             if not s.get("rank"):
                 continue
+            if order == "travel":
+                small, large = mounds.contrast(dtm, res, rr, cc, b["diameter_m"])
+                s = {**s, "contrast_small": round(small, 2), "contrast_large": round(large, 2),
+                     "rank": mounds.travel_rank(s, small, large)}
+                if not s["rank"]:
+                    continue
             fx, fy = (cc - c + 0.5) / w, (rr - r + 0.5) / h
             lon, lat = tiles.tile_lonlat(p, tid, fx, fy)
             picked.append({"tile": tid, "x": round(fx, 3), "y": round(fy, 3), "lon": lon, "lat": lat,
@@ -549,9 +557,10 @@ def measured_rises(p, per_km2: float = 50.0, verdicts: tuple = ("possible", "bui
 
 
 @tool
-def add_measured_rises(project: str, per_km2: float = 50.0) -> dict:
-    """Open a find for each of the best measured rises on tiles you called possible or built: round rises the
-    ground model shows that a picture can hide, ranked by shape, at most per_km2 for each square km of those tiles,
+def add_measured_rises(project: str, per_km2: float = 40.0) -> dict:
+    """Open a find for each of the best measured rises on the tiles looked at: round rises the ground model shows
+    that a picture can hide, ranked by how they stand out from the ground around them, at most per_km2 for each
+    square km looked at,
     and never within 10 m of a find already made. Each is marked as measured, not seen, so a person knows where it
     came from. Call it once after every tile has a verdict, then slice, check and suggest a decision on each like any
     other find."""

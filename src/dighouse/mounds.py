@@ -137,3 +137,33 @@ def shape(dtm: np.ndarray, gap: np.ndarray, res: float, row: int, col: int, diam
             "symmetry": symmetry, "roughness_m": round(roughness, 2), "share_without_ground": round(no_ground, 2),
             "rank": round(float(score), 3), "hints": hints or [default]}
 
+
+def contrast(dtm: np.ndarray, res: float, row: int, col: int, diameter_m: float) -> tuple[float, float]:
+    """How much a rise stands out from the ground around it in local relief at two window sizes (4 m and 12 m): its
+    relief at the peak divided by the spread of relief in a square six diameters across. Real mounds stand out at both;
+    on rough ground a rock or a tree throw stands out at the small window only."""
+    r = max(2, int(round(max(6.0, diameter_m) / 2 / res)))
+    pad = int(round(36 / res)) + 6 * r
+    r0, r1, c0, c1 = max(0, row - pad), min(dtm.shape[0], row + pad + 1), max(0, col - pad), min(dtm.shape[1], col + pad + 1)
+    z = dtm[r0:r1, c0:c1].astype(np.float64)
+    z = np.where(np.isfinite(z), z, np.nanmedian(z) if np.isfinite(z).any() else 0.0)
+    cy, cx = row - r0, col - c0
+    win = (slice(max(cy - 6 * r, 0), cy + 6 * r + 1), slice(max(cx - 6 * r, 0), cx + 6 * r + 1))
+    out = []
+    for radius in (4.0, 12.0):
+        lr = z - ndimage.gaussian_filter(z, radius / res)
+        out.append(float(lr[cy, cx] / max(np.std(lr[win]), 0.01)))
+    return out[0], out[1]
+
+
+def travel_rank(shape_: dict, small: float, large: float) -> float:
+    """The order measured rises are shown in, chosen on three blind-test areas (MOUND_LOOP M0 and M3): the rise against
+    the roughness around it, times how much it stands out at both relief windows, less when a pit lies beside it as
+    beside a tree throw. Hollows rank last. It ranks for review and rules nothing out."""
+    rise = shape_.get("rise_m") or 0.0
+    if (shape_.get("sink_m") or 0.0) > rise or rise <= 0:
+        return 0.0
+    rough = max(shape_.get("roughness_m") or 0.0, 0.02)
+    pit = min((shape_.get("pit_beside_m") or 0.0) / max(rise, 0.05), 1.0)
+    return round(float(rise / rough * max(small + large, 0.0) * (1 - 0.6 * pit) * (1 - (shape_.get("share_without_ground") or 0.0))), 3)
+

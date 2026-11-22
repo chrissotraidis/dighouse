@@ -70,3 +70,19 @@ What this says. At Borre and Mound City the current ranking works. At Andía it 
 
 **The French site for M5.** M5 needs a site with a published inventory of small mounds in IGN LiDAR HD coverage. Chosen in M5, after the reset, since it is a model run; candidate first: a burial-mound field on the register of a French department, with the key built like Borre's from the official register.
 
+### 2026-11-22, M3: measured rises that travel
+
+Measured rises are now ranked by `mounds.travel_rank`: the rise against the roughness around it, times how much it stands out at the 4 m and 12 m relief windows (`mounds.contrast`), less when a pit lies beside it, and nothing for hollows or ground without returns. They are taken from every tile looked at, not only those called possible or built, at most 40 per km² of all the ground looked at (the cap on what a person must rule out stays at 50 per km², and the agent's own extras count toward it).
+
+Scored offline on the five saved blind runs (`scripts/score_rises.py`): the agent's own finds plus the rises it would open, against the key.
+
+| Test | Agent alone | S5 (shape rank, possible or built tiles, 50/km²) | **M3 (travel rank, every tile, 40/km²)** | Extra per km² after |
+|---|---|---|---|---|
+| Borre | 21 of 53 | 25 | **29 of 53** | 20 |
+| Andía | 1 of 11 | 1 | **5 of 11** | 43 |
+| Mound City | 19 of 19 | 19 | 19 of 19 | 48 |
+| Maiden Castle | 1 of 3 | 3 | 3 of 3 | 29 |
+| Cahokia | 1 of 1 | 1 | 1 of 1 | 31 |
+
+Andía's check (at least 4 of 11 at 50 extra per km² or fewer) passes, and no site is worse. Taking rises from every tile matters most: on the travel rank alone, kept to possible or built tiles, Andía reached only 2. The skill and the app's tool description say "on the tiles looked at". A whole search uses it from the next run; the blind tests will confirm it live in M4.
+
