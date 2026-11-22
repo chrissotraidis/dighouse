@@ -187,6 +187,50 @@ def suggest(p: Project, cid: str, status: str, reason: str, by: str) -> dict:
     return meta
 
 
+# A measured rise goes to a person when the second model calls it built and its shape ranks in the top half of this
+# project's measured rises, or when a person raises it. The rest stay on the map as a layer, and still count in blind
+# tests. Ranks are compared within a project because how rises are ranked has changed between versions. The app's
+# ProjectStore.layer keeps the same rule.
+RISE_SHARE = 0.5
+
+
+def is_rise(meta: dict) -> bool:
+    return str(meta.get("flagged_by", "")).startswith("measured")
+
+
+def _rank(meta: dict) -> float:
+    return float((meta["checks"].get("shape") or {}).get("rank") or 0)
+
+
+def layer(records: list[dict]) -> set[str]:
+    """The measured rises kept on the map rather than put to a person (see RISE_SHARE)."""
+    ranks = sorted(_rank(m) for m in records if is_rise(m))
+    if not ranks:
+        return set()
+    cut = ranks[min(int(len(ranks) * (1 - RISE_SHARE)), len(ranks) - 1)]
+    out = set()
+    for m in records:
+        if not is_rise(m) or m["status"] not in ("flagged", "ground_confirmed") or m.get("raised"):
+            continue
+        if not (m["checks"].get("second_look", {}).get("agrees") is True and _rank(m) >= cut):
+            out.add(m["id"])
+    return out
+
+
+def raise_rise(p: Project, cid: str, by: str) -> dict:
+    """A person asks to decide a measured rise that is kept on the map: it joins the finds that wait for them."""
+    meta, notes = get(p, cid)
+    if not is_rise(meta):
+        raise ValueError(f"{cid} is not a measured rise.")
+    meta["raised"] = {"by": by, "date": today()}
+    write(p, meta, notes)
+    p.note(f"{cid} raised from the map by {by}")
+    from .record import document
+    document(p, commit_it=False)
+    commit(p.root, f"{cid} raised from the map by {by}")
+    return meta
+
+
 def set_check(p: Project, cid: str, key: str, value: dict) -> dict:
     meta, notes = get(p, cid)
     meta["checks"][key] = value

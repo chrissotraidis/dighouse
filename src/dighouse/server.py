@@ -1019,11 +1019,21 @@ def undo_decision(project: str, candidate: str, by: str) -> dict:
 
 
 @tool
+def raise_rise(project: str, candidate: str, by: str) -> dict:
+    """The app's tool for a person who wants to decide a measured rise kept on the map. Agents do not call it."""
+    p = Project(project).check()
+    ledger.raise_rise(p, candidate, by)
+    return {"candidate": candidate, "raised": True}
+
+
+@tool
 def list_candidates(project: str) -> list[dict]:
     """Every candidate with its status and what still blocks it from being marked as having no match."""
     p = Project(project).check()
-    return [{"id": m["id"], "name": m["name"], "status": m["status"],
-             "open_items": ledger.blockers(m, "no_match_in_sources_read")} for m in ledger.everything(p)]
+    records = ledger.everything(p)
+    on_map = ledger.layer(records)
+    return [{"id": m["id"], "name": m["name"], "status": m["status"], "kept_on_the_map": m["id"] in on_map,
+             "open_items": ledger.blockers(m, "no_match_in_sources_read")} for m in records]
 
 
 @tool

@@ -109,8 +109,9 @@ def write(p: Project, advice: str = "") -> dict:
     screened = [t for t in tiles.values() if t["status"] == "screened"]
     unreadable = sum(t["status"] == "unreadable" for t in tiles.values())
     counts = {v: sum(t.get("verdict") == v for t in screened) for v in record.VERDICT_WORDS}
-    open_ = [m for m in records if m["status"] in ("flagged", "ground_confirmed")]
-    decided = [m for m in records if m not in open_]
+    on_map = ledger.layer(records)
+    open_ = [m for m in records if m["status"] in ("flagged", "ground_confirmed") and m["id"] not in on_map]
+    decided = [m for m in records if m["status"] not in ("flagged", "ground_confirmed")]
 
     # Written with room to spare when there is room, and cut short when there are many finds.
     tight = {"finding": 100, "advice": 200, "question": 160, "sources": 1}
@@ -237,6 +238,10 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     if len(open_) > len(lines):
         D += ["", f"{_s(len(open_) - len(lines), 'more find')} wait{'s' if len(open_) - len(lines) == 1 else ''} for your decision. "
               "The research record and the review list every one."]
+    on_map = ledger.layer(records)
+    if on_map:
+        D += ["", f"{_s(len(on_map), 'measured rise')} {'are' if len(on_map) != 1 else 'is'} kept on the map, not put to you: "
+              "the second model did not call them built, or their shape ranks low here. Decide lists them."]
     if open_:
         D += closing
     elif records:

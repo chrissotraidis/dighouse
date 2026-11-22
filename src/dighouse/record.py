@@ -211,6 +211,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
     for t in screened:
         models[t.get("model") or "unnamed"] = models.get(t.get("model") or "unnamed", 0) + 1
     decided = [m for m in records if m.get("decisions")]
+    on_map = ledger.layer(records)
     n_status = {k: sum(s["status"] == k for s in sources.values()) for k in SOURCE_WORDS}
     failed_maps = _map_failures(p)
 
@@ -226,7 +227,10 @@ def document(p: Project, commit_it: bool = True) -> dict:
         suggestions = sum(bool(m.get("suggestion")) for m in records)
         opinions = sum(bool(m["checks"].get("second_look")) for m in records)
         short.append(f"{suggestions} have decision suggestions, {len(records) - suggestions} lack suggestions, and {opinions} have second opinions.")
-        short.append(f"A person has decided {len(decided)} of {len(records)}.")
+        short.append(f"A person has decided {len(decided)} of {len(records) - len(on_map)}."
+                     + (f" {len(on_map)} measured rise{'s are' if len(on_map) != 1 else ' is'} kept as a layer on the map: a rise goes to "
+                        "a person when the second model calls it built and its shape ranks in the top half here, or when a person "
+                        "raises it." if on_map else ""))
     if sources:
         short.append(f"{n_status['read']} published source{'s' if n_status['read'] != 1 else ''} "
                      f"{'were' if n_status['read'] != 1 else 'was'} read"
@@ -245,7 +249,7 @@ def document(p: Project, commit_it: bool = True) -> dict:
         for m in records:
             last = m["decisions"][-1] if m.get("decisions") else None
             state = (f"{ledger.LABELS.get(last['status'], last['status']).lower()}, decided by {last['by']}" if last
-                     else "waiting for a person's decision")
+                     else "a measured rise kept on the map" if m["id"] in on_map else "waiting for a person's decision")
             L.append(f"- [{m['id']} {_clean(m['name'], 70)}](candidates/{m['id']}.md): {state}.")
         L.append("")
     L += ["**How to continue.** Open this folder in Dighouse (File, then Open Project Folder) and ask the agent to carry on. "
@@ -257,7 +261,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
           f"- **Ground:** {len(terrains)} survey download{'s' if len(terrains) != 1 else ''}, {area:.2f} sq km.",
           f"- **Tiles looked at:** {len(screened)} of {len(tiles)}"
           + (f", {sum(t['status'] == 'unreadable' for t in tiles.values())} unreadable" if tiles else "") + ".",
-          f"- **Finds:** {len(records)}, of which {len(decided)} decided by a person.",
+          f"- **Finds:** {len(records)}, of which {len(decided)} decided by a person"
+          + (f" and {len(on_map)} measured rises kept on the map" if on_map else "") + ".",
           f"- **Sources:** {n_status['read']} read, {n_status['could_not_open']} could not be opened, {n_status['not_relevant']} not relevant.",
           f"- **Literature searches:** {len(searches)}.", ""]
     stop = _last_stop(p)

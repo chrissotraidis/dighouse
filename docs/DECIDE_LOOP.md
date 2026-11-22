@@ -166,3 +166,27 @@ So the target for D1: Perry A1 in 10 minutes or less (a third of 32), in no more
 - **The verdict line reads as one sentence.** The accessibility tree gives the sentence above. Before the fix it read the separating dots aloud.
 - **The keyboard alone cleared 20 finds.** The sequence was ⌘R to open Decide, Return to agree, M with a typed reason and Return, S to skip, ← to go back and ⌘Z to undo. The history shows 21 decisions and 1 undo, and Done shows 20.
 - **Found, not fixed here.** The shape chip on hollows says "a coherent, round rise", because the shape check measures rises. A hollow needs its own wording, and its own check.
+
+### D3: fewer finds to decide
+
+**The rule** (`ledger.layer`, mirrored in the app's `ProjectStore.layer`): a measured rise goes to a person when the second model calls it built and its shape rank is in the top half of the project's measured rises, or when a person raises it. Ranks are compared within a project, because older projects were ranked on a 0 to 3 scale and newer ones (the M3 contrast ranking) on 10 to 300. The rest stay on the map as a layer.
+
+- **The research record** says "A person has decided 0 of 4. 41 measured rises are kept as a layer on the map…", and lists each such rise as "a measured rise kept on the map".
+- **The search report** counts them under its decisions instead of naming them.
+- **`list_candidates`** marks each one `kept_on_the_map`.
+- **`raise_rise`** lets a person bring one back from its record, with "Raise it".
+- **On the map** a kept rise is a small dot with no label.
+- **Decide** leaves them out. After the last decision it says how many are kept and offers "Look at the 4 the second model calls built".
+
+**Checked.**
+
+| | Finds | For a person before | Now | Fewer |
+|---|---|---|---|---|
+| The two-hour run's five projects (M6) | 232 | 232 | 36 | 84% |
+| All 66 projects, outside blind tests | 744 | 744 | 313 | 58% |
+| Athens A1 in the test copy | 45 | 45 | 4 (1 alone, 3 in bulk) | 91%; cleared in 3 presses |
+
+- **Blind-test recall is unchanged.** Rescoring the saved runs gives Borre 29 of 53, Mound City 19 of 19 and Andía 4 of 11, the same as before, because every rise still counts.
+- **What a person would not see.** At Borre, 8 of the 29 mounds found were found only by measured rises. Blind tests ask no second opinion, so all 8 would be on the map in a search like this; 4 of them rank in the top half and would reach a person if the second model called them built. At Andía all 4 were found only by rises, and 1 ranks in the top half. Mound City lost none.
+- **Look again.** Across all projects, 34 of the 72 "look again" rises rank in the lower half, so they are on the map. Each is one press away in Decide, which is why the offer is there.
+- **Tests:** a new offline test covers the rule, the record, the report, raising and `list_candidates`. The offline tests pass (39).

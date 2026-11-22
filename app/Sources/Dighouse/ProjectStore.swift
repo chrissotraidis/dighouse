@@ -254,12 +254,30 @@ final class ProjectStore: ObservableObject {
             if let sug = meta["suggestion"] as? JSON, let st = sug["status"] as? String, let why = sug["reason"] as? String {
                 c.suggestion = (st, why, sug["by"] as? String ?? "the agent")
             }
+            c.raised = meta["raised"] != nil
             if let place = places[id] {
                 c.x = place["x"] as? Double ?? 0.5
                 c.y = place["y"] as? Double ?? 0.5
             }
             return c
         }
+        let kept = Self.layer(candidates)
+        for i in candidates.indices where kept.contains(candidates[i].id) { candidates[i].inLayer = true }
+    }
+
+    /// The measured rises kept on the map rather than put to a person. The same rule as ledger.layer in the tools:
+    /// a rise goes to a person when the second model calls it built and its shape ranks in the top half of this
+    /// project's measured rises, or when a person raises it.
+    static func layer(_ all: [Candidate]) -> Set<String> {
+        let rank: (Candidate) -> Double = { c in
+            let r = (c.checks["shape"] as? JSON)?["rank"]
+            return (r as? Double) ?? (r as? Int).map(Double.init) ?? 0
+        }
+        let rises = all.filter { $0.flaggedBy.hasPrefix("measured") }
+        guard !rises.isEmpty else { return [] }
+        let ranks = rises.map(rank).sorted()
+        let cut = ranks[min(Int(Double(ranks.count) * 0.5), ranks.count - 1)]
+        return Set(rises.filter { $0.waiting && !$0.raised && !($0.secondSaysBuilt == true && rank($0) >= cut) }.map(\.id))
     }
 
     private func json(_ path: String) -> Any? {

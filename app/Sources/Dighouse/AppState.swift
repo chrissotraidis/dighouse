@@ -1076,6 +1076,13 @@ final class AppState: ObservableObject {
         store.reloadIfChanged()
     }
 
+    /// A person asks to decide a measured rise kept on the map.
+    func raiseRise(_ id: String) async throws {
+        guard let project = store.current else { return }
+        _ = try await engine.callTool("raise_rise", ["project": project.path, "candidate": id, "by": userName])
+        store.reloadIfChanged()
+    }
+
     /// Open Decide, on one find when it is given.
     func openDecide(on id: String? = nil) {
         decideFocus = id

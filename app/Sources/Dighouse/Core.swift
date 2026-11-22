@@ -366,6 +366,10 @@ struct Candidate: Identifiable {
     let folder: String
     /// The agent's suggested decision and its reason, if it left one.
     var suggestion: (status: String, reason: String, by: String)?
+    /// A measured rise a person asked to decide, though it would be kept on the map.
+    var raised = false
+    /// A measured rise kept on the map rather than put to a person (ProjectStore.layer).
+    var inLayer = false
     var x = 0.5, y = 0.5
 
     var relief: String { "\(folder)/img/\(id)-relief.png" }
@@ -408,9 +412,10 @@ struct Candidate: Identifiable {
 
     /// Where the Records list puts a find: by what it probably is, so the obvious ones can be confirmed together.
     enum Group: Int, CaseIterable {
-        case closer, lookAgain, open, published, notAncient, decided
+        case closer, lookAgain, open, published, notAncient, layer, decided
         var title: String {
-            ["Worth a closer look", "Look again", "No suggestion yet", "Already published", "Modern or natural", "Decided"][rawValue]
+            ["Worth a closer look", "Look again", "No suggestion yet", "Already published", "Modern or natural",
+             "Measured rises on the map", "Decided"][rawValue]
         }
         /// Groups whose suggestions are routine enough to agree with in one step. A lead is always decided alone.
         var confirmable: Bool { self == .published || self == .notAncient }
@@ -423,6 +428,7 @@ struct Candidate: Identifiable {
     /// calls natural that the second model calls built is a disagreement; a modern find is built, so "built" agrees with it.
     var group: Group {
         guard waiting else { return .decided }
+        if inLayer { return .layer }
         switch likely?.status {
         case "already_published": return .published
         case "natural": return secondSaysBuilt == true ? .lookAgain : .notAncient

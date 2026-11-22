@@ -81,6 +81,8 @@ Small mounds are the weak spot: a mound 5 m across is a few pixels in a tile pic
 
 A whole search now also opens the measured rises that stand out most from the ground around them, on every tile looked at, as finds marked "measured, not seen", at most 40 per km² (`add_measured_rises`). On rough ground the old ranking, by height and roundness, picked rocks; the new one looks at the rise against the roughness around it and at two window sizes. Scored on saved blind runs, that took Borre from 21 to 25 of 53 mounds and Maiden Castle from 1 to 3 of 3, with fewer than 50 extra finds per km² everywhere.
 
+Measured rises are kept as a layer on the map rather than put to a person one by one. A rise joins the finds you decide when the second model calls it built and its shape ranks in the top half of the project's rises, or when you raise it from its record. Every rise still counts in the blind tests. On the two-hour search's five projects this leaves 36 of 232 finds for a person, against 232 before.
+
 The second opinion takes about a second a find: the app sends the model the ground 120 m around each find, a few at a time, as soon as each area is done. It is a filter, not a confirmation. Rated blind on 102 crops of known ground, Claude Sonnet 5.5 called 19 of 24 published features built, and when it said "not built" it was right 91% of the time; when it said "built" it was right only 40% of the time. Each record says so: a second opinion that disagrees counts, one that agrees is a weak check.
 
 > [!NOTE]

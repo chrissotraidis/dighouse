@@ -73,7 +73,7 @@ struct DecideView: View {
 
     private func start() {
         let order: (Candidate, Candidate) -> Bool = { ($0.group.rawValue, $0.id) < ($1.group.rawValue, $1.id) }
-        let waiting = store.candidates.filter(\.waiting).sorted(by: order)
+        let waiting = store.candidates.filter { $0.waiting && $0.group != .layer }.sorted(by: order)
         // The first project's tutorial decides its find on its own page, as the tutorial's words say.
         let tutorial = app.tutorialOn && app.tutorialProject == store.current?.path
         needs = waiting.filter { tutorial || !$0.group.confirmable }.map(\.id)
@@ -151,11 +151,36 @@ struct DecideView: View {
             .task(id: c.id) {
                 if let next = needs.dropFirst(index + 1).compactMap(find).first(where: \.waiting) { await app.ensureViews(next) }
             }
-        } else if !bulkLeft.isEmpty {
-            message("Nothing more needs you one at a time. \(bulkLeft.count) routine find\(bulkLeft.count == 1 ? "" : "s") to agree with.",
-                    button: ("Agree in bulk", { step = .bulk }))
         } else {
-            message(made.isEmpty ? "Nothing waits for a decision." : "Every find here is decided.", button: ("Close", { dismiss() }))
+            VStack(spacing: 16) {
+                if !bulkLeft.isEmpty {
+                    message("Nothing more needs you one at a time. \(bulkLeft.count) routine find\(bulkLeft.count == 1 ? "" : "s") to agree with.",
+                            button: ("Agree in bulk", { step = .bulk }))
+                } else {
+                    message(made.isEmpty ? "Nothing waits for a decision." : "Every find here is decided.", button: ("Close", { dismiss() }))
+                }
+                layerOffer
+            }
+        }
+    }
+
+    /// Measured rises kept on the map that the second model calls built, one press away.
+    @ViewBuilder private var layerOffer: some View {
+        let built = store.candidates.filter { $0.group == .layer && $0.secondSaysBuilt == true && !needs.contains($0.id) }
+        let kept = store.candidates.filter { $0.group == .layer }.count
+        if kept > 0 {
+            VStack(spacing: 8) {
+                Text("\(kept) measured rise\(kept == 1 ? " is" : "s are") kept on the map: the second model did not call \(kept == 1 ? "it" : "them") built, or the shape ranks in the lower half here.")
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).multilineTextAlignment(.center).frame(maxWidth: 460)
+                if !built.isEmpty {
+                    Button("Look at the \(built.count) the second model calls built") {
+                        needs.append(contentsOf: built.map(\.id))
+                        index = needs.firstIndex(of: built[0].id) ?? index
+                        step = .needs
+                    }
+                    .buttonStyle(SecondaryButton())
+                }
+            }
         }
     }
 
@@ -430,6 +455,7 @@ struct DecideView: View {
                     }
                     .padding(22).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
                 }
+                layerOffer.padding(.bottom, 16)
                 if let problem { Text(problem).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber).padding(8) }
             }
         }

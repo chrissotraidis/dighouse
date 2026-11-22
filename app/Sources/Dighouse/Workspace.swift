@@ -203,7 +203,7 @@ struct MapView: View {
                         if showPins {
                             ForEach(store.candidates) { c in
                                 if let spot = spots.first(where: { $0.tile.id == c.tile }) {
-                                    Pin(label: c.id, selected: store.selectedCandidate == c.id)
+                                    Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer)
                                         .offset(x: (spot.x + c.x * spot.w) * scale - 8,
                                                 y: (spot.y + c.y * spot.h) * scale - 8)
                                         .onTapGesture(count: 2) { app.showRecords(c.id) }
@@ -560,8 +560,20 @@ private struct TileView: View {
 private struct Pin: View {
     let label: String
     let selected: Bool
+    /// A measured rise kept on the map: a small dot with no label, so it does not crowd the finds put to a person.
+    var onMap = false
 
     var body: some View {
+        if onMap && !selected {
+            Circle().fill(.white.opacity(0.75)).frame(width: 7, height: 7)
+                .overlay(Circle().strokeBorder(.black.opacity(0.5), lineWidth: 1))
+                .frame(width: 16, height: 16).contentShape(Rectangle())
+        } else {
+            labelled
+        }
+    }
+
+    private var labelled: some View {
         HStack(spacing: 4) {
             Circle().fill(selected ? Theme.accent : .white).frame(width: 16, height: 16)
                 .overlay(Circle().strokeBorder(.black.opacity(0.55), lineWidth: 1.5))
@@ -640,7 +652,7 @@ struct RecordsView: View {
                     let items = store.candidates.filter { $0.group == group }
                     if !items.isEmpty {
                         groupHeader(group, count: items.count)
-                        if group == .notAncient { routineRows(items) } else { ForEach(items) { c in listRow(c) } }
+                        if group == .notAncient || group == .layer { routineRows(items) } else { ForEach(items) { c in listRow(c) } }
                     }
                 }
             }
@@ -794,6 +806,23 @@ struct RecordsView: View {
             Text("Part of a blind test. It is scored against the published features when the test ends.")
                 .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                 .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14, radius: 12)
+        } else if c.inLayer {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Kept on the map").font(.system(size: 15 * Theme.scale, weight: .semibold))
+                Text(c.secondSaysBuilt == true
+                     ? "A measured rise. The second model calls it built, but its shape ranks in the lower half of this project's rises, so it is not put to you."
+                     : "A measured rise the second model did not call built, so it is not put to you. It stays on the map and counts in blind tests.")
+                    .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                Button("Raise it") {
+                    Task { @MainActor in
+                        try? await app.raiseRise(c.id)
+                        app.openDecide(on: c.id)
+                    }
+                }
+                .buttonStyle(SecondaryButton()).padding(.top, 4)
+                .help("Put it with the finds you decide, and open it in Decide")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 14, radius: 12)
         } else if c.waiting {
             VStack(alignment: .leading, spacing: 6) {
                 if let s = c.likely, let label = Candidate.labels[s.status] {

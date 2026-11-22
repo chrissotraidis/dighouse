@@ -380,6 +380,41 @@ def test_the_search_report_says_what_the_records_say(tmp_path):
     assert "Try the sky view on the next tile north." in again
 
 
+def test_measured_rises_stay_on_the_map_until_raised(tmp_path):
+    """A measured rise reaches a person when the second model calls it built and it ranks in the top half of the
+    project's rises, or when a person raises it; the rest stay on the map and out of the report's decisions."""
+    from dighouse import ledger
+
+    root = str(tmp_path / "layer")
+    p = Project.create(root, "Layer", "Which rises are built?", [0.0, 51.0, 0.01, 51.01])
+    seen = ledger.create(p, "A bank", "t1-r000c000", (0.005, 51.005), "a bank", "model-a")["id"]
+    rises = {}
+    for rank, agrees in ((1.0, True), (2.0, None), (3.0, False), (4.0, True)):
+        cid = ledger.create(p, f"Measured rise {rank}", "t1-r000c000", (0.005, 51.005), "a rise", "measured (find_mounds)")["id"]
+        ledger.set_check(p, cid, "shape", {"rank": rank})
+        if agrees is not None:
+            ledger.set_check(p, cid, "second_look", {"agrees": agrees, "model": "model-b", "note": ""})
+        rises[rank] = cid
+    records = ledger.everything(p)
+    assert ledger.layer(records) == {rises[1.0], rises[2.0], rises[3.0]}
+    assert seen not in ledger.layer(records) and rises[4.0] not in ledger.layer(records)
+
+    got = server.write_report(root)
+    assert sorted(got["waiting_for_a_person"]) == sorted([seen, rises[4.0]])
+    text = p.path(got["written"]).read_text()
+    assert "3 measured rises are kept on the map, not put to you" in text
+    research = p.path("RESEARCH.md").read_text()
+    assert "A person has decided 0 of 2. 3 measured rises are kept as a layer on the map" in research
+    assert f"{rises[2.0]} Measured rise 2.0](candidates/{rises[2.0]}.md): a measured rise kept on the map." in research
+
+    server.raise_rise(root, rises[1.0], "Chris")
+    assert ledger.layer(ledger.everything(p)) == {rises[2.0], rises[3.0]}
+    with pytest.raises(ValueError, match="not a measured rise"):
+        server.raise_rise(root, seen, "Chris")
+    listed = {c["id"]: c["kept_on_the_map"] for c in server.list_candidates(root)}
+    assert listed[rises[3.0]] and not listed[rises[1.0]]
+
+
 def test_many_decisions_at_once_and_undo(tmp_path):
     """Agreeing with many finds writes each record with the person's name and reason in one commit; undo puts one back."""
     import subprocess
