@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
-  <img alt="52 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-52%20tools-8B5E3C">
+  <img alt="53 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-53%20tools-8B5E3C">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
 </p>
 
@@ -36,7 +36,7 @@ A **find** in Dighouse is a shape that might be built and is not yet confirmed. 
 ## What it cannot do
 
 - **It does not confirm sites.** A find is a reason to look, not a discovery. Confirming one takes an archaeologist, and often fieldwork.
-- **It misses things.** In the blind tests below it found large earthworks reliably and missed most small, low mounds: 25 of 53 at Borre, and 1 of the 11 low megalithic mounds in Navarre's 2 m model.
+- **It misses things.** In the blind tests below it found large earthworks reliably and missed most small, low mounds: 29 of 53 at Borre, and 4 of the 11 low megalithic mounds in Navarre's 2 m model.
 - **Under water it is a pilot.** It reads NOAA's sonar surveys of US waters only. A wreck lying flat, buried in sediment, among rocks, or in a gap between survey lines will not show.
 - **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are not public, so "no match in the sources read" often means little was readable.
 - **It sees shapes in the ground, not artefacts.** Lidar cannot show buried deposits, pottery scatters, or a feature's date or culture.
@@ -48,20 +48,20 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
 
 | Site | Data | Found of known | Missed | Not in the key |
 |---|---|---|---|---|
-| Mound City Group, Ohio * | USGS 3DEP | 19 of 19 | 0 | 11 (real mounds the key leaves out, and measured rises) |
+| Mound City Group, Ohio * | USGS 3DEP | 19 of 19 | 0 | 14 (real mounds the key leaves out, and measured rises) |
 | Angel Mounds, Indiana | USGS 3DEP | 4 of 4 | 0 | 3 |
-| Cahokia, Monks Mound, Illinois * | USGS 3DEP | 1 of 1 | 0 | 4 |
+| Cahokia, Monks Mound, Illinois * | USGS 3DEP | 1 of 1 | 0 | 8 |
 | Serpent Mound, Ohio | USGS 3DEP | 1 of 3 (the effigy) | 2 burial mounds | 2 |
-| Maiden Castle, England * | Environment Agency 1 m | 3 of 3 | 0 | 32 |
-| Borre, Norway * | Kartverket 1 m | 25 of 53 | 28 small burial mounds | 9 |
+| Maiden Castle, England * | Environment Agency 1 m | 3 of 3 | 0 | 33 |
+| Borre, Norway * | Kartverket 1 m | 29 of 53 | 24 small burial mounds | 10 |
 | Oberhaching square enclosures, Bavaria | Bavarian DGM1 1 m | 2 of 3 | 1 enclosure | 3 |
 | Lauske ring forts, Saxony | Saxon DGM1 1 m | 3 of 3 | 0 | 5 |
 | Irulegi hill, Navarre | Navarre 2 m | 1 of 2 (the castle) | the Iron Age village | 0 |
-| Sierra de Andía megaliths, Navarre * | Navarre 2 m | 1 of 11 | 10 low mounds and dolmens | 63 |
+| Sierra de Andía megaliths, Navarre * | Navarre 2 m | 4 of 11 | 7 low mounds and dolmens | 114 |
 | Puketapu Pa, Auckland | LINZ 1 m | 1 of 1 | 0 | 8 |
 | Munoaundi hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (marked 141 m off its mapped line) | 1 |
 | Arrola hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (banks marked 97 m outside the mapped outline) | 1 |
-| **All thirteen on land** | | **60 of 105** | 45 | 142 |
+| **All thirteen on land** | | **67 of 105** | 38 | 202 |
 | Thunder Bay wrecks, Lake Huron (three areas) | NOAA sonar, 1 m | 4 of 7 charted wrecks | 3 | 5 |
 
 <table>
@@ -73,15 +73,15 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
 
 <p align="center"><img src="docs/images/test-sites.png" width="640" alt="Test it on a known site: ten known sites to try blind, from Mound City in Ohio to Puketapu Pā in Auckland, and a wreck on the bed of Lake Huron under water"><br><sub><b>Ten sites to test it on.</b> Mounds, hillforts, ring forts and a pā on land, and a wreck on the lake bed from NOAA's sonar surveys. Press one and the agent searches it blind.</sub></p>
 
-\* Rerun on 2026-11-21, when a whole search also opens the best-shaped measured rises on tiles the agent called possible or built (at most 50 per km²): recall rose at Borre, Maiden Castle and Andía, and so did the finds a person rules out, which stayed under 50 per km² on every site. The rest were run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 to 10 minutes a site. Every land site was run with the same method (the two Basque hillforts a day later): a look at the whole area first, then every tile, then a slice and a map check for each find. The answer keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them (the rest). Most keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log). Results will differ with other models.
+\* Rerun on 2026-11-22, when a whole search also opens the measured rises that stand out most from the ground around them, on every tile looked at (at most 40 per km²): recall rose at Borre (21 to 29 of 53 over two loops), Maiden Castle (1 to 3) and Andía (0 to 4), and so did the finds a person rules out; Mound City and Andía went a little over 50 per km² of them. Andía's extras leave out 72 marked by a mound-only pass that was tried in the same run and not kept. The rest were run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 to 10 minutes a site. Every land site was run with the same method (the two Basque hillforts a day later): a look at the whole area first, then every tile, then a slice and a map check for each find. The answer keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them (the rest). Most keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log). Results will differ with other models.
 
 The underwater row is a pilot: one source (NOAA's sonar surveys of US waters and the Great Lakes), three small areas of Thunder Bay National Marine Sanctuary, and one scored run each. The three charted wrecks it missed stand barely above a rocky lake bed, or lie at the edge of the survey.
 
 Small mounds are the weak spot: a mound 5 m across is a few pixels in a tile picture. `find_mounds` measures round rises in the ground model instead, and the clearest ones (at least 0.6 m high and nearly round) go on a list for a person to look over, apart from the agent's finds. On the six original sites that list puts 50 of 83 known features in front of a person instead of 45, for 28 more spots to rule out. It does not travel well: on rough ground it floods the list, with 565 spots on the Navarre upland (where it reaches 6 of the 11 megaliths) and 54 at the Saxon forts.
 
-A whole search now also opens the best-shaped measured rises on tiles the agent called possible or built as finds, marked "measured, not seen", at most 50 per km² (`add_measured_rises`). Scored on saved blind runs, that took Borre from 21 to 25 of 53 mounds and Maiden Castle from 1 to 3 of 3, with fewer than 50 extra finds per km² everywhere.
+A whole search now also opens the measured rises that stand out most from the ground around them, on every tile looked at, as finds marked "measured, not seen", at most 40 per km² (`add_measured_rises`). On rough ground the old ranking, by height and roundness, picked rocks; the new one looks at the rise against the roughness around it and at two window sizes. Scored on saved blind runs, that took Borre from 21 to 25 of 53 mounds and Maiden Castle from 1 to 3 of 3, with fewer than 50 extra finds per km² everywhere.
 
-The second opinion is a filter, not a confirmation. Rated blind on 102 crops of known ground, Claude Sonnet 5.5 called 19 of 24 published features built, and when it said "not built" it was right 91% of the time; when it said "built" it was right only 40% of the time. Each record says so: a second opinion that disagrees counts, one that agrees is a weak check.
+The second opinion takes about a second a find: the app sends the model the ground 120 m around each find, a few at a time, as soon as each area is done. It is a filter, not a confirmation. Rated blind on 102 crops of known ground, Claude Sonnet 5.5 called 19 of 24 published features built, and when it said "not built" it was right 91% of the time; when it said "built" it was right only 40% of the time. Each record says so: a second opinion that disagrees counts, one that agrees is a weak check.
 
 > [!NOTE]
 > Dighouse builds from source today. The app is signed for local use and is not yet notarized. The archaeology tools also run on their own in Codex or any harness that speaks the Model Context Protocol.

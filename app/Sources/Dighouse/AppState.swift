@@ -280,7 +280,7 @@ final class AppState: ObservableObject {
                 + "goes inside \(Paths.projectsHome.path), then tell the person to open it from the card in the chat. " + shared
         }
         chat.timedInstructions = { [weak self] in
-            (self?.setup.skill ?? "") + "\nThis is a timed research session. Create the session’s research projects directly with init_project and use their returned paths. Keep a dated session record in the general chat folder. Continue independently through the deadline. A check you cannot finish is noted as open, never a reason to stop. Before you leave any project with open finds, call suggest_decision on each of them, so a person only confirms or corrects. Record which decisions need a person."
+            (self?.setup.skill ?? "") + "\nThis is a timed research session. Create the session’s research projects directly with init_project, passing only a short folder name so each lands in the projects folder, and use their returned paths. Keep a dated session record in the general chat folder, and nothing else there. Continue independently through the deadline. A check you cannot finish is noted as open, never a reason to stop. Before you leave any project with open finds, call suggest_decision on each of them, so a person only confirms or corrects. Record which decisions need a person."
         }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }

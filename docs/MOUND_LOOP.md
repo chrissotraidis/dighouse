@@ -132,3 +132,30 @@ So the pass is not kept: the tools, the skill's step and the prompt's step were 
 
 **What it says.** Finer data is not the lever. At Borre, 1 m and 2 m show the same 32 mounds; the other 21 are too low or too worn to show at any resolution read here. In the Ardèche, finer data shows *fewer* mounds as a rise: at 0.5 m every stone and wall is a bump, so a low mound breaks into pieces among them; smoothed to 2 m, 10 of 12 stand out. On stony ground the ranking does not lift them above the walls and clearance cairns (1 of 12 at best). The gains come from how the ground is looked at (smoothing to the size of the mound, as M3's large window does) rather than from finer surveys. Navarre's newer 0.5 m model is not served by IDENA (its WCS lists only the 2 m model), so Andía stays at 2 m.
 
+### 2026-11-22, M6: two hours where mounds are small (and M2's check)
+
+Started at 10:31 from Home (Search on its own, 2 hours), measuring on, after the usage reset. Nobody steered it; it ended at 12:31 on its own. It chose the dissected uplands of southeast and east Ohio, where low earthen mounds are the common site and few are on record.
+
+| Area | km² | Finds (measured rises) | Opinions | When the area's summary was written | When its opinions were in | Look again |
+|---|---|---|---|---|---|---|
+| Perry A1 | 1.71 | 90 (84) | 90 | 10:49 | 10:50 | 1 |
+| Athens A1 | 1.72 | 45 (42) | 45 | 11:06 | 11:06 | 3 |
+| Perry A2 | 1.71 | 47 (42) | 47 | 11:29 | 11:30 | 0 |
+| Coshocton A1 | 1.70 | 48 (41) | 48 | 12:06 | 12:06 | 2 |
+| Guernsey A1 | (32 of 48 tiles) | 2 (0) | 2 | 12:25, at the timer's close | 12:25 | 0 |
+| **Total** | **6.84 fully** | **232 (209)** | **232** | | | **6** |
+
+| Check | Result |
+|---|---|
+| No step-ins | none |
+| Every find has a second opinion within 10 minutes of the end | **all 232 were in before the end**, each area's within a minute of its summary (M2's check: at most 5 left at the end, passed with 0) |
+| The review list fits on one screen per project | at most 3 finds to look again, then one routine group with Agree with these and the measured rises folded by tile (Perry A1: 1, then 89 in about 30 rows) |
+| How many small round rises reached a person | 209 measured rises in 6.84 km², about 31 per km², each sliced, map-checked, suggested and given an opinion; the agent's suggestions put 203 of them in the routine group and Sonnet disagreed on 6 |
+| The window | two stalls under 300 ms at launch, none in two hours |
+
+Two faults found and fixed. The agent placed this session's five projects inside the general chat's folder in Application Support (it passed a full path there), where they worked but sat apart from the rest; they were moved to `~/Dighouse` with the app quit and their paths updated, and `new_folder` now sends any project placed under Application Support to the projects folder, with the session prompt asking for a short folder name. And the Guernsey record said "A person stopped the run" when the agent stopped at the timer's close instruction; the note now reads "The run was stopped during", which is true either way, and the old wording is still read.
+
+### 2026-11-22, M7: hand over
+
+README: 53 tools; the benchmark table with the five reruns (Borre 29 of 53, Andía 4 of 11, 67 of 105 on land), its footnote saying that Mound City and Andía went a little over 50 extra finds per km² and that Andía's figure leaves out the mound pass that was not kept; measured rises and second opinions described as they work now. HANDOFF: "What the mound loop added" and the benchmark line. ROADMAP: the small-mounds item says the next lever is the raw points. The Toolbox already named the measured-rises tool by its new reach (M3).
+

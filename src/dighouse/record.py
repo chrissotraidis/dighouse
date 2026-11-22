@@ -19,7 +19,8 @@ COORD = re.compile(r"(?<![\w/.])-?\d{1,3}\.\d{4,}(?![\w/.])")
 VERDICT_WORDS = {"built": "looked built", "possible": "possible", "natural": "natural", "modern": "modern", "nothing": "nothing"}
 SOURCE_WORDS = {"read": "Read", "could_not_open": "Could not be opened", "not_relevant": "Not relevant"}
 # How a stop by the person is written in the dated notes. The stage the run was on follows it.
-STOPPED = "A person stopped the run during: "
+STOPPED = "The run was stopped during: "
+STOPPED_BEFORE = "A person stopped the run during: "   # the older wording, still read
 
 
 def _clean(text: str, limit: int = 0) -> str:
@@ -78,8 +79,9 @@ def _last_stop(p: Project) -> tuple[str, str, str] | None:
             m = re.match(r"- (\d\d:\d\d) (.*)", line)
             if not m:
                 continue
-            if m.group(2).startswith(STOPPED):
-                last = (f.stem, m.group(1), m.group(2)[len(STOPPED):])
+            prefix = next((x for x in (STOPPED, STOPPED_BEFORE) if m.group(2).startswith(x)), None)
+            if prefix:
+                last = (f.stem, m.group(1), m.group(2)[len(prefix):])
             elif m.group(2).startswith(("Wrote the run summary", "Wrote the search report")):
                 last = None
     return last

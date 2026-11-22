@@ -178,6 +178,11 @@ def new_folder(project: str | Path) -> Path:
     root = Path(project).expanduser()
     if not root.is_absolute():
         root = projects_home() / root
+    # A project never goes into Dighouse's own Application Support folder (where the general chat runs), however the
+    # path was written: it would be missed by everything that looks for projects. It goes in the projects folder.
+    support = Path.home() / "Library" / "Application Support" / "Dighouse"
+    if support in root.resolve().parents:
+        root = projects_home() / root.name
     if in_icloud(root):
         raise ValueError(f"{root} is kept in iCloud, where files go offline and every read waits for a download. "
                          f"Put the project in {projects_home()} or in the GitHub folder instead.")
