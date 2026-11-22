@@ -498,7 +498,7 @@ MEASURED_BY = "measured (find_mounds), not seen by a model"
 
 
 def measured_rises(p, per_km2: float = 40.0, verdicts: tuple = tiles.VERDICTS, exclude: dict | None = None,
-                   order: str = "travel") -> list[dict]:
+                   order: str = "travel", min_h: float = 0.25) -> list[dict]:
     """The measured rises worth a person's look on tiles a model looked at (every verdict by default: on rough ground
     most missed mounds sat on tiles called natural), best first by mounds.travel_rank (or by the older shape rank with
     order="shape"), at most per_km2 for every square km of those tiles, and none within 10 m of a find already
@@ -527,7 +527,7 @@ def measured_rises(p, per_km2: float = 40.0, verdicts: tuple = tiles.VERDICTS, e
         pad = int(40 / res)
         r0, c0 = max(r - pad, 0), max(c - pad, 0)
         sub = (slice(r0, r + h + pad), slice(c0, c + w + pad))
-        for b in mounds.bumps(dtm[sub], res, min_h=0.25, valid=valid[sub]):
+        for b in mounds.bumps(dtm[sub], res, min_d=3.0 if min_h < 0.25 else 4.0, min_h=min_h, valid=valid[sub]):
             rr, cc = b["row"] + r0, b["col"] + c0
             if not (r <= rr < r + h and c <= cc < c + w):
                 continue

@@ -26,13 +26,19 @@ from dighouse import answers, mounds, terrain as T
 from dighouse.project import Project
 
 ROUTER = "http://127.0.0.1:10100/v1/responses"
-MODELS = sys.argv[1:] or ["anthropic/claude-sonnet-5-5", "opencode-go-secondary/glm-5.3", "opencode-go/kimi-k3"]
+TILE = "--tile" in sys.argv   # rate the view the app's agent-chat path gave: a whole 250 m tile and where the find sits in it
+MODELS = [a for a in sys.argv[1:] if not a.startswith("--")] or ["anthropic/claude-sonnet-5-5", "opencode-go-secondary/glm-5.3", "opencode-go/kimi-k3"]
+TILE_QUESTION = ("You are giving an independent second opinion on a possible archaeological feature in lidar of bare ground. "
+                 "The two pictures show the same 250 m tile, north up: a composite view and a local relief view. The feature sits "
+                 "about {x} percent across and {y} percent down the tile. Was it built by people (a mound, bank, ditch, platform), "
+                 "or is it natural ground or nothing? Reply with JSON only: {{\"built\": true or false, \"why\": \"one short sentence\"}}.")
+TILE_HALF_M = 125
 QUESTION = ("You are giving an independent second opinion on a possible archaeological feature in lidar of bare ground. "
             "The two pictures show the same 120 m square, north up: a composite view and a local relief view. "
             "Look only at the feature at the very centre. Was it built by people (a mound, bank, ditch, platform), "
             "or is it natural ground or nothing? Reply with JSON only: {\"built\": true or false, \"why\": \"one short sentence\"}.")
 HALF_M = 60
-random.seed(7)
+random.seed(int(__import__("os").environ.get("RATE_SEED", "7")))
 
 
 def png(img) -> str:
@@ -80,13 +86,26 @@ def items(folder: Path, per_kind: int) -> list[dict]:
     for kind, truth, (r, c) in chosen:
         win = (slice(r - h, r + h), slice(c - h, c + h))
         z, g, o = dtm[win], gap[win], out[win]
-        out_items.append({"site": k["name"], "kind": kind, "built": truth,
-                          "images": [png(T.render(z, g, o, res, "composite")), png(T.render(z, g, o, res, "local_relief"))]})
+        item = {"site": k["name"], "kind": kind, "built": truth,
+                "images": [png(T.render(z, g, o, res, "composite")), png(T.render(z, g, o, res, "local_relief"))]}
+        if TILE:
+            # The same spot as the app's chat saw it: somewhere inside a 250 m tile, with its place given in words.
+            t = int(TILE_HALF_M * 2 / res)
+            fx, fy = random.uniform(0.15, 0.85), random.uniform(0.15, 0.85)
+            r0 = min(max(r - int(fy * t), 0), dtm.shape[0] - t)
+            c0 = min(max(c - int(fx * t), 0), dtm.shape[1] - t)
+            tw = (slice(r0, r0 + t), slice(c0, c0 + t))
+            def tile_png(style):
+                buf = io.BytesIO(); T.render(dtm[tw], gap[tw], out[tw], res, style).convert("L").resize((768, 768)).save(buf, format="PNG")
+                return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+            item["images"] = [tile_png("composite"), tile_png("local_relief")]
+            item["question"] = TILE_QUESTION.format(x=int((c - c0) / t * 100), y=int((r - r0) / t * 100))
+        out_items.append(item)
     return out_items
 
 
 def ask(model: str, item: dict) -> dict:
-    content = [{"type": "input_text", "text": QUESTION}] + [{"type": "input_image", "image_url": u} for u in item["images"]]
+    content = [{"type": "input_text", "text": item.get("question") or QUESTION}] + [{"type": "input_image", "image_url": u} for u in item["images"]]
     try:
         r = httpx.post(ROUTER, json={"model": model, "input": [{"role": "user", "content": content}], "stream": False}, timeout=180)
         d = r.json()
@@ -117,7 +136,7 @@ def main():
         jobs = {pool.submit(ask, m, it): (m, it) for m in MODELS for it in all_items}
         for job in cf.as_completed(jobs):
             m, it = jobs[job]
-            results[m].append({**{k: v for k, v in it.items() if k != "images"}, **job.result()})
+            results[m].append({**{k: v for k, v in it.items() if k not in ("images", "question")}, **job.result()})
     print(f"{'model':36s} {'answered':>8s} {'built found':>12s} {'rises refused':>14s} {'plain refused':>14s} {'overall':>8s}")
     for m, rows in results.items():
         got = [r for r in rows if r["answer"] is not None]
@@ -126,11 +145,13 @@ def main():
             ok = sum(r["answer"] == r["built"] for r in sub)
             return f"{ok}/{len(sub)}"
         overall = sum(r["answer"] == r["built"] for r in got)
-        print(f"{m:36s} {len(got):>4d}/{len(rows):<3d} {rate('published feature'):>12s} {rate('measured rise not in the key'):>14s} {rate('plain ground'):>14s} {overall:>4d}/{len(got)}")
+        yes = [r for r in got if r["answer"]]; no = [r for r in got if not r["answer"]]
+        print(f"{m:36s} {len(got):>4d}/{len(rows):<3d} {rate('published feature'):>12s} {rate('measured rise not in the key'):>14s} {rate('plain ground'):>14s} {overall:>4d}/{len(got)}"
+              f"  yes right {sum(r['built'] for r in yes)}/{len(yes)}, no right {sum(not r['built'] for r in no)}/{len(no)}")
         errs = {r.get('error') for r in rows if r['answer'] is None}
         if errs:
             print("    errors:", list(errs)[:2])
-    Path(Path.home() / "Dighouse" / ".reviewer-ratings.json").write_text(json.dumps(results, indent=1))
+    Path(Path.home() / "Dighouse" / (".reviewer-ratings-tile.json" if TILE else ".reviewer-ratings.json")).write_text(json.dumps(results, indent=1))
 
 
 if __name__ == "__main__":

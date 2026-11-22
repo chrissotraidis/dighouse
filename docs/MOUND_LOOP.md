@@ -159,3 +159,20 @@ Two faults found and fixed. The agent placed this session's five projects inside
 
 README: 53 tools; the benchmark table with the five reruns (Borre 29 of 53, Andía 4 of 11, 67 of 105 on land), its footnote saying that Mound City and Andía went a little over 50 extra finds per km² and that Andía's figure leaves out the mound pass that was not kept; measured rises and second opinions described as they work now. HANDOFF: "What the mound loop added" and the benchmark line. ROADMAP: the small-mounds item says the next lever is the raw points. The Toolbox already named the measured-rises tool by its new reach (M3).
 
+### 2026-11-22, after M7: following up the two failed checks
+
+**Borre's target (M4).** Lowering the height threshold for measured rises shows more of Borre's mounds as a rise (at 0.15 m, 39 of 53 instead of 34; at 0.05 m, 45), but hundreds of other low bumps come with them and outrank them: offline, Borre drops to 27 of 53. Raising the cap instead: 31 of 53 at 60 per km², 32 at 100 per km² with 74 extra per km². So 33 of 53 inside the cap of 50 is not reachable from Kartverket's 1 m model by any ranking tried. `measured_rises` keeps a `min_h` setting (default unchanged) for later work.
+
+**Which picture to send (M1).** The rating script now also rates the view the app's chat gave (`--tile`: the whole 250 m tile and where the find sits, in words) on the same 102 spots of known ground, and takes a seed. Three runs each, Sonnet 5.5:
+
+| View | Real features called built | "Built" right | "Not built" right |
+|---|---|---|---|
+| Centred 120 m crop (M1 as first shipped) | 14, 16, 18 of 24 | 31–37% | 82%, 85%, 89% |
+| Whole tile with the position in words | **20, 19, 22 of 24** | 36–41% | **91%, 90%, 96%** |
+
+S3's single run of the crop (19 of 24, 91%) was at the good end. The whole-tile view is better on both counts, so the direct path now sends that view, keeping its speed. Asked this way it agrees with itself in 72 of 75 finds (96%), but still with the old chat answers in only 57 of 75 (76%), the same as the crop. A second chat run on Mohican is under way to measure how often the chat agrees with itself.
+
+The chat's own consistency, measured: a second chat run on Mohican's 35 finds (`-chatOpinions YES` keeps the chat path for such checks; 622 s) agrees with the first chat run in only **22 of 35 (63%)**; it called 11 built where the first called 4. The direct path (whole tile, position in words; 35 finds in 54 s through the app) agrees with that fresh chat run in **32 of 35 (91%)**, and with itself in 96%. So M1's check passes when the two ways are run under the same conditions: the 76% against last night's chat answers measured the chat's own drift, not a fault in the direct path. M1's check is met; the direct path stays, now with the whole-tile view, which also rated better on known ground.
+
+**Where the loop ends.** Every goal has its check logged. Met: M0, M1 (on the second look above), M2, M3 (offline; live, Mound City and Andía run a little over 50 extra per km², logged), M5, M6, M7. Not met: M4's Borre target, 33 of 53, which the work above shows is out of reach from the 1 m ground model inside the cap; the pass itself was tried and taken out. The next lever is ground models built from raw points, which Kartverket does not serve openly for Borre.
+

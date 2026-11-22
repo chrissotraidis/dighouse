@@ -1,6 +1,7 @@
-"""Second opinions asked straight of a model: each find's ground, 120 m centred on it in composite and local relief (the
-views the reviewer rating in SECOND_OPINION_LOOP S3 was measured on), sent through the OpenCodex router, a few finds at
-once. A model that fails is set aside and the next is asked about the same find. Each record names the model."""
+"""Second opinions asked straight of a model: the whole tile a find is on, in composite and local relief, with where the
+find sits given in words (the view the app's agent chat gave, which rated better on known ground than a centred crop:
+MOUND_LOOP, after M7), sent through the OpenCodex router, a few finds at once. A model that fails is set aside and the
+next is asked about the same find. Each record names the model."""
 
 from __future__ import annotations
 
@@ -17,34 +18,28 @@ from .project import Project, today, without_coordinates
 
 ROUTER = os.environ.get("DIGHOUSE_ROUTER", "http://127.0.0.1:10100/v1/responses")
 QUESTION = ("You are giving an independent second opinion on a possible archaeological feature in lidar of bare ground. "
-            "The two pictures show the same 120 m square, north up: a composite view and a local relief view. Look only at the "
-            "feature at the very centre. Does it look built by people? Reply with JSON only: "
-            "{\"agrees\": true if it looks built, false if not, \"note\": \"one sentence\"}.")
+            "The two pictures show the same tile, north up: a composite view and a local relief view. The feature sits about "
+            "{x} percent across and {y} percent down the tile. Look at what is there. Does it look built by people? Reply with "
+            "JSON only: {{\"agrees\": true if it looks built, false if not, \"note\": \"one sentence\"}}.")
 _client = httpx.Client(timeout=180)
 
 
-def _png(img) -> str:
-    buf = io.BytesIO()
-    img.convert("L").resize((384, 384)).save(buf, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
-
-
-def crops(p: Project, cid: str, half_m: float = 60) -> list[str]:
-    """The find's ground, half_m each way, as two pictures: composite and local relief."""
-    import pyproj
+def crops(p: Project, cid: str) -> tuple[list[str], str]:
+    """The tile a find is on, as two pictures (composite and local relief), and the question saying where the find sits."""
+    from . import tiles
     loc = p.load("locations")[cid]
-    meta = p.load("terrains")[p.load("tiles")[loc["tile"]]["terrain"]]
-    dtm, gap, out = T.load_terrain(p.path(meta["file"]))
-    x, y = pyproj.Transformer.from_crs(4326, meta["epsg"], always_xy=True).transform(loc["lon"], loc["lat"])
-    res, (x0, _, _, y1) = meta["res"], meta["box"]
-    r, c, h = int((y1 - y) / res), int((x - x0) / res), int(half_m / res)
-    win = (slice(max(r - h, 0), r + h), slice(max(c - h, 0), c + h))
-    return [_png(T.render(dtm[win], gap[win], out[win], res, s)) for s in ("composite", "local_relief")]
+    out = []
+    for style in ("composite", "local_relief"):
+        img = tiles.tile_image(p, loc["tile"], style).convert("L").resize((768, 768))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        out.append("data:image/png;base64," + base64.b64encode(buf.getvalue()).decode())
+    return out, QUESTION.format(x=int(loc.get("x", 0.5) * 100), y=int(loc.get("y", 0.5) * 100))
 
 
-def ask(model: str, images: list[str]) -> tuple[bool, str]:
+def ask(model: str, images: list[str], question: str) -> tuple[bool, str]:
     """One model's verdict on the pictures: (looks built, one sentence). Raises with the provider's words when it fails."""
-    content = [{"type": "input_text", "text": QUESTION}] + [{"type": "input_image", "image_url": u} for u in images]
+    content = [{"type": "input_text", "text": question}] + [{"type": "input_image", "image_url": u} for u in images]
     r = _client.post(ROUTER, json={"model": model, "input": [{"role": "user", "content": content}], "stream": False})
     d = r.json()
     text = d.get("output_text") or "".join(c.get("text", "") for o in d.get("output", []) for c in (o.get("content") or [])
@@ -70,7 +65,7 @@ def second_opinions(project: str, candidates: list[str], models: list[tuple[str,
 
     def one(cid: str) -> dict:
         try:
-            images = crops(p, cid)
+            images, question = crops(p, cid)
         except Exception as exc:
             return {"candidate": cid, "failed": f"no ground on this Mac to show ({str(exc)[:120]})"}
         last = "no second-opinion model is offered"
@@ -78,7 +73,7 @@ def second_opinions(project: str, candidates: list[str], models: list[tuple[str,
             if model in refused:
                 continue
             try:
-                agrees, note = ask(model, images)
+                agrees, note = ask(model, images, question)
             except (ValueError, KeyError) as exc:   # an answer that is not the JSON asked for: try the next model for this find
                 last = f"{name}: no usable answer ({str(exc)[:120]})"
                 continue

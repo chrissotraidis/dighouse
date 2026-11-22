@@ -1168,7 +1168,11 @@ final class AppState: ObservableObject {
     /// Whether second opinions go straight to the model through the OpenCodex router (each find's ground 120 m around
     /// it, the views the reviewer rating used), rather than through an agent chat per find: seconds instead of most of a
     /// minute. Without the router, the chat is used as before.
-    private var directOpinions: Bool { setup.ocxRunning && !secondOpinionModels.isEmpty && secondOpinionModels.allSatisfy { $0.contains("/") } }
+    private var directOpinions: Bool {
+        // -chatOpinions YES keeps the agent chat, for comparing the two ways.
+        !UserDefaults.standard.bool(forKey: "chatOpinions") && setup.ocxRunning && !secondOpinionModels.isEmpty
+            && secondOpinionModels.allSatisfy { $0.contains("/") }
+    }
     /// Finds in the batch being asked straight of the model.
     @Published private(set) var directLeft = 0
 
