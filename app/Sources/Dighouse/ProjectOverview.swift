@@ -231,6 +231,7 @@ struct ProjectOverview: View {
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.tan.opacity(0.3)))
                     .arrives(1)
                 }
+                ProjectChats().arrives(2)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("The search so far").font(.system(size: 14 * Theme.scale, weight: .semibold))
                     VStack(spacing: 0) {
@@ -476,3 +477,64 @@ private struct ProjectHistory: View {
     }
 }
 
+
+
+/// The project's chats: the runs that searched it and the conversations about it, each with what it is doing now.
+/// A new chat starts from the message box below, inside the project.
+struct ProjectChats: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+    @EnvironmentObject var chat: ChatModel
+    @State private var all = false
+
+    var body: some View {
+        let threads = chat.threads
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(threads.isEmpty ? "Chats" : "Chats · \(threads.count)").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                Spacer()
+                Text("Type below to start another").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+            }
+            if threads.isEmpty {
+                Text("No chats yet. Anything you ask below becomes a chat here, and each one starts from the research record.")
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array((all ? threads : Array(threads.prefix(5))).enumerated()), id: \.element.id) { i, thread in
+                        if i > 0 { Hairline() }
+                        Button { app.openChat(thread, in: store.current) } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "bubble.left").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).frame(width: 18)
+                                Text(thread.label).font(.system(size: 13 * Theme.scale)).lineLimit(1)
+                                Spacer(minLength: 8)
+                                if let state = state(of: thread) {
+                                    if chat.live[thread.id] != nil { DigIndicator(size: 12) }
+                                    Text(state).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
+                                }
+                                Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 10).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Open this chat")
+                    }
+                }
+                .panel()
+                if threads.count > 5 {
+                    Button(all ? "Show fewer" : "Show all \(threads.count)") { all.toggle() }
+                        .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan)
+                }
+            }
+        }
+    }
+
+    /// What a chat is doing, in a few words, or nil when it is resting.
+    private func state(of thread: ChatThread) -> String? {
+        if let timed = chat.timed.status(for: thread.id) {
+            return timed.contains("Ends at") ? "Searching on its own · ends " + (timed.components(separatedBy: "Ends at ").last ?? "") : timed
+        }
+        if chat.goals.contains(thread.id) { return "Working on its goal" }
+        if chat.live[thread.id] != nil { return "Working" }
+        return nil
+    }
+}

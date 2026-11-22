@@ -41,7 +41,7 @@ struct FindChatSheet: View {
                             Button { open(row) } label: {
                                 VStack(alignment: .leading, spacing: 3) {
                                     HStack(spacing: 6) {
-                                        Text(row.thread.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).lineLimit(1)
+                                        Text(row.thread.label).font(.system(size: 13.5 * Theme.scale, weight: .medium)).lineLimit(1)
                                         Text(place(row)).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
                                     }
                                     if !row.snippet.isEmpty {

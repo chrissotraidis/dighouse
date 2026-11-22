@@ -53,7 +53,7 @@ struct CommandPalette: View {
     private var chats: [Item] {
         chat.allChats.map { folder, thread in
             let project = store.projects.first { $0.path == folder }
-            return Item(id: "c-" + thread.id, kind: .chat, title: thread.title, detail: project?.name ?? "General chat", icon: "bubble.left") {
+            return Item(id: "c-" + thread.id, kind: .chat, title: thread.label, detail: project?.name ?? "General chat", icon: "bubble.left") {
                 app.openChat(thread, in: project)
             }
         }

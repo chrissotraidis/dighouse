@@ -390,7 +390,7 @@ struct Sidebar: View {
         let menu = hovered == thread.id || menuFor == thread.id
         return Button { app.openChat(thread, in: project) } label: {
             HStack(spacing: 6) {
-                Text(thread.title).font(.system(size: 13 * Theme.scale)).lineLimit(1).foregroundStyle(selected ? Theme.text : Theme.dim)
+                Text(thread.label).font(.system(size: 13 * Theme.scale)).lineLimit(1).foregroundStyle(selected ? Theme.text : Theme.dim)
                 Spacer(minLength: 0)
                 if chat.live[thread.id] != nil { DigIndicator(size: 13) }
             }

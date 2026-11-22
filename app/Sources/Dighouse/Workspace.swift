@@ -132,13 +132,25 @@ struct MapView: View {
         a.epsg == b.epsg && a.box.count == 4 && b.box.count == 4 && abs(a.box[0] - b.box[0]) < 5000 && abs(a.box[1] - b.box[1]) < 5000
     }
 
+    /// Two pieces of ground that cover much the same place, such as two flights over one site: shown apart, never on top
+    /// of each other.
+    private static func overlap(_ a: Terrain, _ b: Terrain) -> Bool {
+        guard a.box.count == 4, b.box.count == 4 else { return false }
+        let w = min(a.box[2], b.box[2]) - max(a.box[0], b.box[0]), h = min(a.box[3], b.box[3]) - max(a.box[1], b.box[1])
+        guard w > 0, h > 0 else { return false }
+        let smaller = min((a.box[2] - a.box[0]) * (a.box[3] - a.box[1]), (b.box[2] - b.box[0]) * (b.box[3] - b.box[1]))
+        return w * h > 0.25 * smaller
+    }
+
     private var areas: [Area] {
         var out: [Area] = []
         for t in store.terrains {
             if let name = t.area, !name.isEmpty {
                 if let i = out.firstIndex(where: { $0.id == "named:" + name }) { out[i].terrains.append(t) }
                 else { out.append(Area(id: "named:" + name, name: name, terrains: [t])) }
-            } else if let i = out.firstIndex(where: { a in a.id.hasPrefix("ground:") && a.terrains[0].dataset == t.dataset && Self.near(a.terrains[0], t) }) {
+            } else if let i = out.firstIndex(where: { a in
+                a.id.hasPrefix("ground:") && Self.near(a.terrains[0], t) && !a.terrains.contains { Self.overlap($0, t) && $0.dataset != t.dataset }
+            }) {
                 out[i].terrains.append(t)
             } else {
                 out.append(Area(id: "ground:" + t.id, name: t.name, terrains: [t]))

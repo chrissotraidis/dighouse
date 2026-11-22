@@ -7,6 +7,25 @@ struct ChatThread: Identifiable, Hashable, Codable {
     var title: String
     /// Whether the chat has a name of its own, rather than the start of its first message.
     var named: Bool? = nil
+
+    /// The title as a person sees it: a chat named from the start of a prompt can carry a box or a pair of coordinates,
+    /// and a location never shows outside private/. ("Use find_gaps on the region (west -91.6, south 17.4, …" becomes
+    /// "Use find_gaps on the region".)
+    var label: String { Self.withoutPlaces(title) }
+
+    static func withoutPlaces(_ text: String) -> String {
+        var s = text
+        let patterns = [
+            #"\s*\([^()]*\b(west|south|east|north|lat|lon|latitude|longitude)\b[^()]*\)?"#,
+            #"\b(west|south|east|north|lat|lon)\s*[=:]?\s*-?\d{1,3}(\.\d+)?"#,
+            #"-?\d{1,3}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}"#,
+            #"-?\d{1,3}\.\d{4,}"#,
+        ]
+        for p in patterns { s = s.replacingOccurrences(of: p, with: "", options: [.regularExpression, .caseInsensitive]) }
+        s = s.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: " ,;:(").union(.whitespaces))
+        return s.isEmpty ? "Chat" : s
+    }
 }
 
 struct Approval {
@@ -129,7 +148,10 @@ final class ChatModel: ObservableObject {
     private var startedHere: Set<String> = []
 
     var scope: String { project ?? Paths.general.path }
-    var title: String { (threads + generalThreads).first { $0.id == active }?.title ?? "New chat" }
+    var title: String { (threads + generalThreads).first { $0.id == active }?.label ?? "New chat" }
+
+    /// The chats saved for a project folder, open or not, for the sidebar and the project page.
+    func chats(in folder: String) -> [ChatThread] { folder == project ? threads : known[folder] ?? [] }
 
     /// The chats of each folder, kept between launches. The engine needs several seconds to list one folder's chats
     /// when there are thousands of Codex sessions on the Mac, so the lists show from here and are refreshed behind.
