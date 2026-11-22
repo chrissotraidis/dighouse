@@ -170,6 +170,19 @@ final class ProjectStore: ObservableObject {
         return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, records.count, undecided)
     }
 
+    /// How wide the close view of a find is, the same for every find so sizes can be compared by eye.
+    static let closeMetres = 60.0
+
+    /// How wide a find's tile is on the ground, from its window and its ground model's resolution.
+    func tileMetres(_ c: Candidate) -> Double {
+        guard let tile = tiles.first(where: { $0.id == c.tile }) else { return 250 }
+        let res = terrains.first(where: { $0.id == tile.terrain })?.res ?? 0.5
+        return Double(tile.cols) * res
+    }
+
+    /// The close view's side as a fraction of the tile picture.
+    func closeSide(_ c: Candidate) -> Double { Self.closeMetres / max(tileMetres(c), 1) }
+
     /// Read the open project again even if nothing changed (for measuring).
     func reloadNow() { signature = ""; reloadIfChanged() }
 

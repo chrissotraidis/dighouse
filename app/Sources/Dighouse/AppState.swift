@@ -78,6 +78,8 @@ final class AppState: ObservableObject {
     @Published var windowSize = CGSize(width: 1380, height: 880)
     /// Whether the one-at-a-time review of candidates is open.
     @Published var reviewing = false
+    /// The find Decide opens on, when it is opened from that find's record.
+    @Published var decideFocus: String?
     @Published var starting = true
     @Published var sidebarVisible = true
     @Published var sidebarPeek = false
@@ -1057,6 +1059,29 @@ final class AppState: ObservableObject {
         store.reloadIfChanged()
     }
 
+    /// Record the person's decisions on many finds at once: one call, one commit, each with its own reason.
+    func decideMany(_ items: [(Candidate, String, String)]) async throws {
+        guard let project = store.current, !items.isEmpty else { return }
+        _ = try await engine.callTool("decide_many", [
+            "project": project.path, "decided_by": userName,
+            "decisions": items.map { ["candidate": $0.0.id, "status": $0.1, "reason": $0.2] },
+        ])
+        store.reloadIfChanged()
+    }
+
+    /// Take back the person's last decision on a find.
+    func undoDecision(_ id: String) async throws {
+        guard let project = store.current else { return }
+        _ = try await engine.callTool("undo_decision", ["project": project.path, "candidate": id, "by": userName])
+        store.reloadIfChanged()
+    }
+
+    /// Open Decide, on one find when it is given.
+    func openDecide(on id: String? = nil) {
+        decideFocus = id
+        reviewing = true
+    }
+
     /// Projects whose finds the agent was already asked to suggest decisions for, this session.
     private var suggestedFor = Set<String>()
 
@@ -1429,7 +1454,7 @@ private struct ProjectMenu: View {
         }
         Divider()
         Button { app.reviewing = true } label: {
-            Text("Review the Finds…")
+            Text("Decide…")
             if store.candidates.isEmpty { Text(none ? "Needs a project" : "Needs finds") }
         }
         .keyboardShortcut("r").disabled(store.candidates.isEmpty)

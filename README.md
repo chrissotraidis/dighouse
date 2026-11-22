@@ -143,7 +143,9 @@ Take the stages one at a time, or press **Find and report back** and the agent c
   </tr>
 </table>
 
-**Search on its own** from Home: choose how long, and the agent picks fresh ground with open lidar, searches it area by area (about 15 minutes for each square km on USGS lidar), checks every find, and asks a second model about each when the time is up. Records then open on what needs you: the leads first, then the finds where the agent and the second model disagree, and the routine ones in groups you can agree with in one press, your name and each reason on every record.
+**Search on its own** from Home: choose how long, and the agent picks fresh ground with open lidar, searches it area by area (about 15 minutes for each square km on USGS lidar), checks every find, and asks a second model about each when the time is up.
+
+**Decide** is where a person makes the calls. **Needs you** shows the leads, then the finds where the agent and the second model disagree, one at a time: a close view 60 m across, the whole tile, the slice, and one line saying what each model thinks. Return agrees with the suggestion; a letter picks another decision and asks for your reason. **Agree in bulk** shows the routine finds as a grid of close views; untick any that look wrong and agree with the rest in one press. **Done** lists what you decided, with Undo. Your name and a reason go on every record.
 
 **Also in the app:** a ten-minute first project at Serpent Mound, a chat with `/` commands, `@` mentions and ⌘K, any model through the [OpenCodex](https://github.com/lidge-jun/opencodex) router (so a different maker's model can give the second opinion), three colour looks and five text sizes.
 

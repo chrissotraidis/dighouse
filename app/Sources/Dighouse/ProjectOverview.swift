@@ -134,7 +134,7 @@ struct ProjectOverview: View {
                         after: "\(before) tile\(before == 1 ? " was" : "s were") looked at on the other Mac. Nothing needs downloading.",
                         icon: "dig.layers", label: "Carry on") { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }
         }
-        let suggested = !open.isEmpty && open.allSatisfy { $0.suggestion != nil || Review_hasSuggestion($0) }
+        let suggested = !open.isEmpty && open.allSatisfy { $0.likely != nil }
         let decide = Next(title: "Your turn\(app.firstName.isEmpty ? "" : ", " + app.firstName): decide \(finds)",
                           what: suggested ? "The agent checked \(open.count == 1 ? "the find" : "each find") and suggests what it is, with its reason. Look at the pictures, then agree or change it."
                                           : "Look at each find and decide what it is.",
@@ -290,7 +290,6 @@ struct ProjectOverview: View {
 }
 
 /// A suggestion the review can make from the record itself, when the agent left none.
-func Review_hasSuggestion(_ c: Candidate) -> Bool { ReviewSheet.suggestion(for: c) != nil }
 
 /// The project's folder: what each of its documents holds, with live counts, then its history in its own repository
 /// (the last five changes) and publishing it.

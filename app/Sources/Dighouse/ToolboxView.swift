@@ -943,7 +943,7 @@ private struct WorkflowsTab: View {
                 IconTile(name: "dig.brush", size: 38)
                 words("Decide the finds", "You look at each find and decide what it is. Nothing is final before that.", lanes[2].name)
                 Spacer(minLength: 10)
-                Button("Review") { app.reviewing = true; app.route = .chat }.buttonStyle(SecondaryButton()).disabled(waiting == 0)
+                Button("Decide") { app.reviewing = true; app.route = .chat }.buttonStyle(SecondaryButton()).disabled(waiting == 0)
             } else if let flow = flow(id) {
                 let state = app.state(of: flow)
                 IconTile(name: flow.icon, size: 38)

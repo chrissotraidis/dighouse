@@ -125,3 +125,27 @@ Checked in the test copy (`DighouseTest.app`, its own settings) on copies of Per
 - **Seven decisions were recorded in the test copy** while timing (C-057 and C-001 to C-006). That copy was set aside, and a fresh copy is used for the D1 check.
 
 So the target for D1: Perry A1 in 10 minutes or less (a third of 32), in no more than 31 presses, with pictures for every find a person agrees with.
+
+### D1: one place to decide
+
+**What changed.** `DecideView` (Decide.swift) replaces the Review sheet, the Records list's "Agree with these" sheet and the record's own decision sheet. It opens from the overview card, a record's Decide button, ⌘R and the Toolbox.
+
+- **Needs you:** leads, then disagreements, then finds with no suggestion, one at a time. Return agrees with the suggestion. N, M, P and R pick Natural, Modern, Published or Worth reporting and ask for a reason; Escape takes the choice back without closing Decide. S skips, ← goes back, ⌘Z undoes. After the last one, Decide moves on to the routine finds by itself.
+- **The verdict line** replaces the ticks: "Agent: natural · Second model: built · they disagree". A modern suggestion that the second model calls not built reads "both rule it out". A lead with checks still open says which, under the bar; the person may still decide, and the tools write them beside the decision.
+- **Agree in bulk:** a grid of close views, each 60 m across with the find ringed (cut in the app from the record's tile picture, at a fixed scale from the tile's size), with the suggestion's reason under each. Unticked ones move to Needs you.
+- **Done:** every decision made here, each with Undo.
+- **Tools:** `decide_many` checks every decision first, writes them, rebuilds the research record once, and makes one commit. `undo_decision` returns a find to the status it had (now kept with each decision as `was`), removes the decision, logs who undid it, and commits. Both are for the app; agents do not call them. An offline test covers both.
+
+**Checked** in the test copy, on fresh copies:
+
+| | Before (D0) | Now |
+|---|---|---|
+| Perry A1, presses to clear | 91 | 6: open Decide, Return on the one look-again find, untick C-001, Agree with 88, then N, a reason and Return for C-001 |
+| Perry A1, the app's wait | about 1.2 s × 90 | 1.2 s for the one find, 1.2 s for all 88 together, 1.3 s for C-001 |
+| Perry A1, a person's time (20 s a find looked at alone, 3 s a close view in the grid) | about 32 minutes | about 5 minutes |
+| Shawnee Woodland Larger | 37 presses, about 13 minutes | 25 alone and 11 in the grid: about 9 minutes. D3 is what shrinks this one, since 21 of its 25 are measured rises. |
+
+- The 88 decisions came out as one commit, "88 finds decided by Test person", each record with its own reason and the person's name. RESEARCH.md said 89 of 90 decided.
+- Undo on C-001 returned it to waiting with no decision on its record, logged "Test person undid the decision 'natural feature'", and committed "C-001: decision undone by Test person".
+- Found and fixed while checking: the reason field did not take focus in the sheet, and Escape in it closed Decide.
+- **Not checked:** the first-project tutorial end to end (Decide puts all of the tutorial project's finds under Needs you, so its words still fit), and VoiceOver (D2).

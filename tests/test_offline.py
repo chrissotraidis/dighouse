@@ -370,6 +370,37 @@ def test_the_search_report_says_what_the_records_say(tmp_path):
     assert "Try the sky view on the next tile north." in again
 
 
+def test_many_decisions_at_once_and_undo(tmp_path):
+    """Agreeing with many finds writes each record with the person's name and reason in one commit; undo puts one back."""
+    import subprocess
+    from dighouse import ledger
+
+    root = str(tmp_path / "decide")
+    p = Project.create(root, "Decide", "Which banks are built?", [0.0, 51.0, 0.01, 51.01])
+    ids = [ledger.create(p, f"Bank {i}", "t1-r000c000", (0.005, 51.005), "a bank", "model-a")["id"] for i in range(3)]
+    commits = lambda: int(subprocess.run(["git", "-C", root, "rev-list", "--count", "HEAD"], capture_output=True, text=True).stdout)
+    before = commits()
+    with pytest.raises(ValueError, match="reason"):
+        server.decide_many(root, [{"candidate": ids[0], "status": "natural", "reason": " "}], "Chris")
+    with pytest.raises(ValueError, match="person"):
+        server.decide_many(root, [{"candidate": ids[0], "status": "natural", "reason": "a field edge"}], "")
+    assert commits() == before and ledger.get(p, ids[0])[0]["status"] == "flagged"
+
+    got = server.decide_many(root, [{"candidate": c, "status": "natural", "reason": f"field edge {c}"} for c in ids], "Chris")
+    assert got["decided"] == ids and commits() == before + 1
+    for c in ids:
+        meta = ledger.get(p, c)[0]
+        assert meta["status"] == "natural" and meta["decisions"][-1]["by"] == "Chris" and c in meta["decisions"][-1]["reason"]
+    assert "A person has decided 3 of 3." in p.path("RESEARCH.md").read_text()
+
+    assert server.undo_decision(root, ids[1], "Chris")["status"] == "flagged"
+    meta = ledger.get(p, ids[1])[0]
+    assert meta["decisions"] == [] and commits() == before + 2
+    assert "A person has decided 2 of 3." in p.path("RESEARCH.md").read_text()
+    with pytest.raises(ValueError, match="no decision"):
+        server.undo_decision(root, ids[1], "Chris")
+
+
 def test_the_search_report_has_a_ceiling(tmp_path):
     """Twenty finds, long notes and long advice still give a report under 400 words, with the decisions first."""
     from dighouse import ledger, report

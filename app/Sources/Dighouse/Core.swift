@@ -629,6 +629,21 @@ enum Images {
         cache.setObject(img, forKey: key)
         return img
     }
+
+    /// A square cut from a picture around a point given as fractions (0,0 top left), its side a fraction of the width.
+    /// Kept inside the picture, so a find near an edge sits off centre rather than beside an empty band.
+    static func crop(_ path: String, x: Double, y: Double, side: Double) -> NSImage? {
+        let stamp = FileInfo.modified(path)?.timeIntervalSince1970 ?? 0
+        let key = "\(path)#\(stamp)#\(x),\(y),\(side)" as NSString
+        if let hit = cache.object(forKey: key) { return hit }
+        guard let whole = load(path), let cg = whole.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        let w = Double(cg.width), h = Double(cg.height), s = min(max(side, 0.02), 1) * w
+        let left = min(max(x * w - s / 2, 0), max(w - s, 0)), top = min(max(y * h - s / 2, 0), max(h - s, 0))
+        guard let part = cg.cropping(to: CGRect(x: left, y: top, width: min(s, w), height: min(s, h))) else { return nil }
+        let img = NSImage(cgImage: part, size: NSSize(width: part.width, height: part.height))
+        cache.setObject(img, forKey: key)
+        return img
+    }
 }
 
 extension String {

@@ -119,7 +119,7 @@ def blockers(meta: dict, status: str) -> list[str]:
     return missing
 
 
-def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: str = "") -> dict:
+def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: str = "", commit_it: bool = True) -> dict:
     if status not in STATUSES:
         raise ValueError(f"status must be one of {STATUSES}")
     meta, notes = get(p, cid)
@@ -131,14 +131,47 @@ def set_status(p: Project, cid: str, status: str, decided_by: str = "", reason: 
         raise ValueError(f"{cid} cannot be marked {status!r} yet: " + "; ".join(missing))
     if decided_by:
         meta["decisions"].append({"date": today(), "by": decided_by, "status": status, "reason": reason,
-                                  "open_items": missing})
+                                  "open_items": missing, "was": meta["status"]})
     meta["status"] = status
     write(p, meta, notes)
     p.note(f"{cid} marked {status}" + (f" by {decided_by}" if decided_by else ""))
-    if decided_by:
+    if decided_by and commit_it:
         from .record import document
         document(p, commit_it=False)
         commit(p.root, f"{cid} marked {LABELS[status].lower()} by {decided_by}")
+    return meta
+
+
+def set_statuses(p: Project, decisions: list[dict], decided_by: str) -> list[dict]:
+    """A person's decisions on many finds at once ({candidate, status, reason} each): the record is rebuilt once and
+    they are saved in one commit. Every decision is checked before any is written, so a refused one changes nothing."""
+    if not decided_by.strip():
+        raise ValueError("A person decides. Pass their name as decided_by.")
+    for d in decisions:
+        if d["status"] not in STATUSES or not str(d.get("reason", "")).strip():
+            raise ValueError(f"{d.get('candidate')}: give a status from {STATUSES} and a reason.")
+        get(p, d["candidate"])
+    done = [set_status(p, d["candidate"], d["status"], decided_by, d["reason"].strip(), commit_it=False) for d in decisions]
+    if done:
+        from .record import document
+        document(p, commit_it=False)
+        commit(p.root, f"{len(done)} find{'s' if len(done) != 1 else ''} decided by {decided_by}")
+    return done
+
+
+def undo_decision(p: Project, cid: str, by: str) -> dict:
+    """Take back the last decision on a find: it returns to the status it had before, the decision leaves its record,
+    and the undoing is written in the log and the history."""
+    meta, notes = get(p, cid)
+    if not meta.get("decisions"):
+        raise ValueError(f"{cid} has no decision to undo.")
+    last = meta["decisions"].pop()
+    meta["status"] = last.get("was") or "flagged"   # decisions made before "was" was kept came from a waiting find
+    write(p, meta, notes)
+    p.note(f"{cid}: {by} undid the decision {LABELS[last['status']].lower()!r} of {last['date']}")
+    from .record import document
+    document(p, commit_it=False)
+    commit(p.root, f"{cid}: decision undone by {by}")
     return meta
 
 

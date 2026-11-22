@@ -991,6 +991,26 @@ def set_status(project: str, candidate: str, status: str, decided_by: str = "", 
 
 
 @tool
+def decide_many(project: str, decisions: list[dict], decided_by: str) -> dict:
+    """The app's tool for a person's decisions on many finds at once. Agents do not call it.
+
+    decisions: [{"candidate": "C-001", "status": "natural", "reason": "..."}]. All are checked first, then
+    written together in one commit, each with the person's name and its own reason.
+    """
+    p = Project(project).check()
+    done = ledger.set_statuses(p, decisions, decided_by)
+    return {"decided": [m["id"] for m in done]}
+
+
+@tool
+def undo_decision(project: str, candidate: str, by: str) -> dict:
+    """The app's tool for taking back a person's last decision on a find. Agents do not call it."""
+    p = Project(project).check()
+    meta = ledger.undo_decision(p, candidate, by)
+    return {"candidate": candidate, "status": meta["status"]}
+
+
+@tool
 def list_candidates(project: str) -> list[dict]:
     """Every candidate with its status and what still blocks it from being marked as having no match."""
     p = Project(project).check()

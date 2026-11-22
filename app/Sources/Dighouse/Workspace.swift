@@ -575,25 +575,10 @@ private struct Pin: View {
 
 // MARK: - Records
 
-private struct Decision: Identifiable {
-    let candidate: Candidate
-    let status: String
-    /// The reason to start from, such as the agent's suggestion.
-    var prefill = ""
-    var id: String { candidate.id + status }
-}
-
-private struct GroupConfirm: Identifiable {
-    let group: Candidate.Group
-    var id: Int { group.rawValue }
-}
-
 struct RecordsView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
     @EnvironmentObject var engine: Engine
-    @State private var deciding: Decision?
-    @State private var confirming: GroupConfirm?
     /// Tiles whose folded measured rises are open in the list.
     @State private var openTiles = Set<String>()
 
@@ -639,12 +624,6 @@ struct RecordsView: View {
                     }
                 }
             }
-            .sheet(item: $deciding) { decision in
-                DecisionSheet(decision: decision).withApp(app)
-            }
-            .sheet(item: $confirming) { confirm in
-                GroupConfirmSheet(group: confirm.group).withApp(app)
-            }
         }
     }
 
@@ -674,9 +653,9 @@ struct RecordsView: View {
             Text("\(group.title) · \(count)").font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                 .lineLimit(1)
             if group.confirmable {
-                Button("Agree with these") { confirming = GroupConfirm(group: group) }
+                Button("Agree in bulk") { app.openDecide() }
                     .buttonStyle(.plain).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
-                    .help("Check the suggestions and agree with them together. Your name and each find's reason go into its record.")
+                    .help("Look over their pictures in Decide and agree with them together. Your name and each find's reason go into its record.")
             } else if group == .open, let flow = ToolGuide.workflows.first(where: { $0.id == "decide" }), app.state(of: flow).ready {
                 Button("Suggest") { app.run(flow) }
                     .buttonStyle(.plain).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
@@ -743,9 +722,11 @@ struct RecordsView: View {
                     Badge(text: c.statusLabel, color: c.statusColor)
                     Text("Marked \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
                     Spacer(minLength: 8)
-                    Button("Review and decide") { app.reviewing = true }.buttonStyle(SecondaryButton())
-                        .help("Go through the finds one at a time and decide each, from the keyboard")
-                        .coach(.review)
+                    if !store.isBlindTest {
+                        Button("Decide") { app.openDecide(on: c.id) }.buttonStyle(SecondaryButton())
+                            .help("Decide this find, then the others that wait for you")
+                            .coach(.review)
+                    }
                 }
             }
             HStack(alignment: .top, spacing: 12) {
@@ -794,15 +775,10 @@ struct RecordsView: View {
                     ForEach(c.decisions, id: \.self) { Text($0).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim) }
                 }
             }
-            if !store.isBlindTest {
-                section(c.waiting ? "Decide it yourself" : "Change the decision") {
-                    Text("Pick what you think it is. Your name and reason go into the record.")
-                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+            if !store.isBlindTest, !c.waiting {
+                section("Change the decision") {
                     Flow(spacing: 8) {
-                        Button("Already published") { deciding = Decision(candidate: c, status: "already_published") }
-                        Button("Natural feature") { deciding = Decision(candidate: c, status: "natural") }
-                        Button("Modern feature") { deciding = Decision(candidate: c, status: "modern") }
-                        Button("No match in sources read") { deciding = Decision(candidate: c, status: "no_match_in_sources_read") }
+                        Button("Change it") { app.openDecide(on: c.id) }
                         Button("Show file") { NSWorkspace.shared.selectFile(c.file, inFileViewerRootedAtPath: c.folder) }
                     }
                     .buttonStyle(SecondaryButton())
@@ -824,9 +800,9 @@ struct RecordsView: View {
                     Text("Probably \(label.lowercased())").font(.system(size: 15 * Theme.scale, weight: .semibold))
                     Text(s.reason).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(5)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Suggested by \(s.by). Look at the pictures, then confirm it or decide yourself below.")
+                    Text("Suggested by \(s.by). Look at the pictures, then agree or decide yourself.")
                         .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-                    Button("Confirm: \(label.lowercased())") { deciding = Decision(candidate: c, status: s.status, prefill: s.reason) }
+                    Button("Decide") { app.openDecide(on: c.id) }
                         .buttonStyle(PrimaryButton()).padding(.top, 4)
                 } else {
                     Text("No suggestion yet").font(.system(size: 15 * Theme.scale, weight: .semibold))
@@ -994,143 +970,6 @@ private struct CheckRow<Action: View>: View {
             Spacer(minLength: 0)
         }
         .padding(14)
-    }
-}
-
-/// Confirms a decision the person makes about a candidate, with their reason.
-private struct DecisionSheet: View {
-    @EnvironmentObject var app: AppState
-    @Environment(\.dismiss) private var dismiss
-    let decision: Decision
-    @State private var reason = ""
-    @State private var problem: String?
-    @State private var busy = false
-
-    private var open: [String] {
-        guard decision.status == "no_match_in_sources_read" else { return [] }
-        let c = decision.candidate
-        var items: [String] = []
-        if (c.checks["section"] as? JSON)?["in_ground"] as? Bool != true { items.append("No slice shows the shape in the ground.") }
-        if (c.checks["second_look"] as? JSON)?["agrees"] as? Bool != true { items.append("No second model has agreed that it looks built.") }
-        if c.checks["modern"] == nil { items.append("Open maps have not been checked.") }
-        if !c.sources.contains(where: { $0.status == "read" }) { items.append("No source has been read.") }
-        let unread = c.sources.filter { $0.status == "could_not_open" }.count
-        if unread > 0 { items.append("\(unread) source\(unread == 1 ? "" : "s") could not be opened.") }
-        return items
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Mark \(decision.candidate.id) as \((Candidate.labels[decision.status] ?? "").lowercased())")
-                .font(.system(size: 18 * Theme.scale, weight: .semibold))
-            if !open.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Still open on this record").font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.amber)
-                    ForEach(open, id: \.self) { Text("• " + $0).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim) }
-                    Text("You can still decide. These are written into the record beside your decision.")
-                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading).panel(padding: 12, radius: 10)
-            }
-            TextField(decision.status == "already_published" ? "Where is it published?" : "Your reason", text: $reason, axis: .vertical)
-                .lineLimit(2...4).field().font(.system(size: 13 * Theme.scale))
-            Text("Recorded as decided by \(app.userName). Change your name in Settings.")
-                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-            if let problem { Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
-            HStack(spacing: 8) {
-                Spacer()
-                Button("Cancel") { dismiss() }.buttonStyle(SecondaryButton())
-                Button("Record decision") {
-                    busy = true
-                    Task { @MainActor in
-                        do {
-                            try await app.decide(decision.candidate, status: decision.status, reason: reason)
-                            dismiss()
-                        } catch {
-                            problem = error.localizedDescription
-                        }
-                        busy = false
-                    }
-                }
-                .buttonStyle(PrimaryButton()).disabled(busy || reason.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
-        .padding(24).frame(width: 480)
-        .background(Theme.bg).foregroundStyle(Theme.text)
-        .onAppear { if reason.isEmpty { reason = decision.prefill } }
-    }
-}
-
-/// Confirms a group of suggestions together: each find gets its own suggested reason and the person's name.
-private struct GroupConfirmSheet: View {
-    @EnvironmentObject var app: AppState
-    @EnvironmentObject var store: ProjectStore
-    @Environment(\.dismiss) private var dismiss
-    let group: Candidate.Group
-    /// Fixed when the sheet opens, so finds do not leave the list as they are decided.
-    @State private var finds: [Candidate] = []
-    @State private var left = Set<String>()
-    @State private var done = 0
-    @State private var busy = false
-    @State private var problem: String?
-
-    private var chosen: [Candidate] { finds.filter { !left.contains($0.id) } }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Agree that \(finds.count == 1 ? "one find is" : "\(finds.count) finds are") \(group.title.lowercased())")
-                .font(.system(size: 18 * Theme.scale, weight: .semibold))
-            Text("Untick any you are unsure of. Each record gets its own reason, as suggested, and your name.")
-                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(finds.enumerated()), id: \.element.id) { i, c in
-                        if i > 0 { Hairline() }
-                        Toggle(isOn: Binding(get: { !left.contains(c.id) }, set: { if $0 { left.remove(c.id) } else { left.insert(c.id) } })) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(c.id) \(c.name)").font(.system(size: 13 * Theme.scale, weight: .medium)).lineLimit(1)
-                                Text(c.likely.map { "\((Candidate.labels[$0.status] ?? "")). \($0.reason)" } ?? "")
-                                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        .toggleStyle(.checkbox).padding(.vertical, 8)
-                    }
-                }
-                .padding(.horizontal, 12)
-            }
-            .frame(height: min(380, CGFloat(max(finds.count, 1)) * 74 + 8)).panel()
-            Text(busy ? "Recording \(done + 1) of \(chosen.count)…" : "Recorded as decided by \(app.userName). Change your name in Settings.")
-                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-            if let problem { Text(problem).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber) }
-            HStack(spacing: 8) {
-                Spacer()
-                Button("Cancel") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction).disabled(busy)
-                Button("Agree with \(chosen.count)") { confirm() }
-                    .buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction).disabled(busy || chosen.isEmpty)
-            }
-        }
-        .padding(24).frame(width: 560)
-        .background(Theme.bg).foregroundStyle(Theme.text)
-        .onAppear { finds = store.candidates.filter { $0.group == group } }
-    }
-
-    private func confirm() {
-        busy = true
-        Task { @MainActor in
-            defer { busy = false }
-            for c in chosen {
-                guard let s = c.likely else { continue }
-                do {
-                    try await app.decide(c, status: s.status, reason: s.reason + " (Confirmed with the suggestion from \(s.by).)")
-                    done += 1
-                } catch {
-                    problem = "\(c.id): " + error.localizedDescription
-                    return
-                }
-            }
-            dismiss()
-        }
     }
 }
 

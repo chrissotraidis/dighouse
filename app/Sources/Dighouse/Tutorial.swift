@@ -75,7 +75,7 @@ extension AppState {
                 return .init(number: 6, title: "Make a decision", words: "Check the suggestion against the pictures. Then record what you think the find is.", target: .record)
             }
             return tab == .records
-                ? .init(number: 6, title: "Make a decision", words: "Now make the call yourself: a person decides, never the agent. Press Review and decide.", target: .review)
+                ? .init(number: 6, title: "Make a decision", words: "Now make the call yourself: a person decides, never the agent. Press Decide.", target: .review)
                 : .init(number: 6, title: "Make a decision", words: "Read the top of the record. Then go back to Records to decide what the find is.", target: .records)
         }
     }
