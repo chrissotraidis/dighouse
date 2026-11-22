@@ -49,6 +49,29 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 
 The search works; deciding does not. Across the 66 projects in Chris's list there are 744 finds outside blind tests, and a person has decided 18, all in early test projects. Eight are leads, 72 are "look again" (71 of them measured rises), and none has been marked "no match in the sources read" or reported, so nothing has gone past a lead. Every ground search since 2026-11-20 was in Ohio, Illinois or Alabama, where the site files are closed. Measured rises are 62% of all finds. The Review screen shows one find at a time, its counts disagree with the header, and it shows a disagreeing second opinion with a green tick. [DECIDE_LOOP.md](DECIDE_LOOP.md) has the full count, what a person sees, and the plan (D0 to D8), with six decisions for Chris before it starts.
 
+## What the decide loop added (D0 to D4, 2026-11-22)
+
+The goals and every check are in [DECIDE_LOOP.md](DECIDE_LOOP.md).
+
+- **D1, Decide** (`Decide.swift`) replaces the Review sheet, the group sheet and the record's decision sheet.
+  - **Its steps:** Needs you (one at a time), Agree in bulk (a grid of 60 m close views, untick the wrong ones), and Done (with Undo).
+  - **The verdict line** replaces the ticks.
+  - **The tools** gain `decide_many` (one commit for a batch) and `undo_decision` (decisions now keep the status they replaced, `was`).
+  - **Keys:** Return agrees; N, M, P and R pick another decision; S skips; ⌘Z undoes; ⌘R opens Decide.
+- **D2, a find at a glance:** six close views on keys 1 to 6 (`find_views`, drawn under `data/views`), the whole tile, and the slice, fitting at 1440 × 900. VoiceOver reads the verdict as one sentence.
+- **D3, measured rises on the map.**
+  - **The rule:** `ledger.layer`, mirrored in `ProjectStore.layer`. A rise goes to a person only when the second model calls it built and it ranks in the top half of the project's rises, or when a person raises it (`raise_rise`).
+  - **Blind tests** still count every rise.
+  - **The effect:** on M6's projects, 36 of 232 finds go to a person.
+- **D4, counts that agree:** one count everywhere (`needsYou`, `toAgree`), reports that rebuild with the record (`report.refresh`), tabs that turn into icons, and map labels that show on hover when there are many.
+- **Decisions taken** (Chris, all six recommendations):
+  - measured rises off the list;
+  - searches go where a register is open (D5);
+  - Sweden and Finland once he makes the accounts;
+  - site-file requests are drafts he sends;
+  - one pull request per goal;
+  - Borre closes at 29 of 53, with the raw points left on the roadmap.
+
 ## What the mound loop added (2026-11-22)
 
 The goals and every check are in [MOUND_LOOP.md](MOUND_LOOP.md).

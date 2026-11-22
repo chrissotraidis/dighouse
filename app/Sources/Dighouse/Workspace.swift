@@ -8,28 +8,10 @@ struct WorkspaceView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                ForEach(WorkTab.allCases, id: \.self) { tab in
-                    Button { app.tab = tab } label: {
-                        HStack(spacing: 6) {
-                            Text(tab.rawValue)
-                            if tab == .records, !store.candidates.isEmpty {
-                                Text("\(store.candidates.count)").foregroundStyle(Theme.faint)
-                            }
-                            if tab == .sources, store.candidates.contains(where: { !$0.sources.isEmpty }) {
-                                Text("\(Set(store.candidates.flatMap(\.sources).map(\.title)).count)").foregroundStyle(Theme.faint)
-                            }
-                        }
-                        .font(.system(size: 13 * Theme.scale, weight: .medium))
-                        .foregroundStyle(app.tab == tab ? Theme.text : Theme.dim)
-                        .padding(.horizontal, 12).frame(height: 30)
-                        .background(Capsule().fill(app.tab == tab ? Theme.ink.opacity(0.1) : .clear))
-                        .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .coach(tab == .records ? .records : tab == .notes ? .notes : nil, radius: 15)
-                }
-                Spacer()
+            // Words when there is room; icons with their counts when the workspace is narrow, never "M… N…".
+            ViewThatFits(in: .horizontal) {
+                tabBar(icons: false)
+                tabBar(icons: true)
             }
             .animation(Motion.ease(0.15), value: app.tab)
             .padding(.horizontal, 12).frame(height: 46)
@@ -44,6 +26,43 @@ struct WorkspaceView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
+    }
+}
+
+extension WorkspaceView {
+    private static let icons: [WorkTab: String] = [.map: "map", .records: "list.bullet.rectangle", .notes: "doc.text",
+                                                     .sources: "books.vertical", .data: "externaldrive"]
+
+    private func count(_ tab: WorkTab) -> Int? {
+        if tab == .records, !store.candidates.isEmpty { return store.candidates.count }
+        if tab == .sources, store.candidates.contains(where: { !$0.sources.isEmpty }) {
+            return Set(store.candidates.flatMap(\.sources).map(\.title)).count
+        }
+        return nil
+    }
+
+    fileprivate func tabBar(icons: Bool) -> some View {
+        HStack(spacing: 4) {
+            ForEach(WorkTab.allCases, id: \.self) { tab in
+                Button { app.tab = tab } label: {
+                    HStack(spacing: 5) {
+                        if icons { Image(systemName: Self.icons[tab] ?? "circle") } else { Text(tab.rawValue) }
+                        if let n = count(tab) { Text("\(n)").foregroundStyle(Theme.faint) }
+                    }
+                    .font(.system(size: 13 * Theme.scale, weight: .medium))
+                    .foregroundStyle(app.tab == tab ? Theme.text : Theme.dim)
+                    .padding(.horizontal, icons ? 9 : 12).frame(height: 30)
+                    .background(Capsule().fill(app.tab == tab ? Theme.ink.opacity(0.1) : .clear))
+                    .contentShape(Capsule())
+                    .fixedSize()
+                }
+                .buttonStyle(.plain)
+                .help(tab.rawValue)
+                .accessibilityLabel(tab.rawValue + (count(tab).map { ", \($0)" } ?? ""))
+                .coach(tab == .records ? .records : tab == .notes ? .notes : nil, radius: 15)
+            }
+            Spacer(minLength: 0)
+        }
     }
 }
 
@@ -201,9 +220,11 @@ struct MapView: View {
                                 }
                         }
                         if showPins {
+                            // With many finds, labels show on the one pointed at or chosen, or once zoomed in.
+                            let quiet = store.candidates.filter { !$0.inLayer }.count > 15 && zoom < 2
                             ForEach(store.candidates) { c in
                                 if let spot = spots.first(where: { $0.tile.id == c.tile }) {
-                                    Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer)
+                                    Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer, quiet: quiet)
                                         .offset(x: (spot.x + c.x * spot.w) * scale - 8,
                                                 y: (spot.y + c.y * spot.h) * scale - 8)
                                         .onTapGesture(count: 2) { app.showRecords(c.id) }
@@ -266,8 +287,8 @@ struct MapView: View {
             .overlay(alignment: .top) {
                 // The key sits beside the controls when there is room, and under them when the pane is narrow.
                 ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 12) { controls; Spacer(minLength: 0); legend }
-                    VStack(alignment: .leading, spacing: 8) { controls; legend }.frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(alignment: .top, spacing: 12) { controls(); Spacer(minLength: 0); legend }
+                    VStack(alignment: .leading, spacing: 8) { fittedControls; legend }.frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(12)
             }
@@ -285,8 +306,27 @@ struct MapView: View {
         }
     }
 
-    private var controls: some View {
+    /// The controls in one row with full names, then with short names, then in two rows: never cut off.
+    private var fittedControls: some View {
+        ViewThatFits(in: .horizontal) {
+            controls()
+            controls(short: true)
+            VStack(alignment: .leading, spacing: 6) { controls(short: true, part: 1); controls(short: true, part: 2) }
+        }
+    }
+
+    /// part 0 is the whole row; 1 is zoom and how the ground is drawn; 2 is the rest.
+    private func controls(short: Bool = false, part: Int = 0) -> some View {
         HStack(spacing: 2) {
+            if part != 2 { zoomAndStyle(short: short) }
+            if part != 1 { overlays(short: short) }
+        }
+        .padding(3).background(RoundedRectangle(cornerRadius: 11).fill(Theme.bg.opacity(0.92)))
+        .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Theme.line))
+        .fixedSize()
+    }
+
+    @ViewBuilder private func zoomAndStyle(short: Bool) -> some View {
             Button { zoom(to: zoom / 1.5, at: nil) } label: { Image(systemName: "minus") }
                 .buttonStyle(IconButton(size: 28)).disabled(zoom <= 1).help("Zoom out. The scroll wheel zooms too.")
             Button { zoom(to: zoom * 1.5, at: nil) } label: { Image(systemName: "plus") }
@@ -295,12 +335,15 @@ struct MapView: View {
                 Image(systemName: "arrow.down.right.and.arrow.up.left")
             }
             .buttonStyle(IconButton(size: 28)).disabled(zoom == 1 && pan == .zero).help("Fit the whole area")
-            PillMenu(title: Self.styles.first { $0.id == style }?.name ?? "View", quiet: true, width: 200) {
+            PillMenu(title: short ? "View" : Self.styles.first { $0.id == style }?.name ?? "View", quiet: true, width: 200) {
                 [.header("How the ground is drawn")]
                     + Self.styles.map { s in MenuEntry(title: s.name, icon: s.icon, checked: s.id == style) { style = s.id } }
             }
             .help("How the ground is drawn: sky view shows low banks and ditches best")
             if rendering { DigIndicator().padding(.horizontal, 4) }
+    }
+
+    @ViewBuilder private func overlays(short: Bool) -> some View {
             Button { showTiles.toggle() } label: { Glyph(name: "dig.grid", size: 14 * Theme.scale) }
                 .buttonStyle(IconButton(size: 28, active: showTiles)).help(showTiles ? "Hide the tile outlines" : "Show the tile outlines")
             Button { showPins.toggle() } label: { Image(systemName: "mappin") }
@@ -312,7 +355,7 @@ struct MapView: View {
             } label: { Image(systemName: "line.diagonal") }
                 .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a slice through the ground")
             if store.terrains.count > 1 {
-                PillMenu(title: terrain == nil && shownTerrains.count > 1 ? "All ground"
+                PillMenu(title: short ? "Ground" : terrain == nil && shownTerrains.count > 1 ? "All ground"
                          : store.terrains.first { $0.id == current }?.name ?? "Ground", quiet: true, width: 340) {
                     [MenuEntry(title: "All of it, side by side", icon: "square.grid.2x2", checked: terrain == nil) { terrain = nil }, .divider]
                         + store.terrains.map { t in
@@ -320,9 +363,6 @@ struct MapView: View {
                         }
                 }
             }
-        }
-        .padding(3).background(RoundedRectangle(cornerRadius: 11).fill(Theme.bg.opacity(0.92)))
-        .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Theme.line))
     }
 
     /// Render every tile in the chosen style, once, through the tools.
@@ -562,15 +602,26 @@ private struct Pin: View {
     let selected: Bool
     /// A measured rise kept on the map: a small dot with no label, so it does not crowd the finds put to a person.
     var onMap = false
+    /// Many finds and zoomed out: the label shows only when pointed at.
+    var quiet = false
+    @State private var hovering = false
 
     var body: some View {
-        if onMap && !selected {
-            Circle().fill(.white.opacity(0.75)).frame(width: 7, height: 7)
-                .overlay(Circle().strokeBorder(.black.opacity(0.5), lineWidth: 1))
-                .frame(width: 16, height: 16).contentShape(Rectangle())
-        } else {
-            labelled
+        Group {
+            if onMap && !selected && !hovering {
+                Circle().fill(.white.opacity(0.75)).frame(width: 7, height: 7)
+                    .overlay(Circle().strokeBorder(.black.opacity(0.5), lineWidth: 1))
+                    .frame(width: 16, height: 16).contentShape(Rectangle())
+            } else if quiet && !selected && !hovering {
+                Circle().fill(.white).frame(width: 12, height: 12)
+                    .overlay(Circle().strokeBorder(.black.opacity(0.55), lineWidth: 1.5))
+                    .frame(width: 16, height: 16).contentShape(Rectangle())
+            } else {
+                labelled
+            }
         }
+        .onHover { hovering = $0 }
+        .accessibilityLabel(label)
     }
 
     private var labelled: some View {

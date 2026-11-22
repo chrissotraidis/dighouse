@@ -407,6 +407,10 @@ def document(p: Project, commit_it: bool = True) -> dict:
     changed = re.sub(r"Updated .*?\.", "", old) != re.sub(r"Updated .*?\.", "", text)
     if changed:
         f.write_text(text)
+    # The newest search report follows the records too, so it never asks for what is already done.
+    from . import report
+    if report.refresh(p) or changed:
+        changed = True
         if commit_it:
             commit(p.root, "Update the research record")
     return {"written": "RESEARCH.md", "changed": changed, "still_to_do": todo, "handed_over": handed,

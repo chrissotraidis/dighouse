@@ -380,6 +380,30 @@ def test_the_search_report_says_what_the_records_say(tmp_path):
     assert "Try the sky view on the next tile north." in again
 
 
+def test_the_report_follows_the_records(tmp_path):
+    """When a second opinion comes in or a person decides, the newest report is brought up to date in place, keeping
+    the agent's advice, so it never asks for what is already done."""
+    from dighouse import ledger, record
+
+    root = str(tmp_path / "follow")
+    p = Project.create(root, "Follow", "Is the bank built?", [0.0, 51.0, 0.01, 51.01])
+    cid = ledger.create(p, "A bank", "t1-r000c000", (0.005, 51.005), "a bank", "model-a")["id"]
+    ledger.set_check(p, cid, "section", {"feature_height_m": 0.8, "in_ground": True, "ground_returns_within_5m_of_peak": 40})
+    ledger.set_check(p, cid, "modern", {"likely_modern": False, "summary": "nothing modern mapped within 150 m"})
+    got = server.write_report(root, "Look at the bank in sky view.")
+    f = p.path(got["written"])
+    assert "a second opinion from another model" in f.read_text()
+
+    ledger.set_check(p, cid, "second_look", {"agrees": True, "model": "model-b", "note": "a bank"})
+    record.document(p)
+    text = f.read_text()
+    assert "a second opinion from another model" not in text and "Look at the bank in sky view." in text
+    assert sorted(p.path("reports").glob("*.md")) == [f]
+
+    server.set_status(root, cid, "natural", decided_by="Chris", reason="A field edge.")
+    assert "Nothing. Every find has been decided." in f.read_text()
+
+
 def test_measured_rises_stay_on_the_map_until_raised(tmp_path):
     """A measured rise reaches a person when the second model calls it built and it ranks in the top half of the
     project's rises, or when a person raises it; the rest stay on the map and out of the report's decisions."""

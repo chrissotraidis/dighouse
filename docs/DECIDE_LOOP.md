@@ -190,3 +190,24 @@ So the target for D1: Perry A1 in 10 minutes or less (a third of 32), in no more
 - **What a person would not see.** At Borre, 8 of the 29 mounds found were found only by measured rises. Blind tests ask no second opinion, so all 8 would be on the map in a search like this; 4 of them rank in the top half and would reach a person if the second model called them built. At Andía all 4 were found only by rises, and 1 ranks in the top half. Mound City lost none.
 - **Look again.** Across all projects, 34 of the 72 "look again" rises rank in the lower half, so they are on the map. Each is one press away in Decide, which is why the offer is there.
 - **Tests:** a new offline test covers the rule, the record, the report, raising and `list_candidates`. The offline tests pass (39).
+
+### D4: counts and records that agree
+
+**What changed.**
+
+- **One count.** `ProjectStore.needsYou` and `toAgree` feed every place that counts finds: the header badge ("10 to agree with", which now opens Decide), the overview card ("Your turn: 10 to agree with", with a time worked out at 20 s a find alone and 3 s each in the grid), the "Your decisions" row ("0 of 10 decided, 80 on the map") and the steps in Decide.
+- **Reports follow the records.** Whenever RESEARCH.md is rebuilt, the newest search report is rebuilt in place, keeping its file and the agent's advice (`report.refresh`). After a batch of second opinions the open project's record is rebuilt too. The report now says "in Decide" where it said "in the review".
+- **Tabs.** The workspace tabs show words when they fit, and icons with their counts when they do not.
+- **The map.** With more than 15 finds put to a person and the map zoomed out, finds are plain dots, labelled when pointed at or chosen, and all labelled once zoomed in. The map's controls fit in one row, then with short names, then in two rows.
+- **Second opinions** in Decide says why when it is greyed out.
+
+**Checked** in the test copy:
+
+- **Perry A1 (a fresh copy).** The header, the overview and the decisions row all say 10. The stale report line "Give C-015, C-017 and 73 more a second opinion" was gone once the project opened. The report now names the finds that wait and says 80 measured rises stay on the map.
+- **At 1440 × 900.** The tabs read as icons with counts (90 finds, 2 sources) where they read "M… … N…" before.
+- **At 1280 × 800 (Shawnee).** Nothing is cut off. The map's controls sit in two rows, and its 25 pins are plain dots until pointed at.
+- **Tests:** a new offline test covers the report following a second opinion and a decision, keeping the agent's advice and the same file. The offline tests pass (40).
+
+## Where the loop stands
+
+D0 to D4 are done. On the two-hour run's five projects, a person now decides 36 finds instead of 232, from close views, with Undo. Perry A1 went from 91 presses and about 32 minutes to about 6 presses and 5 minutes. Next, as planned: D5 (registers, so a lead can reach an answer), then D6 to D8.

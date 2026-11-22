@@ -170,6 +170,23 @@ final class ProjectStore: ObservableObject {
         return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, records.count, undecided)
     }
 
+    /// The finds a person decides one at a time: leads, disagreements, and finds with no suggestion. The one count
+    /// the header, the overview and Decide all show.
+    var needsYou: [Candidate] { isBlindTest ? [] : candidates.filter { [.closer, .lookAgain, .open].contains($0.group) } }
+    /// The routine finds a person can agree with together, from their pictures.
+    var toAgree: [Candidate] { isBlindTest ? [] : candidates.filter { $0.group.confirmable } }
+    /// Measured rises kept on the map rather than put to a person.
+    var onMap: Int { isBlindTest ? 0 : candidates.filter { $0.group == .layer }.count }
+
+    /// "6 need you · 70 to agree", or whichever part there is.
+    var decideWords: String {
+        let n = needsYou.count, m = toAgree.count
+        return [n > 0 ? "\(n) need\(n == 1 ? "s" : "") you" : nil, m > 0 ? "\(m) to agree with" : nil].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// About how long deciding takes: some 20 seconds a find looked at alone, a few seconds each in the grid.
+    var decideMinutes: Int { max(1, Int((Double(needsYou.count) * 20 + Double(toAgree.count) * 3) / 60 + 0.5)) }
+
     /// How wide the close view of a find is, the same for every find so sizes can be compared by eye.
     static let closeMetres = 60.0
 

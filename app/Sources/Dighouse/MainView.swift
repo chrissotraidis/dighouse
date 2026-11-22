@@ -150,14 +150,10 @@ struct TopBar: View {
             } else if inProject {
                 // A whole search shows the trowel in the strip, beside its stage.
                 if chat.running, app.runningSearch == nil || width <= 640 { DigIndicator().padding(.trailing, 2) }
-                // The same count the Records list shows: finds to decide one by one, else the routine ones to agree with.
-                let alone = store.isBlindTest ? 0 : store.candidates.filter { [.closer, .lookAgain, .open].contains($0.group) }.count
-                let routine = store.isBlindTest ? 0 : store.candidates.filter { $0.group == .published || $0.group == .notAncient }.count
-                if alone + routine > 0 {
-                    Button { app.tab = .records; if app.layout == .chat { app.layout = .split } } label: {
-                        Badge(text: alone > 0 ? "\(alone) need\(alone == 1 ? "s" : "") you" : "\(routine) to agree with", color: Theme.accent)
-                    }
-                    .buttonStyle(.plain).help("Open the finds waiting for your decision")
+                // The same count the overview and Decide show.
+                if !store.decideWords.isEmpty {
+                    Button { app.openDecide() } label: { Badge(text: store.decideWords, color: Theme.accent) }
+                        .buttonStyle(.plain).help("Open Decide")
                 }
                 LayoutSwitch()
             }

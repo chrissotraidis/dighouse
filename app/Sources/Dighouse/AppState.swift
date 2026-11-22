@@ -1245,7 +1245,8 @@ final class AppState: ObservableObject {
             secondLookBusy = nil
             directLeft = 0
             store.reloadIfChanged()
-            if sessionLooks.first?.path != path { await updateRecord(of: path) }
+            // The record and the newest report follow the opinions straight away.
+            if sessionLooks.first?.path != path || store.current?.path == path { await updateRecord(of: path) }
             nextSecondLook()
             nextSessionLook()
             afterSecondLooks()

@@ -101,6 +101,17 @@ def write(p: Project, advice: str = "") -> dict:
         # Rebuilt after more work the same day: keep what the agent advised.
         advice = next((l[len(ADVICE):] for l in f.read_text().splitlines() if l.startswith(ADVICE)), "")
 
+    text, open_ = _compose(p, advice)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(text)
+    p.note(f"Wrote the search report {f.name}")
+    record.document(p, commit_it=False)
+    commit(p.root, f"Search report {dt.date.today().isoformat()}")
+    return {"written": f"reports/{f.name}", "words": count(text), "waiting_for_a_person": [m["id"] for m in open_]}
+
+
+def _compose(p: Project, advice: str) -> tuple[str, list[dict]]:
+    """The report's text from the project's records as they are now, and the finds it puts to a person."""
     info = p.load("project", {}) or {}
     terrains, tiles = record.facts(p)
     records = ledger.everything(p)
@@ -120,12 +131,28 @@ def write(p: Project, advice: str = "") -> dict:
         text, shown = _build(p, name, terrains, tiles, records, open_, decided, counts, screened, unreadable, failed_maps, advice, cut)
         if shown == len(open_):
             break
-    f.parent.mkdir(parents=True, exist_ok=True)
+    return text, open_
+
+
+STAMP = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}\. Written by Dighouse")
+
+
+def refresh(p: Project) -> bool:
+    """Bring the newest search report up to date with the records, keeping its file and the agent's advice, so it never
+    asks for what is already done (a second opinion that has come in, a decision made). Called whenever the research
+    record is rebuilt. Returns whether it changed; the caller commits."""
+    files = sorted(p.path("reports").glob("*-search-report.md")) if p.path("reports").exists() else []
+    if not files:
+        return False
+    f = files[-1]
+    old = f.read_text()
+    advice = next((l[len(ADVICE):] for l in old.splitlines() if l.startswith(ADVICE)), "")
+    text, _ = _compose(p, advice)
+    same = lambda s: [l for l in s.splitlines() if not STAMP.match(l)]
+    if same(old) == same(text):
+        return False
     f.write_text(text)
-    p.note(f"Wrote the search report {f.name}")
-    record.document(p, commit_it=False)
-    commit(p.root, f"Search report {dt.date.today().isoformat()}")
-    return {"written": f"reports/{f.name}", "words": count(text), "waiting_for_a_person": [m["id"] for m in open_]}
+    return True
 
 
 def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, unreadable, failed_maps, advice, cut) -> tuple[str, int]:
@@ -218,7 +245,7 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     D = ["## What needs your decision", ""]
     # When the map service was down for every find, that is said once, under the finds.
     no_maps = bool(open_) and all("modern" not in m["checks"] and m["id"] in failed_maps for m in open_)
-    closing = ["", "You decide each one, in the review. The agent only suggests."]
+    closing = ["", "You decide each one, in Decide. The agent only suggests."]
     if no_maps:
         closing = ["", "Open maps could not be checked for modern features near "
                    + ("it" if len(open_) == 1 else "any of them") + ": the map service did not answer."] + closing
@@ -237,7 +264,7 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     D += lines
     if len(open_) > len(lines):
         D += ["", f"{_s(len(open_) - len(lines), 'more find')} wait{'s' if len(open_) - len(lines) == 1 else ''} for your decision. "
-              "The research record and the review list every one."]
+              "The research record and Decide list every one."]
     on_map = ledger.layer(records)
     if on_map:
         D += ["", f"{_s(len(on_map), 'measured rise')} {'are' if len(on_map) != 1 else 'is'} kept on the map, not put to you: "

@@ -62,7 +62,8 @@ struct ProjectOverview: View {
             Stage(id: "prior", icon: "dig.sieve", title: "What is published", plain: "Books, papers and site records searched for each find.",
                   done: !all.isEmpty && sourced == all.count, detail: all.isEmpty ? none : "\(sourced) of \(all.count) searched"),
             Stage(id: "decide", icon: "dig.brush", title: "Your decisions", plain: "You decide what each find is.",
-                  done: !all.isEmpty && decided == all.count, detail: all.isEmpty ? none : "\(decided) of \(all.count) decided"),
+                  done: !all.isEmpty && decided == all.count - store.onMap,
+                  detail: all.isEmpty ? none : "\(decided) of \(all.count - store.onMap) decided" + (store.onMap > 0 ? ", \(store.onMap) on the map" : "")),
         ]
     }
 
@@ -135,11 +136,12 @@ struct ProjectOverview: View {
                         icon: "dig.layers", label: "Carry on") { app.ask(ToolGuide.carryOn.prompt, title: ToolGuide.carryOn.title) }
         }
         let suggested = !open.isEmpty && open.allSatisfy { $0.likely != nil }
-        let decide = Next(title: "Your turn\(app.firstName.isEmpty ? "" : ", " + app.firstName): decide \(finds)",
-                          what: suggested ? "The agent checked \(open.count == 1 ? "the find" : "each find") and suggests what it is, with its reason. Look at the pictures, then agree or change it."
+        let decide = Next(title: "Your turn\(app.firstName.isEmpty ? "" : ", " + app.firstName): \(store.decideWords.isEmpty ? "decide \(finds)" : store.decideWords)",
+                          what: suggested ? "The agent checked each find and suggests what it is, with its reason. Look at the pictures, then agree or change it."
                                           : "Look at each find and decide what it is.",
-                          after: "About a minute each. Nothing is final until you decide.",
-                          icon: "dig.brush", label: "Decide \(finds)") { app.reviewing = true }
+                          after: "About \(store.decideMinutes) minute\(store.decideMinutes == 1 ? "" : "s"). Nothing is final until you decide."
+                            + (store.onMap > 0 ? " \(store.onMap) measured rise\(store.onMap == 1 ? " stays" : "s stay") on the map." : ""),
+                          icon: "dig.brush", label: "Decide") { app.openDecide() }
         // The second model refuses: asking again would fail the same way, so the card says why and offers the way out.
         if let refusal = app.refusedSecondModel, app.secondOpinionModels.isEmpty, open.contains(where: { $0.checks["second_look"] == nil }), app.chat.live.isEmpty,
            app.nextStep == nil || app.nextStep?.id == "decide" {
@@ -176,7 +178,7 @@ struct ProjectOverview: View {
             return Next(title: "Next: \(words.title)", what: words.what, after: "", icon: flow.icon, label: flow.title, action: { app.run(flow) },
                         coach: flow.id == "terrain" && app.layout != .workspace ? .getTerrain : nil)
         }
-        if !open.isEmpty { return decide }
+        if !store.needsYou.isEmpty || !store.toAgree.isEmpty { return decide }
         guard store.status.tiles > 0, app.chat.live.isEmpty, app.chat.goals.isEmpty else { return nil }
         let widen: (label: String, help: String, action: () -> Void) =
             ("Widen the search", "Fetch the ground around this area and look at it too.", { app.ask(ToolGuide.widen, title: "Widen the search") })
@@ -184,7 +186,8 @@ struct ProjectOverview: View {
             return Next(title: "Nothing here looked built", what: "The agent looked at every tile and marked nothing. That is a result too: it saves the next person the same search.",
                         after: "", icon: "dig.grid", label: widen.label, action: widen.action)
         }
-        return Next(title: "This search is finished", what: "Every find is decided. The report says what was found, and the research record keeps the detail.",
+        return Next(title: "This search is finished",
+                    what: "Every find put to you is decided" + (store.onMap > 0 ? ", and \(store.onMap) measured rise\(store.onMap == 1 ? " stays" : "s stay") on the map" : "") + ". The report says what was found, and the research record keeps the detail.",
                     after: "", icon: "dig.trowel", label: app.latestReport == nil ? "Research record" : "Read the report",
                     action: { if let report = app.latestReport { app.reportShown = report } else { app.showNotes("record") } }, other: widen)
     }
