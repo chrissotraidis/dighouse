@@ -1,9 +1,12 @@
 # Roadmap
 
-Where Dighouse goes next, in rough order. Nothing here is promised by a date. What already works is in the [README](../README.md); what was checked, and how, is in the run logs ([REFINE_LOOP.md](REFINE_LOOP.md) is the newest).
+Where Dighouse goes next, in rough order. Nothing here is promised by a date. What already works is in the [README](../README.md); what was checked, and how, is in the run logs ([MOUND_LOOP.md](MOUND_LOOP.md) is the newest, and [DECIDE_LOOP.md](DECIDE_LOOP.md) is the plan for the next).
 
 ## Next, for archaeology
 
+- **Deciding finds.** 744 finds wait across Chris's projects and 18 have been decided. One Decide view (the ones that need a person one at a time, the routine ones agreed in bulk, with Undo), a find card that reads at a glance, measured rises kept as a layer until raised, and counts that agree everywhere. Planned as D0 to D4 in [DECIDE_LOOP.md](DECIDE_LOOP.md).
+- **Leads that reach an answer.** Read open heritage registers (England, Norway, Bavaria) in the checks, send searches where a register is open, and draft site-file requests a person sends where it is not (D5).
+- **More ground.** Navarre's 0.5 m model, Poland, Spain's national 2 m model, more German states; Sweden and Finland with a free account; the UK's Admiralty surveys and NOAA's coastal lidar under water (D8).
 - **Finding small mounds.** Borre 29 of 53 and Andía 4 of 11 on 2026-11-22. A mound-only look at quarter tiles did not help, and finer ground models do not show more mounds. Of Borre's misses, most are not in the 1 m ground model at all, so the next lever is the raw points: a ground model built from them with a lower ground-filter threshold, or a slice and shape check that reads the points directly. Borre's lidar points (2016 and 2021, 5 points per m²) come from hoydedata.no's export, which e-mails the files; ordering it is the first step.
 - **More answer keys.** Six sites today, five of them partial. Official registers like Norway's give complete keys; England's and the Netherlands' would add more.
 - **A download.** A signed, notarized build, so nobody has to compile the app to try it.

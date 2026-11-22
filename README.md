@@ -35,7 +35,7 @@ A **find** in Dighouse is a shape that might be built and is not yet confirmed. 
 
 ## What it cannot do
 
-- **It does not confirm sites.** A find is a reason to look, not a discovery. Confirming one takes an archaeologist, and often fieldwork.
+- **It does not confirm sites.** A find is a reason to look, not a discovery. Confirming one takes an archaeologist, and often fieldwork. So far no find from a search has gone past "worth a closer look".
 - **It misses things.** In the blind tests below it found large earthworks reliably and missed most small, low mounds: 29 of 53 at Borre, and 4 of the 11 low megalithic mounds in Navarre's 2 m model.
 - **Under water it is a pilot.** It reads NOAA's sonar surveys of US waters only. A wreck lying flat, buried in sediment, among rocks, or in a gap between survey lines will not show.
 - **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are not public, so "no match in the sources read" often means little was readable.
@@ -172,7 +172,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (29 tests)
+uv run pytest            # offline, on a synthetic survey (37 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 ~~~
@@ -197,7 +197,7 @@ The ground is drawn as `composite`, `hillshade`, `local_relief` and `sky_view`. 
 
 ## Open data
 
-Everything Dighouse reads is public, and none of it needs an account or a key.
+Everything Dighouse reads is public. Only Denmark's ground model needs a free token.
 
 | Service | What Dighouse reads |
 |---|---|
@@ -238,7 +238,7 @@ Everything Dighouse reads is public, and none of it needs an account or a key.
 | [Open Context](https://opencontext.org/) | Published excavation and survey records |
 | [OpenAlex](https://openalex.org/) and [Crossref](https://www.crossref.org/) | The literature search. Without a key, OpenAlex allows about 100 searches a day for each network address, and Crossref takes over past that |
 
-Historic aerial photographs, declassified CORONA imagery, and the lidar of Denmark, Finland and Sweden need an account or a key, so the tools name them as out of reach. Spain, Poland and Luxembourg were tried and are not read yet; the Open data tab says why for each.
+Historic aerial photographs, declassified CORONA imagery, and the lidar of Finland and Sweden need an account or a key (Sweden's 1 m model has been free since February 2025, with a free account), so the tools do not read them yet. Spain beyond Navarre and the Basque Country, Poland and Luxembourg were tried and are not read yet; the Open data tab says why for each.
 
 ## Rules the tools enforce
 
@@ -292,11 +292,13 @@ The [eight-hour research session and replays](docs/2026-11-20-research-session.m
 - A vision model's eye is the weak point of any search; the benchmarks above show where it is weak. The checks exist because a model marks shapes that are not there, and misses some that are.
 - Open services go down and rate-limit. The tools say "could not check" rather than guess.
 
-What comes next, including a second field for open astronomy, is in the [roadmap](docs/ROADMAP.md). The design is in [concept.md](docs/concept.md) and the state of the work in [HANDOFF.md](docs/HANDOFF.md).
+What comes next is in the [roadmap](docs/ROADMAP.md), and the next loop of work, on deciding finds, is planned in [DECIDE_LOOP.md](docs/DECIDE_LOOP.md). The concept is in [concept.md](docs/concept.md), the design rules in [DESIGN.md](docs/DESIGN.md), and the state of the work in [HANDOFF.md](docs/HANDOFF.md).
 
 ## Contributing
 
-Issues and pull requests are welcome. The tools are plain Python in `src/dighouse` with offline tests; the app is SwiftUI in `app/Sources/Dighouse`. A new national ground model is a good first contribution: see how `national.py` reads the seven there now. Please keep the rules above intact, and never put coordinates of a find in an issue.
+Issues and pull requests are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) explains how. The tools are plain Python in `src/dighouse` with offline tests; the app is SwiftUI in `app/Sources/Dighouse`. A new national ground model is a good first contribution: copy the closest entry in `national.py`. Please keep the rules above intact, and never put coordinates of a find in an issue. Security problems and leaked locations go through [SECURITY.md](SECURITY.md).
+
+**Only people are credited.** Contributors may use AI tools, but no AI is listed as an author or co-author of a commit or pull request; a check enforces it. The policy for people and agents is in [AGENTS.md](AGENTS.md).
 
 **AI disclosure.** Dighouse was built with substantial AI assistance for code, tests, documentation and debugging. There is no audited share of AI-written code; the run logs state what was checked and how.
 

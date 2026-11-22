@@ -1,6 +1,6 @@
 # Dighouse handoff
 
-Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-16 after loop 8 and on 2026-11-21 after the second-opinion loop. This file is the prompt for whoever continues the work. Read it, then the Log at the end of [SECOND_OPINION_LOOP.md](SECOND_OPINION_LOOP.md), which says what was checked and how, and what was not.
+Rewritten 2026-11-14, when the fifth loop (R1 to R7 in [REFINE_LOOP.md](REFINE_LOOP.md)) finished, and brought up to date on 2026-11-16 after loop 8, on 2026-11-21 after the second-opinion loop, and on 2026-11-22 after the mound loop and a review of every project. This file is the prompt for whoever continues the work. Read it and [AGENTS.md](../AGENTS.md), then [DECIDE_LOOP.md](DECIDE_LOOP.md) (where things stand, and the next plan) and the Log at the end of [MOUND_LOOP.md](MOUND_LOOP.md), which says what was checked and how, and what was not.
 
 ## Your brief
 
@@ -15,6 +15,8 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 ## Rules
 
 - Keep it simple and consistent. Recheck every control after rewiring it. Do not suggest Figma.
+- **Only people are credited.** No AI as author or co-author of a commit or pull request, and no "Generated with" lines ([AGENTS.md](../AGENTS.md)). CI checks it.
+- Design rules are in [DESIGN.md](DESIGN.md); security in [SECURITY.md](../SECURITY.md).
 - **Fewer words is the work.** Chris's note on loop 4 was "too much text". One sentence for one idea, 25 words at most, and a picture or a control wherever one can carry the meaning. Loop 5 halved the words on every Toolbox tab and Settings page; do not let them grow back.
 - **One word for one thing, wherever a person reads:**
   - a shape the agent marked is a **find** (not a flag or a candidate);
@@ -40,8 +42,12 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 - **Seafloor:** NOAA's sonar surveys of US waters and the Great Lakes (`us:noaa-bag`), offered only where a 2 m or finer survey covers the box, and INFOMAR's seabed model of Irish waters (`ie:infomar`, about 4 m: large wrecks only). The modern check reads NOAA's charts in US waters; elsewhere it records the charts as not checked.
 - **Project state** is saved atomically and changed under a file lock (`Project.change`), because the agent records verdicts from parallel helpers.
 - **Engine**: `codex app-server` as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse starts the **newest** copy of Codex on the Mac (`Setup.detect`); on Chris's Mac that is 0.167 inside the ChatGPT app, because 0.146 on the PATH is refused GPT-6.1 Terra. Dighouse's own tools are approved at launch (`default_tools_approval_mode`), since newer engines ask before every tool call.
-- **Tests**: 29 offline, 10 live (`uv run pytest`, `uv run pytest -m live`). The live test of the national ground models takes two minutes.
+- **Tests**: 37 offline, 10 live (`uv run pytest`, `uv run pytest -m live`), and 3 for the app (`cd app && swift test`). The live test of the national ground models takes two minutes. CI (`.github/workflows/checks.yml`) runs the offline tests and the people-only check on every pull request, once GitHub Actions billing on Chris's account lets jobs start (it did not on 2026-11-22).
 - **README** has pictures in `docs/images`, retaken on 2026-11-14 at 1440 × 900 in Earth after loop 5. Loop 5's own pictures are in `docs/loop5`.
+
+## Where it stands (2026-11-22)
+
+The search works; deciding does not. Across the 66 projects in Chris's list there are 744 finds outside blind tests, and a person has decided 18, all in early test projects. Eight are leads, 72 are "look again" (71 of them measured rises), and none has been marked "no match in the sources read" or reported, so nothing has gone past a lead. Every ground search since 2026-11-20 was in Ohio, Illinois or Alabama, where the site files are closed. Measured rises are 62% of all finds. The Review screen shows one find at a time, its counts disagree with the header, and it shows a disagreeing second opinion with a green tick. [DECIDE_LOOP.md](DECIDE_LOOP.md) has the full count, what a person sees, and the plan (D0 to D8), with six decisions for Chris before it starts.
 
 ## What the mound loop added (2026-11-22)
 
@@ -179,7 +185,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 - The agent driving a browser of its own to look up records.
 - From the first plan: a button that pushes records to Notion, looking at tiles in bulk through the model router, a notarized download.
 - A version for the sky. Researched, not started.
-- Out of reach without an account or a key: historic aerial photographs, CORONA imagery, and the lidar of Denmark, Finland and Sweden. Tried in loop 5 and not read yet: Scotland, Wales and Slovenia (files only), Spain (5 m only), Poland (no answer), Luxembourg (no ground model listed). Not yet checked: the Archaeology Data Service, EAMENA, tDAR.
+- Out of reach without an account or a key: historic aerial photographs, CORONA imagery, and the lidar of Finland and Sweden (Sweden's 1 m model has been free with an account since February 2025; Denmark is read with a token). Not read yet: Spain beyond Navarre and the Basque Country (5 m only), Poland (no answer), Luxembourg (no ground model listed). Scotland, Wales and Slovenia were added in the reach loop. Not yet checked: the Archaeology Data Service, EAMENA, tDAR.
 
 ## How to build, run and check
 

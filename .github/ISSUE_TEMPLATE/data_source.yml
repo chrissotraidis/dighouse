@@ -1,0 +1,28 @@
+name: A source of open lidar or sonar
+description: Suggest a ground model, point cloud or seafloor survey Dighouse could read.
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Who publishes it, and where it covers
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link to the data or its service
+    validations:
+      required: true
+  - type: dropdown
+    id: access
+    attributes:
+      label: Access
+      options:
+        - Open, no account
+        - Free account or key
+        - Paid or restricted
+        - Not sure
+  - type: textarea
+    id: details
+    attributes:
+      label: Resolution, format and licence, if you know them
