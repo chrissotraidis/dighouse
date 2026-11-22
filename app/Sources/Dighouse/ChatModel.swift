@@ -113,6 +113,8 @@ final class ChatModel: ObservableObject {
     var onRunEnded: ((String, String, Bool) -> Void)?
     /// Called with the folder of a project the agent made, in whichever chat.
     var onProjectMade: ((String) -> Void)?
+    /// Called with the chat and the project folder when a run writes its summary.
+    var onAreaSummarized: ((String, String) -> Void)?
     /// Called when a chat's goal stops being worked on, with the chat and how it ended: complete, paused, blocked,
     /// usageLimited or budgetLimited.
     var onGoalEnded: ((String, String) -> Void)?
@@ -775,6 +777,12 @@ final class ChatModel: ObservableObject {
            raw["server"] as? String == "dighouse", raw["tool"] as? String == "init_project",
            let path = Self.withMadeFolder(raw)["project"] as? String {
             onProjectMade?(path)
+        }
+        // An area's summary written in any chat: a timed session in the background gets its second opinions area by area.
+        if method == "item/completed", let raw = params["item"] as? JSON, raw["type"] as? String == "mcpToolCall",
+           raw["server"] as? String == "dighouse", raw["tool"] as? String == "write_summary",
+           let path = (raw["arguments"] as? JSON)?["project"] as? String {
+            onAreaSummarized?(thread, path)
         }
         if method == "turn/completed", let failure = (params["turn"] as? JSON)?["error"] as? JSON {
             timed.failed(thread, error: failure)

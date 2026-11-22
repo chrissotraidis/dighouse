@@ -705,6 +705,18 @@ def second_look(project: str, candidate: str, agrees: bool, model: str, note: st
     ledger.set_check(p, candidate, "second_look", {"agrees": agrees, "model": model, "note": note})
     return {"candidate": candidate, "second_look_agrees": agrees}
 
+@tool
+def ask_second_opinions(project: str, candidates: str, models: str) -> dict:
+    """For the app: ask a different model for an independent opinion on each find, straight through the model router
+    (each find's ground 120 m around it, composite and local relief), four finds at a time. candidates is ids separated
+    by commas; models is "id=Name|id=Name" in the order to ask. Writes each opinion on its record, naming the model.
+    Agents do not call this: the second opinion is never yours."""
+    from . import review
+    order = [tuple(part.split("=", 1)) if "=" in part else (part, part) for part in models.split("|") if part.strip()]
+    ids = [c.strip() for c in candidates.split(",") if c.strip()]
+    return review.second_opinions(project, ids, [(a.strip(), b.strip()) for a, b in order])
+
+
 
 @tool
 def second_look_failed(project: str, candidate: str, model: str, reason: str) -> dict:

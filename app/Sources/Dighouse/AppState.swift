@@ -247,6 +247,12 @@ final class AppState: ObservableObject {
             Task { @MainActor in await self?.searchEnded(thread, status) }
         }
         chat.onProjectMade = { [weak self] path in self?.store.register(path: path) }
+        chat.onAreaSummarized = { [weak self] thread, path in
+            // During a timed session each finished area gets its second opinions now, not when the session ends.
+            guard let self, thread == UserDefaults.standard.string(forKey: "timedThread"),
+                  !FileManager.default.fileExists(atPath: path + "/private/state/test.json") else { return }
+            self.askSecondOpinions(in: [path])
+        }
         chat.effort = { [weak self] in
             guard let self, let effort = self.effort, self.model?.efforts.contains(effort) == true else { return nil }
             return effort
@@ -394,6 +400,17 @@ final class AppState: ObservableObject {
                     if let project = store.projects.first(where: { $0.path == folder }) {
                         self.open(project)
                         if let name = arguments["openTab"] as? String, let tab = WorkTab(rawValue: name) { self.tab = tab }
+                        // For checks: -secondOpinions YES asks for second opinions on the open project's finds once it has loaded.
+                        if (arguments["secondOpinions"] as? String) == "YES" {
+                            Task { @MainActor in
+                                for _ in 0..<50 where self.store.candidates.isEmpty { try? await Task.sleep(for: .milliseconds(200)) }
+                                let started = Date()
+                                Perf.log("second opinions: asked for \(self.store.candidates.filter { $0.checks["second_look"] == nil }.count) finds")
+                                if let flow = ToolGuide.workflows.first(where: { $0.id == "second" }) { self.run(flow) }
+                                while self.secondOpinionsLeft > 0 { try? await Task.sleep(for: .milliseconds(500)) }
+                                Perf.log("second opinions: done in \(Int(Date().timeIntervalSince(started))) s")
+                            }
+                        }
                     }
                 }
                 // A scripted run (open Dighouse.app --args -startTimedResearch 120) starts a timed session on its own.
@@ -1058,6 +1075,12 @@ final class AppState: ObservableObject {
 
     private func nextSecondLook() {
         guard secondLookBusy == nil, !secondLookQueue.isEmpty else { return }
+        if directOpinions, let path = store.current?.path {
+            let ids = Array(secondLookQueue.prefix(40))
+            secondLookQueue.removeFirst(ids.count)
+            askDirect(ids.compactMap { id in store.candidates.first { $0.id == id }.map { SecondLookItem(path: path, id: $0.id, tile: $0.tile, x: $0.x, y: $0.y) } })
+            return
+        }
         let id = secondLookQueue.removeFirst()
         if let candidate = store.candidates.first(where: { $0.id == id }) { secondLook(candidate) }
     }
@@ -1138,7 +1161,46 @@ final class AppState: ObservableObject {
 
     func secondLook(_ c: Candidate) {
         guard let project = store.current else { return }
-        ask(SecondLookItem(path: project.path, id: c.id, tile: c.tile, x: c.x, y: c.y))
+        let look = SecondLookItem(path: project.path, id: c.id, tile: c.tile, x: c.x, y: c.y)
+        if directOpinions { askDirect([look]) } else { ask(look) }
+    }
+
+    /// Whether second opinions go straight to the model through the OpenCodex router (each find's ground 120 m around
+    /// it, the views the reviewer rating used), rather than through an agent chat per find: seconds instead of most of a
+    /// minute. Without the router, the chat is used as before.
+    private var directOpinions: Bool { setup.ocxRunning && !secondOpinionModels.isEmpty && secondOpinionModels.allSatisfy { $0.contains("/") } }
+    /// Finds in the batch being asked straight of the model.
+    @Published private(set) var directLeft = 0
+
+    /// Ask for second opinions on finds in one project folder, a few at a time, through the tools. A model that fails is
+    /// set aside for this run, as in the chat path; each record names the model that answered.
+    private func askDirect(_ looks: [SecondLookItem]) {
+        guard let path = looks.first?.path, secondLookBusy == nil else { return }
+        let models = secondOpinionModels.map { id in id + "=" + (engine.models.first { $0.id == id }?.name ?? id) }.joined(separator: "|")
+        secondLookBusy = looks[0].id
+        directLeft = looks.count
+        for look in looks { secondLookProblem[look.id] = nil }
+        Task { @MainActor in
+            do {
+                let reply = try await engine.callTool("ask_second_opinions", ["project": path, "candidates": looks.map(\.id).joined(separator: ","), "models": models])
+                if let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON {
+                    for (model, reason) in info["models_set_aside"] as? [String: String] ?? [:] { secondFailed[model] = reason }
+                    for row in info["failed"] as? [JSON] ?? [] {
+                        if let id = row["candidate"] as? String { secondLookProblem[id] = row["failed"] as? String }
+                    }
+                    if !(info["answered"] as? [JSON] ?? []).isEmpty { secondModelRefusal = nil }
+                }
+            } catch {
+                for look in looks { secondLookProblem[look.id] = error.localizedDescription }
+            }
+            secondLookBusy = nil
+            directLeft = 0
+            store.reloadIfChanged()
+            if sessionLooks.first?.path != path { await updateRecord(of: path) }
+            nextSecondLook()
+            nextSessionLook()
+            afterSecondLooks()
+        }
     }
 
     private func ask(_ look: SecondLookItem) {
@@ -1176,7 +1238,7 @@ final class AppState: ObservableObject {
     }
 
     /// Second opinions still to come, in the open project and in projects a timed session touched.
-    var secondOpinionsLeft: Int { secondLookQueue.count + sessionLooks.count + (secondLookBusy == nil ? 0 : 1) }
+    var secondOpinionsLeft: Int { secondLookQueue.count + sessionLooks.count + (secondLookBusy == nil ? 0 : max(directLeft, 1)) }
 
     /// Show the running timed session's chat.
     func showTimedSession() {
@@ -1195,6 +1257,12 @@ final class AppState: ObservableObject {
 
     private func nextSessionLook() {
         guard secondLookBusy == nil, secondLookQueue.isEmpty, !sessionLooks.isEmpty else { return }
+        if directOpinions, let path = sessionLooks.first?.path {
+            let batch = Array(sessionLooks.prefix { $0.path == path }.prefix(40))
+            sessionLooks.removeFirst(batch.count)
+            askDirect(batch)
+            return
+        }
         ask(sessionLooks.removeFirst())
     }
 
@@ -1208,7 +1276,8 @@ final class AppState: ObservableObject {
                 guard let place = places[id], let tile = place["tile"] as? String,
                       let text = try? String(contentsOfFile: folder + "/candidates/" + file, encoding: .utf8),
                       text.contains("status: \"flagged\"") || text.contains("status: \"ground_confirmed\""),
-                      !text.contains("\"second_look\": {") else { continue }
+                      !text.contains("\"second_look\": {"),
+                      !sessionLooks.contains(where: { $0.path == folder && $0.id == id }) else { continue }
                 sessionLooks.append(SecondLookItem(path: folder, id: id, tile: tile, x: place["x"] as? Double ?? 0.5, y: place["y"] as? Double ?? 0.5))
             }
         }

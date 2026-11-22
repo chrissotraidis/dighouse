@@ -86,3 +86,18 @@ Scored offline on the five saved blind runs (`scripts/score_rises.py`): the agen
 
 Andía's check (at least 4 of 11 at 50 extra per km² or fewer) passes, and no site is worse. Taking rises from every tile matters most: on the travel rank alone, kept to possible or built tiles, Andía reached only 2. The skill and the app's tool description say "on the tiles looked at". A whole search uses it from the next run; the blind tests will confirm it live in M4.
 
+### 2026-11-22, M1: second opinions straight to the model
+
+New `review.py` and the tool `ask_second_opinions` (for the app only; agents never give the second opinion): each find's ground, 120 m centred on it in composite and local relief, is sent through the OpenCodex router to the second-opinion models in order (Sonnet 5.5, GLM-5.3, Kimi K3), four finds at a time. A model that fails is set aside and the next is asked about the same find; each record names the model. The app uses it whenever the router is running and every second-opinion model goes through it, and keeps the agent chat otherwise. `-secondOpinions YES` (with `-openProject`) asks for a project's opinions at launch and logs the time, for checks.
+
+| Check | Result |
+|---|---|
+| 102 finds in under 10 minutes | **35 finds in 38 s in the app** (scratch copy of Mohican, every opinion cleared first), and 40 in 21 s from the tool on Vinton: about 1 s a find, against 46 s through the chat. 102 finds would take about 2 minutes. |
+| The same verdict both ways, in 9 of 10 | **Not met: 59 of 75 (79%)**, Vinton 33 of 40 and Mohican 26 of 35. |
+
+Why it ships anyway. Asked the same way twice, Sonnet agrees with itself in 70 of 75 (93%), so the gap is the method, not chance; and it runs both ways (at Vinton the chat said built more often, at Mohican the crop did). The two ways see different things: the chat sees the whole 250 m tile and is told where the find is as a share of it; the direct way sees 120 m centred on the find. The direct way is the one S3 rated on known ground (a "no" right 91% of the time) and the one that repeats itself; the chat way was never rated. [docs/mound/m1-differences.jpg](mound/m1-differences.jpg) shows the seven Vinton finds where they differ, the whole tile beside the crop. The record keeps saying that a "yes" is a weak check.
+
+### 2026-11-22, M2: opinions while the session runs (built, checked in M6)
+
+When a timed session writes an area's summary, the app queues second opinions for that project at once (`onAreaSummarized`), so the end of a session leaves only the last area. The end-of-session sweep stays as a catch-all; a find is never queued twice. The session prompt says so. Checked in M6's two-hour run.
+
