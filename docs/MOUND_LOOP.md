@@ -100,4 +100,35 @@ Why it ships anyway. Asked the same way twice, Sonnet agrees with itself in 70 o
 ### 2026-11-22, M2: opinions while the session runs (built, checked in M6)
 
 When a timed session writes an area's summary, the app queues second opinions for that project at once (`onAreaSummarized`), so the end of a session leaves only the last area. The end-of-session sweep stays as a catch-all; a find is never queued twice. The session prompt says so. Checked in M6's two-hour run.
+### 2026-11-22, M4: a pass that looks only for mounds (tried, not kept)
+
+The pass: after every tile has a verdict, `mound_pass` picked the quarter tiles (125 m) where a mound was likeliest (those holding the best-ranked rises, then the rest of the possible and built tiles, 24 quarters per km²); `view_quarter` drew each in local relief at a 4 m window beside negative openness, at 720 pixels a panel; the agent was asked one thing, mark every round mound, and `mark_mounds` opened them. It ran inside the whole search, with M3's rises after it. The five blind tests, run on the new build after the usage reset (`-startBlindTests`, primary / 6.1 Terra):
+
+| Test | Before this loop | With M3 and the pass | Found by: agent / rises / the pass | Extra per km² (the pass's share) | Minutes |
+|---|---|---|---|---|---|
+| Borre | 25 of 53 | **29 of 53** | 20 / 8 / 1 | 26 (0) | 6 |
+| Mound City | 19 of 19 | 19 of 19 | 19 / 0 / 0 | 56 (0) | 4 |
+| Maiden Castle | 3 of 3 | 3 of 3 | 1 / 3 / 0 | 37 (1) | 7 |
+| Cahokia | 1 of 1 | 1 of 1 | 1 / 1 / 0 | 32 (0) | 3 |
+| Sierra de Andía | 1 of 11 | **4 of 11** | 0 / 4 / 0 | 86 (**33**) | 15 |
+
+The check (Borre at least 33, Andía at least 4, at most 50 extra per km², others no worse, no more than 20% slower) is not met, and the pass is the reason it fails rather than the way to pass it. It found one mound in 115 quarters looked at, and on Andía's rough ground it opened 72 false finds, a third of the noise there; it also made Andía's search half again as long. Every gain came from M3's ranked rises. Looking at the missed mounds in the quarter pictures shows why: at Borre, of 28 misses, about four show as a small bright dome; the rest are flat in local relief at 1 m (as M5 below also shows). A model cannot mark what the picture does not hold.
+
+So the pass is not kept: the tools, the skill's step and the prompt's step were taken out before merging. The code is on the branch `codex/m4-mound-pass-tried` for the record. Without it, the results stand as M3's: Borre 29 of 53, Andía 4 of 11 (its extras fall to about 53 per km²). Two sites sit just above 50 extra per km² live (Mound City 56: 11 rises on a 0.25 km² window that already holds 19 mounds and 3 real ones the key leaves out; Andía about 53): lowering the rise cap to 36 or 38 per km² brings them under it, and costs Maiden Castle an entrance outwork offline, so the cap stays at 40 per km² and the overrun is logged rather than hidden. Reaching 33 of 53 at Borre needs mounds the ground model does not show at all; the only route left is the raw points (a lower ground-filter threshold, or a finer DTM built from the points), which is beyond this loop.
+
+
+### 2026-11-22, M5: does resolution matter?
+
+`scripts/resolution_test.py` takes one area's ground, makes coarser copies of it (block means of the finest), and counts how many known mounds show as a measured rise at each resolution and how many the best-ranked rises reach at 40 per km². No model is asked anything.
+
+| Ground | 0.5 m | 1 m | 2 m |
+|---|---|---|---|
+| Borre, Kartverket (53 mounds): a rise on | — | 32 | 32 |
+| Borre: reached by the top rises | — | 13 | 12 |
+| Ardèche, IGN LiDAR HD (12 mapped tumuli): a rise on | **4** | 8 | 10 |
+| Ardèche: reached by the top rises | 1 | 0 | 0 |
+
+**The French site.** A group of 12 tumuli mapped in OpenStreetMap in the Ardèche (about 44.56 N, 4.44 E, in the garrigue north of the Rhône), the densest mapped tumulus group inside IGN LiDAR HD's coverage, read from OpenStreetMap through QLever (France's departmental site registers are not open). Its positions are mapped by volunteers, not a register, so it is a weaker key than Borre's. [docs/mound/m5-ardeche.png](mound/m5-ardeche.png) shows the ground in local relief with the tumuli ringed: low stone mounds in scrub cut by dry-stone walls.
+
+**What it says.** Finer data is not the lever. At Borre, 1 m and 2 m show the same 32 mounds; the other 21 are too low or too worn to show at any resolution read here. In the Ardèche, finer data shows *fewer* mounds as a rise: at 0.5 m every stone and wall is a bump, so a low mound breaks into pieces among them; smoothed to 2 m, 10 of 12 stand out. On stony ground the ranking does not lift them above the walls and clearance cairns (1 of 12 at best). The gains come from how the ground is looked at (smoothing to the size of the mound, as M3's large window does) rather than from finer surveys. Navarre's newer 0.5 m model is not served by IDENA (its WCS lists only the 2 m model), so Andía stays at 2 m.
 
