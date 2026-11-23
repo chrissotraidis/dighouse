@@ -26,8 +26,8 @@ mcp = MCPServer(
     instructions=(
         "Archaeology tools for searching open lidar. To choose where to look, use find_place, open_surveys and "
         "survey_area; they need no project. Everything else works inside one project folder. "
-        "Order of work: init_project, find_data, fetch_terrain, make_tiles, then for each tile view_tile and "
-        "record_verdict; flag_candidate for anything that looks built; then cut_section, second_look, "
+        "Order of work: init_project, find_data, fetch_terrain, make_tiles, then look_at_tiles once (every tile in "
+        "bulk), then view_tile and record_verdict on each tile of its shortlist; flag_candidate for anything it missed; then cut_section, second_look, "
         "check_modern, search_literature and log_source for every flag; set_status last. End a run with "
         "write_summary, and with write_report when asked to report back. "
         "Never call a site new and never write coordinates into Markdown or messages."
@@ -498,6 +498,27 @@ def make_tiles(project: str, terrain: str, tile_m: float = 250) -> dict:
 
 
 @tool
+def look_at_tiles(project: str) -> dict:
+    """Look at every tile nobody has looked at, in bulk: each goes straight to a low-cost vision model in two views with
+    the feature guide, and its verdict is recorded under that model's name. Every shape it points at on a tile worth a
+    closer look becomes a find, marked as seen in bulk. Returns the shortlist, best first: the tiles to look at closely
+    yourself, with what the bulk look saw. Call it once per area after make_tiles. If the model router does not answer,
+    it says so: then look at every tile yourself as before."""
+    from . import review, triage
+    p = Project(project).check()
+    answers.guard_calibration(p)
+    if not review.router_answers():
+        raise ValueError("The model router is not running, so tiles cannot be looked at in bulk. Look at each tile yourself "
+                         "with next_tiles, view_tile and record_verdict.")
+    got = triage.sort_tiles(project)
+    made = triage.mark_spots(project, got["shortlist"])
+    got["shortlist"].sort(key=lambda t: (t["verdict"] != "built", -len(t["spots"])))
+    p.note(f"Looked at {got['looked_at']} tiles in bulk with {got['model']} in {got['seconds']} s; "
+           f"{len(got['shortlist'])} for a closer look, {made['count']} finds opened")
+    return {**got, "finds_opened": made["added"]}
+
+
+@tool
 def next_tiles(project: str, count: int = 8) -> list[str]:
     """The next tiles nobody has screened yet."""
     return tiles.next_unscreened(Project(project).check(), count)
@@ -612,6 +633,17 @@ def add_measured_rises(project: str, per_km2: float = 40.0) -> dict:
     return {"added": made, "count": len(made), "per_km2": per_km2}
 
 
+def _bulk_find_near(p, lonlat, reach_m: float = 15.0) -> str:
+    """A find the bulk look opened within reach of a place, that no model has taken over yet."""
+    from . import triage
+    places = p.load("locations", {}) or {}
+    for m in ledger.everything(p):
+        loc = places.get(m["id"])
+        if loc and str(m.get("flagged_by", "")).startswith(triage.SEEN_BY.split("{")[0]) and                 ledger.distance_m(lonlat, (loc["lon"], loc["lat"])) < reach_m:
+            return m["id"]
+    return ""
+
+
 @tool
 def flag_candidate(project: str, tile: str, x: float, y: float, name: str, note: str, model: str) -> list:
     """Open a candidate record for something that looks built.
@@ -621,11 +653,24 @@ def flag_candidate(project: str, tile: str, x: float, y: float, name: str, note:
     p = Project(project).check()
     answers.guard_calibration(p)
     lonlat = tiles.tile_lonlat(p, tile, x, y)
-    meta = ledger.create(p, name, tile, lonlat, note, model, at=(x, y))
+    taken = _bulk_find_near(p, lonlat)
+    if taken:
+        # The bulk look opened this shape already: the closer look takes the find over, at its own, more exact place,
+        # so one shape keeps one record.
+        meta, notes = ledger.get(p, taken)
+        meta.update(name=name, flagged_by=model, tile=tile)
+        meta["evidence"] = ([note] if note else []) + meta["evidence"]
+        with p.change("locations", {}) as locations:
+            locations[taken] = {"lon": lonlat[0], "lat": lonlat[1], "tile": tile, "x": x, "y": y}
+        ledger.write(p, meta, notes)
+    else:
+        meta = ledger.create(p, name, tile, lonlat, note, model, at=(x, y))
     f = p.path("candidates", "img", f"{meta['id']}-relief.png")
     tiles.tile_image(p, tile, "composite", mark=(x, y)).save(f)
-    p.note(f"{meta['id']} marked on {tile} by {model}: {name}")
+    p.note(f"{meta['id']} {'taken over from the bulk look' if taken else 'marked'} on {tile} by {model}: {name}")
     reply = {"candidate": meta["id"], "record": f"candidates/{meta['id']}.md", "status": meta["status"]}
+    if taken:
+        reply["took_over"] = "The bulk look had opened this shape; this is now its record, at your place and in your words."
     near = answers.on_record_near(p, *lonlat)
     if near:
         # The early check: a find already on open record can be said so now, before the slice and the second opinion.
@@ -1192,7 +1237,7 @@ def list_tests() -> list[dict]:
 def start_test(folder: str, site: str) -> dict:
     """Start a blind test on a known site: make a project in the folder whose name and question say nothing about the place.
 
-    site is an id from list_tests. Run the search as usual: fetch the ground, look at every tile, mark finds, slice them and
+    site is an id from list_tests. Run the search as usual: fetch the ground, look_at_tiles, look closely at its shortlist, mark finds, slice them and
     get a second opinion. The literature and records for the area stay closed until score_test scores the finds.
     """
     return answers.start(folder, site)

@@ -980,3 +980,18 @@ def test_funnel_counts_what_reaches_a_person(tmp_path):
     row = funnel.funnel(root)
     assert row["finds"] == row["to_a_person"] == row["decided"] == row["answered"] == 0 and not row["blind_test"]
     assert funnel.totals([row])["projects"] == 1
+
+def test_a_closer_look_takes_over_a_bulk_find(tmp_path, survey):
+    """The agent marks every shape on a shortlisted tile; one the bulk look opened keeps one record, at the agent's place."""
+    from dighouse import ledger, tiles as T
+    root = str(tmp_path / "proj")
+    server.init_project(root, "Synthetic", "q", *survey["bbox"])
+    p = Project(root)
+    terrain = server.fetch_terrain(root, "usgs:synthetic", *survey["bbox"])["terrain"]
+    server.make_tiles(root, terrain, tile_m=100)
+    tile, fx, fy = tile_at(p, survey["mound_xy"])
+    ledger.create(p, "Seen in bulk: a mound", tile, T.tile_lonlat(p, tile, fx + 0.02, fy), "", "seen in bulk by m")
+    server.flag_candidate(root, tile, fx, fy, "Mound", "Guide: burial mound.", "agent")
+    records = ledger.everything(p)
+    assert len(records) == 1 and records[0]["flagged_by"] == "agent" and records[0]["name"] == "Mound"
+    assert abs(p.load("locations")["C-001"]["x"] - fx) < 1e-9

@@ -1,6 +1,6 @@
 """National lidar published as ready-made ground models: England, the Netherlands, France, Flanders, Norway, Estonia,
 Switzerland, Navarre and the Basque Country (Spain), Bavaria, Saxony, North Rhine-Westphalia, Scotland, Wales, Slovenia,
-New Zealand and Denmark (with a free token).
+New Zealand, Denmark (with a free token) and the conterminous United States (USGS 3DEP).
 
 These services hand out a bare-ground raster (a DTM) built by the national mapping agency,
 not raw points. The terrain is as good as their ground classification; a section through it
@@ -294,6 +294,17 @@ NATIONAL = {
         "citation": "VIRTUAL SHIZUOKA point cloud data, Shizuoka Prefecture. CC BY 4.0.",
         "landing_page": "https://github.com/aigidjp/opendata_virtualshizuoka",
         "note": "Flown in parts between 2019 and 2025; each 300 by 400 m sheet comes from the newest survey that has it.",
+    },
+    "us:3dep-dem-1m": {
+        "publisher": "USGS 3DEP (United States)",
+        "title": "USGS 3DEP ground model, best available, about 1 m (conterminous United States)",
+        "source": "USGS 3D Elevation Program", "country": "the conterminous United States", "maker": "the USGS 3D Elevation Program",
+        "outline": [(-124.7, 48.4), (-123.0, 49.0), (-95.0, 49.0), (-89.5, 48.0), (-84.8, 46.9), (-82.4, 45.3), (-82.5, 42.0), (-79.0, 43.5), (-75.0, 45.0), (-71.5, 45.0), (-69.0, 47.4), (-67.0, 45.0), (-70.0, 43.0), (-70.0, 41.5), (-74.0, 40.5), (-75.5, 38.5), (-76.0, 35.0), (-81.0, 31.5), (-80.0, 25.2), (-82.0, 26.0), (-83.0, 29.0), (-85.0, 29.6), (-89.0, 30.0), (-94.0, 29.5), (-97.2, 26.0), (-99.5, 27.6), (-104.5, 29.6), (-106.5, 31.8), (-111.0, 31.3), (-114.8, 32.5), (-117.1, 32.5), (-120.6, 34.5), (-122.5, 37.5), (-124.3, 40.4), (-124.7, 48.4)],
+        "epsg": "utm", "res": 1.0, "kind": "image", "chunk_px": 2000, "parallel": 4,
+        "url": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+        "citation": "U.S. Geological Survey, 3D Elevation Program. Public domain.",
+        "landing_page": "https://www.usgs.gov/3d-elevation-program",
+        "note": "The ready-made bare-ground model USGS builds from its lidar, much faster to fetch than the points. Where no 1 m model exists yet the service fills in coarser ground (10 or 30 m), which hides small features; the points (the usgs: surveys) show what was flown.",
     },
     "us:noaa-bag": {
         "publisher": "NOAA (United States)",

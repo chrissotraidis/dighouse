@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
-  <img alt="58 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-58%20tools-8B5E3C">
+  <img alt="59 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-59%20tools-8B5E3C">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
 </p>
 
@@ -44,20 +44,20 @@ A **find** in Dighouse is a shape that might be built and is not yet confirmed. 
 
 ## Benchmarks
 
-Each test is **blind**: the agent is not told the site, looks at every tile, marks what it finds, and is scored against an answer key of published features before it may read any literature. Try one yourself from Home with **Test it on a known site**.
+Each test is **blind**: the agent is not told the site, looks at the ground tile by tile, marks what it finds, and is scored against an answer key of published features before it may read any literature. Try one yourself from Home with **Test it on a known site**.
 
 | Site | Data | Found of known | Missed | Not in the key |
 |---|---|---|---|---|
-| Mound City Group, Ohio * | USGS 3DEP | 19 of 19 | 0 | 14 (real mounds the key leaves out, and measured rises) |
+| Mound City Group, Ohio * | USGS 3DEP | 19 of 19 | 0 | 17 (real mounds the key leaves out, and measured rises) |
 | Angel Mounds, Indiana | USGS 3DEP | 4 of 4 | 0 | 3 |
-| Cahokia, Monks Mound, Illinois * | USGS 3DEP | 1 of 1 | 0 | 8 |
+| Cahokia, Monks Mound, Illinois * | USGS 3DEP | 1 of 1 | 0 | 12 |
 | Serpent Mound, Ohio | USGS 3DEP | 1 of 3 (the effigy) | 2 burial mounds | 2 |
-| Maiden Castle, England * | Environment Agency 1 m | 3 of 3 | 0 | 33 |
-| Borre, Norway * | Kartverket 1 m | 29 of 53 | 24 small burial mounds | 10 |
+| Maiden Castle, England * | Environment Agency 1 m | 3 of 3 | 0 | 35 |
+| Borre, Norway * | Kartverket 1 m | 29 of 53 | 24 small burial mounds | 11 |
 | Oberhaching square enclosures, Bavaria | Bavarian DGM1 1 m | 2 of 3 | 1 enclosure | 3 |
 | Lauske ring forts, Saxony | Saxon DGM1 1 m | 3 of 3 | 0 | 5 |
 | Irulegi hill, Navarre | Navarre 2 m | 1 of 2 (the castle) | the Iron Age village | 0 |
-| Sierra de Andía megaliths, Navarre * | Navarre 2 m | 4 of 11 | 7 low mounds and dolmens | 114 |
+| Sierra de Andía megaliths, Navarre * | Navarre 2 m | 5 of 11 | 6 low mounds and dolmens | 133 |
 | Puketapu Pa, Auckland | LINZ 1 m | 1 of 1 | 0 | 8 |
 | Munoaundi hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (marked 141 m off its mapped line) | 1 |
 | Arrola hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (banks marked 97 m outside the mapped outline) | 1 |
@@ -73,7 +73,7 @@ Each test is **blind**: the agent is not told the site, looks at every tile, mar
 
 <p align="center"><img src="docs/images/test-sites.png" width="640" alt="Test it on a known site: ten known sites to try blind, from Mound City in Ohio to Puketapu Pā in Auckland, and a wreck on the bed of Lake Huron under water"><br><sub><b>Ten sites to test it on.</b> Mounds, hillforts, ring forts and a pā on land, and a wreck on the lake bed from NOAA's sonar surveys. Press one and the agent searches it blind.</sub></p>
 
-\* Rerun on 2026-11-22, when a whole search also opens the measured rises that stand out most from the ground around them, on every tile looked at (at most 40 per km²): recall rose at Borre (21 to 29 of 53 over two loops), Maiden Castle (1 to 3) and Andía (0 to 4), and so did the finds a person rules out; Mound City and Andía went a little over 50 per km² of them. Andía's extras leave out 72 marked by a mound-only pass that was tried in the same run and not kept. The rest were run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 to 10 minutes a site. Every land site was run with the same method (the two Basque hillforts a day later): a look at the whole area first, then every tile, then a slice and a map check for each find. The answer keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them (the rest). Most keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log). Results will differ with other models.
+\* Rerun on 2026-11-23, when every tile is first looked at in bulk by a low-cost model and the agent looks closely at the tiles worth it (FIND_LOOP G1): no site found less than on 2026-11-22, Andía found one more, and the finds outside the key rose a little at four sites. Before that, rerun on 2026-11-22, when a whole search also opens the measured rises that stand out most from the ground around them, on every tile looked at (at most 40 per km²): recall rose at Borre (21 to 29 of 53 over two loops), Maiden Castle (1 to 3) and Andía (0 to 4), and so did the finds a person rules out; Mound City and Andía went a little over 50 per km² of them. Andía's extras leave out 72 marked by a mound-only pass that was tried in the same run and not kept. The rest were run on 2026-11-16 with primary / 6.1 Terra, a low-cost model, at medium effort, about 3 to 10 minutes a site. Every land site was run with the same method (the two Basque hillforts a day later): a look at the whole area first, then every tile, then a slice and a map check for each find. The answer keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them (the rest). Most keys are partial, so a find "not in the key" can be a real feature. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log). Results will differ with other models.
 
 The underwater row is a pilot: one source (NOAA's sonar surveys of US waters and the Great Lakes), three small areas of Thunder Bay National Marine Sanctuary, and one scored run each. The three charted wrecks it missed stand barely above a rocky lake bed, or lie at the edge of the survey.
 
@@ -117,7 +117,7 @@ We checked. Given the Mound City blind test box with no tools, the same model th
 1. **Choose where to look.** Ask "What should I research?" and the agent weighs open lidar, how little is on record, and where earthworks survive, then proposes three searches. Or press **Pick a place on the map** on Home, where the places with open data are shaded, and click where you want to look. Or type a place and press **What is this?** for a one-minute look.
 2. **Calibrate.** Before searching where nothing is on record, the agent runs a blind test on the nearest known site with the same kind of lidar. If it finds less than half of what is published there, the search stops.
 3. **Take the trees away.** The tools download the raw laser points, or a national ground model, and keep the ground.
-4. **Look at every tile.** The ground is cut into squares called tiles, and agents look at each one in two renderings. A feature guide tells it what mounds, banks and terraces look like, and what to rule out (sinkholes, tree throws, craters, tracks). A tile with too little ground data is marked unreadable, never "nothing found".
+4. **Look at every tile.** The ground is cut into squares called tiles. A low-cost vision model looks at every one in bulk, a few at a time, and opens a find for each shape it points at; the agent then looks closely, in two renderings, at the tiles worth it, marks every feature it sees and takes over the bulk finds it agrees with. A feature guide tells both what mounds, banks and terraces look like, and what to rule out (sinkholes, tree throws, craters, tracks). A tile with too little ground data is marked unreadable, never "nothing found". Without the OpenCodex router the agent looks at every tile itself, which is slower.
 5. **Check every find.** A slice straight down through the laser points shows whether a shape is in the ground or only in the treetops. A second, different model gives its own opinion without seeing the first. Open maps are checked for roads, buildings and sites already mapped.
 6. **Search what is published.** The agent searches books, papers and site records, opens what it can, and logs every source as read, could not open, or not relevant.
 7. **Keep the record, and you decide.** Every find is a Markdown page with its pictures, measurements, checks and sources. You decide what it is, and your name and reason go into the record.
@@ -178,7 +178,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (45 tests)
+uv run pytest            # offline, on a synthetic survey (46 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
@@ -193,7 +193,7 @@ uv run python scripts/speed.py       # how long each stage of a search takes on 
 | Choose where to look | `find_place`, `open_surveys`, `survey_area`, `find_gaps`, `open_resources`, `search_records` |
 | Set up | `init_project`, `name_project` |
 | Fetch open lidar, or use your own | `find_data`, `fetch_terrain`, `import_terrain` |
-| Draw the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `next_tiles`, `view_tile` |
+| Draw the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `look_at_tiles`, `next_tiles`, `view_tile` |
 | Look at every tile | `record_verdict`, `flag_candidate`, `find_mounds`, `add_measured_rises` |
 | Check each find | `check_finds`, `cut_section`, `second_look`, `check_modern`, `check_old_maps`, `record_old_maps`, `add_control` |
 | Test the method on a known site | `list_tests`, `start_test`, `score_test`, `calibration_site`, `start_calibration`, `record_calibration` |

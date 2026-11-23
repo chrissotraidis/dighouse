@@ -80,3 +80,20 @@ The polish pass left an app whose screens are fast and consistent. What it does 
     - Second opinions from another maker need OpenCodex on 127.0.0.1:10100.
   - **The measuring tour** found no slow screen (launch 3.5 s, pages under 50 ms, the longest chat 0.4 s, no stalls).
   - **Tests:** offline 45 (two new: Shizuoka's two sheet layouts, and the funnel on a fresh project).
+- **G1, fast and wide** (2026-11-23).
+  - **The bulk look** (`src/dighouse/triage.py`, the tool `look_at_tiles`). Every tile, in composite and sky view with the feature guide, goes straight to a low-cost vision model through the model router (primary/gpt-6.1-terra, eight at a time; `DIGHOUSE_SORT_MODEL` overrides it). A tile it sets aside is asked once more, since the same model can answer differently. Each verdict is recorded under that model's name, every shape it points at on a tile worth a closer look becomes a find marked "seen in bulk", and the agent looks closely only at the shortlist, best first. Without the router the agent looks at every tile, as before. The skill, the tools' instructions, `start_test` and the "Find and report back" and "Look at the tiles" workflows say so.
+  - **Scored offline on copies of the five saved blind tests** (`scripts/sort_eval.py`; the saved runs are not changed). Over three runs, every answer-key feature on a tile the agent had called possible or built was also on the bulk shortlist, and so was every mound the agent had seen (Borre 21 of 21 each time, Mound City 19 of 19). Without the second look on set-aside tiles, one run lost 2 of Borre's 21. The shortlist is not smaller on these dense test sites (Borre 7 of 9 tiles, Andía 45 of 49 on rough ground); on Perry Mesa, ordinary ground, it was 17 of 36, both of the agent's possible tiles among them, in 27 s.
+  - **Without the agent at all** (`--pipeline`: bulk look, its finds, measured rises), the search ties at Maiden Castle (3 of 3), Cahokia (1 of 1) and Andía (5 against 4), and falls short at Mound City (17 or 18 of 19) and Borre (18 to 23 of 53, 25 to 27 with GPT-6 as the eye, against 29). A model asked for every mound points at fewer than an agent marks, and judging the measured rises' numbered rings did not close the gap. So the bulk look leads and the agent's close look stays.
+  - **The live blind tests**, the five sites run in the app on the new skill (`-startBlindTests`, primary / 6.1 Terra), against the saved runs of 2026-11-22. A first round, with the agent told to "mark what the bulk look missed", found Borre 27 and 26 of 53: the agent marked fewer mounds itself and the bulk look's places are coarser. So a mark the agent makes within 15 m of a bulk find now takes that find over, at the agent's place and in its words (`flag_candidate`), and the agent marks every feature it sees as if nothing were marked. The second round, on that:
+
+    | Site | Found (saved) | Extra finds per km² (saved) | Minutes |
+    |---|---|---|---|
+    | Borre, two runs | 29 and 29 of 53 (29) | 29.0 and 36.8 (26.3) | 5 and 5 |
+    | Mound City | 19 of 19 (19) | 68 (56) | 5 |
+    | Maiden Castle | 3 of 3 (3) | 39.8 (37.5) | 6 |
+    | Cahokia | 1 of 1 (1) | 48 (32) | 4 |
+    | Andía | 5 of 11 (4) | 61.6 (86.1) | 12 |
+
+    No site is worse, and Andía found one more. Extra finds rise at four sites, from the bulk look's finds the agent did not take over; G3 is where they are held back. One Borre run was stopped and repeated when Norway's ground service stopped answering for a time (the same outage left its register's map service returning 504).
+  - **The search without the agent's close look, timed** (`scripts/speed.py no:nhm-dtm-1m 2.4 --bulk`): 5.8 km² of Norway, 121 tiles: fetch 155 s, cut 7 s, draw 11 s, bulk look 114 s, measured rises 107 s: **53 km² an hour**, with 26 tiles (21%) shortlisted and 15 finds opened. The agent's close look on the shortlist comes on top of that.
+  - **USGS's ready-made ground model** (`us:3dep-dem-1m`, the 3DEP image service): 4.6 s per km², against 179 for the points. Where no 1 m model exists the service fills in 10 or 30 m ground, and the dataset's note says so.
