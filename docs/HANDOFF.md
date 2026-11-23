@@ -37,17 +37,30 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 ## Where things stand
 
 - **App** (`app/Sources/Dighouse`, SwiftUI, macOS 14): one page at a time (Home, chat, New project, Toolbox, Settings). A project puts a workspace beside the chat with Map, Records, Notes, Sources and Data tabs. Three looks; Earth is the default. The mark at the top of the sidebar opens Home.
-- **Tools** (`src/dighouse`, Python, MCP): 53 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
+- **Tools** (`src/dighouse`, Python, MCP): 58 tools. `discover.py` chooses where to look, `sources.py`, `national.py` and `terrain.py` fetch and build the ground, `tiles.py` and `section.py` cut tiles and slices, `checks.py` reads maps and literature, `ledger.py` keeps records, `record.py` builds the research record and `report.py` the search report. The agent's instructions are `skills/dighouse/SKILL.md`.
 - **Open lidar:** the United States (USGS 3DEP), surveys on OpenTopography, and ready-made ground models for England, the Netherlands, France, Flanders, Norway, Estonia, Switzerland, Navarre and the Basque Country (Spain), Bavaria, Saxony, New Zealand, Czechia (2 m, ČÚZK's image service), Canada (HRDEM 1 m, a WCS 1.1 service, kind `wcs11`) and Denmark (Denmark needs a free token pasted in Settings, Data and privacy). Each is one entry in `NATIONAL` in national.py; Bavaria, Saxony and New Zealand use the `tiles` kind (files on a grid of map sheets).
 - **Seafloor:** NOAA's sonar surveys of US waters and the Great Lakes (`us:noaa-bag`), offered only where a 2 m or finer survey covers the box, and INFOMAR's seabed model of Irish waters (`ie:infomar`, about 4 m: large wrecks only). The modern check reads NOAA's charts in US waters; elsewhere it records the charts as not checked.
 - **Project state** is saved atomically and changed under a file lock (`Project.change`), because the agent records verdicts from parallel helpers.
 - **Engine**: `codex app-server` as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse starts the **newest** copy of Codex on the Mac (`Setup.detect`); on Chris's Mac that is 0.167 inside the ChatGPT app, because 0.146 on the PATH is refused GPT-6.1 Terra. Dighouse's own tools are approved at launch (`default_tools_approval_mode`), since newer engines ask before every tool call.
-- **Tests**: 37 offline, 10 live (`uv run pytest`, `uv run pytest -m live`), and 3 for the app (`cd app && swift test`). The live test of the national ground models takes two minutes. CI (`.github/workflows/checks.yml`) runs the offline tests and the people-only check on every pull request, once GitHub Actions billing on Chris's account lets jobs start (it did not on 2026-11-22).
+- **Tests**: 43 offline, 10 live (`uv run pytest`, `uv run pytest -m live`), and 4 for the app (`cd app && swift test`). The live test of the national ground models takes two minutes. CI (`.github/workflows/checks.yml`) runs the offline tests and the people-only check on every pull request, once GitHub Actions billing on Chris's account lets jobs start (it did not on 2026-11-22).
 - **README** has pictures in `docs/images`, retaken on 2026-11-14 at 1440 × 900 in Earth after loop 5. Loop 5's own pictures are in `docs/loop5`.
 
 ## Where it stands (2026-11-22)
 
 The search works; deciding does not. Across the 66 projects in Chris's list there are 744 finds outside blind tests, and a person has decided 18, all in early test projects. Eight are leads, 72 are "look again" (71 of them measured rises), and none has been marked "no match in the sources read" or reported, so nothing has gone past a lead. Every ground search since 2026-11-20 was in Ohio, Illinois or Alabama, where the site files are closed. Measured rises are 62% of all finds. The Review screen shows one find at a time, its counts disagree with the header, and it shows a disagreeing second opinion with a green tick. [DECIDE_LOOP.md](DECIDE_LOOP.md) has the full count, what a person sees, and the plan (D0 to D8), with six decisions for Chris before it starts.
+
+## What the home loop added (H0 to H5, 2026-11-23)
+
+The goals, the probe and every check are in [HOME_LOOP.md](HOME_LOOP.md). A project is now the home for its work.
+
+- **H1, areas.** `fetch_terrain(area=…)` names an area and keeps its box in degrees (`lonlat`). `Project.grow_area` widens the project's box after each fetch. `name_project` names a project after its region. The map shows one area at a time from a menu of names, and Pick a place shades each area.
+- **H2, the project page** lists its chats with what each is doing. `ChatThread.label` keeps coordinates out of chat titles.
+- **H3, the sidebar** puts projects first, each unfolding to its chats (a closed project's chats are listed from the engine when unfolded), then loose chats, then a folded Blind tests group. The fold arrow is its own button.
+- **H4, Search on its own** makes the session's project, starts its chat inside it, and is told to name the project after its region and add every area to it.
+  - **Tool guards:** `add_measured_rises` skips ground that already has its rises. `start_calibration` waits for a region. `lasting_folder` keeps projects out of `/tmp` and Application Support.
+  - **The app** follows a project's name from `project.json`.
+  - **Older sessions** and their small projects are left as they were.
+- **Defaults the app now uses:** `timedProject` (the running session's project) and `sidebarTestsOpen`.
 
 ## What the decide loop added (D0 to D4, 2026-11-22)
 

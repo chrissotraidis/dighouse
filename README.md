@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
-  <img alt="53 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-53%20tools-8B5E3C">
+  <img alt="58 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-58%20tools-8B5E3C">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
 </p>
 
@@ -145,7 +145,9 @@ Take the stages one at a time, or press **Find and report back** and the agent c
   </tr>
 </table>
 
-**Search on its own** from Home: choose how long, and the agent picks fresh ground with open lidar, searches it area by area (about 15 minutes for each square km on USGS lidar), checks every find, and asks a second model about each when the time is up.
+**Search on its own** from Home: choose how long, and Dighouse makes a project for the session. The agent picks a region with open lidar where little is on record, names the project after it, and searches it area by area (about 15 minutes for each square km on USGS lidar), adding each area to the project. It checks every find, and a second model gives its opinion on each area as soon as the area is done.
+
+**A project is the home for its work.** It holds its areas of ground, its finds and decisions, and its chats: the run that searched it, a chat that checks one lead, a chat that writes the report. The project page lists its chats and what each is doing. Anything typed there starts a new chat in the project, and every chat starts from the research record. In the sidebar, projects come first, each with its chats folded under it, then chats that belong to no project, then the blind tests in a group of their own. The map shows one area at a time, by name.
 
 **Decide** is where a person makes the calls. **Needs you** shows the leads, then the finds where the agent and the second model disagree, one at a time: a close view 60 m across, the whole tile, the slice, and one line saying what each model thinks. Return agrees with the suggestion; a letter picks another decision and asks for your reason. **Agree in bulk** shows the routine finds as a grid of close views; untick any that look wrong and agree with the rest in one press. **Done** lists what you decided, with Undo. Your name and a reason go on every record.
 
@@ -176,7 +178,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (37 tests)
+uv run pytest            # offline, on a synthetic survey (43 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 ~~~
@@ -186,7 +188,7 @@ uv run pytest -m live    # the same chain against the real data services (10 tes
 | Stage | Tools |
 |---|---|
 | Choose where to look | `find_place`, `open_surveys`, `survey_area`, `find_gaps`, `open_resources`, `search_records` |
-| Set up | `init_project` |
+| Set up | `init_project`, `name_project` |
 | Fetch open lidar, or use your own | `find_data`, `fetch_terrain`, `import_terrain` |
 | Draw the bare ground | `view_terrain`, `make_tiles`, `render_tiles`, `next_tiles`, `view_tile` |
 | Look at every tile | `record_verdict`, `flag_candidate`, `find_mounds`, `add_measured_rises` |
@@ -196,6 +198,7 @@ uv run pytest -m live    # the same chain against the real data services (10 tes
 | Know what to look for | `feature_guide` |
 | Search what is published | `search_literature`, `read_source`, `log_source` |
 | Records and runs | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `write_report`, `document_project`, `export_finds` |
+| For the app, when a person decides | `decide_many`, `undo_decision`, `raise_rise`, `find_views` |
 
 The ground is drawn as `composite`, `hillshade`, `local_relief` and `sky_view`. Tool names keep the project's older words (candidate, section, second look). `export_finds` writes GeoJSON for QGIS, ArcGIS or Google Earth, under `private/` because it holds coordinates.
 
@@ -277,6 +280,8 @@ my-project/
   data/           downloaded points, ground models, tiles (not versioned)
   private/        locations, exports and run state (not versioned)
 ~~~
+
+A project can hold several areas of one region, each fetched under a short name (`fetch_terrain` with `area`); the record and the report name them, and the project's box grows to cover them all.
 
 Markdown is the record of truth, so a project works offline and can be handed to an archaeologist like any folder. Each project keeps its own git history without `data/` or `private/`. Dighouse rebuilds `RESEARCH.md` whenever a run ends, a person decides or the project is opened, and the agent reads it before it starts, so work adds up instead of starting over. A section of `PROJECT.md`, "How this project is kept", says which file holds what, so an agent in plain Codex can carry a project on without Dighouse.
 

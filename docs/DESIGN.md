@@ -12,6 +12,8 @@ Dighouse should feel like one calm, plain tool that a first-time user can follow
 ## Layout
 
 - **One page at a time:** Home, a chat, New project, the Toolbox, Settings. A project puts its workspace beside the chat.
+- **Projects first.** A project is the home for its work: the sidebar lists projects before loose chats, each project's chats fold under it, and the project page lists them. Blind tests sit in a group of their own.
+- **A chat's title never shows a place.** `ChatThread.label` takes boxes and coordinates out; show titles through it.
 - **One main button per screen** (`PrimaryButton`). Everything else is `SecondaryButton` or plain.
 - **A number means one thing everywhere.** If the header says 6 need you, the overview and the list say 6 too.
 - **Nothing truncates to "…".** Shorten the label, use an icon with help text, or move it.

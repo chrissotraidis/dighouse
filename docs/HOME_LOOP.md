@@ -83,3 +83,8 @@ A project is a place you work on, usually a region. It holds its areas of ground
     - A session long enough to search a second area in the same project.
     - A name changing on screen while the session runs; the watcher was added after this run, so the name was seen to follow at launch only.
   - **Tests.** Offline tests pass (43, three new), and the smoke test passes (31 s, score 1 of 1).
+- **H5, hand over.** README (Search on its own, a project as the home, the tool table, 58 tools, 43 tests), HANDOFF, DESIGN (projects first, titles without places), ROADMAP and DECIDE_LOOP (D6 done here as H3) brought up to date. The app was rebuilt and relaunched with Chris's settings unchanged.
+
+## Where it stands
+
+A project now holds its areas, its finds and its chats, and a timed session builds one project for its region instead of a project per square km. One gap stays open: no session has yet run long enough to put two areas into one project, and that is the first thing the next long run will show.

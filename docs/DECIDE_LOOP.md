@@ -211,3 +211,5 @@ So the target for D1: Perry A1 in 10 minutes or less (a third of 32), in no more
 ## Where the loop stands
 
 D0 to D4 are done. On the two-hour run's five projects, a person now decides 36 finds instead of 232, from close views, with Undo. Perry A1 went from 91 presses and about 32 minutes to about 6 presses and 5 minutes. Next, as planned: D5 (registers, so a lead can reach an answer), then D6 to D8.
+
+D6 (projects and chats in order) was done differently, as part of [HOME_LOOP.md](HOME_LOOP.md) (H3): projects first with their chats under them, and blind tests in their own group. Archiving and the naming style were left out; a session's project is named by the agent after its region.
