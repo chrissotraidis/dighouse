@@ -172,6 +172,18 @@ def in_icloud(path: Path) -> bool:
     return any(path == c or c in path.parents for c in cloud)
 
 
+def lasting_folder(folder: str | Path) -> Path:
+    """Where to make projects asked for in a folder: the folder itself, unless it is /tmp, which macOS empties, or
+    Dighouse's own Application Support folder, which nothing looks in for projects. Those become the projects folder.
+    (A blind test made by a timed session went to /tmp on 2026-11-23.)"""
+    folder = Path(folder).expanduser().resolve()
+    support = (Path.home() / "Library" / "Application Support" / "Dighouse").resolve()
+    for gone in (Path("/tmp").resolve(), support):
+        if folder == gone or gone in folder.parents:
+            return projects_home()
+    return folder
+
+
 def new_folder(project: str | Path) -> Path:
     """A folder for a new project: a bare name goes in the projects folder, and a folder that already holds anything
     gets a number added rather than being reused. A folder in iCloud, or inside an existing repository, is refused."""

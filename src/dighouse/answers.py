@@ -172,8 +172,9 @@ def _save_registry(reg: dict) -> None:
 def start(folder: str | Path, site: str) -> dict:
     """Create a blind-test project for a key's area. Its name, question and folder say nothing about the place."""
     from .project import Project, today
+    from .project import lasting_folder
     k = key(site)
-    folder = Path(folder).expanduser()
+    folder = lasting_folder(folder)
     n = 1
     while (folder / f"blind-test-{today()}-{n}").exists():
         n += 1

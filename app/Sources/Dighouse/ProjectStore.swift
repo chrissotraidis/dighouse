@@ -51,7 +51,9 @@ final class ProjectStore: ObservableObject {
     init() {
         if let data = UserDefaults.standard.data(forKey: "projects"),
            let saved = try? JSONDecoder().decode([ProjectRef].self, from: data) {
+            // A project can be renamed while the app is closed (name_project), so names are read again at launch.
             projects = saved.filter { FileManager.default.fileExists(atPath: $0.path + "/PROJECT.md") }
+                .map { ProjectRef(path: $0.path, name: Self.savedName(of: $0.path) ?? $0.name) }
         }
         if let last = UserDefaults.standard.string(forKey: "currentProject") {
             current = projects.first { $0.path == last }
@@ -218,7 +220,7 @@ final class ProjectStore: ObservableObject {
         readDownload(root)
         let fm = FileManager.default
         let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
-        let watched = ["terrains", "tiles", "locations", "controls"].map { root + "/private/state/\($0).json" }
+        let watched = ["terrains", "tiles", "locations", "controls", "project"].map { root + "/private/state/\($0).json" }
             + records.map { root + "/candidates/" + $0 }
         let now = watched.map { path -> String in
             let date = FileInfo.modified(path)
@@ -233,7 +235,24 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    /// The name in a project's own state, which name_project changes.
+    nonisolated static func savedName(of path: String) -> String? {
+        guard let data = FileManager.default.contents(atPath: path + "/private/state/project.json"),
+              let info = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let name = info["name"] as? String, !name.isEmpty else { return nil }
+        return name
+    }
+
+    /// Show a project under its new name everywhere, as soon as the agent renames it.
+    private func followName(_ root: String) {
+        guard let name = Self.savedName(of: root), let i = projects.firstIndex(where: { $0.path == root }), projects[i].name != name else { return }
+        projects[i].name = name
+        if current?.path == root { current = projects[i] }
+        if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
+    }
+
     private func load(_ root: String, _ records: [String]) {
+        followName(root)
         let terrainState = json(root + "/private/state/terrains.json") as? [String: JSON] ?? [:]
         terrains = terrainState.map { id, t in
             Terrain(id: id, dataset: t["dataset"] as? String ?? "", areaKm2: t["area_km2"] as? Double ?? 0,

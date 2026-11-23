@@ -66,3 +66,20 @@ A project is a place you work on, usually a region. It holds its areas of ground
     - **Chris's whole list** (66 projects plus the probe) sorted into 51 projects, his 19 chats and "Blind tests 15", with nothing opened.
     - **A smaller test list.** Unfolding the closed probe region showed its chat. Unfolding a blind test of Chris's listed "Find and report back" from the engine. That project's last commit and RESEARCH.md were unchanged afterwards.
     - **Nothing moved.** No folder was moved, renamed or opened.
+- **H4, Search on its own lives in one project.**
+  - **The app.** Pressing it makes the session's project ("Search on its own, Nov 23", with no area yet), opens it, and starts the timed chat inside it. "Show the session" opens that chat in its project; sessions from before still open under Chats.
+  - **The instructions.** The timed session's own instructions, and its workflow prompt, now say to choose one region, name the project after it with `name_project` (with the region's box) before calibrating, and add every area with `fetch_terrain` and a short area name. They also say to make no other search project, and to keep the session's record in the project. They no longer say "create a fresh project for each" or keep a record in the general chat folder. The skill did not change.
+  - **The tools.** `add_measured_rises` skips ground that already has its measured rises, so a project searched area by area does not fill the first area again. `start_calibration` refuses until the project has a region, so it cannot pick the known site nearest to 0°, 0°. A project asked for in `/tmp` or Dighouse's Application Support folder goes to the projects folder instead (`lasting_folder`).
+  - **Names follow.** The app reads a project's name again whenever its `project.json` changes, and at launch, so a project renamed by the agent shows its new name in the header and sidebar.
+  - **Checked with a 20-minute session** in the test copy (primary / 6.1 Terra, second opinions from Sonnet 5.5):
+    - **The project.** It named the project "Perry Mesa" with a question and the region's box in its first minutes, and passed a blind calibration on Cahokia.
+    - **The area.** It searched one named area, "Perry A4" (1.52 km², USGS 3DEP 2021, all 36 tiles), and added 74 measured rises. All 74 were checked in one pass and given a suggestion, and every one had a Sonnet opinion before the session ended. Its checkpoint, run summary and search report are in the project's `notes/` and `reports/`.
+    - **No other projects.** It made no other search project.
+    - **On relaunch** the project read "Perry Mesa" in the header and sidebar, with its chat "Search on its own" under it, 1 find for a person and 73 measured rises on the map.
+  - **Found while checking, and fixed:**
+    - The calibration test went to `/tmp`, because the old instructions had been the only thing steering it to the projects folder.
+    - The project kept its first name on screen until the app was relaunched.
+  - **Not checked:**
+    - A session long enough to search a second area in the same project.
+    - A name changing on screen while the session runs; the watcher was added after this run, so the name was seen to follow at launch only.
+  - **Tests.** Offline tests pass (43, three new), and the smoke test passes (31 s, score 1 of 1).

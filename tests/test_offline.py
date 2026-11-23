@@ -933,6 +933,28 @@ def test_measured_rises_go_on_possible_tiles_and_skip_existing_finds(tmp_path):
     assert server.measured_rises(p, 1000, verdicts=("possible", "built"), exclude={"C-001": {"lon": got[0]["lon"], "lat": got[0]["lat"]}}) == []
     # By default every tile looked at counts, so the rise on the tile called nothing is listed too.
     assert {m["tile"] for m in server.measured_rises(p, 1000)} == {"t-a", "t-b"}
+    # Ground that already has its measured rises is skipped, so a project searched area by area does not fill again.
+    assert server.measured_rises(p, 1000, skip_terrains={"t"}) == []
+    added = server.add_measured_rises(str(p.root), 1000)["count"]
+    assert added == 2 and server.add_measured_rises(str(p.root), 1000)["count"] == 0
+
+
+def test_projects_never_land_in_tmp(tmp_path, monkeypatch):
+    """A blind test asked for in /tmp goes to the projects folder instead; an ordinary folder is kept."""
+    from dighouse.project import lasting_folder
+    monkeypatch.setenv("DIGHOUSE_PROJECTS_HOME", str(tmp_path / "home"))
+    assert lasting_folder("/tmp/dighouse-calibration") == tmp_path / "home"
+    assert lasting_folder("/private/tmp") == tmp_path / "home"
+    assert lasting_folder(tmp_path / "mine") == (tmp_path / "mine").resolve()
+
+
+def test_calibration_waits_for_a_named_region(tmp_path):
+    """A session's project starts with no area; calibration must not pick the known site nearest to 0, 0."""
+    import pytest
+    root = str(tmp_path / "session")
+    server.init_project(root, "Search on its own, 23 Nov", "To be named", 0, 0, 0, 0)
+    with pytest.raises(ValueError, match="name_project"):
+        server.start_calibration(str(tmp_path), root, "usgs:OH_Statewide_Phase2_4_2020")
 
 def test_os_grid_names():
     """Scotland's sheets are named by Ordnance Survey grid reference; a wrong letter reads the wrong place silently."""

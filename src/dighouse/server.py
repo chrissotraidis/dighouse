@@ -528,7 +528,7 @@ MEASURED_BY = "measured (find_mounds), not seen by a model"
 
 
 def measured_rises(p, per_km2: float = 40.0, verdicts: tuple = tiles.VERDICTS, exclude: dict | None = None,
-                   order: str = "travel", min_h: float = 0.25) -> list[dict]:
+                   order: str = "travel", min_h: float = 0.25, skip_terrains: set | None = None) -> list[dict]:
     """The measured rises worth a person's look on tiles a model looked at (every verdict by default: on rough ground
     most missed mounds sat on tiles called natural), best first by mounds.travel_rank (or by the older shape rank with
     order="shape"), at most per_km2 for every square km of those tiles, and none within 10 m of a find already
@@ -542,7 +542,7 @@ def measured_rises(p, per_km2: float = 40.0, verdicts: tuple = tiles.VERDICTS, e
     area = 0.0
     grids: dict[str, tuple] = {}
     for tid, t in tiles_.items():
-        if t.get("verdict") not in verdicts:
+        if t.get("verdict") not in verdicts or t["terrain"] in (skip_terrains or ()):
             continue
         meta = terrains.get(t["terrain"])
         if not meta or meta.get("seafloor"):
@@ -592,12 +592,14 @@ def add_measured_rises(project: str, per_km2: float = 40.0) -> dict:
     that a picture can hide, ranked by how they stand out from the ground around them, at most per_km2 for each
     square km looked at,
     and never within 10 m of a find already made. Each is marked as measured, not seen, so a person knows where it
-    came from. Call it once after every tile has a verdict, then slice, check and suggest a decision on each like any
-    other find."""
+    came from. Call it once per area, after its tiles have verdicts; ground that already has its measured rises is
+    skipped. Then slice, check and suggest a decision on each like any other find."""
     p = Project(project).check()
     answers.guard_calibration(p)
+    tiles_ = p.load("tiles", {}) or {}
+    done = {tiles_[m["tile"]]["terrain"] for m in ledger.everything(p) if ledger.is_rise(m) and m.get("tile") in tiles_}
     made = []
-    for m in measured_rises(p, per_km2):
+    for m in measured_rises(p, per_km2, skip_terrains=done):
         s = m["shape"]
         note = (f"Measured, not seen: a rise {m['diameter_m']:.0f} m across and {m['height_m']:.1f} m high, "
                 f"symmetry {s.get('symmetry')}, {'; '.join(s.get('hints', []))}.")
@@ -1131,8 +1133,8 @@ def start_calibration(folder: str, project: str, dataset: str) -> dict:
     from the search project's area. Run the test blind to score_test, then call record_calibration."""
     p = Project(project).check()
     box = (p.load("project", {}) or {}).get("bbox")
-    if not box:
-        raise ValueError("The search project has no area.")
+    if not box or not any(box):
+        raise ValueError("The search project has no area yet. Name its region first with name_project, giving the region's box.")
     site = answers.calibration_site(box, dataset)
     if site["same_source"] is False:
         return {"available": False, "reason": "No blind reference for this lidar source. The target remains uncalibrated."}

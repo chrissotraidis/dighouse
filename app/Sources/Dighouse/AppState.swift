@@ -282,7 +282,9 @@ final class AppState: ObservableObject {
                 + "goes inside \(Paths.projectsHome.path), then tell the person to open it from the card in the chat. " + shared
         }
         chat.timedInstructions = { [weak self] in
-            (self?.setup.skill ?? "") + "\nThis is a timed research session. Create the session’s research projects directly with init_project, passing only a short folder name so each lands in the projects folder, and use their returned paths. Keep a dated session record in the general chat folder, and nothing else there. Continue independently through the deadline. A check you cannot finish is noted as open, never a reason to stop. Before you leave any project with open finds, call suggest_decision on each of them, so a person only confirms or corrects. Record which decisions need a person."
+            (self?.setup.skill ?? "") + "\nThis is a timed research session, and its home is one project: \(self?.store.current?.path ?? "the open project"). Pass that path as the project argument to every dighouse tool. Name the project after the region you choose (name_project, with the region's box) before calibrating, and add every area you search to it with fetch_terrain and a short area name. Make no other search project; start_calibration makes its blind test as a project of its own, which is expected. Keep the session's record in this project: a run summary (write_summary) for each area."
+                + " Do not record a second opinion yourself: Dighouse asks a different model for each area once you write its summary."
+                + " Continue independently through the deadline. A check you cannot finish is noted as open, never a reason to stop. Before you leave an area with open finds, call suggest_decision on each of them, so a person only confirms or corrects. Record which decisions need a person."
         }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }
@@ -881,20 +883,37 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// A timed session works inside one project of its own: made here, empty, then named by the agent after the region
+    /// it chooses, with every area it searches added to it. Its chat lives in that project.
     func startTimedResearch(minutes: Int) {
         guard minutes > 0, let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) else { return }
         choosingDuration = false
-        store.close()
         route = .chat
         if layout == .workspace { layout = .split }
         let end = Date().addingTimeInterval(TimeInterval(minutes) * 60)
         Task {
-            await chat.open(project: nil)
+            let name = "Search on its own, " + Date().formatted(.dateTime.day().month(.abbreviated))
+            let path = Self.folder(for: name, inGitHub: false)
+            do {
+                _ = try await engine.callTool("init_project", [
+                    "project": path, "name": name, "question": "Chosen once the agent picks a region.",
+                    "west": 0, "south": 0, "east": 0, "north": 0,
+                ])
+            } catch {
+                chat.note("The session's project could not be made: \(error.localizedDescription)")
+                return
+            }
+            store.register(path: path)
+            guard let project = store.projects.first(where: { $0.path == path }) else { return }
+            store.open(project)
+            tab = .map
+            await chat.open(project: path)
             let objective = flow.prompt + " The deadline is " + ISO8601DateFormatter().string(from: end)
                 + ". Save progress after every pass, including the next action and the strongest competing area. Use the existing session records after any interruption."
             await chat.setGoal(objective, title: flow.title, deadline: end)
             if let id = chat.active {
                 UserDefaults.standard.set(id, forKey: "timedThread")
+                UserDefaults.standard.set(path, forKey: "timedProject")
                 UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "timedStart")
             }
         }
@@ -974,6 +993,7 @@ final class AppState: ObservableObject {
         // opinion, since the agent may not record one itself and the person should not have to ask project by project.
         if thread == UserDefaults.standard.string(forKey: "timedThread"), status != "active", chat.timed.model(for: thread) == nil {
             UserDefaults.standard.removeObject(forKey: "timedThread")
+            UserDefaults.standard.removeObject(forKey: "timedProject")
             let start = Date(timeIntervalSince1970: UserDefaults.standard.double(forKey: "timedStart"))
             let touched = store.projects.map(\.path).filter { path in
                 [path + "/candidates", path + "/PROJECT.md"].contains { (FileInfo.modified($0) ?? .distantPast) >= start }
@@ -1293,6 +1313,12 @@ final class AppState: ObservableObject {
     /// Show the running timed session's chat.
     func showTimedSession() {
         guard let id = UserDefaults.standard.string(forKey: "timedThread") else { return }
+        // A session started since sessions got projects of their own runs in its project.
+        if let path = UserDefaults.standard.string(forKey: "timedProject"), let project = store.projects.first(where: { $0.path == path }) {
+            let thread = chat.chats(in: path).first { $0.id == id } ?? ChatThread(id: id, title: "Search on its own")
+            openChat(thread, in: project)
+            return
+        }
         store.close()
         route = .chat
         Task { @MainActor in
