@@ -1076,3 +1076,19 @@ def test_a_register_is_asked_only_where_it_reaches(monkeypatch):
     discover.recorded_sites([10.4, 59.3, 10.5, 59.4])
     assert "Norway's heritage register" in asked and "National Register of Historic Places" not in asked
     assert "Fund og Fortidsminder" not in discover._answered([], [10.4, 59.3, 10.5, 59.4])
+
+
+def test_a_calibration_is_judged_on_the_last_few_tests_of_its_site(tmp_path, monkeypatch, survey):
+    """One test varies by a few features, so the gate pools the last tests of the same site on the same lidar."""
+    from dighouse import answers
+    monkeypatch.setenv("DIGHOUSE_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(answers, "on_record_near", lambda *a, **k: [])
+    root = str(tmp_path / "search")
+    server.init_project(root, "Search", "Anything here?", *survey["bbox"])
+    answers._scores_file().write_text(json.dumps([{"site": "cahokia", "sources": [], "found": 1, "known": 1,
+                                                   "scored": "2026-11-23", "test": f"earlier-{i}"} for i in range(3)]))
+    poor = server.start_test(str(tmp_path), "cahokia")["project"]
+    server.score_test(poor)  # 0 of 1 this time
+    out = server.record_calibration(root, poor)
+    assert out["found"] == 0 and out["pooled_tests"] == 4 and out["pooled_share"] == 0.75 and out["passed"] is True
+    assert "75% over the last 4 tests" in Project(root).path("notes").joinpath(f"{__import__('datetime').date.today()}.md").read_text()

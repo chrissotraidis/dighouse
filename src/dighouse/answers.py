@@ -169,6 +169,32 @@ def _save_registry(reg: dict) -> None:
     _registry_file().write_text(json.dumps(reg, indent=1))
 
 
+POOLED = 5  # a calibration counts the last few tests of the same site on the same lidar, since one test varies by a few features
+
+
+def _scores_file() -> Path:
+    from .sources import cache_dir
+    return cache_dir() / "blind-scores.json"
+
+
+def _remember_score(p, result: dict) -> None:
+    """Keep every blind score on this Mac (site, lidar, found, known, date; no places), so a calibration is judged on
+    more than one test."""
+    f = _scores_file()
+    rows = json.loads(f.read_text()) if f.exists() else []
+    sources = sorted({t["dataset"] for t in (p.load("terrains", {}) or {}).values() if t.get("dataset")})
+    rows.append({"site": result["key"]["id"], "sources": sources, "found": result["found"], "known": result["known"],
+                 "scored": result["scored"], "test": p.root.name})
+    f.write_text(json.dumps(rows[-500:], indent=1))
+
+
+def pooled_scores(site: str, sources: list[str]) -> list[dict]:
+    """The last few scored tests of a site on the same lidar, newest last."""
+    f = _scores_file()
+    rows = json.loads(f.read_text()) if f.exists() else []
+    return [r for r in rows if r["site"] == site and r["sources"] == sorted(sources)][-POOLED:]
+
+
 def start(folder: str | Path, site: str) -> dict:
     """Create a blind-test project for a key's area. Its name, question and folder say nothing about the place."""
     from .project import Project, today
@@ -267,6 +293,10 @@ def score_project(p) -> dict:
     except Exception as exc:  # a scorecard without pictures is still a score
         result["pictures"] = {"problem": str(exc)[:200]}
     p.save("score", result)
+    try:
+        _remember_score(p, result)
+    except (OSError, ValueError, KeyError):  # the history is a help, not part of the score
+        pass
     t.update(blind=False, scored=result["scored"])
     p.save("test", t)
     reg = _registry()
@@ -438,8 +468,14 @@ def record_calibration(p, test_root: str) -> dict:
     if not s:
         raise ValueError("That calibration test has not been scored yet. Finish it with score_test first.")
     share = s.get("found_share") or 0
+    sources = sorted({t["dataset"] for t in test.load("terrains", {}).values() if t.get("dataset")})
+    pool = pooled_scores((s.get("key") or {}).get("id", ""), sources)
+    if not any(r["test"] == test.root.name for r in pool):
+        pool = (pool + [{"found": s["found"], "known": s["known"], "test": test.root.name}])[-POOLED:]
+    pooled = sum(r["found"] for r in pool) / max(1, sum(r["known"] for r in pool))
     out = {"site": s["site"], "found": s["found"], "known": s["known"], "missed": len(s["missed"]), "extra": len(s["extra"]),
-           "found_share": share, "passed": share >= PASS_SHARE, "pass_mark": PASS_SHARE, "scored": s.get("scored"),
+           "found_share": share, "pooled_share": round(pooled, 3), "pooled_tests": len(pool),
+           "passed": pooled >= PASS_SHARE, "pass_mark": PASS_SHARE, "scored": s.get("scored"),
            "model": s.get("model", ""), "test": test.root.name}
     context = p.load("calibrating", {}) or {}
     if context.get("test") == str(test.root) and context.get("target_dataset"):
@@ -447,7 +483,8 @@ def record_calibration(p, test_root: str) -> dict:
     out["reference_sources"] = sorted({t["dataset"] for t in test.load("terrains", {}).values() if t.get("dataset")})
     out["scope"] = "Recovery of the keyed features at the reference site. Transfer to different features or acquisitions remains untested."
     p.save("calibration", out)
-    p.note(f"Calibrated on {s['site']}: {s['found']} of {s['known']} found" + ("" if out["passed"] else ", below the pass mark; the search stops here"))
+    over = f"; {pooled:.0%} over the last {len(pool)} tests of this site on this lidar" if len(pool) > 1 else ""
+    p.note(f"Calibrated on {s['site']}: {s['found']} of {s['known']} found{over}" + ("" if out["passed"] else ", below the pass mark; the search stops here"))
     return out
 
 
@@ -458,7 +495,9 @@ def calibration(p) -> dict | None:
 def guard_calibration(p) -> None:
     c = calibration(p)
     if c and not c["passed"]:
-        raise ValueError(f"The calibration on {c['site']} found {c['found']} of {c['known']} known features, below the pass mark "
+        raise ValueError(f"The calibration on {c['site']} found {c['found']} of {c['known']} known features"
+                         + (f" ({c['pooled_share']:.0%} over its last {c['pooled_tests']} tests)" if c.get("pooled_tests", 1) > 1 else "")
+                         + ", below the pass mark "
                          f"of {int(PASS_SHARE * 100)}%. A search for something new here would not be trusted, so finds are not "
                          "marked. Say so plainly, write the summary, and suggest another survey, view or area.")
 
@@ -468,8 +507,10 @@ def calibration_lines(p) -> list[str]:
     if not c:
         return []
     verdict = "passed" if c["passed"] else f"failed (the pass mark is {int(c['pass_mark'] * 100)}%), so the search stopped"
+    over = (f" Over the last {c['pooled_tests']} tests of this site on this lidar, {c['pooled_share']:.0%} were found."
+            if c.get("pooled_tests", 1) > 1 else "")
     return ["## Calibration", "", f"Before searching here, the method was tested blind on {c['site']}: {c['found']} of {c['known']} "
-            f"known features found, {c['missed']} missed, {c['extra']} not in the key. The reference test {verdict}.",
+            f"known features found, {c['missed']} missed, {c['extra']} not in the key.{over} The reference test {verdict}.",
             "Reference acquisition: " + (", ".join(c.get("reference_sources", [])) or "unrecorded") + ". " +
             "Target acquisition: " + (c.get("target_dataset") or "unrecorded") + ". Transfer to other surveys and feature types remains unverified.", ""]
 

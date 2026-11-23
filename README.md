@@ -115,7 +115,7 @@ We checked. Given the Mound City blind test box with no tools, the same model th
 <p align="center"><sub>Thunder Bay, Lake Huron. The shore and breakwater come from airborne lidar, which stops at the water; the lake bed and its two wrecks come from NOAA's sonar surveys.</sub></p>
 
 1. **Choose where to look.** Ask "What should I research?" and the agent weighs open lidar, how little is on record, and where earthworks survive, then proposes three searches. Or press **Pick a place on the map** on Home, where the places with open data are shaded, and click where you want to look. Or type a place and press **What is this?** for a one-minute look.
-2. **Calibrate.** Before searching where nothing is on record, the agent runs a blind test on the nearest known site with the same kind of lidar. If it finds less than half of what is published there, the search stops.
+2. **Calibrate.** Before searching where nothing is on record, the agent runs a blind test on the nearest known site with the same kind of lidar. If it finds less than half of what is published there, the search stops. One test varies by a few features, so the mark is judged over the last five tests of that site on that lidar on your Mac, and the record gives both figures.
 3. **Take the trees away.** The tools download the raw laser points, or a national ground model, and keep the ground.
 4. **Look at every tile.** The ground is cut into squares called tiles. A low-cost vision model looks at every one in bulk, a few at a time, and opens a find for each shape it points at; the agent then looks closely, in two renderings, at the tiles worth it, marks every feature it sees and takes over the bulk finds it agrees with. A feature guide tells both what mounds, banks and terraces look like, and what to rule out (sinkholes, tree throws, craters, tracks). A tile with too little ground data is marked unreadable, never "nothing found". Without the OpenCodex router the agent looks at every tile itself, which is slower.
 5. **Check every find.** A slice straight down through the laser points shows whether a shape is in the ground or only in the treetops. A second, different model gives its own opinion without seeing the first. Open maps are checked for roads, buildings and sites already mapped.
@@ -180,7 +180,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (52 tests)
+uv run pytest            # offline, on a synthetic survey (53 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)

@@ -59,18 +59,22 @@ def run(saved: str, model: str) -> dict:
                 v.update(status="unscreened", verdict=None, note=None, model=None)
     got = triage.sort_tiles(str(copy), model=model)
     short = {x["tile"] for x in got["shortlist"]}
+    strict = {x["tile"] for x in got["shortlist"] if x["verdict"] in SHORT}  # without tiles shortlisted only for a spot
     after = {tid: ("possible" if tid in short else t.get("verdict")) for tid, t in p.load("tiles", {}).items()}
     ft = feature_tiles(p, k)
     score = json.loads((src / "private/state/score.json").read_text())
     records = {m["id"]: m for m in ledger.everything(Project(src))}
     seen = {m["feature"] for m in score["matches"] if m.get("counted") and not ledger.is_rise(records.get(m["find"], {"checks": {}, "flagged_by": ""}))}
     on = lambda verdicts, tids: any(verdicts.get(t) in SHORT for t in tids)
+    strict_v = {tid: ("possible" if tid in strict else None) for tid in after}
     return {
         "site": k["name"], "tiles": len(before), "seconds": got["seconds"], "failed": len(got["failed"]),
         "agent_sent_closer": sum(v in SHORT for v in before.values()), "sort_sent_closer": sum(v in SHORT for v in after.values()),
         "features": len(ft), "on_agent_shortlist": sum(on(before, t) for t in ft.values()),
         "on_sort_shortlist": sum(on(after, t) for t in ft.values()),
         "seen_by_agent": len(seen), "seen_and_on_sort_shortlist": sum(on(after, ft.get(f, set())) for f in seen),
+        "strict_sent_closer": len(strict), "on_strict_shortlist": sum(on(strict_v, t) for t in ft.values()),
+        "seen_and_on_strict_shortlist": sum(on(strict_v, ft.get(f, set())) for f in seen),
         "verdicts_agent": {v: list(before.values()).count(v) for v in set(before.values())},
         "verdicts_sort": got["verdicts"],
     }
