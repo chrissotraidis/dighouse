@@ -46,7 +46,7 @@ def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
     sec = c.get("section")
     if isinstance(sec, dict):
         # A ready-made ground model has no treetops in it, so its slice can measure a shape but cannot place it.
-        parts.append(f"Slice: {sec.get('feature_height_m', '?')} m high, "
+        parts.append(f"Slice: {ledger.height_words(c)}, "
                      + ("in the ground" if sec.get("in_ground") else "above the seafloor" if sec.get("seafloor")
                         else "on a ready-made ground model" if sec.get("from_ground_model_only") else "not clearly in the ground"))
     else:
@@ -273,8 +273,9 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
               "The research record and Decide list every one."]
     on_map = ledger.layer(records)
     if on_map:
-        D += ["", f"{_s(len(on_map), 'measured rise')} {'are' if len(on_map) != 1 else 'is'} kept on the map, not put to you: "
-              "the second model did not call them built, or their shape ranks low here. Decide lists them."]
+        D += ["", f"{_s(len(on_map), 'find')} {'are' if len(on_map) != 1 else 'is'} kept on the map, not put to you: measured rises "
+              "and shapes the bulk look pointed at that the second model did not call built, and rises whose shape ranks low here. "
+              "Decide lists them."]
     if open_:
         D += closing
     elif records:

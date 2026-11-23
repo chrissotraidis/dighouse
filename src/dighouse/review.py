@@ -1,6 +1,6 @@
-"""Second opinions asked straight of a model: the whole tile a find is on, in composite and local relief, with where the
-find sits given in words (the view the app's agent chat gave, which rated better on known ground than a centred crop:
-MOUND_LOOP, after M7), sent through the OpenCodex router, a few finds at once. A model that fails is set aside and the
+"""Second opinions asked straight of a model: the whole tile a find is on, in composite and local relief, with the find
+ringed and the model asked to say what is in the ring before it judges (FIND_LOOP G3), sent through the OpenCodex router,
+a few finds at once. A model that fails is set aside and the
 next is asked about the same find. Each record names the model."""
 
 from __future__ import annotations
@@ -18,23 +18,34 @@ from .project import Project, today, without_coordinates
 
 ROUTER = os.environ.get("DIGHOUSE_ROUTER", "http://127.0.0.1:10100/v1/responses")
 QUESTION = ("You are giving an independent second opinion on a possible archaeological feature in lidar of bare ground. "
-            "The two pictures show the same tile, north up: a composite view and a local relief view. The feature sits about "
-            "{x} percent across and {y} percent down the tile. Look at what is there. Does it look built by people? Reply with "
-            "JSON only: {{\"agrees\": true if it looks built, false if not, \"note\": \"one sentence\"}}.")
+            "The two pictures show the same tile, north up: a composite view and a local relief view. The feature is inside "
+            "the orange ring. Judge only what is inside the ring, not the rest of the tile. First say in a few words what is "
+            "inside the ring, then whether it looks built by people. Reply with JSON only: "
+            '{"inside_ring": "a few words", "agrees": true if it looks built, false if not, "note": "one sentence"}.')
+# The ring and "say what is in it first" (FIND_LOOP G3): rated on 102 views of known ground with Sonnet, a "built" from
+# the second model was right 19 times in 27 with the ring, against 18 in 52 with the place given in words, and it found
+# as many of the published features (19 of 24, against 18).
+RING_M = 25
 _client = httpx.Client(timeout=180)
 
 
 def crops(p: Project, cid: str) -> tuple[list[str], str]:
-    """The tile a find is on, as two pictures (composite and local relief), and the question saying where the find sits."""
+    """The tile a find is on, as two pictures (composite and local relief) with the find ringed, and the question."""
+    from PIL import ImageDraw
     from . import tiles
     loc = p.load("locations")[cid]
+    t = p.load("tiles")[loc["tile"]]
+    res = p.load("terrains")[t["terrain"]]["res"]
     out = []
     for style in ("composite", "local_relief"):
-        img = tiles.tile_image(p, loc["tile"], style).convert("L").resize((768, 768))
+        img = tiles.tile_image(p, loc["tile"], style).convert("RGB").resize((768, 768))
+        rad = 768 * RING_M / (t["window"][3] * res)
+        cx, cy = loc.get("x", 0.5) * 768, loc.get("y", 0.5) * 768
+        ImageDraw.Draw(img).ellipse([cx - rad, cy - rad, cx + rad, cy + rad], outline=(255, 140, 0), width=4)
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         out.append("data:image/png;base64," + base64.b64encode(buf.getvalue()).decode())
-    return out, QUESTION.format(x=int(loc.get("x", 0.5) * 100), y=int(loc.get("y", 0.5) * 100))
+    return out, QUESTION
 
 
 def ask(model: str, images: list[str], question: str) -> tuple[bool, str]:

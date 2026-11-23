@@ -164,13 +164,13 @@ struct DecideView: View {
         }
     }
 
-    /// Measured rises kept on the map that the second model calls built, one press away.
+    /// Finds kept on the map that the second model calls built, one press away.
     @ViewBuilder private var layerOffer: some View {
         let built = store.candidates.filter { $0.group == .layer && $0.secondSaysBuilt == true && !needs.contains($0.id) }
         let kept = store.candidates.filter { $0.group == .layer }.count
         if kept > 0 {
             VStack(spacing: 8) {
-                Text("\(kept) measured rise\(kept == 1 ? " is" : "s are") kept on the map: the second model did not call \(kept == 1 ? "it" : "them") built, or the shape ranks in the lower half here.")
+                Text("\(kept) find\(kept == 1 ? " is" : "s are") kept on the map: measured rises and shapes the bulk look pointed at that the second model did not call built, and rises whose shape ranks in the lower half here.")
                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).multilineTextAlignment(.center).frame(maxWidth: 460)
                 if !built.isEmpty {
                     Button("Look at the \(built.count) the second model calls built") {
@@ -581,7 +581,7 @@ struct FindCard: View {
     private func chips(_ c: Candidate) -> [String] {
         var out: [String] = []
         if let cut = c.checks["section"] as? JSON {
-            let h = "\(cut["feature_height_m"] ?? "?") m high"
+            let h = Candidate.heightWords(c.checks).capitalizedFirst
             out.append(cut["in_ground"] as? Bool == true ? (cut["from_ground_model_only"] as? Bool == true ? "\(h), ground model only" : "\(h), in the ground")
                        : "\(h), not clear in the slice")
         } else { out.append("No slice yet") }

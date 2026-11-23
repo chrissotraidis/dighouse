@@ -188,7 +188,8 @@ def suggest(p: Project, cid: str, status: str, reason: str, by: str) -> dict:
 
 
 # A measured rise goes to a person when the second model calls it built and its shape ranks in the top half of this
-# project's measured rises, or when a person raises it. The rest stay on the map as a layer, and still count in blind
+# project's measured rises, or when a person raises it. A find the bulk look opened and the agent did not take over goes
+# to a person when the second model calls it built, or when a person raises it. The rest stay on the map as a layer, and still count in blind
 # tests. Ranks are compared within a project because how rises are ranked has changed between versions. The app's
 # ProjectStore.layer keeps the same rule.
 RISE_SHARE = 0.5
@@ -198,6 +199,11 @@ def is_rise(meta: dict) -> bool:
     return str(meta.get("flagged_by", "")).startswith("measured")
 
 
+def is_bulk(meta: dict) -> bool:
+    """A find the bulk look opened and no model has taken over on a closer look."""
+    return str(meta.get("flagged_by", "")).startswith("seen in bulk")
+
+
 def _rank(meta: dict) -> float:
     return float((meta["checks"].get("shape") or {}).get("rank") or 0)
 
@@ -205,23 +211,27 @@ def _rank(meta: dict) -> float:
 def layer(records: list[dict]) -> set[str]:
     """The measured rises kept on the map rather than put to a person (see RISE_SHARE)."""
     ranks = sorted(_rank(m) for m in records if is_rise(m))
-    if not ranks:
-        return set()
-    cut = ranks[min(int(len(ranks) * (1 - RISE_SHARE)), len(ranks) - 1)]
+    cut = ranks[min(int(len(ranks) * (1 - RISE_SHARE)), len(ranks) - 1)] if ranks else 0.0
     out = set()
     for m in records:
-        if not is_rise(m) or m["status"] not in ("flagged", "ground_confirmed") or m.get("raised"):
+        if m["status"] not in ("flagged", "ground_confirmed") or m.get("raised"):
             continue
-        if not (m["checks"].get("second_look", {}).get("agrees") is True and _rank(m) >= cut):
+        says_built = m["checks"].get("second_look", {}).get("agrees") is True
+        if is_rise(m) and not (says_built and _rank(m) >= cut):
+            out.add(m["id"])
+        elif is_bulk(m) and not says_built:
+            # A shape the bulk look pointed at and the agent did not mark on its closer look waits on the map,
+            # unless the second model calls it built (FIND_LOOP G3).
             out.add(m["id"])
     return out
 
 
 def raise_rise(p: Project, cid: str, by: str) -> dict:
-    """A person asks to decide a measured rise that is kept on the map: it joins the finds that wait for them."""
+    """A person asks to decide a find kept on the map (a measured rise, or a shape the bulk look pointed at): it joins the
+    finds that wait for them."""
     meta, notes = get(p, cid)
-    if not is_rise(meta):
-        raise ValueError(f"{cid} is not a measured rise.")
+    if not (is_rise(meta) or is_bulk(meta)):
+        raise ValueError(f"{cid} is not kept on the map.")
     meta["raised"] = {"by": by, "date": today()}
     write(p, meta, notes)
     p.note(f"{cid} raised from the map by {by}")
@@ -280,9 +290,9 @@ def _body(meta: dict) -> str:
     out += ["## Checks", ""]
     s = checks.get("section")
     out.append(_tick(s and s.get("in_ground"), "In the ground",
-                     "" if not s else f"{s['feature_height_m']} m high, measured on a ready-made ground model, which has no treetops to compare"
+                     "" if not s else f"{height_words(checks).capitalize()}, measured on a ready-made ground model, which has no treetops to compare"
                      if s.get("from_ground_model_only")
-                     else f"{s['feature_height_m']} m high, {s['ground_returns_within_5m_of_peak']} laser points reached the ground at its top"))
+                     else f"{height_words(checks).capitalize()}; {s['ground_returns_within_5m_of_peak']} laser points reached the ground at its top"))
     look = checks.get("second_look")
     tried = checks.get("second_look_tried")
     out.append(_tick(look and look.get("agrees"), "A second model says it looks built", f"{look['model']}: {look['note']}" if look
@@ -308,6 +318,20 @@ def _body(meta: dict) -> str:
             open_items = f" Open at the time: {'; '.join(d['open_items'])}." if d["open_items"] else ""
             out.append(f"- {d['date']} · {d['by']} marked this {LABELS[d['status']].lower()}. {d['reason']}{open_items}")
     return "\n".join(out) + "\n"
+
+
+def height_words(checks: dict) -> str:
+    """One height for a find, named for what it measures: how far it rises above (or sits below) the ground around it,
+    from the shape check; the slice's rise above the line between its ends only when there is no shape check, since on a
+    slope that reads high (FIND_LOOP G3)."""
+    shape, sec = checks.get("shape") or {}, checks.get("section") or {}
+    if shape.get("rise_m") is not None:
+        if (shape.get("sink_m") or 0) > max(0.2, shape["rise_m"]):
+            return f"{shape['sink_m']} m below the ground around it"
+        return f"rises {shape['rise_m']} m above the ground around it"
+    if sec.get("feature_height_m") is not None:
+        return f"{sec['feature_height_m']} m above the line between the slice's ends"
+    return "height not measured"
 
 
 def records_words(rec: dict) -> str:

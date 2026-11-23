@@ -284,7 +284,7 @@ final class AppState: ObservableObject {
         chat.timedInstructions = { [weak self] in
             (self?.setup.skill ?? "") + "\nThis is a timed research session, and its home is one project: \(self?.store.current?.path ?? "the open project"). Pass that path as the project argument to every dighouse tool. Name the project after the region you choose (name_project, with the region's box) before calibrating, and add every area you search to it with fetch_terrain and a short area name. Make no other search project; start_calibration makes its blind test as a project of its own, which is expected. Keep the session's record in this project: a run summary (write_summary) for each area."
                 + " Do not record a second opinion yourself: Dighouse asks a different model for each area once you write its summary."
-                + " Continue independently through the deadline. A check you cannot finish is noted as open, never a reason to stop. Before you leave an area with open finds, call suggest_decision on each of them, so a person only confirms or corrects. Record which decisions need a person."
+                + " Continue independently through the deadline. A check you cannot finish is noted as open, never a reason to stop. Before you leave an area, call suggest_decision on each find run_status lists under to_suggest (finds kept on the map need none), so a person only confirms or corrects. Record which decisions need a person."
         }
         chat.onToolFinished = { [weak self] tool, args in
             guard let self else { return }
@@ -841,7 +841,7 @@ final class AppState: ObservableObject {
             let n = open.filter { $0.sources.isEmpty }.count
             return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to search"))
         case "decide":
-            let unprepared = open.filter { $0.suggestion == nil }.count
+            let unprepared = open.filter { $0.suggestion == nil && !$0.inLayer }.count   // finds kept on the map need no suggestion
             return (unprepared > 0, all.isEmpty ? "Needs finds" : open.isEmpty ? "All decided" : unprepared == 0 ? "Prepared" : "\(unprepared) to prepare")
         case "report":
             let n = all.filter { $0.status == "no_match_in_sources_read" }.count

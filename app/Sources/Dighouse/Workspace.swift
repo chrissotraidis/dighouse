@@ -904,7 +904,9 @@ struct RecordsView: View {
         } else if c.inLayer {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Kept on the map").font(.system(size: 15 * Theme.scale, weight: .semibold))
-                Text(c.secondSaysBuilt == true
+                Text(c.flaggedBy.hasPrefix("seen in bulk")
+                     ? "A shape the bulk look pointed at, which the agent did not mark on its closer look and the second model did not call built, so it is not put to you. It stays on the map and counts in blind tests."
+                     : c.secondSaysBuilt == true
                      ? "A measured rise. The second model calls it built, but its shape ranks in the lower half of this project's rises, so it is not put to you."
                      : "A measured rise the second model did not call built, so it is not put to you. It stays on the map and counts in blind tests.")
                     .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -968,7 +970,7 @@ struct RecordsView: View {
         VStack(spacing: 0) {
             CheckRow(done: cut?["in_ground"] as? Bool, title: "In the ground",
                      detail: cut.map { cut in
-                        let height = "\(cut["feature_height_m"] ?? "?") m high"
+                        let height = Candidate.heightWords(c.checks).capitalizedFirst
                         if cut["in_ground"] as? Bool != true { return "\(height). The slice shows no clear rise in the ground, so it may be trees, a gap in the data, or nothing." }
                         return cut["from_ground_model_only"] as? Bool == true
                             ? "\(height), measured on a ready-made ground model. That shows the shape but has no treetops to compare."

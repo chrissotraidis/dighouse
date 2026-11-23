@@ -149,7 +149,7 @@ struct ProjectOverview: View {
                           what: suggested ? "The agent checked each find and suggests what it is, with its reason. Look at the pictures, then agree or change it."
                                           : "Look at each find and decide what it is.",
                           after: "About \(store.decideMinutes) minute\(store.decideMinutes == 1 ? "" : "s"). Nothing is final until you decide."
-                            + (store.onMap > 0 ? " \(store.onMap) measured rise\(store.onMap == 1 ? " stays" : "s stay") on the map." : ""),
+                            + (store.onMap > 0 ? " \(store.onMap) find\(store.onMap == 1 ? " stays" : "s stay") on the map." : ""),
                           icon: "dig.brush", label: "Decide") { app.openDecide() }
         // The second model refuses: asking again would fail the same way, so the card says why and offers the way out.
         if let refusal = app.refusedSecondModel, app.secondOpinionModels.isEmpty, open.contains(where: { $0.checks["second_look"] == nil }), app.chat.live.isEmpty,
@@ -196,7 +196,7 @@ struct ProjectOverview: View {
                         after: "", icon: "dig.grid", label: widen.label, action: widen.action)
         }
         return Next(title: "This search is finished",
-                    what: "Every find put to you is decided" + (store.onMap > 0 ? ", and \(store.onMap) measured rise\(store.onMap == 1 ? " stays" : "s stay") on the map" : "") + ". The report says what was found, and the research record keeps the detail.",
+                    what: "Every find put to you is decided" + (store.onMap > 0 ? ", and \(store.onMap) find\(store.onMap == 1 ? " stays" : "s stay") on the map" : "") + ". The report says what was found, and the research record keeps the detail.",
                     after: "", icon: "dig.trowel", label: app.latestReport == nil ? "Research record" : "Read the report",
                     action: { if let report = app.latestReport { app.reportShown = report } else { app.showNotes("record") } }, other: widen)
     }

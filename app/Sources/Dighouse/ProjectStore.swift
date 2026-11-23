@@ -304,10 +304,12 @@ final class ProjectStore: ObservableObject {
             return (r as? Double) ?? (r as? Int).map(Double.init) ?? 0
         }
         let rises = all.filter { $0.flaggedBy.hasPrefix("measured") }
-        guard !rises.isEmpty else { return [] }
         let ranks = rises.map(rank).sorted()
-        let cut = ranks[min(Int(Double(ranks.count) * 0.5), ranks.count - 1)]
-        return Set(rises.filter { $0.waiting && !$0.raised && !($0.secondSaysBuilt == true && rank($0) >= cut) }.map(\.id))
+        let cut = ranks.isEmpty ? 0 : ranks[min(Int(Double(ranks.count) * 0.5), ranks.count - 1)]
+        let keptRises = rises.filter { $0.waiting && !$0.raised && !($0.secondSaysBuilt == true && rank($0) >= cut) }
+        // Shapes the bulk look pointed at that the agent did not mark wait on the map unless the second model calls them built.
+        let keptBulk = all.filter { $0.flaggedBy.hasPrefix("seen in bulk") && $0.waiting && !$0.raised && $0.secondSaysBuilt != true }
+        return Set((keptRises + keptBulk).map(\.id))
     }
 
     /// Every find of a project, read from its candidates/ folder, with the measured rises kept on the map marked.

@@ -396,6 +396,19 @@ struct Candidate: Identifiable {
         return Self.labels[status] ?? status
     }
 
+    /// One height, named for what it measures, as ledger.height_words says it: from the shape check, or from the slice
+    /// (above the line between its ends) only when there is no shape check.
+    static func heightWords(_ checks: JSON) -> String {
+        let shape = checks["shape"] as? JSON ?? [:], sec = checks["section"] as? JSON ?? [:]
+        func num(_ v: Any?) -> Double? { (v as? Double) ?? (v as? Int).map(Double.init) }
+        if let rise = num(shape["rise_m"]) {
+            if let sink = num(shape["sink_m"]), sink > max(0.2, rise) { return "\(sink.formatted()) m below the ground around it" }
+            return "rises \(rise.formatted()) m above the ground around it"
+        }
+        if let h = num(sec["feature_height_m"]) { return "\(h.formatted()) m above the line between the slice's ends" }
+        return "height not measured"
+    }
+
     /// Still waiting for a person's decision.
     var waiting: Bool { status == "flagged" || status == "ground_confirmed" }
 
@@ -419,7 +432,7 @@ struct Candidate: Identifiable {
         case closer, lookAgain, open, published, notAncient, layer, decided
         var title: String {
             ["Worth a closer look", "Look again", "No suggestion yet", "Already published", "Modern or natural",
-             "Measured rises on the map", "Decided"][rawValue]
+             "Kept on the map", "Decided"][rawValue]
         }
         /// Groups whose suggestions are routine enough to agree with in one step. A lead is always decided alone.
         var confirmable: Bool { self == .published || self == .notAncient }

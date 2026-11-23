@@ -392,7 +392,7 @@ def test_the_search_report_says_what_the_records_say(tmp_path):
                 "What was ruled out or decided", "What to try next")
     assert [l[3:] for l in text.splitlines() if l.startswith("## ")] == list(headings)
     assert "Is the bank built?" in text and "TEST_2020" in text and "2 of 2" in text and "1 looked built, 1 natural" in text
-    assert "Slice: 0.8 m high, in the ground" in text and "Second model: has not looked" in text
+    assert "Slice: 0.8 m above the line between the slice's ends, in the ground" in text and "Second model: has not looked" in text
     assert "A county survey, 1998" in text and "https://example.org/survey" in text
     assert "1 tile showed natural ground." in text
     assert "The agent suggests: already published." in text and "Try the sky view on the next tile north." in text
@@ -452,15 +452,20 @@ def test_measured_rises_stay_on_the_map_until_raised(tmp_path):
     got = server.write_report(root)
     assert sorted(got["waiting_for_a_person"]) == sorted([seen, rises[4.0]])
     text = p.path(got["written"]).read_text()
-    assert "3 measured rises are kept on the map, not put to you" in text
+    assert "3 finds are kept on the map, not put to you" in text
     research = p.path("RESEARCH.md").read_text()
-    assert "A person has decided 0 of 2. 3 measured rises are kept as a layer on the map" in research
-    assert f"{rises[2.0]} Measured rise 2.0](candidates/{rises[2.0]}.md): a measured rise kept on the map." in research
+    assert "A person has decided 0 of 2. 3 finds are kept as a layer on the map" in research
+    assert f"{rises[2.0]} Measured rise 2.0](candidates/{rises[2.0]}.md): kept on the map." in research
 
     server.raise_rise(root, rises[1.0], "Chris")
     assert ledger.layer(ledger.everything(p)) == {rises[2.0], rises[3.0]}
-    with pytest.raises(ValueError, match="not a measured rise"):
+    with pytest.raises(ValueError, match="not kept on the map"):
         server.raise_rise(root, seen, "Chris")
+    # A shape the bulk look pointed at waits on the map too, until the second model calls it built.
+    bulk = ledger.create(p, "Seen in bulk: a mound", "t1-r000c000", (0.006, 51.006), "", "seen in bulk by m")["id"]
+    assert bulk in ledger.layer(ledger.everything(p))
+    ledger.set_check(p, bulk, "second_look", {"agrees": True, "model": "model-b", "note": ""})
+    assert bulk not in ledger.layer(ledger.everything(p))
     listed = {c["id"]: c["kept_on_the_map"] for c in server.list_candidates(root)}
     assert listed[rises[3.0]] and not listed[rises[1.0]]
 

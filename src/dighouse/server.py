@@ -1308,11 +1308,16 @@ def run_status(project: str) -> dict:
              if any(ledger.distance_m((c["lon"], c["lat"]), (v["lon"], v["lat"])) < 150 for v in places.values())]
     waiting = [m["id"] for m in records if m["status"] in ("flagged", "ground_confirmed")
                and not [b for b in ledger.blockers(m, "no_match_in_sources_read") if "could not be opened" not in b]]
+    on_map = ledger.layer(records)
     return {
         "coverage": tiles.coverage(p),
         "candidates": {s: sum(m["status"] == s for m in records) for s in ledger.STATUSES},
         "controls": {"registered": len(controls), "found_again": len(found), "missed": sorted(set(controls) - set(found))},
         "needs_a_person": waiting,
+        # Suggestions are for the finds a person will see: those kept on the map need none (FIND_LOOP G3).
+        "to_suggest": [m["id"] for m in records if m["status"] in ("flagged", "ground_confirmed") and m["id"] not in on_map
+                       and not m.get("suggestion")],
+        "kept_on_the_map": len(on_map),
         **({"blind_test": answers.BLIND} if answers.is_blind(p) else {}),
         **({"calibration": answers.calibration(p)} if answers.calibration(p) else {}),
     }

@@ -50,9 +50,9 @@ struct ReportSheet: View {
                 } else {
                     // The same counts as Home and the project page: what needs a person, what to agree with, what stays on the map.
                     HStack(spacing: 12) {
-                        Text(needs + agree == 0 ? "Nothing is waiting for your decision." + (kept > 0 ? " \(kept) measured rise\(kept == 1 ? " stays" : "s stay") on the map." : "")
+                        Text(needs + agree == 0 ? "Nothing is waiting for your decision." + (kept > 0 ? " \(kept) find\(kept == 1 ? " stays" : "s stay") on the map." : "")
                              : [needs > 0 ? "\(needs) need\(needs == 1 ? "s" : "") you" : nil, agree > 0 ? "\(agree) to agree with" : nil].compactMap { $0 }.joined(separator: ", ")
-                                + (kept > 0 ? ". \(kept) measured rise\(kept == 1 ? " stays" : "s stay") on the map." : "."))
+                                + (kept > 0 ? ". \(kept) find\(kept == 1 ? " stays" : "s stay") on the map." : "."))
                             .font(.system(size: 13 * Theme.scale, weight: needs + agree > 0 ? .medium : .regular))
                             .foregroundStyle(needs + agree > 0 ? Theme.text : Theme.dim)
                         Spacer(minLength: 8)

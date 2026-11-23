@@ -26,12 +26,18 @@ from dighouse import answers, mounds, terrain as T
 from dighouse.project import Project
 
 ROUTER = "http://127.0.0.1:10100/v1/responses"
-TILE = "--tile" in sys.argv   # rate the view the app's agent-chat path gave: a whole 250 m tile and where the find sits in it
+RING = "--ring" in sys.argv   # the whole tile with the spot ringed, and the model asked to say what is in the ring first
+TILE = "--tile" in sys.argv or RING   # rate the view the app's agent-chat path gave: a whole 250 m tile and where the find sits in it
 MODELS = [a for a in sys.argv[1:] if not a.startswith("--")] or ["anthropic/claude-sonnet-5-5", "opencode-go-secondary/glm-5.3", "opencode-go/kimi-k3"]
 TILE_QUESTION = ("You are giving an independent second opinion on a possible archaeological feature in lidar of bare ground. "
                  "The two pictures show the same 250 m tile, north up: a composite view and a local relief view. The feature sits "
                  "about {x} percent across and {y} percent down the tile. Was it built by people (a mound, bank, ditch, platform), "
                  "or is it natural ground or nothing? Reply with JSON only: {{\"built\": true or false, \"why\": \"one short sentence\"}}.")
+RING_QUESTION = ("You are giving an independent second opinion on a possible archaeological feature in lidar of bare ground. "
+                 "The two pictures show the same 250 m tile, north up: a composite view and a local relief view. The feature is "
+                 "inside the orange ring. Judge only what is inside the ring, not the rest of the tile. First say in a few words what "
+                 "is inside the ring, then whether it was built by people (a mound, bank, ditch, platform), or is natural ground or "
+                 'nothing. Reply with JSON only: {"inside_ring": "a few words", "built": true or false, "why": "one short sentence"}.')
 TILE_HALF_M = 125
 QUESTION = ("You are giving an independent second opinion on a possible archaeological feature in lidar of bare ground. "
             "The two pictures show the same 120 m square, north up: a composite view and a local relief view. "
@@ -95,11 +101,18 @@ def items(folder: Path, per_kind: int) -> list[dict]:
             r0 = min(max(r - int(fy * t), 0), dtm.shape[0] - t)
             c0 = min(max(c - int(fx * t), 0), dtm.shape[1] - t)
             tw = (slice(r0, r0 + t), slice(c0, c0 + t))
+            fx_, fy_ = (c - c0) / t, (r - r0) / t
             def tile_png(style):
-                buf = io.BytesIO(); T.render(dtm[tw], gap[tw], out[tw], res, style).convert("L").resize((768, 768)).save(buf, format="PNG")
+                img = T.render(dtm[tw], gap[tw], out[tw], res, style).convert("L").resize((768, 768))
+                if RING:
+                    from PIL import ImageDraw
+                    img = img.convert("RGB")
+                    rad = 768 * 25 / (TILE_HALF_M * 2)
+                    ImageDraw.Draw(img).ellipse([fx_ * 768 - rad, fy_ * 768 - rad, fx_ * 768 + rad, fy_ * 768 + rad], outline=(255, 140, 0), width=4)
+                buf = io.BytesIO(); img.save(buf, format="PNG")
                 return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
             item["images"] = [tile_png("composite"), tile_png("local_relief")]
-            item["question"] = TILE_QUESTION.format(x=int((c - c0) / t * 100), y=int((r - r0) / t * 100))
+            item["question"] = RING_QUESTION if RING else TILE_QUESTION.format(x=int(fx_ * 100), y=int(fy_ * 100))
         out_items.append(item)
     return out_items
 
@@ -151,7 +164,9 @@ def main():
         errs = {r.get('error') for r in rows if r['answer'] is None}
         if errs:
             print("    errors:", list(errs)[:2])
-    Path(Path.home() / "Dighouse" / (".reviewer-ratings-tile.json" if TILE else ".reviewer-ratings.json")).write_text(json.dumps(results, indent=1))
+    from dighouse import sources
+    name = "reviewer-ratings-ring.json" if RING else "reviewer-ratings-tile.json" if TILE else "reviewer-ratings.json"
+    (sources.cache_dir() / name).write_text(json.dumps(results, indent=1))
 
 
 if __name__ == "__main__":
