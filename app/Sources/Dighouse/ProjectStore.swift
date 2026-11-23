@@ -3,7 +3,11 @@ import Foundation
 /// The projects this app knows about, and everything on disk for the one that is open.
 @MainActor
 final class ProjectStore: ObservableObject {
-    @Published var projects: [ProjectRef] = []
+    @Published var projects: [ProjectRef] = [] {
+        didSet { blindTests = Set(projects.map(\.path).filter { FileManager.default.fileExists(atPath: $0 + "/private/state/test.json") }) }
+    }
+    /// The projects that are blind tests, so the sidebar can keep them in a group of their own.
+    @Published private(set) var blindTests: Set<String> = []
     @Published var current: ProjectRef?
     @Published var terrains: [Terrain] = []
     @Published var tiles: [Tile] = []

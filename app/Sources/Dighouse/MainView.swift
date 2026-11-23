@@ -257,7 +257,9 @@ struct Sidebar: View {
     @EnvironmentObject var store: ProjectStore
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var engine: Engine
-    @State private var collapsed: Set<String> = []
+    /// Projects whose fold the person flipped: the open project is unfolded unless flipped, any other folded unless flipped.
+    @State private var flipped: Set<String> = []
+    @AppStorage("sidebarTestsOpen") private var testsOpen = false
     /// The row under the pointer and the row whose menu is open. A right-click opens the menu of the row it lands on.
     @State private var hovered: String?
     @State private var menuFor: String?
@@ -289,20 +291,22 @@ struct Sidebar: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
-                    if !chat.generalThreads.isEmpty {
-                        header("Chats")
-                        ForEach(chat.generalThreads) { thread in chatRow(thread, in: nil, indent: 0) }
-                    }
+                    // Projects first: a project is where work lives, with its chats folded under it.
                     HStack {
                         header("Projects")
                         Spacer()
                         Button { app.startProject() } label: { Image(systemName: "plus") }
                             .buttonStyle(IconButton(size: 24, active: app.route == .newProject)).help("New project")
                     }
-                    ForEach(store.projects) { project in projectRows(project) }
+                    ForEach(store.projects.filter { !store.blindTests.contains($0.path) }) { project in projectRows(project) }
                     if store.projects.isEmpty {
                         EmptyLine(icon: "dig.grid", text: "No projects yet. Start one from Home.").padding(.horizontal, 10)
                     }
+                    if !chat.generalThreads.isEmpty {
+                        header("Chats")
+                        ForEach(chat.generalThreads) { thread in chatRow(thread, in: nil, indent: 0) }
+                    }
+                    blindTestRows
                 }
             }
             .padding(.top, 6)
@@ -409,27 +413,64 @@ struct Sidebar: View {
         .padding(.leading, indent)
     }
 
+    /// Blind tests, folded into one group under the chats: each is a known site scored against its key.
+    @ViewBuilder private var blindTestRows: some View {
+        let tests = store.projects.filter { store.blindTests.contains($0.path) }
+        if !tests.isEmpty {
+            let open = testsOpen || tests.contains { $0 == store.current }
+            Button { testsOpen.toggle() } label: {
+                HStack(spacing: 6) {
+                    Text("Blind tests").font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.faint)
+                    Text("\(tests.count)").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint.opacity(0.7))
+                    Image(systemName: "chevron.right").font(.system(size: 8 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
+                        .rotationEffect(.degrees(open ? 90 : 0))
+                    Spacer()
+                }
+                .padding(.leading, 10).padding(.top, 12).padding(.bottom, 2).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(open ? "Hide the blind tests" : "Show the blind tests: known sites the method was scored on")
+            if open {
+                ForEach(tests) { project in projectRows(project) }
+            }
+        }
+    }
+
     @ViewBuilder private func projectRows(_ project: ProjectRef) -> some View {
         let current = project == store.current
-        let open = current && !collapsed.contains(project.path)
+        let open = current != flipped.contains(project.path)
+        let threads = chat.chats(in: project.path)
+        let working = threads.contains { chat.live[$0.id] != nil || chat.goals.contains($0.id) }
         // The name opens the project's overview; only the arrow folds its chats away.
         Button {
-            collapsed.remove(project.path)
             if current { app.newChat() } else { app.open(project) }
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
-                    .rotationEffect(.degrees(open ? 90 : 0)).frame(width: 16, height: 20).contentShape(Rectangle())
-                    .onTapGesture {
-                        guard current else { app.open(project); return }
-                        if open { collapsed.insert(project.path) } else { collapsed.remove(project.path) }
-                    }
-                    .help(open ? "Hide this project's chats" : "Show this project's chats")
+                Color.clear.frame(width: 16, height: 20)   // room for the fold button laid over the row
                 Text(project.name).font(.system(size: 13.5 * Theme.scale)).lineLimit(1)
+                Spacer(minLength: 0)
+                if working { DigIndicator(size: 13).help("One of its chats is working") }
+                else if !open, !threads.isEmpty {
+                    Text("\(threads.count)").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                        .help("\(threads.count) chat\(threads.count == 1 ? "" : "s")")
+                }
             }
             .padding(.trailing, hovered == project.path || menuFor == project.path ? 24 : 0)
         }
         .buttonStyle(RowButton(selected: current && app.route == .chat && chat.active == nil))
+        // A button of its own, so the keyboard and VoiceOver can fold a project as well as a pointer can.
+        .overlay(alignment: .leading) {
+            Button {
+                if flipped.contains(project.path) { flipped.remove(project.path) } else { flipped.insert(project.path) }
+                if !current, !open { Task { await chat.listChats(in: project.path) } }
+            } label: {
+                Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
+                    .rotationEffect(.degrees(open ? 90 : 0)).frame(width: 16, height: 20).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).padding(.leading, 10)
+            .help(open ? "Hide this project's chats" : "Show this project's chats")
+            .accessibilityLabel((open ? "Fold " : "Unfold ") + project.name)
+        }
         .overlay(alignment: .trailing) {
             rowMenu(project.path, project.name) {
                 [MenuEntry(title: "Research record", icon: "book.closed") {
@@ -452,7 +493,7 @@ struct Sidebar: View {
         .onHover { hover(project.path, $0) }
         .background(place(project.path))
         if open {
-            ForEach(chat.threads) { thread in chatRow(thread, in: project, indent: 18) }
+            ForEach(threads) { thread in chatRow(thread, in: project, indent: 18) }
         }
     }
 }

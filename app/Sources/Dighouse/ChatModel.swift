@@ -153,6 +153,14 @@ final class ChatModel: ObservableObject {
     /// The chats saved for a project folder, open or not, for the sidebar and the project page.
     func chats(in folder: String) -> [ChatThread] { folder == project ? threads : known[folder] ?? [] }
 
+    /// Ask the engine for a closed project's chats, when the person unfolds it in the sidebar.
+    func listChats(in folder: String) async {
+        guard folder != project, let mine = await list(folder) else { return }
+        known[folder] = keepingNew(mine, from: known[folder] ?? [], in: folder)
+        remember()
+        objectWillChange.send()
+    }
+
     /// The chats of each folder, kept between launches. The engine needs several seconds to list one folder's chats
     /// when there are thousands of Codex sessions on the Mac, so the lists show from here and are refreshed behind.
     private var known: [String: [ChatThread]] = UserDefaults.standard.data(forKey: "chatLists")

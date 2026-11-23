@@ -57,3 +57,12 @@ A project is a place you work on, usually a region. It holds its areas of ground
   - **Titles.** `ChatThread.label` takes boxes and coordinates out of a chat's title wherever it shows: the sidebar, the project page, the chat's header, ⌘K and Find a chat. The Perry Mesa title "Use find_gaps on the Middle Usumacinta region (west -91.6, south 17.4, east -91." shows as "Use find_gaps on the Middle Usumacinta region". A new app test covers it, with titles that must stay whole ("Fetch 2.5 km² of …").
   - **The map's areas, refined.** Unnamed ground of two surveys stays together when the pieces lie side by side (Shawnee's two 2019 surveys). They are shown apart only when they cover much the same place, as two flights over one site do.
   - **Checked** in the test copy on the probe region. A question typed on its page became a chat named "Project research areas". It showed in the Chats list and under the project in the sidebar, and it answered "The project holds two areas: Perry A1 and Athens A1." The Perry Mesa title was checked by the app test, not on screen, so as not to open Chris's own project from the test copy.
+- **H3, projects first in the sidebar.**
+  - **Order.** Projects come first, then the chats that belong to no project, then a folded "Blind tests" group with its count. The group opens by itself when a blind test is the open project.
+  - **Folding.** Any project unfolds to its chats, not only the open one. Unfolding a closed project asks the engine for its chats, so they show even if the project was never opened on this Mac. A folded project shows how many chats it has, and a working mark when one of them is running.
+  - **The fold arrow** is now a button of its own ("Unfold Hocking Hills region, Ohio"), so the keyboard and VoiceOver can reach it. Before, it was a tap area inside the project's button.
+  - **The map's area menu** shortens a long survey name on its button ("OH_Statewide_Phase2_2…"), and the menu shows it whole.
+  - **Checked** in the test copy:
+    - **Chris's whole list** (66 projects plus the probe) sorted into 51 projects, his 19 chats and "Blind tests 15", with nothing opened.
+    - **A smaller test list.** Unfolding the closed probe region showed its chat. Unfolding a blind test of Chris's listed "Find and report back" from the engine. That project's last commit and RESEARCH.md were unchanged afterwards.
+    - **Nothing moved.** No folder was moved, renamed or opened.

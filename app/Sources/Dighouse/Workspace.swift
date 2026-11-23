@@ -159,6 +159,9 @@ struct MapView: View {
         return out
     }
 
+    /// A name short enough for the map's controls; the menu shows it whole.
+    private static func shortName(_ name: String) -> String { name.count > 22 ? String(name.prefix(21)) + "…" : name }
+
     private func tiled(_ t: Terrain) -> Bool { store.tiles.contains { $0.terrain == t.id } }
 
     private var currentArea: Area? {
@@ -396,7 +399,7 @@ struct MapView: View {
                 .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a slice through the ground")
             let all = areas
             if all.count > 1 {
-                PillMenu(title: (short ? "" : "Show: ") + (currentArea?.name ?? "Ground"), quiet: true, width: 340) {
+                PillMenu(title: (short ? "" : "Show: ") + Self.shortName(currentArea?.name ?? "Ground"), quiet: true, width: 340) {
                     [.header("\(all.count) areas in this project")]
                         + all.map { a in MenuEntry(title: label(a), icon: "dig.mound", checked: a.id == currentArea?.id) { areaChoice = a.id } }
                 }
