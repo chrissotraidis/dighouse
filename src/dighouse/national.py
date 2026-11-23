@@ -586,7 +586,7 @@ def _from_xyz_sheets(d: dict, x0: float, y0: float, x1: float, y1: float) -> tup
                 inner = next((n for n in z.namelist() if n.lower().endswith(".txt")), None)
                 if not inner:
                     continue
-                xyz = np.loadtxt(z.open(inner), dtype=np.float64, ndmin=2)
+                xyz = _xyz(z.read(inner).decode("utf-8", "replace"))
             if xyz.size:
                 col = np.floor((xyz[:, 0] - x0) / res).astype(int)
                 row = np.floor((y1 - xyz[:, 1]) / res).astype(int)
@@ -594,6 +594,16 @@ def _from_xyz_sheets(d: dict, x0: float, y0: float, x1: float, y1: float) -> tup
                 out[row[ok], col[ok]] = xyz[ok, 2]
             break
     return out, x0, y1, res, None
+
+
+def _xyz(text: str) -> np.ndarray:
+    """x, y, z per cell from a sheet's text: "x y z", or newer sheets' "n,x,y,z,flag" with commas."""
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return np.empty((0, 3))
+    sep = "," if "," in lines[0] else None
+    a = np.loadtxt(lines, delimiter=sep, dtype=np.float64, ndmin=2)
+    return a[:, 1:4] if a.shape[1] >= 5 else a[:, :3]
 
 
 def _slovenia_sheets(x0: float, y0: float, x1: float, y1: float) -> list[str]:

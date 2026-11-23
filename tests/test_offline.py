@@ -963,3 +963,20 @@ def test_os_grid_names():
     assert national._os_name(358_100, 674_600, 2) == "NT5874"
     assert national._os_name(316_500, 666_500, 1) == "NT16"
     assert national._os_name(390_000, 1_010_000, 1) == "HY91"
+
+def test_shizuoka_sheets_in_both_layouts():
+    """Older sheets are "x y z"; newer ones are "n,x,y,z,flag". Reading the newer as the older failed every fetch there."""
+    from dighouse import national
+    old = national._xyz("-11599.75 -109500.25 53.60\n-11599.25 -109500.25 53.70\n")
+    new = national._xyz("1,-11599.75,-109500.25,53.60,1\n2,-11599.25,-109500.25,53.70,1\n")
+    assert old.shape == new.shape == (2, 3) and np.allclose(old, new)
+
+
+def test_funnel_counts_what_reaches_a_person(tmp_path):
+    """The funnel FIND_LOOP is judged by: finds, those put to a person, decided, and answered."""
+    from dighouse import funnel
+    root = str(tmp_path / "f")
+    server.init_project(root, "Funnel", "Does the funnel count?", -83.0, 39.0, -82.99, 39.01)
+    row = funnel.funnel(root)
+    assert row["finds"] == row["to_a_person"] == row["decided"] == row["answered"] == 0 and not row["blind_test"]
+    assert funnel.totals([row])["projects"] == 1

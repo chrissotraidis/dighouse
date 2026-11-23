@@ -178,9 +178,12 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (43 tests)
+uv run pytest            # offline, on a synthetic survey (45 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
+uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
+uv run python scripts/coverage.py    # every ground source on about 1 km2: does it answer, and how fast
+uv run python scripts/speed.py       # how long each stage of a search takes on a few km2
 ~~~
 
 ## The tools
