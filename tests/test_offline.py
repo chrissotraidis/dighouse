@@ -1017,3 +1017,17 @@ def test_which_registers_cover_a_place():
     assert discover.covering_registers(-82.9, 39.3) == []
     words = ledger.records_words({"date": "2026-11-23", "reach_m": 120, "answered": ["OpenStreetMap"], "silent": [], "registers": [], "near": []})
     assert "not read" in words and "nothing within 120 m" in words
+
+def test_the_second_opinion_pictures_ring_the_find(tmp_path, survey):
+    """Without the router, the chat path hands a model the same ringed tile the router path sends."""
+    from pathlib import Path
+    root = str(tmp_path / "proj")
+    server.init_project(root, "Synthetic", "q", *survey["bbox"])
+    p = Project(root)
+    terrain = server.fetch_terrain(root, "usgs:synthetic", *survey["bbox"])["terrain"]
+    server.make_tiles(root, terrain, tile_m=100)
+    tile, fx, fy = tile_at(p, survey["mound_xy"])
+    server.flag_candidate(root, tile, fx, fy, "Mound", "note", "model-a")
+    got = server.opinion_pictures(root, "C-001")
+    assert len(got["pictures"]) == 2 and all(Path(f).stat().st_size > 1000 for f in got["pictures"])
+    assert "ring" in got["question"] and all("/data/views/" in f for f in got["pictures"])

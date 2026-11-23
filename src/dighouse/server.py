@@ -817,6 +817,24 @@ def ask_second_opinions(project: str, candidates: str, models: str) -> dict:
 
 
 @tool
+def opinion_pictures(project: str, candidate: str) -> dict:
+    """For the app: the two pictures a second opinion is asked on (the find's tile in composite and local relief, the find
+    ringed) saved under data/views, and the question to ask with them. The app hands them to a model that has no other
+    view of the find. Agents do not call this: the second opinion is never yours."""
+    import base64
+    from . import review
+    p = Project(project).check()
+    images, question = review.crops(p, candidate)
+    paths = []
+    for style, url in zip(("composite", "local_relief"), images):
+        f = p.path("data", "views", f"{candidate}-opinion-{style}.png")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(base64.b64decode(url.split(",", 1)[1]))
+        paths.append(str(f))
+    return {"pictures": paths, "question": question}
+
+
+@tool
 def second_look_failed(project: str, candidate: str, model: str, reason: str) -> dict:
     """Record that a second opinion was asked for and the model could not give one, with why. The app calls this, so the
     record says the request was made and the next person knows to choose another model. It does not count as a second opinion."""

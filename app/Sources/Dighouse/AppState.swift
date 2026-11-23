@@ -169,8 +169,20 @@ final class AppState: ObservableObject {
     var secondOpinionModels: [String] {
         let offered = Set(engine.models.filter(\.readsImages).map(\.id))
         var seen = Set<String>()
-        return ([secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder)
+        let chosen = ([secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder)
             .filter { offered.contains($0) && secondFailed[$0] == nil && seen.insert($0).inserted }
+        if !chosen.isEmpty { return chosen }
+        // With only a ChatGPT sign-in (no OpenCodex), every model comes from one maker: ask a different one than the
+        // agent's, and say on the record that it is from the same maker.
+        return engine.models.filter { $0.readsImages && $0.id != (modelID ?? engine.defaultModel) && secondFailed[$0.id] == nil }
+            .map(\.id).prefix(2).map { $0 }
+    }
+
+    /// A second model's name as the record keeps it: from the same maker as the agent's, when no other maker is on offer.
+    func secondOpinionLabel(_ id: String) -> String {
+        let name = engine.models.first { $0.id == id }?.name ?? id
+        let fallback = !([secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder).contains(id)
+        return fallback ? name + " (same maker as the agent)" : name
     }
 
     /// After the model list loads: a saved model that is no longer offered (Google's, for one) is replaced.
@@ -1245,7 +1257,7 @@ final class AppState: ObservableObject {
     /// set aside for this run, as in the chat path; each record names the model that answered.
     private func askDirect(_ looks: [SecondLookItem]) {
         guard let path = looks.first?.path, secondLookBusy == nil else { return }
-        let models = secondOpinionModels.map { id in id + "=" + (engine.models.first { $0.id == id }?.name ?? id) }.joined(separator: "|")
+        let models = secondOpinionModels.map { id in id + "=" + secondOpinionLabel(id) }.joined(separator: "|")
         secondLookBusy = looks[0].id
         directLeft = looks.count
         for look in looks { secondLookProblem[look.id] = nil }
@@ -1275,16 +1287,15 @@ final class AppState: ObservableObject {
 
     private func ask(_ look: SecondLookItem) {
         guard let model = secondOpinionModels.first, secondLookBusy == nil else { return }
-        let modelName = engine.models.first { $0.id == model }?.name ?? model
+        let modelName = secondOpinionLabel(model)
         secondLookBusy = look.id
         secondLookProblem[look.id] = nil
         let prompt = """
         You are giving an independent second opinion on a possible archaeological feature. Do not read the candidate's \
-        record, the notes, or any other file. Call view_tile for tile \(look.tile) of project \(look.path) in the \
-        composite style, then again in the local_relief style. The feature sits about \(Int(look.x * 100)) percent across \
-        and \(Int(look.y * 100)) percent down the tile. Decide whether what is there looks built by people. Then call \
-        second_look with candidate \(look.id), your verdict as agrees, model "\(modelName)", and a one-sentence note. \
-        Do nothing else.
+        record, the notes, or any other file. The two pictures show its tile, north up, in composite and local relief; the \
+        feature is inside the orange ring. Judge only what is inside the ring: first say in a few words what is there, then \
+        decide whether it looks built by people. Then call second_look with project \(look.path), candidate \(look.id), \
+        your verdict as agrees, model "\(modelName)", and a one-sentence note. Do nothing else.
         """
         Task { @MainActor in
             do {
@@ -1295,7 +1306,11 @@ final class AppState: ObservableObject {
                 secondLooks[id] = look.id
                 secondLookModel[id] = model
                 secondLookOf[id] = look
-                _ = try await engine.request("turn/start", ["threadId": id, "model": model, "input": [["type": "text", "text": prompt]]])
+                // The same pictures the router path sends, the find ringed, made by the tools and handed over as images.
+                let made = try await engine.callTool("opinion_pictures", ["project": look.path, "candidate": look.id])
+                let pictures = ((try? JSONSerialization.jsonObject(with: Data(made.utf8))) as? JSON)?["pictures"] as? [String] ?? []
+                let input: [JSON] = [["type": "text", "text": prompt]] + pictures.map { ["type": "localImage", "path": $0] }
+                _ = try await engine.request("turn/start", ["threadId": id, "model": model, "input": input])
             } catch {
                 secondLookBusy = nil
                 if secondLookFellThrough(look, model: model, reason: error.localizedDescription) { return }

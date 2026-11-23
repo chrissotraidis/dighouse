@@ -221,18 +221,44 @@ struct SetupChecklist: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var setup: Setup
     @EnvironmentObject var engine: Engine
+    @State private var signingIn = false
+    @State private var signInProblem: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(spacing: 0) {
                 row(setup.codex != nil, "Agent engine (Codex)", "The free program from OpenAI that lets an AI model use tools.",
-                    setup.codex != nil ? setup.codexVersion : "Not found. Install Codex, then check again.",
-                    link: setup.codex == nil ? ("Get Codex", "https://github.com/openai/codex") : nil)
+                    setup.codex != nil ? setup.codexVersion
+                    : setup.engineBusy ? "Downloading it from OpenAI's releases on GitHub…"
+                    : (setup.engineProblem ?? "Not on this Mac yet. Dighouse can install it in its own folder.")) {
+                    if setup.codex == nil {
+                        if setup.engineBusy { DigIndicator() } else {
+                            Button("Install it") { Task { await setup.installEngine(); await app.boot() } }.buttonStyle(PrimaryButton())
+                        }
+                    }
+                }
+                Rectangle().fill(Theme.line).frame(height: 1)
+                row(engine.account != nil, "Signed in", "The engine uses a ChatGPT account's models. You sign in in your browser; Dighouse never sees the password.",
+                    engine.account.map { "Signed in as \($0)" } ?? (signInProblem ?? (setup.codex == nil ? "After the engine is installed." : "Not signed in yet."))) {
+                    if engine.account == nil, setup.codex != nil {
+                        if signingIn { DigIndicator() } else {
+                            Button("Sign in with ChatGPT") {
+                                signingIn = true
+                                signInProblem = nil
+                                Task {
+                                    do { try await engine.signIn(); await app.boot() } catch { signInProblem = error.localizedDescription }
+                                    signingIn = false
+                                }
+                            }
+                            .buttonStyle(PrimaryButton()).disabled(!engine.running)
+                        }
+                    }
+                }
                 Rectangle().fill(Theme.line).frame(height: 1)
                 row(setup.toolsReady, "Archaeology tools", "\(ToolGuide.toolCount) tools that fetch lidar, build the bare ground, cut slices, check maps, read the literature and keep records.",
                     setup.toolsReady ? "Ready"
                     : setup.toolsSource == nil ? "The tools are missing from this copy of Dighouse."
-                    : setup.uv == nil ? "Needs uv, a small program that runs the tools. Install it, then check again."
+                    : setup.uv == nil ? "Needs uv, a small program that runs the tools. A downloaded Dighouse carries it; this copy does not, so install it, then check again."
                     : setup.toolsBusy ? "Preparing. This takes about a minute the first time."
                     : (setup.toolsProblem ?? "Not prepared yet."),
                     link: setup.uv == nil ? ("Get uv", "https://docs.astral.sh/uv/getting-started/installation/") : nil) {

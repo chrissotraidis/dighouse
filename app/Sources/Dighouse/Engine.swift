@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 struct EngineError: LocalizedError {
@@ -68,6 +69,8 @@ final class Engine: ObservableObject {
     var onServerRequest: ((Any, String, JSON) -> Void)?
 
     private var process: Process?
+    /// Whether the engine process is up, so it can be asked to sign in before its models are listed.
+    var running: Bool { process?.isRunning == true }
     private var input: FileHandle?
     private var nextID = 0
     private var waiting: [Int: CheckedContinuation<JSON, Error>] = [:]
@@ -220,6 +223,22 @@ final class Engine: ObservableObject {
     }
 
     // MARK: talking to the engine
+
+    /// Sign the engine in with ChatGPT from the app: it hands out a sign-in page, the person signs in in their browser,
+    /// and the account shows here once the engine has it. Dighouse never sees the password.
+    func signIn() async throws {
+        let reply = try await request("account/login/start", ["type": "chatgpt"])
+        guard let link = reply["authUrl"] as? String, let url = URL(string: link) else { throw EngineError(message: "The engine gave no sign-in page.") }
+        NSWorkspace.shared.open(url)
+        for _ in 0..<300 {
+            try await Task.sleep(for: .seconds(1))
+            if let who = try? await request("account/read"), let acct = who["account"] as? JSON {
+                account = (acct["email"] as? String) ?? (acct["type"] as? String)
+                return
+            }
+        }
+        throw EngineError(message: "Sign-in did not finish within five minutes. Press Sign in to try again.")
+    }
 
     func request(_ method: String, _ params: JSON = [:]) async throws -> JSON {
         guard input != nil else { throw EngineError(message: "The Codex engine is not running.") }

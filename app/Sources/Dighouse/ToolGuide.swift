@@ -93,6 +93,7 @@ enum ToolGuide {
              tools: [Tool(name: "cut_section", title: "Cut a slice", does: "Cuts a vertical slice through the raw points and measures the feature."),
                      Tool(name: "second_look", title: "Second opinion", does: "Records the opinion of a second, different model."),
                      Tool(name: "ask_second_opinions", title: "Ask for second opinions", does: "Asks a different model about each open find, a few at a time, and writes each answer on its record."),
+                     Tool(name: "opinion_pictures", title: "Draw the second opinion's pictures", does: "Draws a find's tile in two views with the find ringed, for a second model asked through the chat. Only the app calls it."),
                      Tool(name: "second_look_failed", title: "Note a missing opinion", does: "Notes that a second model was asked and could not answer, and why. It does not count as an opinion."),
                      Tool(name: "find_views", title: "Draw close views", does: "Draws a find 60 m across, ringed, in six styles, for the person deciding it."),
                      Tool(name: "check_modern", title: "Check open maps", does: "Looks on open maps for roads, buildings and sites already mapped nearby."),

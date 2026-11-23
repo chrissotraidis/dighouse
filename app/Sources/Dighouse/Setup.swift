@@ -42,12 +42,14 @@ final class Setup: ObservableObject {
         }
         let home = NSHomeDirectory()
         path = value("DH_PATH") ?? "/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin:\(home)/.local/bin"
-        uv = existing([value("DH_UV"), "\(home)/.local/bin/uv", "/opt/homebrew/bin/uv", "/usr/local/bin/uv", "\(home)/.cargo/bin/uv"])
+        // A downloaded Dighouse carries its own uv, so nothing has to be installed first.
+        uv = existing([Bundle.main.resourceURL?.appendingPathComponent("bin/uv").path, value("DH_UV"), "\(home)/.local/bin/uv",
+                       "/opt/homebrew/bin/uv", "/usr/local/bin/uv", "\(home)/.cargo/bin/uv"])
         // A Mac can hold several copies of the engine: one installed for the command line, one inside the Codex app.
         // The newest wins, because providers refuse their newer models to an older engine.
         let copies = [value("DH_CODEX"), "\(home)/.local/bin/codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex",
                       "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
-                      "/Applications/Codex.app/Contents/Resources/codex"]
+                      "/Applications/Codex.app/Contents/Resources/codex", Self.installedEngine.path]
             .compactMap { $0 }.filter { !$0.isEmpty && FileManager.default.isExecutableFile(atPath: $0) }
         var best: (path: String, version: String)?
         for copy in copies where best?.path != copy {
@@ -82,6 +84,40 @@ final class Setup: ObservableObject {
         let prepared = stamp != nil && (try? String(contentsOf: marker, encoding: .utf8)) == stamp
         toolsReady = prepared && FileManager.default.isExecutableFile(atPath: toolsBinary)
         checked = true
+    }
+
+    /// Where Dighouse puts the Codex engine when it installs it itself.
+    static var installedEngine: URL { Paths.support.appendingPathComponent("engine/codex") }
+    @Published var engineBusy = false
+    @Published var engineProblem: String?
+
+    /// Download OpenAI's Codex engine from its GitHub releases into Dighouse's own folder, for a Mac that has none.
+    func installEngine() async {
+        engineBusy = true
+        engineProblem = nil
+        defer { engineBusy = false }
+        #if arch(arm64)
+        let arch = "aarch64"
+        #else
+        let arch = "x86_64"
+        #endif
+        let asset = "codex-\(arch)-apple-darwin.tar.gz"
+        let folder = Self.installedEngine.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let url = URL(string: "https://github.com/openai/codex/releases/latest/download/\(asset)")!
+            let (file, response) = try await URLSession.shared.download(from: url)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw EngineError(message: "GitHub did not hand out \(asset).") }
+            let unpack = await Shell.run("/usr/bin/tar", ["-xzf", file.path, "-C", folder.path])
+            guard unpack.code == 0 else { throw EngineError(message: "Could not unpack \(asset): \(unpack.out.prefix(200))") }
+            let unpacked = folder.appendingPathComponent("codex-\(arch)-apple-darwin")
+            try? FileManager.default.removeItem(at: Self.installedEngine)
+            try FileManager.default.moveItem(at: unpacked, to: Self.installedEngine)
+            _ = await Shell.run("/bin/chmod", ["+x", Self.installedEngine.path])
+            await detect()
+        } catch {
+            engineProblem = error.localizedDescription
+        }
     }
 
     /// Build the tools' private Python environment. Needs uv; takes about a minute the first time.

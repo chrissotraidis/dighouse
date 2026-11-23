@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
-  <img alt="59 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-59%20tools-8B5E3C">
+  <img alt="60 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-60%20tools-8B5E3C">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
 </p>
 
@@ -178,7 +178,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (48 tests)
+uv run pytest            # offline, on a synthetic survey (49 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
