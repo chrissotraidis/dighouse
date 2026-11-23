@@ -310,6 +310,11 @@ struct Sidebar: View {
                 }
             }
             .padding(.top, 6)
+            // A fold is remembered only while the project keeps its place: opening another project resets both rows.
+            .onChange(of: store.current?.path) { old, new in
+                if let old { flipped.remove(old) }
+                if let new { flipped.remove(new) }
+            }
 
             Hairline().padding(.vertical, 6)
             if !engine.ready {

@@ -12,6 +12,8 @@ final class ProjectStore: ObservableObject {
     @Published var terrains: [Terrain] = []
     @Published var tiles: [Tile] = []
     @Published var candidates: [Candidate] = []
+    /// Sources logged for the project as a whole, such as a survey's metadata or a search that found nothing of use.
+    @Published var projectSources: [Source] = []
     @Published var status = RunStatus()
     @Published var selectedTile: String?
     @Published var selectedCandidate: String?
@@ -165,15 +167,15 @@ final class ProjectStore: ObservableObject {
     }
 
     /// What a project holds, read from its folder without opening it.
-    nonisolated static func glance(_ root: String) -> (tiles: Int, unscreened: Int, finds: Int, undecided: Int) {
+    nonisolated static func glance(_ root: String) -> (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int) {
         let fm = FileManager.default
         let tiles = (fm.contents(atPath: root + "/private/state/tiles.json").flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: JSON] ?? [:]).values
-        let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }
-        let undecided = records.filter { file in
-            let text = (try? String(contentsOfFile: root + "/candidates/" + file, encoding: .utf8)) ?? ""
-            return text.contains("\nstatus: \"flagged\"") || text.contains("\nstatus: \"ground_confirmed\"")
-        }.count
-        return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, records.count, undecided)
+        let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
+        let finds = readCandidates(root, records)
+        let test = fm.fileExists(atPath: root + "/private/state/test.json")
+        let needs = test ? 0 : finds.filter { [.closer, .lookAgain, .open].contains($0.group) }.count
+        let agree = test ? 0 : finds.filter { $0.group.confirmable }.count
+        return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, finds.count, finds.filter(\.waiting).count, needs, agree)
     }
 
     /// The finds a person decides one at a time: leads, disagreements, and finds with no suggestion. The one count
@@ -214,14 +216,14 @@ final class ProjectStore: ObservableObject {
 
     func reloadIfChanged() {
         guard let root = current?.path else {
-            terrains = []; tiles = []; candidates = []; status = RunStatus(); download = nil
+            terrains = []; tiles = []; candidates = []; projectSources = []; status = RunStatus(); download = nil
             return
         }
         readDownload(root)
         let fm = FileManager.default
         let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
         let watched = ["terrains", "tiles", "locations", "controls", "project"].map { root + "/private/state/\($0).json" }
-            + records.map { root + "/candidates/" + $0 }
+            + records.map { root + "/candidates/" + $0 } + [root + "/sources/read-log.md"]
         let now = watched.map { path -> String in
             let date = FileInfo.modified(path)
             return "\(path)@\(date?.timeIntervalSince1970 ?? 0)"
@@ -271,8 +273,48 @@ final class ProjectStore: ObservableObject {
                         note: t["note"] as? String, model: t["model"] as? String)
         }.sorted { $0.id < $1.id }
 
-        let places = json(root + "/private/state/locations.json") as? [String: JSON] ?? [:]
-        candidates = records.compactMap { file in
+        candidates = Self.readCandidates(root, records)
+        projectSources = Self.readProjectSources(root)
+    }
+
+    /// The read log's lines for the project as a whole: "- date · project · status · title · link · what it says".
+    nonisolated static func readProjectSources(_ root: String) -> [Source] {
+        let log = (try? String(contentsOfFile: root + "/sources/read-log.md", encoding: .utf8)) ?? ""
+        var seen = Set<String>()
+        return log.split(separator: "\n").compactMap { line -> Source? in
+            guard line.hasPrefix("- ") else { return nil }
+            let parts = line.dropFirst(2).components(separatedBy: " · ")
+            guard parts.count >= 5, parts[1] == "project", seen.insert(parts[3]).inserted else { return nil }
+            return Source(title: parts[3], status: parts[2], finding: parts.dropFirst(5).joined(separator: " · "), link: parts[4])
+        }
+    }
+
+    /// Every source the project logged, each title once: those on its records first, then those for the whole project.
+    var allSources: [Source] {
+        var seen = Set<String>()
+        return (candidates.flatMap(\.sources) + projectSources).filter { seen.insert($0.title).inserted }
+    }
+
+    /// The measured rises kept on the map rather than put to a person. The same rule as ledger.layer in the tools:
+    /// a rise goes to a person when the second model calls it built and its shape ranks in the top half of this
+    /// project's measured rises, or when a person raises it.
+    nonisolated static func layer(_ all: [Candidate]) -> Set<String> {
+        let rank: (Candidate) -> Double = { c in
+            let r = (c.checks["shape"] as? JSON)?["rank"]
+            return (r as? Double) ?? (r as? Int).map(Double.init) ?? 0
+        }
+        let rises = all.filter { $0.flaggedBy.hasPrefix("measured") }
+        guard !rises.isEmpty else { return [] }
+        let ranks = rises.map(rank).sorted()
+        let cut = ranks[min(Int(Double(ranks.count) * 0.5), ranks.count - 1)]
+        return Set(rises.filter { $0.waiting && !$0.raised && !($0.secondSaysBuilt == true && rank($0) >= cut) }.map(\.id))
+    }
+
+    /// Every find of a project, read from its candidates/ folder, with the measured rises kept on the map marked.
+    nonisolated static func readCandidates(_ root: String, _ records: [String]) -> [Candidate] {
+        let places = (FileManager.default.contents(atPath: root + "/private/state/locations.json")
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: JSON]) ?? [:]
+        var found: [Candidate] = records.compactMap { file in
             guard let text = try? String(contentsOfFile: root + "/candidates/" + file, encoding: .utf8) else { return nil }
             let parts = text.components(separatedBy: "---\n")
             guard parts.count >= 3 else { return nil }
@@ -305,23 +347,9 @@ final class ProjectStore: ObservableObject {
             }
             return c
         }
-        let kept = Self.layer(candidates)
-        for i in candidates.indices where kept.contains(candidates[i].id) { candidates[i].inLayer = true }
-    }
-
-    /// The measured rises kept on the map rather than put to a person. The same rule as ledger.layer in the tools:
-    /// a rise goes to a person when the second model calls it built and its shape ranks in the top half of this
-    /// project's measured rises, or when a person raises it.
-    static func layer(_ all: [Candidate]) -> Set<String> {
-        let rank: (Candidate) -> Double = { c in
-            let r = (c.checks["shape"] as? JSON)?["rank"]
-            return (r as? Double) ?? (r as? Int).map(Double.init) ?? 0
-        }
-        let rises = all.filter { $0.flaggedBy.hasPrefix("measured") }
-        guard !rises.isEmpty else { return [] }
-        let ranks = rises.map(rank).sorted()
-        let cut = ranks[min(Int(Double(ranks.count) * 0.5), ranks.count - 1)]
-        return Set(rises.filter { $0.waiting && !$0.raised && !($0.secondSaysBuilt == true && rank($0) >= cut) }.map(\.id))
+        let kept = Self.layer(found)
+        for i in found.indices where kept.contains(found[i].id) { found[i].inLayer = true }
+        return found
     }
 
     private func json(_ path: String) -> Any? {

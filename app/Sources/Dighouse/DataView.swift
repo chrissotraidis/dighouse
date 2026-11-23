@@ -20,7 +20,8 @@ struct DataView: View {
                                   : "None yet. Get the ground, or add a file of your own below.")
                     }
                     ForEach(store.terrains) { t in terrainRow(t) }
-                    HStack(spacing: 8) {
+                    // Wraps in a narrow pane; a row that cannot wrap would widen the window past the screen.
+                    Flow(spacing: 8) {
                         Button(store.terrains.isEmpty ? "Get the ground" : "Fetch more") {
                             if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }), store.terrains.isEmpty { app.run(flow) }
                             else { app.ask("Find open lidar for any part of this project's area that has no ground yet, fetch it with the same survey where possible, and cut it into tiles. If the whole area is covered, say so.") }
@@ -41,11 +42,15 @@ struct DataView: View {
                 section("Your own data") {
                     Text("Drop a ground model (GeoTIFF) or a point cloud (LAS or LAZ) here, or choose one. It needs a coordinate system in metres, such as UTM or a national grid. The file stays where it is; Dighouse reads it into the project.")
                         .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 10) {
+                    let label = HStack(spacing: 10) {
                         Image(systemName: "tray.and.arrow.down").font(.system(size: 18 * Theme.scale)).foregroundStyle(dropping ? Theme.accent : Theme.faint)
-                        Text(busy == "import" ? "Reading the file…" : "Drop a file here").foregroundStyle(Theme.dim)
-                        Spacer()
-                        Button("Choose a file…", action: choose).buttonStyle(SecondaryButton()).disabled(busy != nil)
+                        Text(busy == "import" ? "Reading the file…" : "Drop a file here").foregroundStyle(Theme.dim).fixedSize()
+                    }
+                    let pick = Button("Choose a file…", action: choose).buttonStyle(SecondaryButton()).disabled(busy != nil)
+                    // The button beside the words when there is room, under them in a narrow pane.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) { label; Spacer(minLength: 10); pick }
+                        VStack(alignment: .leading, spacing: 10) { label; pick }.frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: 12).strokeBorder(dropping ? Theme.accent : Theme.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
@@ -115,14 +120,18 @@ struct DataView: View {
     }
 
     private func exportRow(_ title: String, _ text: String, _ button: String, id: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
-                Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 12)
+        let words = VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+            Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        }
+        let control = HStack(spacing: 8) {
             if busy == id { DigIndicator() }
             Button(button, action: action).buttonStyle(SecondaryButton()).disabled(disabled || busy != nil)
+        }
+        // The button beside the words when there is room, under them in a narrow pane.
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) { words.frame(minWidth: 260, alignment: .leading); Spacer(minLength: 12); control }
+            VStack(alignment: .leading, spacing: 8) { words; control }
         }
     }
 

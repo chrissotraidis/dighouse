@@ -35,9 +35,7 @@ extension WorkspaceView {
 
     private func count(_ tab: WorkTab) -> Int? {
         if tab == .records, !store.candidates.isEmpty { return store.candidates.count }
-        if tab == .sources, store.candidates.contains(where: { !$0.sources.isEmpty }) {
-            return Set(store.candidates.flatMap(\.sources).map(\.title)).count
-        }
+        if tab == .sources, case let n = store.allSources.count, n > 0 { return n }
         return nil
     }
 
@@ -340,6 +338,8 @@ struct MapView: View {
                 }
             }
             .task(id: style) { await render() }
+            // Another area, or another project, starts whole and centred.
+            .onChange(of: "\(store.current?.path ?? "") \(currentArea?.id ?? "")") { _, _ in zoom = 1; pan = .zero }
             // A find chosen elsewhere (Records, Decide) on another area brings that area onto the map.
             .onChange(of: store.selectedTile) { _, tile in
                 guard let tile, let terrain = store.tiles.first(where: { $0.id == tile })?.terrain,
@@ -825,7 +825,6 @@ struct RecordsView: View {
                 Text("\(c.id) \(c.name)").font(.system(size: 24 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     Badge(text: c.statusLabel, color: c.statusColor)
-                    Text("Marked \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
                     Spacer(minLength: 8)
                     if !store.isBlindTest {
                         Button("Decide") { app.openDecide(on: c.id) }.buttonStyle(SecondaryButton())
@@ -833,6 +832,9 @@ struct RecordsView: View {
                             .coach(.review)
                     }
                 }
+                // On a line of its own, so a narrow pane wraps it rather than cutting it to "Marke…".
+                Text("Marked \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             HStack(alignment: .top, spacing: 12) {
                 figure(c.relief, "Bare-ground relief")
@@ -1295,11 +1297,6 @@ struct SourcesView: View {
         }
     }
 
-    private var sources: [Source] {
-        var seen = Set<String>()
-        return store.candidates.flatMap(\.sources).filter { seen.insert($0.title).inserted }
-    }
-
     private func color(_ status: String) -> Color {
         status == "read" ? Theme.green : status == "could_not_open" ? Theme.amber : Theme.faint
     }
@@ -1314,7 +1311,7 @@ struct SourcesView: View {
     }
 
     var body: some View {
-        let all = sources
+        let all = store.allSources
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "globe").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
@@ -1344,7 +1341,7 @@ struct SourcesView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("\(all.count) source\(all.count == 1 ? "" : "s") on this project's records").font(.system(size: 18 * Theme.scale, weight: .semibold))
+                        Text("\(all.count) source\(all.count == 1 ? "" : "s") for this project").font(.system(size: 18 * Theme.scale, weight: .semibold))
                         Text("Each source the agent logs appears here as read, could not open, or not relevant. Click one to open it. Publishers often refuse a program and let a person in, so the ones marked could not open are worth opening yourself.")
                             .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         list(all)

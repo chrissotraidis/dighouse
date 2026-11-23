@@ -1,12 +1,10 @@
 import SwiftUI
 
-/// The search report a whole search ends with, and a button for each decision that is waiting.
+/// The search report a whole search ends with, and the way into Decide for what waits on a person.
 struct ReportSheet: View {
     let file: String
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
-
-    private var waiting: [Candidate] { store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" } }
 
     var body: some View {
         // The file's first line is its title, which the header already shows.
@@ -45,24 +43,26 @@ struct ReportSheet: View {
             })
             Hairline()
             VStack(alignment: .leading, spacing: 8) {
+                let needs = store.needsYou.count, agree = store.toAgree.count, kept = store.onMap
                 if store.isBlindTest {
                     Text("A blind test: its finds are scored against the published key, so none waits for your decision.")
                         .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
-                } else if waiting.isEmpty {
-                    Text("Nothing is waiting for your decision.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
                 } else {
-                    Text(waiting.count == 1 ? "One find is waiting for your decision" : "\(waiting.count) finds are waiting for your decision")
-                        .font(.system(size: 13 * Theme.scale, weight: .medium))
-                    Flow(spacing: 8) {
-                        ForEach(Array(waiting.enumerated()), id: \.element.id) { index, c in
-                            Button("Decide \(c.id)") {
-                                store.selectedCandidate = c.id
+                    // The same counts as Home and the project page: what needs a person, what to agree with, what stays on the map.
+                    HStack(spacing: 12) {
+                        Text(needs + agree == 0 ? "Nothing is waiting for your decision." + (kept > 0 ? " \(kept) measured rise\(kept == 1 ? " stays" : "s stay") on the map." : "")
+                             : [needs > 0 ? "\(needs) need\(needs == 1 ? "s" : "") you" : nil, agree > 0 ? "\(agree) to agree with" : nil].compactMap { $0 }.joined(separator: ", ")
+                                + (kept > 0 ? ". \(kept) measured rise\(kept == 1 ? " stays" : "s stay") on the map." : "."))
+                            .font(.system(size: 13 * Theme.scale, weight: needs + agree > 0 ? .medium : .regular))
+                            .foregroundStyle(needs + agree > 0 ? Theme.text : Theme.dim)
+                        Spacer(minLength: 8)
+                        if needs + agree > 0 {
+                            Button("Decide") {
                                 app.reportShown = nil
                                 // One sheet has to close before the next can open.
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { app.reviewing = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { app.openDecide() }
                             }
-                            .buttonStyle(SecondaryButton()).help(c.name)
-                            .keyboardShortcut(index == 0 ? .defaultAction : nil)
+                            .buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction)
                         }
                     }
                 }

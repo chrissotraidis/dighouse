@@ -95,9 +95,8 @@ extension AppState {
             }
             if let other = chat.generalThreads.first(where: { $0.id != thread.id }) {
                 await chat.select(other)
-                var back = false
                 await Perf.step("Go back to \(thread.title)", ready: { self.chat.active == thread.id && !self.chat.items.isEmpty }) {
-                    Task { @MainActor in await self.chat.select(thread); back = true }
+                    Task { @MainActor in await self.chat.select(thread) }
                 }
             }
         }

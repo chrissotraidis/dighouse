@@ -740,7 +740,7 @@ def second_look(project: str, candidate: str, agrees: bool, model: str, note: st
 @tool
 def ask_second_opinions(project: str, candidates: str, models: str) -> dict:
     """For the app: ask a different model for an independent opinion on each find, straight through the model router
-    (each find's ground 120 m around it, composite and local relief), four finds at a time. candidates is ids separated
+    (the whole tile a find is on, composite and local relief, with where the find sits in words), four finds at a time. candidates is ids separated
     by commas; models is "id=Name|id=Name" in the order to ask. Writes each opinion on its record, naming the model.
     Agents do not call this: the second opinion is never yours."""
     from . import review

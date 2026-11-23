@@ -804,7 +804,8 @@ private struct WorkflowsTab: View {
     private let lanes: [(icon: String, name: String)] = [("dig.trowel", "Agent"), ("eye", "Second model"), ("person", "You")]
 
     private func flow(_ id: String) -> ToolGuide.Workflow? { ToolGuide.workflows.first { $0.id == id } }
-    private var waiting: Int { store.candidates.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }.count }
+    /// What waits on a person, counted as Home and Decide count it: measured rises kept on the map are not waiting.
+    private var waiting: Int { store.needsYou.count + store.toAgree.count }
 
     /// A part's short name, where it stands, and whether it can run now.
     private func facts(_ id: String) -> (title: String, icon: String, note: String, ready: Bool, done: Bool) {

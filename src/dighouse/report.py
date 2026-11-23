@@ -53,7 +53,8 @@ def _checks(m: dict, failed_maps: dict, maps: bool = True) -> str:
         parts.append("Slice: not cut yet")
     second = c.get("second_look")
     if isinstance(second, dict):
-        parts.append("Second model: " + ("agreed it looks built" if second.get("agrees") else "did not agree it looks built"))
+        # Said as what the second model saw, so it never reads as agreeing with the agent's suggestion.
+        parts.append("Second model: " + ("looks built" if second.get("agrees") else "does not look built"))
     elif isinstance(c.get("second_look_tried"), dict):
         tried = c["second_look_tried"]
         parts.append(f"Second model: asked {tried.get('model', '')} on {tried.get('date', '')}, which could not answer ({tried.get('reason', '')})")

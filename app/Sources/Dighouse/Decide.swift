@@ -523,7 +523,7 @@ struct FindCard: View {
         }
     }
 
-    /// The six ways of drawing the close view, on the keys 1 to 6.
+    /// The six ways of drawing the close view, on the keys 1 to 6, with the chosen one named.
     private var viewPicker: some View {
         HStack(spacing: 2) {
             ForEach(Array(Self.views.enumerated()), id: \.element.style) { i, v in
@@ -538,6 +538,8 @@ struct FindCard: View {
                 .help("\(v.title) (\(i + 1))")
                 .accessibilityLabel(v.title)
             }
+            Text(Self.views.first { $0.style == view }?.title ?? "").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
+                .padding(.leading, 6)
         }
     }
 
@@ -584,7 +586,8 @@ struct FindCard: View {
                        : "\(h), not clear in the slice")
         } else { out.append("No slice yet") }
         if let shape = c.checks["shape"] as? JSON, shape["rise_m"] != nil {
-            out.append("\(shape["width_ew_m"] ?? "?") × \(shape["width_ns_m"] ?? "?") m" + (((shape["hints"] as? [String]) ?? []).first.map { ", \($0)" } ?? ""))
+            // Measured again against the ground farther around, so it can differ from the size in a measured rise's name.
+            out.append("Measured again: \(shape["width_ew_m"] ?? "?") × \(shape["width_ns_m"] ?? "?") m" + (((shape["hints"] as? [String]) ?? []).first.map { ", \($0)" } ?? ""))
         }
         if let modern = c.checks["modern"] as? JSON {
             let near = (modern["near"] as? [String]) ?? []

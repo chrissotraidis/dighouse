@@ -322,7 +322,9 @@ private struct ProjectHistory: View {
             let c = counts[key] ?? 0
             return c == 0 ? "none yet" : "\(c) \(c == 1 ? one : many)"
         }
-        let updated = recordUpdated.map { "updated " + RelativeDateTimeFormatter().localizedString(for: $0, relativeTo: Date()) } ?? "not written yet"
+        // A file written a moment ago can carry a time a little ahead of the clock; it reads "just now", never "in 0 seconds".
+        let updated = recordUpdated.map { Date().timeIntervalSince($0) < 60 ? "updated just now"
+            : "updated " + RelativeDateTimeFormatter().localizedString(for: $0, relativeTo: Date()) } ?? "not written yet"
         return [
             Doc(name: "PROJECT.md", what: "The question, why this area, and how the folder is kept", detail: "") { app.showNotes("method", file: "PROJECT.md") },
             Doc(name: "METHODOLOGY.md", what: "How searches are done here. The agent follows it", detail: "") { app.showNotes("method", file: "METHODOLOGY.md") },

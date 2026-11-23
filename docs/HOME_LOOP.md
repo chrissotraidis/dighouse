@@ -84,6 +84,27 @@ A project is a place you work on, usually a region. It holds its areas of ground
     - A name changing on screen while the session runs; the watcher was added after this run, so the name was seen to follow at launch only.
   - **Tests.** Offline tests pass (43, three new), and the smoke test passes (31 s, score 1 of 1).
 - **H5, hand over.** README (Search on its own, a project as the home, the tool table, 58 tools, 43 tests), HANDOFF, DESIGN (projects first, titles without places), ROADMAP and DECIDE_LOOP (D6 done here as H3) brought up to date. The app was rebuilt and relaunched with Chris's settings unchanged.
+- **Polish pass.** A long walk through the test copy at 1440×900 and 1280×800: Home, a project page, the sidebar, the map and its area menu, Decide (Needs you, Agree in bulk, Done, keys 1 to 6, M then Escape, Undo), Records, Notes, Sources, Data, a chat, Settings, the Toolbox, New project and the search report. Fixed:
+  - **The Data tab widened the window past the screen** in a narrow pane, because its row of three buttons could not wrap. The buttons wrap now, and the export rows and the drop area put their button under the words when there is no room.
+  - **The search report** said "74 finds are waiting for your decision" with 74 buttons, while the project said 1 needs you and 73 stay on the map. It now uses the same counts as Home ("1 needs you. 73 measured rises stay on the map.") with one Decide button. The Toolbox's Decide step counted the same wrong way and is fixed too.
+  - **Home** said "74 finds are not decided yet" for the same project. It now says how many need you and how many to agree with.
+  - **The Sources tab** showed 1 source while the project folder said 20. It listed only sources logged on a find; it now lists the project's own sources too (survey metadata, papers read and found not relevant), so both say 20.
+  - **The research record** now counts sources that turned out not to be relevant beside those read and those that would not open.
+  - **"Second model: agreed it looks built"** in the report read as agreeing with the agent, which had said natural. It now reads "Second model: looks built", and the record's check reads "A second model says it looks built".
+  - **Folding:** a project folded in the sidebar sprang open again once another project was opened. Opening a project now resets both rows.
+  - **The map** kept its zoom and drag when another area or project was shown, so the new ground could open off screen. It now starts whole.
+  - **Decide** names the chosen view beside the keys 1 to 6, and the measured size chip says "Measured again: 22.5 × 25.5 m", since it can differ from the size in a measured rise's name.
+  - **A record's "Marked … by …" line** was cut to "Marke…" in a narrow pane; it has a line of its own now. "Updated in 0 seconds" reads "updated just now".
+  - **New project:** a place found by name names the project after it ("Agua Fria National Monument area"), where before it took the nearest town ("Black Canyon City area" for Perry Mesa).
+  - **The Toolbox** said 48 built-in tools while the tools have 58. The ten missing ones are listed under their stage now.
+  - **A wrong tool description:** `ask_second_opinions` said the second model sees 120 m around a find; it sees the whole tile, with where the find sits in words.
+  - **Smaller:** the research record still rebuilds if the search report cannot be rewritten, with the problem noted; the one compiler warning is gone.
+  - **Checked:** offline tests (43), live tests (10), the app's tests (4) and the smoke test (21 s, score 1 of 1) pass, and the app builds with no warnings. Each fix above was seen in the running test copy, except the Toolbox count and the tool description, which were checked in the code. Searched ground shows as a white box on the New project map, seen at Perry Mesa.
+  - **Not checked:** a blind test project opened in this pass (the only one listed is Chris's, and it was left alone); scroll-wheel zoom on the New project map, because the test harness's pointer clicks and scrolls did not reach the map in this session.
+  - **Found, not changed here** (each would change the method or needs a decision):
+    - A second opinion can describe another feature on the tile. On C-037 the second model said "built" about "a narrow, smooth line" across the tile, a track, not the ringed rise. It sees the whole tile with the find's place in words (chosen in MOUND_LOOP M7). Showing the ring on the tile, or asking it to describe what sits at that spot first, would need the blind tests rerun.
+    - A measured rise carries three heights: 2.0 m from `find_mounds`, 1.31 m from the shape check and 2.99 m from the slice, which measures from the line between its ends and reads high on a slope. One height, named for what it measures, would read better.
+    - On the map some tiles of one area are drawn brighter than their neighbours, so seams show.
 
 ## Where it stands
 

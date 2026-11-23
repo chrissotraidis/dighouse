@@ -234,7 +234,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
     if sources:
         short.append(f"{n_status['read']} published source{'s' if n_status['read'] != 1 else ''} "
                      f"{'were' if n_status['read'] != 1 else 'was'} read"
-                     + (f", and {n_status['could_not_open']} could not be opened" if n_status["could_not_open"] else "") + ".")
+                     + (f", {n_status['could_not_open']} could not be opened" if n_status["could_not_open"] else "")
+                     + (f", and {n_status['not_relevant']} turned out not to be relevant" if n_status["not_relevant"] else "") + ".")
     elif from_chat:
         short.append(f"{len(from_chat)} source{'s were' if len(from_chat) != 1 else ' was'} read in the chat that started "
                      "the project; none has been logged against a find yet.")
@@ -410,7 +411,12 @@ def document(p: Project, commit_it: bool = True) -> dict:
         f.write_text(text)
     # The newest search report follows the records too, so it never asks for what is already done.
     from . import report
-    if report.refresh(p) or changed:
+    try:
+        refreshed = report.refresh(p)
+    except Exception as exc:  # the record must always rebuild, whatever the report's state
+        p.note(f"The search report could not be brought up to date: {exc}")
+        refreshed = False
+    if refreshed or changed:
         changed = True
         if commit_it:
             commit(p.root, "Update the research record")

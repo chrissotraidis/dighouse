@@ -61,6 +61,7 @@ The goals, the probe and every check are in [HOME_LOOP.md](HOME_LOOP.md). A proj
   - **The app** follows a project's name from `project.json`.
   - **Older sessions** and their small projects are left as they were.
 - **Defaults the app now uses:** `timedProject` (the running session's project) and `sidebarTestsOpen`.
+- **Polish pass (2026-11-23).** One count everywhere for what waits on a person (`needsYou` and `toAgree` in `ProjectStore`), now also in the search report and the Toolbox. The Sources tab reads the project's own sources from `sources/read-log.md` (`ProjectStore.projectSources`, `allSources`). The Data tab wraps in a narrow pane. The Toolbox lists all 58 tools. Three things found and left for a decision are at the end of the polish entry in [HOME_LOOP.md](HOME_LOOP.md): second opinions that describe another feature on the tile, a measured rise's three heights, and tile seams on the map.
 
 ## What the decide loop added (D0 to D4, 2026-11-22)
 

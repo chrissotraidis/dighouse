@@ -39,6 +39,8 @@ struct NewProjectView: View {
     @State private var inGitHub: Bool
     /// The name Dighouse suggested from the map, replaced while the person has not typed their own.
     @State private var suggested = ""
+    /// The place chosen by name and the box it gave, so the project is named after it while the area stays there.
+    @State private var picked: (name: String, box: [String])?
     /// Where the map is looking, for the layer of how much is on open record.
     @State private var center = CLLocationCoordinate2D(latitude: 0, longitude: 0)
     @State private var gapsOn = false
@@ -371,6 +373,7 @@ struct NewProjectView: View {
                                 camera = Self.region(lat: place.lat, lon: place.lon, span: place.span)
                                 span = place.span
                                 setCentre(lat: place.lat, lon: place.lon)
+                                picked = (place.name, box)
                                 places = []
                             } label: {
                                 Text(place.name).font(.system(size: 12.5 * Theme.scale)).lineLimit(2).multilineTextAlignment(.leading).padding(.vertical, 4)
@@ -539,6 +542,7 @@ struct NewProjectView: View {
                 else if pickFirst, let place = places.first {
                     camera = Self.region(lat: place.lat, lon: place.lon, span: place.span)
                     setCentre(lat: place.lat, lon: place.lon)
+                    picked = (place.name, box)
                     if places.count == 1 { places = [] }   // more than one: leave the others to choose from
                 }
             } catch {
@@ -553,9 +557,16 @@ struct NewProjectView: View {
     private func suggestName() async {
         let typed = name.trimmingCharacters(in: .whitespaces)
         guard typed.isEmpty || typed == suggested, let n = numbers else { return }
-        let spot = CLLocation(latitude: (n[1] + n[3]) / 2, longitude: (n[0] + n[2]) / 2)
-        guard let mark = try? await CLGeocoder().reverseGeocodeLocation(spot).first, !Task.isCancelled else { return }
-        guard let place = mark.locality ?? mark.subAdministrativeArea ?? mark.inlandWater ?? mark.ocean ?? mark.administrativeArea else { return }
+        // A place found by name keeps its own name ("Perry Mesa"), not the nearest town's; a click on the map asks the map.
+        let place: String
+        if let picked, picked.box == box, let first = picked.name.split(separator: ",").first {
+            place = String(first).trimmingCharacters(in: .whitespaces)
+        } else {
+            let spot = CLLocation(latitude: (n[1] + n[3]) / 2, longitude: (n[0] + n[2]) / 2)
+            guard let mark = try? await CLGeocoder().reverseGeocodeLocation(spot).first, !Task.isCancelled else { return }
+            guard let near = mark.locality ?? mark.subAdministrativeArea ?? mark.inlandWater ?? mark.ocean ?? mark.administrativeArea else { return }
+            place = near
+        }
         let now = name.trimmingCharacters(in: .whitespaces)
         guard now.isEmpty || now == suggested else { return }
         suggested = "\(place) area"

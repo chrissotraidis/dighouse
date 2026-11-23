@@ -501,7 +501,7 @@ private struct WelcomeBack: View {
     private func read() async {
         session = await readSession()
         let refs = store.projects
-        let found: (ProjectRef, (tiles: Int, unscreened: Int, finds: Int, undecided: Int), [(tiles: Int, unscreened: Int, finds: Int, undecided: Int)])? = await Task.detached {
+        let found: (ProjectRef, (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int), [(tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int)])? = await Task.detached {
             func written(_ ref: ProjectRef) -> Date {
                 ["/RESEARCH.md", "/PROJECT.md"].lazy.compactMap { FileInfo.modified(ref.path + $0) }.first ?? .distantPast
             }
@@ -517,7 +517,8 @@ private struct WelcomeBack: View {
             : it.tiles == 0 && it.finds == 0 ? "Its search has not started."
             : it.unscreened > 0 ? "\(count(it.unscreened, "tile")) \(it.unscreened == 1 ? "is" : "are") still to be looked at."
             : test ? "Its blind test is not scored yet."
-            : it.undecided > 0 ? "\(count(it.undecided, "find")) \(it.undecided == 1 ? "is" : "are") not decided yet."
+            : it.needsYou > 0 ? "\(count(it.needsYou, "find")) \(it.needsYou == 1 ? "needs" : "need") you" + (it.toAgree > 0 ? ", and \(it.toAgree) to agree with." : ".")
+            : it.toAgree > 0 ? "\(count(it.toAgree, "find")) to agree with."
             : it.finds == 0 ? "Every tile was looked at and nothing was marked."
             : "Every find is decided."
         let finds = all.reduce(0) { $0 + $1.finds }
