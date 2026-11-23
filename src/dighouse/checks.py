@@ -96,14 +96,27 @@ out tags 200;"""
     return None
 
 
+_boxes: dict[tuple, list[dict] | None] = {}
+
+
 def _map_box(lon: float, lat: float, reach_m: float) -> list[dict] | None:
-    """Everything OpenStreetMap's own map service holds in a square around a point. None when it refuses or is down."""
+    """Everything OpenStreetMap's own map service holds in a square around a point. None when it refuses or is down.
+    A square is kept for the session by its 0.01-degree cell, wide enough for any point in the cell, so the hundreds
+    of finds in one area share a few downloads instead of each asking a service that soon turns them away."""
+    cell = (round(lon, 2), round(lat, 2), reach_m)
+    if cell in _boxes:
+        return _boxes[cell]
+    lon, lat, reach_m = cell[0], cell[1], reach_m + 800  # half a cell is at most about 560 m from its centre
     dy, dx = reach_m / 111_320, reach_m / (111_320 * max(0.1, math.cos(math.radians(lat))))
     try:
         r = _client.get(OSM_MAP, params={"bbox": f"{lon - dx:.6f},{lat - dy:.6f},{lon + dx:.6f},{lat + dy:.6f}"}, timeout=25)
     except httpx.HTTPError:
         return None
-    return r.json().get("elements", []) if r.status_code == 200 else None  # 400 means the square holds too much
+    if r.status_code == 400:  # the square holds too much, and will next time too
+        _boxes[cell] = None
+    elif r.status_code == 200:
+        _boxes[cell] = r.json().get("elements", [])
+    return _boxes.get(cell)
 
 
 def _within(elements: list[dict], lon: float, lat: float, reach_m: float) -> set:

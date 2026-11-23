@@ -221,6 +221,7 @@ def test_the_map_check_has_a_second_way_in(monkeypatch):
         asked.append(params["bbox"])
         return Reply()
 
+    monkeypatch.setattr(checks, "_boxes", {})
     monkeypatch.setattr(checks, "_overpass_back", 0.0)
     monkeypatch.setattr(checks._client, "post", down)
     monkeypatch.setattr(checks._client, "get", get)
@@ -234,6 +235,7 @@ def test_the_map_check_has_a_second_way_in(monkeypatch):
     class Refused:
         status_code = 400
 
+    monkeypatch.setattr(checks, "_boxes", {})  # a new session: nothing kept from the first case
     replies = [Refused(), Reply()]
     monkeypatch.setattr(checks._client, "get", lambda url, params=None, **kwargs: replies.pop(0))
     got = checks.modern_features(0.0, 0.0, 150)
@@ -1060,3 +1062,17 @@ def test_points_are_kept_once_and_the_cache_drops_only_what_no_project_holds(tmp
     sources.trim_points_cache(limit_gb=size * 1.5 / 1e9)
     assert dest.exists() and sources.kept_points("usgs:x", *held).exists()
     assert not sources.kept_points("usgs:x", *old).exists() and sources.kept_points("usgs:x", *new).exists()
+
+
+def test_a_register_is_asked_only_where_it_reaches(monkeypatch):
+    """A find in Arizona is not said to have been checked against Denmark's or Norway's register."""
+    from dighouse import discover
+    asked = []
+    monkeypatch.setattr(discover, "SITE_READERS", {n: (lambda b, n=n: asked.append(n) or []) for n in discover.SITE_READERS})
+    discover.recorded_sites([-112.2, 34.2, -112.18, 34.22])
+    assert "National Register of Historic Places" in asked and "OpenStreetMap" in asked
+    assert not {"Fund og Fortidsminder", "Norway's heritage register", "Navarre's heritage register", "National Heritage List for England"} & set(asked)
+    asked.clear()
+    discover.recorded_sites([10.4, 59.3, 10.5, 59.4])
+    assert "Norway's heritage register" in asked and "National Register of Historic Places" not in asked
+    assert "Fund og Fortidsminder" not in discover._answered([], [10.4, 59.3, 10.5, 59.4])

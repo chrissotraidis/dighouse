@@ -488,9 +488,10 @@ def _recorded(p) -> list[dict]:
         return []
     w, s, e, n = box
     pad = 0.01
-    sites, silent = recorded_sites([w - pad, s - pad, e + pad, n + pad])
+    box = [w - pad, s - pad, e + pad, n + pad]
+    sites, silent = recorded_sites(box)
     p.save("recorded", sites)
-    p.save("recorded_read", {"date": today(), "answered": _answered(silent), "silent": silent})
+    p.save("recorded_read", {"date": today(), "answered": _answered(silent, box), "silent": silent})
     return sites
 
 

@@ -462,6 +462,8 @@ REGISTERS = {
     "Navarre's heritage register": ("Navarre", (-2.6, 41.9, -0.7, 43.35), "protected sites only"),
 }
 
+READER_REACH = {name: box for name, (_, box, _) in REGISTERS.items()} | {"National Register of Historic Places": (-180.0, 17.0, -64.0, 72.0)}
+
 
 def covering_registers(lon: float, lat: float) -> list[dict]:
     """The open official registers whose country holds a place, with what each lists. Boxes are rough, so a register is
@@ -502,15 +504,24 @@ def shade(bbox: list[float]) -> dict:
     return {"shade": "no_lidar", "registers": registers, "words": "No open lidar Dighouse reads covers this place yet."}
 
 
-def _answered(silent: list[str]) -> list[str]:
-    """The site lists that answered, so a short list is not mistaken for a source that was down."""
+def _reaches(name: str, bbox: list[float]) -> bool:
+    return name not in READER_REACH or _overlaps(READER_REACH[name], bbox)
+
+
+def _answered(silent: list[str], bbox: list[float]) -> list[str]:
+    """The site lists asked for this box that answered, so a short list is not mistaken for a source that was down."""
     down = {line.split(":")[0] for line in silent}
-    return [name for name in SITE_READERS if name not in down]
+    return [name for name in SITE_READERS if name not in down and _reaches(name, bbox)]
+
+
+def _overlaps(a: tuple, b: list[float]) -> bool:
+    return a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]
 
 
 def recorded_sites(bbox: list[float]) -> tuple[list[dict], list[str]]:
-    """Sites on open record inside a box, from every source that answers, and the sources that did not."""
-    readers = SITE_READERS
+    """Sites on open record inside a box, from every source that answers, and the sources that did not. A national
+    register is asked only where it reaches, so a record never says Denmark's register was read for a find in Arizona."""
+    readers = {name: reader for name, reader in SITE_READERS.items() if _reaches(name, bbox)}
     sites, silent, seen = [], [], set()
     with ThreadPoolExecutor(3) as pool:
         jobs = {name: pool.submit(reader, bbox) for name, reader in readers.items()}
@@ -546,7 +557,7 @@ def known_sites(bbox: list[float]) -> dict:
     by_source: dict[str, int] = {}
     for site in listed:
         by_source[site["source"]] = by_source.get(site["source"], 0) + 1
-    out = {"count": len(listed), "by_source": by_source, "sources_that_answered": _answered(silent), "nearest": listed[:40]}
+    out = {"count": len(listed), "by_source": by_source, "sources_that_answered": _answered(silent, bbox), "nearest": listed[:40]}
     if silent:
         out["sources_that_did_not_answer"] = silent
     return out
@@ -627,7 +638,7 @@ def find_gaps(bbox: list[float], cells: int = 4) -> dict:
     except Exception:
         published = None
     out = {"grid": f"{cells} by {cells}, rows A (north) to {'ABCDEFGH'[cells - 1]} (south), columns 1 (west) to {cells} (east)",
-           "sites_on_open_record": len(sites), "by_source": totals, "sources_that_answered": _answered(silent),
+           "sites_on_open_record": len(sites), "by_source": totals, "sources_that_answered": _answered(silent, bbox),
            "records_in_open_context": published, "cells_with_open_lidar": len(covered),
            "cells_without_open_lidar": len(grid) - len(covered), "ranked": covered[:8],
            # Every cell, small enough for a map layer: counts only, never a site's name or place.
