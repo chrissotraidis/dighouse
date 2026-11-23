@@ -4,20 +4,10 @@
 """
 
 import json
-import plistlib
-import subprocess
 import sys
 from pathlib import Path
 
-from dighouse.funnel import funnel, totals
-
-
-def app_projects() -> list[str]:
-    raw = subprocess.run(["defaults", "export", "com.chrissotraidis.dighouse", "-"], capture_output=True).stdout
-    try:
-        return [p["path"] for p in json.loads(plistlib.loads(raw)["projects"])]
-    except (KeyError, ValueError, plistlib.InvalidFileException):
-        return []
+from dighouse.funnel import app_projects, funnel, totals
 
 
 args = [a for a in sys.argv[1:] if a != "--json"]

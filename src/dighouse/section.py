@@ -32,7 +32,7 @@ def cut(p: Project, terrain_id: str, a: tuple[float, float], b: tuple[float, flo
     if length < 5:
         raise ValueError("The section line is shorter than 5 m.")
     ux, uy = (bx - ax) / length, (by - ay) / length
-    if not meta.get("points"):
+    if not meta.get("points") or not p.path(meta["points"]).exists():
         return _model_only(p, meta, ax, ay, ux, uy, length)
     pts = Points.load(p.path(meta["points"]))
     dx, dy = pts.x - ax, pts.y - ay

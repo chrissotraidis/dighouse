@@ -217,10 +217,10 @@ def fetch_points(dataset: str, bbox: list[float], spacing: float = 0.35) -> tupl
     kind, _, name = dataset.partition(":")
     if kind not in ("usgs", "ot"):
         raise ValueError(f"Unknown dataset id {dataset!r}. Use an id returned by find_data.")
-    tag = hashlib.sha1(json.dumps([dataset, [round(v, 6) for v in bbox], spacing]).encode()).hexdigest()[:20]
-    kept = cache_dir() / "points" / f"{tag}.npz"
+    kept = kept_points(dataset, bbox, spacing)
     about = kept.with_suffix(".json")
     if kept.exists() and about.exists():
+        os.utime(kept)  # the cache keeps what was used last
         return Points.load(kept), json.loads(about.read_text())
     if kind == "usgs":
         pts, info = _fetch_ept(f"https://s3-us-west-2.amazonaws.com/usgs-lidar-public/{name}/ept.json", bbox, spacing)
@@ -229,7 +229,46 @@ def fetch_points(dataset: str, bbox: list[float], spacing: float = 0.35) -> tupl
     kept.parent.mkdir(parents=True, exist_ok=True)
     pts.save(kept)
     about.write_text(json.dumps(info))
+    trim_points_cache()
     return pts, info
+
+
+POINTS_CACHE_GB = float(os.environ.get("DIGHOUSE_POINTS_CACHE_GB", 10))
+
+
+def kept_points(dataset: str, bbox: list[float], spacing: float) -> Path:
+    """Where the cache keeps the points of one dataset, box and spacing."""
+    tag = hashlib.sha1(json.dumps([dataset, [round(v, 6) for v in bbox], spacing]).encode()).hexdigest()[:20]
+    return cache_dir() / "points" / f"{tag}.npz"
+
+
+def keep_in_project(pts: Points, dataset: str, bbox: list[float], spacing: float, dest: Path) -> None:
+    """A project's points are a hard link to the cache's copy, so one download takes its space once."""
+    src = kept_points(dataset, bbox, spacing)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        tmp = dest.with_name(dest.name + ".link")
+        tmp.unlink(missing_ok=True)
+        os.link(src, tmp)
+        os.replace(tmp, dest)
+    except OSError:  # no cached copy, or another disk
+        dest.unlink(missing_ok=True)  # never write through a link into the cache's copy
+        pts.save(dest)
+
+
+def trim_points_cache(limit_gb: float | None = None) -> dict:
+    """Drop the oldest cached points that no project holds once they pass the limit. A project's own points are the
+    same file, linked, so they stay; a dropped download is fetched again if it is needed."""
+    limit = (POINTS_CACHE_GB if limit_gb is None else limit_gb) * 1e9
+    loose = sorted((f for f in (cache_dir() / "points").glob("*.npz") if f.stat().st_nlink == 1), key=lambda f: f.stat().st_mtime)
+    total, freed = sum(f.stat().st_size for f in loose), 0
+    while loose and total > limit:
+        f = loose.pop(0)
+        size = f.stat().st_size
+        f.unlink()
+        f.with_suffix(".json").unlink(missing_ok=True)
+        total, freed = total - size, freed + size
+    return {"freed_gb": round(freed / 1e9, 2), "loose_gb": round(total / 1e9, 2)}
 
 
 def _download(url: str) -> Path:

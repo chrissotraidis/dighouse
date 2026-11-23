@@ -4,6 +4,8 @@ put to a person, how many a person decided, and how many reached an answer. Read
 from __future__ import annotations
 
 import json
+import plistlib
+import subprocess
 from pathlib import Path
 
 from . import ledger
@@ -45,3 +47,11 @@ def totals(rows: list[dict]) -> dict:
     out["projects"] = len(live)
     out["finds_per_km2_looked_at"] = round(out["finds"] / out["km2_looked_at"], 1) if out["km2_looked_at"] else None
     return out
+
+
+def app_projects() -> list[str]:
+    raw = subprocess.run(["defaults", "export", "com.chrissotraidis.dighouse", "-"], capture_output=True).stdout
+    try:
+        return [p["path"] for p in json.loads(plistlib.loads(raw)["projects"])]
+    except (KeyError, ValueError, plistlib.InvalidFileException):
+        return []

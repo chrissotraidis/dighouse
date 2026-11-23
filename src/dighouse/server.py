@@ -372,14 +372,15 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
     else:
         # A coarser ground model needs fewer points. At 1 m, a quarter of the density still leaves about two ground returns
         # in each cell under forest, and the download takes a third of the time (Shawnee State Forest: 146 s, not 400).
-        pts, how = sources.fetch_points(dataset, bbox, spacing=0.35 * max(1.0, resolution_m / 0.5) ** 2)
+        spacing = 0.35 * max(1.0, resolution_m / 0.5) ** 2
+        pts, how = sources.fetch_points(dataset, bbox, spacing=spacing)
         if not len(pts):
             raise ValueError("The dataset has no points inside this box. Check the box against the dataset's footprint.")
         epsg = pts.epsg
         x0, y0, x1, y1 = (round(v / resolution_m) * resolution_m for v in sources.project_bbox(bbox, epsg))
         dtm, gap, outside, stats = T.grid_ground(pts, (x0, y0, x1, y1), resolution_m)
         points = f"data/points/{tid}.npz"
-        pts.save(p.path(points))
+        sources.keep_in_project(pts, dataset, bbox, spacing, p.path(points))
         summary = f"{stats['ground_points']:,} ground returns, {stats['share_without_ground_data']:.0%} of the area without ground data"
     T.save_terrain(p.path("data", "terrain", f"{tid}.tif"), dtm, gap, outside, x0, y1, resolution_m, epsg)
     meta = {"dataset": dataset, "file": f"data/terrain/{tid}.tif", "points": points,

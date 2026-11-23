@@ -155,7 +155,9 @@ Take the stages one at a time, or press **Find and report back** and the agent c
 
 ## Get started
 
-You need a Mac with Apple silicon and macOS 14 or later, a ChatGPT account, and Xcode (free from the App Store). In Terminal:
+You need a Mac with Apple silicon and macOS 14 or later, and a ChatGPT account that can use Codex. Download the disk image from [Releases](https://github.com/chrissotraidis/dighouse/releases), drag Dighouse to Applications and open it; the first launch installs the agent engine and signs you in with ChatGPT from inside the app. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) covers the first hour: the first search, deciding, and what to do if something looks real.
+
+**Build it yourself.** You also need Xcode (free from the App Store). In Terminal:
 
 ~~~sh
 git clone https://github.com/chrissotraidis/dighouse.git
@@ -178,12 +180,13 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (50 tests)
+uv run pytest            # offline, on a synthetic survey (51 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
 uv run python scripts/coverage.py    # every ground source on about 1 km2: does it answer, and how fast
 uv run python scripts/speed.py       # how long each stage of a search takes on a few km2
+uv run python scripts/tidy.py        # free the space downloaded points take twice (add --apply)
 ~~~
 
 ## The tools

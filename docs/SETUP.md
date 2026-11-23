@@ -1,6 +1,6 @@
-# Setting up Dighouse
+# Building Dighouse from source
 
-Dighouse runs on a Mac with Apple silicon (M1 or later) and macOS 14 or later. Setup takes about fifteen minutes plus the Xcode download, most of it waiting.
+Most people should download the app instead: see [GETTING_STARTED.md](GETTING_STARTED.md). This page is for building it yourself. Dighouse runs on a Mac with Apple silicon (M1 or later) and macOS 14 or later. Setup takes about fifteen minutes plus the Xcode download, most of it waiting.
 
 ## What you need
 
@@ -25,10 +25,10 @@ If the script stops, it says what to install and how. Do that, then run it again
 
 ## The first launch
 
-1. **Welcome.** Dighouse checks that it can reach Codex and the tools, then prepares the tools, which takes about a minute the first time.
+1. **Welcome.** A checklist shows what is ready. **Install it** fetches the Codex engine if none is found, **Sign in with ChatGPT** opens the sign-in page in your browser, and the tools are prepared, which takes about a minute the first time.
 2. **Choose a model** in Settings, Models. The agent model must read images, because the agent looks at pictures of the ground. A cheaper model is fine to start.
-3. **Optional: a second-opinion model.** Each find can get a second opinion from a model made by a different company. Choose one in Settings, Models. It works with any model your Codex setup offers from another maker. Without one, searches still run; finds are marked as having no second opinion.
-4. **Try it.** On Home, press **Pick a place on the map** and click where you want to look: the shaded areas have open lidar. Or type a place such as *Serpent Mound, Ohio* and press **Find and report back**, or start the tutorial. A small search takes 5 to 15 minutes.
+3. **Optional: a second-opinion model.** Each find can get a second opinion from a model made by a different company, when your Codex setup offers one (through the OpenCodex router, for example). Choose it in Settings, Models. Without one, the second opinion comes from a different model of the same maker, and the record says so.
+4. **Try it.** On Home, press **Find something** and choose how long: the agent picks a region and searches it. Or press **Pick a place on the map** and click where you want to look, or start the ten-minute project at Serpent Mound. [GETTING_STARTED.md](GETTING_STARTED.md) explains what you will see.
 
 ## Where things go
 
@@ -40,8 +40,8 @@ If the script stops, it says what to install and how. Do that, then run it again
 
 | What you see | What to do |
 |---|---|
-| "Codex is not signed in" | In Terminal, run `codex login`, then press Restart in Settings, How it runs. |
-| "Agent engine not found" | Install Codex (see above), then press Check again. |
+| "Codex is not signed in" | Press **Sign in with ChatGPT** on the welcome checklist and finish signing in in your browser. |
+| "Agent engine not found" | Press **Install it** on the welcome checklist, or install Codex yourself, then press Check again. |
 | The tools never finish preparing | Check the Mac is online; quit and reopen Dighouse. |
 | "The second model is refused" | Its provider turned the request down. Choose another model in Settings, Models. |
 | A place "has no open data" | Dighouse only reaches places with open lidar or sonar. The map on Home, under Where you can search, shades them. |

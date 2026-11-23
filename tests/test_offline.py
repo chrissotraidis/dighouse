@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from dighouse import checks, server, tiles
+from dighouse import checks, server, sources, tiles
 from dighouse.project import Project
 
 
@@ -1040,3 +1040,23 @@ def test_who_to_tell_names_the_office_and_whether_its_record_is_open():
     ohio = authorities.who_to_tell(-82.9, 39.3)
     assert not ohio["records_open"] and "SHPO" in ohio["tell"] and "not open" in ohio["records"]
     assert "public" in ohio["before_sending"]
+
+
+def test_points_are_kept_once_and_the_cache_drops_only_what_no_project_holds(tmp_path, monkeypatch):
+    """A project's points are a link to the cache's copy; trimming the cache never takes a project's points."""
+    import os
+    monkeypatch.setenv("DIGHOUSE_CACHE", str(tmp_path / "cache"))
+    pts = sources.Points(np.arange(5000.0), np.arange(5000.0), np.ones(5000), np.full(5000, 2, np.uint8), 32617)
+    held, old, new = ([0, 0, 1, 1], 0.35), ([2, 2, 3, 3], 0.35), ([4, 4, 5, 5], 0.35)
+    for i, (box, spacing) in enumerate((held, old, new)):
+        f = sources.kept_points("usgs:x", box, spacing)
+        f.parent.mkdir(parents=True, exist_ok=True)
+        pts.save(f)
+        os.utime(f, (1000 + i, 1000 + i))
+    dest = tmp_path / "proj" / "data" / "points" / "a.npz"
+    sources.keep_in_project(pts, "usgs:x", *held, dest)
+    assert os.path.samefile(dest, sources.kept_points("usgs:x", *held))
+    size = dest.stat().st_size
+    sources.trim_points_cache(limit_gb=size * 1.5 / 1e9)
+    assert dest.exists() and sources.kept_points("usgs:x", *held).exists()
+    assert not sources.kept_points("usgs:x", *old).exists() and sources.kept_points("usgs:x", *new).exists()
