@@ -904,7 +904,7 @@ final class AppState: ObservableObject {
         if layout == .workspace { layout = .split }
         let end = Date().addingTimeInterval(TimeInterval(minutes) * 60)
         Task {
-            let name = "Search on its own, " + Date().formatted(.dateTime.day().month(.abbreviated))
+            let name = "Find something, " + Date().formatted(.dateTime.day().month(.abbreviated))
             let path = Self.folder(for: name, inGitHub: false)
             do {
                 _ = try await engine.callTool("init_project", [
@@ -1330,7 +1330,7 @@ final class AppState: ObservableObject {
         guard let id = UserDefaults.standard.string(forKey: "timedThread") else { return }
         // A session started since sessions got projects of their own runs in its project.
         if let path = UserDefaults.standard.string(forKey: "timedProject"), let project = store.projects.first(where: { $0.path == path }) {
-            let thread = chat.chats(in: path).first { $0.id == id } ?? ChatThread(id: id, title: "Search on its own")
+            let thread = chat.chats(in: path).first { $0.id == id } ?? ChatThread(id: id, title: "Find something")
             openChat(thread, in: project)
             return
         }

@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
-  <img alt="60 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-60%20tools-8B5E3C">
+  <img alt="61 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-61%20tools-8B5E3C">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
 </p>
 
@@ -145,7 +145,7 @@ Take the stages one at a time, or press **Find and report back** and the agent c
   </tr>
 </table>
 
-**Search on its own** from Home: choose how long, and Dighouse makes a project for the session. The agent picks a region with open lidar where little is on record, names the project after it, and searches it area by area (about 15 minutes for each square km on USGS lidar), adding each area to the project. It checks every find, and a second model gives its opinion on each area as soon as the area is done.
+**Find something** from Home: choose how long, and Dighouse makes a project for the session. The agent picks a region with open lidar where little is on record, preferring one where a site register is open so finds can be checked, names the project after it, and searches it area by area, adding each area to the project: every tile in bulk first, then a close look where something showed. It checks every find, and a second model gives its opinion on each area as soon as the area is done. What needs your decision waits on Home under **Waiting for you**, across every project. **Ask the records office** drafts a letter, kept under `private/`, asking whether your strongest finds are already recorded where the official record is not open; **Draft a report** writes to the body `who_to_tell` names. You send both yourself.
 
 **A project is the home for its work.** It holds its areas of ground, its finds and decisions, and its chats: the run that searched it, a chat that checks one lead, a chat that writes the report. The project page lists its chats and what each is doing. Anything typed there starts a new chat in the project, and every chat starts from the research record. In the sidebar, projects come first, each with its chats folded under it, then chats that belong to no project, then the blind tests in a group of their own. The map shows one area at a time, by name.
 
@@ -178,7 +178,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (49 tests)
+uv run pytest            # offline, on a synthetic survey (50 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)

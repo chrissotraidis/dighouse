@@ -541,8 +541,8 @@ private struct ResearchDurationSheet: View {
     @State private var minutes = 60
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Search on its own").font(.system(size: 18 * Theme.scale, weight: .semibold))
-            Text("The agent picks fresh ground with open lidar, searches it area by area and checks every find, until the time is up. A second model gives its opinion on each area as it is finished. You can stop it at any point.")
+            Text("Find something").font(.system(size: 18 * Theme.scale, weight: .semibold))
+            Text("The agent picks a region with open lidar and little on record, where it can check finds against a site register if one is open, then searches it area by area and checks every find until the time is up. A second model gives its opinion on each area as it is finished. You decide what reaches you. You can stop it at any point.")
                 .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             Picker("How long", selection: $minutes) {
                 ForEach([5, 15, 30, 60, 120, 240, 300, 480], id: \.self) { value in

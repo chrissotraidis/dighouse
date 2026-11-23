@@ -71,6 +71,12 @@ struct DataView: View {
                     let ready = report.map { app.state(of: $0) } ?? (ready: false, note: "")
                     exportRow("A report for the heritage authority", ready.ready ? "A draft from the decided finds. You read it and send it yourself." : "Needs a find you have decided has no match in the sources read.",
                               "Draft a report", id: "report", disabled: !ready.ready) { if let report { app.run(report) } }
+                    // Where the official record is closed, the person asks the office that keeps it whether a find is known.
+                    let records = ToolGuide.workflows.first { $0.id == "records" }
+                    exportRow("A question for the records office", ready.ready
+                              ? "Where the official site record is not open, a short letter asking whether your strongest finds are already recorded. It holds the locations, so it is kept under private/. You send it yourself."
+                              : "Needs a find you have decided is worth reporting.",
+                              "Draft the letter", id: "records", disabled: !ready.ready) { if let records { app.run(records) } }
                 }
 
                 if let message {

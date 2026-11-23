@@ -133,11 +133,6 @@ struct HomeView: View {
                         if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
                     }
                     .help("Starts a chat with your AI model.")
-                    StartChoice(icon: "clock", title: "Search on its own",
-                                text: "The agent picks fresh ground with open lidar and searches it for as long as you choose.") {
-                        if let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) { app.run(flow) }
-                    }
-                    .help("A timed session: choose how long, and it searches area by area and checks every find.")
                     StartChoice(icon: "dig.grid", title: "Test it blind",
                                 text: "It searches a famous site without being told which, then gets a score.") {
                         app.testPicking = true
@@ -189,7 +184,16 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Text("Dighouse searches public lidar, laser scans that see the ground through the trees, for mounds, walls and earthworks. An AI agent does the slow work and writes down every step, so you can check it.")
                 .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.78)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
-            Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton()).padding(.top, 2)
+            HStack(spacing: 10) {
+                // The one thing Dighouse is for, one press away: the agent picks a region and searches it for as long as you choose.
+                Button("Find something") {
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) { app.run(flow) }
+                }
+                .buttonStyle(PrimaryButton())
+                .help("The agent picks a region with open lidar and little on record, searches it on its own for as long as you choose, and brings back what needs your decision.")
+                Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
+            }
+            .padding(.top, 2)
         }
     }
 
@@ -444,6 +448,8 @@ private struct WelcomeBack: View {
     @State private var totals = ""
     @State private var project: ProjectRef?
     @State private var session: (text: String, foot: String)?
+    /// Projects with finds that wait for a person, most first: the inbox across projects.
+    @State private var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = []
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -463,7 +469,40 @@ private struct WelcomeBack: View {
                 PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
                     .help("Open \(project.name)")
                     .arrives()
-                    .padding(.bottom, 22)
+                    .padding(.bottom, inbox.isEmpty ? 22 : 12)
+            }
+            if !inbox.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Waiting for you").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                    VStack(spacing: 0) {
+                        ForEach(Array(inbox.prefix(4).enumerated()), id: \.element.ref.path) { i, row in
+                            if i > 0 { Hairline() }
+                            HStack(spacing: 10) {
+                                Text(row.ref.name).font(.system(size: 13 * Theme.scale, weight: .medium)).lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text([row.needs > 0 ? "\(row.needs) need\(row.needs == 1 ? "s" : "") you" : nil, row.agree > 0 ? "\(row.agree) to agree with" : nil]
+                                    .compactMap { $0 }.joined(separator: " · "))
+                                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                Button("Decide") {
+                                    app.open(row.ref)
+                                    Task { @MainActor in
+                                        try? await Task.sleep(for: .milliseconds(400))   // let the project load first
+                                        app.openDecide()
+                                    }
+                                }
+                                .buttonStyle(SecondaryButton())
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                        }
+                    }
+                    .panel()
+                    if inbox.count > 4 {
+                        Text("\(inbox.count - 4) more project\(inbox.count - 4 == 1 ? "" : "s") with finds waiting, in the sidebar.")
+                            .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                    }
+                }
+                .arrives()
+                .padding(.bottom, 22)
             }
         }
         .frame(maxWidth: .infinity)
@@ -508,7 +547,11 @@ private struct WelcomeBack: View {
             guard let last = refs.max(by: { written($0) < written($1) }) else { return nil }
             return (last, ProjectStore.glance(last.path), refs.map { ProjectStore.glance($0.path) })
         }.value
-        guard let (last, it, all) = found else { project = nil; return }
+        guard let (last, it, all) = found else { project = nil; inbox = []; return }
+        let blind = Set(store.blindTests)
+        inbox = zip(refs, all).filter { !blind.contains($0.0.path) && $0.1.needsYou + $0.1.toAgree > 0 }
+            .map { (ref: $0.0, needs: $0.1.needsYou, agree: $0.1.toAgree) }
+            .sorted { $0.needs * 10 + $0.agree > $1.needs * 10 + $1.agree }
         func count(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
         project = last
         let test = FileManager.default.fileExists(atPath: last.path + "/private/state/test.json")

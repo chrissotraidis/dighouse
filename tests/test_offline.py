@@ -1031,3 +1031,12 @@ def test_the_second_opinion_pictures_ring_the_find(tmp_path, survey):
     got = server.opinion_pictures(root, "C-001")
     assert len(got["pictures"]) == 2 and all(Path(f).stat().st_size > 1000 for f in got["pictures"])
     assert "ring" in got["question"] and all("/data/views/" in f for f in got["pictures"])
+
+def test_who_to_tell_names_the_office_and_whether_its_record_is_open():
+    """A report goes to the body that keeps the record; where that record is closed, the person is told to ask it."""
+    from dighouse import authorities
+    norway = authorities.who_to_tell(10.47, 59.38)
+    assert norway["country"] == "Norway" and norway["records_open"] and "fylkeskommunen" in norway["tell"]
+    ohio = authorities.who_to_tell(-82.9, 39.3)
+    assert not ohio["records_open"] and "SHPO" in ohio["tell"] and "not open" in ohio["records"]
+    assert "public" in ohio["before_sending"]

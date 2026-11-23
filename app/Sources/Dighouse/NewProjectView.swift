@@ -157,6 +157,12 @@ struct NewProjectView: View {
                     ForEach(Reach.national.indices, id: \.self) { i in
                         MapPolygon(coordinates: Self.coordinates(Reach.national[i].ring)).foregroundStyle(Theme.green.opacity(0.35)).stroke(Theme.green, lineWidth: 1)
                     }
+                    // Where a site register is open: a find there is checked against the official record.
+                    ForEach(Reach.registers.indices, id: \.self) { i in
+                        MapPolygon(coordinates: Self.coordinates(Reach.registers[i].ring)).foregroundStyle(.clear)
+                            .stroke(.white.opacity(Reach.registers[i].full ? 0.95 : 0.6),
+                                    style: StrokeStyle(lineWidth: Reach.registers[i].full ? 2.2 : 1.4, dash: Reach.registers[i].full ? [] : [5, 4]))
+                    }
                     ForEach(Reach.sonar.indices, id: \.self) { i in
                         MapPolygon(coordinates: Self.coordinates(Reach.sonar[i])).foregroundStyle(Theme.water.opacity(0.35)).stroke(Theme.water, lineWidth: 1)
                     }
@@ -237,6 +243,11 @@ struct NewProjectView: View {
                         legend(Theme.green, "Lidar, national ground models")
                         legend(Theme.amber, "Surveys flown for archaeology")
                         legend(Theme.water, "Sonar, the seafloor, for wrecks")
+                        HStack(spacing: 7) {
+                            RoundedRectangle(cornerRadius: 2).strokeBorder(.white, lineWidth: 2).frame(width: 10, height: 8)
+                            Text("Site register open: finds can be checked").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.9))
+                        }
+                        .help("Norway, Denmark and Navarre list every recorded site; England's dashed outline lists scheduled monuments only. Elsewhere a find cannot be checked against the official record.")
                         if !searched.isEmpty { legend(.white, "Ground you have searched") }
                     }
                     .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.7)))

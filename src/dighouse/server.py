@@ -540,6 +540,17 @@ def look_at_tiles(project: str) -> dict:
 
 
 @tool
+def who_to_tell(project: str) -> dict:
+    """Who to tell about the project's finds: the body that keeps the official record of sites where the project is, whether
+    that record is open to Dighouse (so a find was checked against it) or has to be asked, and what to do and not do
+    before sending. Use it when drafting a report or a request to the records office. Dighouse sends nothing."""
+    from . import authorities
+    p = Project(project).check()
+    box = (p.load("project", {}) or {}).get("bbox") or [0, 0, 0, 0]
+    return authorities.who_to_tell((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+
+
+@tool
 def next_tiles(project: str, count: int = 8) -> list[str]:
     """The next tiles nobody has screened yet."""
     return tiles.next_unscreened(Project(project).check(), count)

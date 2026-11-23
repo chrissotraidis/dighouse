@@ -751,6 +751,17 @@ enum Reach {
                                          -117.1, 32.5, -120.6, 34.5, -123.8, 39.5, -124.3, 42.0]
     static let ancient: [Double] = [-10, 35, -9, 44, 2, 51.5, 12, 54, 30, 48, 42, 44, 52, 40, 62, 36, 60, 25, 45, 14, 34, 20, 25, 30, 10, 30, -8, 28]
     /// Countries whose national ground model the tools can fetch, in the order they were added.
+    /// Where an official site register is open and read, so a find can be checked against the record: Norway's,
+    /// Denmark's and Navarre's list every recorded site (Norway's leaves out sensitive ones), England's scheduled
+    /// monuments only (discover.REGISTERS in the tools).
+    static let registers: [(name: String, full: Bool, ring: [Double])] = [
+        ("Norway", true, national.first { $0.name == "Norway" }?.ring ?? []),
+        ("Denmark", true, [8.0, 55.0, 8.1, 56.6, 8.6, 57.1, 10.0, 57.6, 10.6, 57.75, 10.5, 57.2, 10.3, 56.5, 10.9, 56.4, 12.6, 56.1, 12.7, 55.6,
+                           12.1, 54.9, 11.0, 54.6, 10.0, 54.8, 9.4, 54.8, 8.6, 54.9]),
+        ("Navarre, Spain", true, national.first { $0.name == "Navarre, Spain" }?.ring ?? []),
+        ("England", false, national.first { $0.name == "England" }?.ring ?? []),
+    ]
+
     static let national: [(name: String, ring: [Double])] = [
         ("England", [-5.8, 50.0, -4.2, 50.3, -3.0, 50.6, -1.0, 50.7, 1.4, 51.1, 1.8, 52.6, 0.3, 53.5, -0.1, 54.5, -1.6, 55.65, -2.1, 55.85, -3.1, 55.05,
                      -3.6, 54.5, -3.1, 53.35, -2.95, 52.0, -2.65, 51.6, -3.6, 51.2, -4.6, 51.1]),
