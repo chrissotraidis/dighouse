@@ -995,3 +995,20 @@ def test_a_closer_look_takes_over_a_bulk_find(tmp_path, survey):
     records = ledger.everything(p)
     assert len(records) == 1 and records[0]["flagged_by"] == "agent" and records[0]["name"] == "Mound"
     assert abs(p.load("locations")["C-001"]["x"] - fx) < 1e-9
+
+def test_a_find_inside_a_recorded_area_is_on_it():
+    """England's and Denmark's registers map areas; a find inside one is on it however far its middle is."""
+    from dighouse import answers
+    ring = [[0.0, 0.0], [0.01, 0.0], [0.01, 0.01], [0.0, 0.01], [0.0, 0.0]]
+    site = {"lon": 0.005, "lat": 0.005, "ring": ring}
+    assert answers._metres_to(site, 0.009, 0.009) == 0.0
+    assert 100 < answers._metres_to(site, 0.012, 0.005) < 400
+
+
+def test_which_registers_cover_a_place():
+    """A register is named only where it can be read; elsewhere a find's record must say the records were not read."""
+    from dighouse import discover, ledger
+    assert [r["register"] for r in discover.covering_registers(9.8, 56.2)] == ["Fund og Fortidsminder"]
+    assert discover.covering_registers(-82.9, 39.3) == []
+    words = ledger.records_words({"date": "2026-11-23", "reach_m": 120, "answered": ["OpenStreetMap"], "silent": [], "registers": [], "near": []})
+    assert "not read" in words and "nothing within 120 m" in words

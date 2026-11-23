@@ -254,28 +254,155 @@ DK_REGISTER = "https://www.kulturarv.dk/ffgeoserver/public/wfs"
 NAVARRE_REGISTER = "https://idena.navarra.es/ogc/wfs"
 
 
-def _wfs_points(url: str, layer: str, bbox: list[float]) -> list[dict]:
+def _wfs_points(url: str, layer: str, bbox: list[float], kinds: tuple = ("Point",)) -> list[dict]:
     w, s, e, n = bbox
     r = _client.get(url, params={"service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": layer,
                                  "outputFormat": "application/json", "srsName": "EPSG:4326", "count": 2000,
                                  "bbox": f"{s},{w},{n},{e},urn:ogc:def:crs:EPSG::4326"})
     r.raise_for_status()
-    return [f for f in r.json().get("features", []) if f.get("geometry") and f["geometry"]["type"] == "Point"]
+    return [f for f in r.json().get("features", []) if f.get("geometry") and f["geometry"]["type"] in kinds]
+
+
+def _outer_ring(geometry: dict) -> list[list[float]]:
+    """The outer ring of a polygon or of a multipolygon's first part, as [lon, lat] pairs; empty for anything else."""
+    if geometry.get("type") == "Polygon":
+        return [c[:2] for c in geometry["coordinates"][0]]
+    if geometry.get("type") == "MultiPolygon":
+        return [c[:2] for c in geometry["coordinates"][0][0]]
+    return []
+
+
+def _area_site(ring: list[list[float]], **site) -> dict:
+    """A recorded area as a site: its middle as the place, and its outline, so a find inside it counts as on it."""
+    return {**site, "lon": sum(c[0] for c in ring) / len(ring), "lat": sum(c[1] for c in ring) / len(ring), "ring": ring}
 
 
 def _danish_sites(bbox: list[float]) -> list[dict]:
-    """Denmark's national register of sites and finds, Fund og Fortidsminder: protected and unprotected sites."""
+    """Denmark's national register of sites and finds, Fund og Fortidsminder: protected and unprotected sites, as
+    points, and the areas it maps."""
     w, s, e, n = bbox
     if e < 8.0 or w > 15.3 or n < 54.5 or s > 57.8:
         return []
     out = []
+    def name(p):
+        return " ".join(x for x in (p.get("anlaegstype"), f"({p['datering']})" if p.get("datering") else "") if x) or "Recorded site"
     for layer, kind in (("public:fundogfortidsminder_punkt_fredet", "protected"), ("public:fundogfortidsminder_punkt_ikkefredet", "not protected")):
         for f in _wfs_points(DK_REGISTER, layer, bbox):
             p = f["properties"]
             lon, lat = f["geometry"]["coordinates"][:2]
-            out.append({"name": " ".join(x for x in (p.get("anlaegstype"), f"({p['datering']})" if p.get("datering") else "") if x) or "Recorded site",
-                        "kind": f"site in Denmark's register, {kind}", "lon": lon, "lat": lat, "source": "Fund og Fortidsminder",
+            out.append({"name": name(p), "kind": f"site in Denmark's register, {kind}", "lon": lon, "lat": lat, "source": "Fund og Fortidsminder",
                         "record": p.get("url") or f"Fund og Fortidsminder {p.get('systemnr')}"})
+    for f in _wfs_points(DK_REGISTER, "public:fundogfortidsminder_areal_alle", bbox, kinds=("Polygon", "MultiPolygon")):
+        ring, p = _outer_ring(f["geometry"]), f["properties"]
+        if ring:
+            out.append(_area_site(ring, name=name(p), kind="area in Denmark's register", source="Fund og Fortidsminder",
+                                  record=p.get("url") or f"Fund og Fortidsminder {p.get('systemnr')}"))
+    return out
+
+
+NO_REGISTER = "https://wfs.geonorge.no/skwms1/wfs.kulturminner"
+GML = "{http://www.opengis.net/gml/3.2}"
+
+
+def _norwegian_sites(bbox: list[float]) -> list[dict]:
+    """Norway's heritage register (Riksantikvaren's Askeladden, published openly through Geonorge): localities and the
+    single monuments in them. The public copy leaves out records kept back as sensitive."""
+    w, s, e, n = bbox
+    if e < 4.0 or w > 31.5 or n < 57.8 or s > 71.3:
+        return []
+    try:
+        return _norwegian_wfs(bbox)
+    except httpx.HTTPError:
+        return _norwegian_api(bbox)   # the map service is sometimes down; Riksantikvaren's own service, by municipality
+
+
+def _norwegian_api(bbox: list[float]) -> list[dict]:
+    """The same register from Riksantikvaren's own service, which filters by municipality, not by box: the
+    municipalities at the box's corners and middle are read and the records kept that fall inside it."""
+    w, s, e, n = bbox
+    towns = set()
+    for lon, lat in ((w, s), (w, n), (e, s), (e, n), ((w + e) / 2, (s + n) / 2)):
+        r = _client.get("https://nominatim.openstreetmap.org/reverse", params={"lat": lat, "lon": lon, "format": "json", "zoom": 10})
+        if r.status_code == 200:
+            a = r.json().get("address", {})
+            town = a.get("municipality") or a.get("city") or a.get("town")
+            if town:
+                towns.add(town.replace(" kommune", ""))
+    out = []
+    for town in towns:
+        offset = 0
+        while offset < 20_000:
+            r = _client.get("https://api.ra.no/kulturminner/collections/kulturminner/items", timeout=120,
+                            params={"f": "json", "kommune": town, "limit": 500, "offset": offset})
+            r.raise_for_status()
+            page = r.json().get("features", [])
+            for f in page:
+                g, p = f.get("geometry") or {}, f.get("properties") or {}
+                ring = _outer_ring(g)
+                pts = ring or ([g["coordinates"][:2]] if g.get("type") == "Point" else [])
+                if not pts:
+                    continue
+                lon, lat = sum(c[0] for c in pts) / len(pts), sum(c[1] for c in pts) / len(pts)
+                if not (w <= lon <= e and s <= lat <= n):
+                    continue
+                art = p.get("enkeltminneart") or p.get("lokalitetsart") or "site"
+                site = {"name": p.get("navn") or art, "kind": f"{art.lower()} in Norway's heritage register", "source": "Norway's heritage register",
+                        "record": p.get("linkKulturminnesøk") or p.get("linkAskeladden") or ""}
+                out.append(_area_site(ring, **site) if ring else {**site, "lon": lon, "lat": lat})
+            if len(page) < 500:
+                break
+            offset += 500
+    return out
+
+
+def _norwegian_wfs(bbox: list[float]) -> list[dict]:
+    import xml.etree.ElementTree as ET
+    w, s, e, n = bbox
+    out = []
+    for layer, field in (("app:Lokalitet", "lokalitetsart"), ("app:Enkeltminne", "enkeltminneart")):
+        r = _client.get(NO_REGISTER, timeout=60, params={"service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": layer,
+                                                          "count": 2000, "bbox": f"{s},{w},{n},{e},urn:ogc:def:crs:EPSG::4258"})
+        r.raise_for_status()
+        for member in ET.fromstring(r.content):
+            for feat in member:
+                text = {el.tag.split("}")[-1]: (el.text or "").strip() for el in feat.iter() if el.text and el.text.strip()}
+                nums = []
+                for el in feat.iter():
+                    if el.tag in (GML + "pos", GML + "posList") and el.text:
+                        v = [float(x) for x in el.text.split()]
+                        nums += [[v[i + 1], v[i]] for i in range(0, len(v) - 1, 2)]   # the service gives latitude first
+                    if nums and el.tag == GML + "posList":
+                        break
+                if not nums:
+                    continue
+                site = {"name": text.get("navn") or text.get(field) or "Recorded site",
+                        "kind": f"{(text.get(field) or 'site').lower()} in Norway's heritage register", "source": "Norway's heritage register",
+                        "record": text.get("linkAskeladden") or f"Askeladden {text.get('kulturminneId', '')}".strip()}
+                out.append(_area_site(nums, **site) if len(nums) > 2 else {**site, "lon": nums[0][0], "lat": nums[0][1]})
+    return out
+
+
+NHLE_SCHEDULED = ("https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/ArcGIS/rest/services/"
+                  "National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/6/query")
+
+
+def _english_sites(bbox: list[float]) -> list[dict]:
+    """England's scheduled monuments, from Historic England's National Heritage List (Open Government Licence). It holds
+    designated monuments only; most known sites are in the county records, which are not open."""
+    w, s, e, n = bbox
+    if e < -6.5 or w > 1.9 or n < 49.8 or s > 55.9:
+        return []
+    r = _client.get(NHLE_SCHEDULED, params={"where": "1=1", "geometry": f"{w},{s},{e},{n}", "geometryType": "esriGeometryEnvelope",
+                                            "inSR": 4326, "spatialRel": "esriSpatialRelIntersects", "outFields": "ListEntry,Name,hyperlink",
+                                            "returnGeometry": "true", "outSR": 4326, "f": "geojson", "resultRecordCount": 2000})
+    r.raise_for_status()
+    out = []
+    for f in r.json().get("features", []):
+        ring, p = _outer_ring(f.get("geometry") or {}), f.get("properties") or {}
+        if ring:
+            out.append(_area_site(ring, name=p.get("Name") or "Scheduled monument", kind="scheduled monument in England's National Heritage List",
+                                  source="National Heritage List for England",
+                                  record=p.get("hyperlink") or f"National Heritage List entry {p.get('ListEntry')}"))
     return out
 
 
@@ -322,7 +449,57 @@ def _pleiades_sites(bbox: list[float]) -> list[dict]:
 
 
 SITE_READERS = {"Wikidata": _wikidata_sites, "OpenStreetMap": _osm_sites, "National Register of Historic Places": _nrhp_sites,
-                "Pleiades": _pleiades_sites, "Fund og Fortidsminder": _danish_sites, "Navarre's heritage register": _navarre_sites}
+                "Pleiades": _pleiades_sites, "Fund og Fortidsminder": _danish_sites, "Navarre's heritage register": _navarre_sites,
+                "Norway's heritage register": _norwegian_sites, "National Heritage List for England": _english_sites}
+
+
+# The official site registers that are open and mapped, and roughly where each reaches: a find inside one can be checked
+# against the record; elsewhere the open lists (OpenStreetMap, Wikidata, Pleiades) hold only part of what is known.
+REGISTERS = {
+    "Fund og Fortidsminder": ("Denmark", (8.0, 54.5, 15.3, 57.8), "every recorded site, protected or not"),
+    "Norway's heritage register": ("Norway", (4.0, 57.8, 31.5, 71.3), "every recorded site, except those kept back as sensitive"),
+    "National Heritage List for England": ("England", (-6.5, 49.8, 1.9, 55.9), "scheduled monuments only"),
+    "Navarre's heritage register": ("Navarre", (-2.6, 41.9, -0.7, 43.35), "protected sites only"),
+}
+
+
+def covering_registers(lon: float, lat: float) -> list[dict]:
+    """The open official registers whose country holds a place, with what each lists. Boxes are rough, so a register is
+    named only when the place is also inside its country's ground-model outline where one is kept."""
+    from . import national
+    outlines = {"Denmark": "dk:dhm-terraen", "Norway": "no:nhm-dtm-1m", "England": "uk:ea-dtm-1m", "Navarre": "es:navarra-mdt-2m"}
+    out = []
+    for name, (country, (w, s, e, n), holds) in REGISTERS.items():
+        if not (w <= lon <= e and s <= lat <= n):
+            continue
+        ring = national.NATIONAL.get(outlines[country], {}).get("outline")
+        if ring and not national._inside(lon, lat, ring):
+            continue
+        out.append({"register": name, "country": country, "holds": holds})
+    return out
+
+
+def shade(bbox: list[float]) -> dict:
+    """What a search here can do: "find_and_check" (open lidar and an open site register), "find" (open lidar, the official
+    records closed) or "no_lidar". The middle of the box decides."""
+    from . import national
+    lon, lat = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+    lidar = bool(national.find(bbox))
+    if not lidar:
+        try:
+            lidar = any(not d.get("seafloor") for d in sources.find_data(bbox) if d.get("id"))
+        except Exception:  # the catalogues being down is not the same as no lidar; say only what was seen
+            lidar = False
+    registers = covering_registers(lon, lat)
+    full = [r for r in registers if "only" not in r["holds"]]
+    if lidar and full:
+        return {"shade": "find_and_check", "registers": registers,
+                "words": f"Can find and check: open lidar, and {full[0]['register']} lists {full[0]['holds']}."}
+    if lidar:
+        return {"shade": "find", "registers": registers,
+                "words": "Can find, not fully check: open lidar, but the official site records here are not open"
+                         + (f" ({registers[0]['register']} lists {registers[0]['holds']})." if registers else ".")}
+    return {"shade": "no_lidar", "registers": registers, "words": "No open lidar Dighouse reads covers this place yet."}
 
 
 def _answered(silent: list[str]) -> list[str]:

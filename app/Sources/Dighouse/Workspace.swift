@@ -1022,6 +1022,16 @@ struct RecordsView: View {
                             + said + ". This ranks finds; it rules none out.") { EmptyView() }
                 Hairline()
             }
+            // What the open records hold here, and which were read: a register where one is open, the open lists elsewhere.
+            if let rec = c.checks["records"] as? JSON, let words = rec["summary"] as? String {
+                let near = (rec["near"] as? [JSON]) ?? []
+                CheckRow(done: near.isEmpty, title: near.isEmpty ? "Not on the records read" : "On record", detail: words.capitalizedFirst) {
+                    if let link = near.first?["record"] as? String, link.hasPrefix("http"), let url = URL(string: link) {
+                        Button("Open the record") { NSWorkspace.shared.open(url) }.buttonStyle(SecondaryButton())
+                    } else { EmptyView() }
+                }
+                Hairline()
+            }
             CheckRow(done: c.sources.isEmpty ? nil : (read > 0 && unread == 0), title: "What is published",
                      detail: c.sources.isEmpty ? "Books, papers and site records, each logged as read or not opened."
                         : unread == 0 ? "\(read) read. Each says what it shows about this find, below."

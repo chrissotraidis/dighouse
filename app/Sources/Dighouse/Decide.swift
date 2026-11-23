@@ -594,6 +594,12 @@ struct FindCard: View {
             out.append(modern["likely_modern"] as? Bool == true ? (near.isEmpty ? "Modern features close by" : ListFormatter.localizedString(byJoining: near).capitalizedFirst + " close by")
                        : "Nothing modern mapped on it")
         }
+        if let rec = c.checks["records"] as? JSON {
+            let near = (rec["near"] as? [JSON]) ?? []
+            let registers = ((rec["registers"] as? [JSON]) ?? []).compactMap { $0["register"] as? String }
+            out.append(!near.isEmpty ? "On record: \(near[0]["name"] as? String ?? "a site")"
+                       : registers.isEmpty ? "Not on the open lists; records here not open" : "Not in \(registers[0])")
+        }
         if let old = c.checks["old_maps"] as? JSON { out.append(old["explains"] as? Bool == true ? "Old maps explain it" : "Old maps: nothing") }
         let read = c.sources.filter { $0.status == "read" }.count, unread = c.sources.filter { $0.status == "could_not_open" }.count
         out.append(c.sources.isEmpty ? "Nothing published read" : "\(read) read" + (unread > 0 ? ", \(unread) would not open" : ""))

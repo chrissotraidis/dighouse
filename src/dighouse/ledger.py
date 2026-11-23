@@ -289,6 +289,10 @@ def _body(meta: dict) -> str:
                      else f"asked {tried['model']} on {tried['date']}; it could not answer: {tried['reason']}" if tried else ""))
     m = checks.get("modern")
     out.append(_tick(m is not None and not m.get("likely_modern"), "Nothing modern on open maps", m["summary"] if m else ""))
+    rec = checks.get("records")
+    if rec is not None:
+        out.append(_tick(not rec.get("near"), "Not on the open records read" if not rec.get("near") else "On the open records",
+                         records_words(rec)))
     read = sum(x["status"] == "read" for x in sources)
     unread = sum(x["status"] == "could_not_open" for x in sources)
     out.append(_tick(read and not unread, "What is published", f"{read} read, {unread} could not be opened"))
@@ -304,6 +308,27 @@ def _body(meta: dict) -> str:
             open_items = f" Open at the time: {'; '.join(d['open_items'])}." if d["open_items"] else ""
             out.append(f"- {d['date']} · {d['by']} marked this {LABELS[d['status']].lower()}. {d['reason']}{open_items}")
     return "\n".join(out) + "\n"
+
+
+def records_words(rec: dict) -> str:
+    """What the open records hold at a find, which were read and when, and what that can and cannot say."""
+    reach, near = rec.get("reach_m", 120), rec.get("near") or []
+    if near:
+        first = near[0]
+        where = "inside its recorded area" if first["metres"] == 0 else f"{first['metres']} m away"
+        words = f"{first['name']} ({first['kind']}, {first['source']}) is {where}" + (f", {first['record']}" if first.get("record") else "")
+        words += f"; {len(near) - 1} more within {reach} m" if len(near) > 1 else ""
+    else:
+        words = f"nothing within {reach} m in {', '.join(rec.get('answered') or []) or 'the lists that answered'}"
+    words += f" (read {rec['date']})" if rec.get("date") else ""
+    if rec.get("silent"):
+        words += "; did not answer: " + "; ".join(x.split(":")[0] for x in rec["silent"])
+    registers = rec.get("registers") or []
+    if registers:
+        words += ". " + "; ".join(f"{r['register']} lists {r['holds']}" for r in registers)
+    else:
+        words += ". No open official register covers this place, so the site records here were not read"
+    return words + "."
 
 
 def _tick(done, label: str, detail: str) -> str:

@@ -476,30 +476,60 @@ def calibration_lines(p) -> list[str]:
 
 # ---------------------------------------------------------------- early check against open records
 
+def _recorded(p) -> list[dict]:
+    """The sites on open record for the project's area, read once and kept with which lists answered and when."""
+    sites = p.load("recorded")
+    if sites is not None and p.load("recorded_read") is not None:
+        return sites
+    from .discover import recorded_sites, _answered
+    from .project import today
+    box = (p.load("project", {}) or {}).get("bbox")
+    if not box or box == [0, 0, 0, 0]:
+        return []
+    w, s, e, n = box
+    pad = 0.01
+    sites, silent = recorded_sites([w - pad, s - pad, e + pad, n + pad])
+    p.save("recorded", sites)
+    p.save("recorded_read", {"date": today(), "answered": _answered(silent), "silent": silent})
+    return sites
+
+
+def _metres_to(site: dict, lon: float, lat: float) -> float:
+    """How far a place is from a recorded site: 0 inside a recorded area's outline."""
+    if site.get("ring") and _inside((lon, lat), site["ring"]):
+        return 0.0
+    if not site.get("ring"):
+        return math.hypot(*_metres(site["lon"], site["lat"], lon, lat))
+    pts = [_metres(x, y, lon, lat) for x, y in site["ring"]]
+    return min(_to_segment((0.0, 0.0), a, b) for a, b in zip(pts, pts[1:] + pts[:1]))
+
+
 def on_record_near(p, lon: float, lat: float, reach_m: float = 120) -> list[dict]:
-    """Sites on open record near a new find, from a list read once for the project's area. No coordinates returned."""
+    """Sites on open record near a find, from a list read once for the project's area. No coordinates returned."""
     if is_blind(p):
         return []
-    sites = p.load("recorded")
-    if sites is None:
-        from .discover import recorded_sites
-        info = p.load("project", {}) or {}
-        box = info.get("bbox")
-        if not box:
-            return []
-        w, s, e, n = box
-        pad = 0.01
-        try:
-            sites, _ = recorded_sites([w - pad, s - pad, e + pad, n + pad])
-        except Exception:
-            return []
-        p.save("recorded", sites)
+    try:
+        sites = _recorded(p)
+    except Exception:
+        return []
     near = []
     for x in sites:
-        d = math.hypot((x["lon"] - lon) * 111_320 * math.cos(math.radians(lat)), (x["lat"] - lat) * 110_540)
+        d = _metres_to(x, lon, lat)
         if d <= reach_m:
-            near.append({"name": x["name"], "kind": x.get("kind"), "source": x["source"], "metres": round(d)})
+            near.append({"name": x["name"], "kind": x.get("kind"), "source": x["source"], "record": x.get("record", ""), "metres": round(d)})
     return sorted(near, key=lambda x: x["metres"])[:5]
+
+
+def records_check(p, lon: float, lat: float, reach_m: float = 120) -> dict:
+    """What the open records hold at a find, and which of them were read and when: filed on every find, so its record
+    says what it was checked against. A register that covers the place is named; where none does, the record says so."""
+    from .discover import covering_registers
+    near = on_record_near(p, lon, lat, reach_m)
+    read = p.load("recorded_read") or {}
+    from .ledger import records_words
+    out = {"date": read.get("date"), "reach_m": reach_m, "answered": read.get("answered", []), "silent": read.get("silent", []),
+           "registers": covering_registers(lon, lat), "near": near}
+    return {**out, "summary": records_words(out)}
 
 
 def _where_lost(p, k: dict, result: dict) -> None:

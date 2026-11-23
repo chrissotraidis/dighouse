@@ -109,7 +109,12 @@ def survey_area(west: float, south: float, east: float, north: float) -> dict:
     US National Register, and are listed by name, distance and direction from the centre of the area.
     """
     answers.guard_box([west, south, east, north])
-    return discover.survey_area([west, south, east, north])
+    out = discover.survey_area([west, south, east, north])
+    try:
+        out["what_a_search_here_can_do"] = discover.shade([west, south, east, north])["words"]
+    except Exception:
+        pass
+    return out
 
 
 @tool
@@ -183,7 +188,22 @@ def init_project(project: str, name: str, question: str, west: float, south: flo
     from .project import new_folder
     root = new_folder(project)
     p = Project.create(root, name, question, [west, south, east, north])
-    return {"project": str(p.root), "read_first": ["RESEARCH.md", "METHODOLOGY.md"]}
+    shade = _keep_shade(p)
+    return {"project": str(p.root), "read_first": ["RESEARCH.md", "METHODOLOGY.md"], **({"records_here": shade} if shade else {})}
+
+
+def _keep_shade(p) -> str:
+    """Work out what a search in the project's area can do (find and check, find only, or no open lidar) and keep the
+    sentence in its state, for the app and the record. A service that does not answer leaves it unsaid."""
+    box = (p.load("project", {}) or {}).get("bbox")
+    if not box or not any(box) or answers.is_blind(p):
+        return ""
+    try:
+        got = discover.shade(box)
+    except Exception:
+        return ""
+    p.save("project", {**(p.load("project", {}) or {}), "shade": got["shade"], "shade_words": got["words"]})
+    return got["words"]
 
 
 @tool
@@ -203,6 +223,7 @@ def name_project(project: str, name: str, question: str, west: float = 0.0, sout
     p.rename(name, question)
     if any((west, south, east, north)):
         p.grow_area([west, south, east, north])
+        _keep_shade(p)
     p.note(f"Named the project {name}")
     record.document(p, commit_it=False)
     commit(p.root, f"Name the project: {name}")
@@ -920,6 +941,12 @@ def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
                     f"{', '.join(x.replace('_', ' ') for x in found['historic_within_2km'][:6])}")
     ledger.set_check(p, candidate, "modern", {"likely_modern": n > 0, "summary": summary, "radius_m": radius_m,
                                               "near": [w.split(" (")[0] for w in near]})
+    if not answers.is_blind(p):
+        # What the open records hold here, and which were read: every find says what it was checked against.
+        try:
+            ledger.set_check(p, candidate, "records", answers.records_check(p, lon, lat))
+        except Exception as exc:  # the records being down should not lose the map check
+            p.note(f"Could not read the open records near {candidate}: {str(exc)[:120]}")
     return {"candidate": candidate, **found, "summary": summary}
 
 

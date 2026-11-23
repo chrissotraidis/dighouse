@@ -20,6 +20,14 @@ struct ProjectOverview: View {
         return line.hasPrefix("#") ? "" : line
     }
 
+    /// What a search here can do, worked out by the tools when the area was set: find and check, find only, or nothing yet.
+    private var shade: (kind: String, words: String)? {
+        guard let root = store.current?.path, let data = FileManager.default.contents(atPath: root + "/private/state/project.json"),
+              let info = (try? JSONSerialization.jsonObject(with: data)) as? JSON,
+              let kind = info["shade"] as? String, let words = info["shade_words"] as? String else { return nil }
+        return (kind, words)
+    }
+
     /// The newest run summary's first paragraph under "What was done", or its first lines.
     private var lastRun: (date: String, text: String)? {
         guard let root = store.current?.path,
@@ -201,6 +209,12 @@ struct ProjectOverview: View {
                     Text(store.current?.name ?? "").font(.system(size: 26 * Theme.scale, weight: .bold))
                     if !question.isEmpty {
                         Text(question).font(.system(size: 15 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let shade {
+                        Label(shade.words, systemImage: shade.kind == "find_and_check" ? "checkmark.seal" : shade.kind == "find" ? "eye" : "exclamationmark.triangle")
+                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(shade.kind == "find_and_check" ? Theme.green : Theme.dim)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .help("Where a site register is open, each find is checked against it. Elsewhere the open lists hold only part of what is known, so a find cannot be called unrecorded.")
                     }
                 }
                 .arrives()

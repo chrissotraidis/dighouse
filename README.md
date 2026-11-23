@@ -38,7 +38,7 @@ A **find** in Dighouse is a shape that might be built and is not yet confirmed. 
 - **It does not confirm sites.** A find is a reason to look, not a discovery. Confirming one takes an archaeologist, and often fieldwork. So far no find from a search has gone past "worth a closer look".
 - **It misses things.** In the blind tests below it found large earthworks reliably and missed most small, low mounds: 29 of 53 at Borre, and 4 of the 11 low megalithic mounds in Navarre's 2 m model.
 - **Under water it is a pilot.** It reads NOAA's sonar surveys of US waters only. A wreck lying flat, buried in sediment, among rocks, or in a gap between survey lines will not show.
-- **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are not public, so "no match in the sources read" often means little was readable.
+- **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are not public, so "no match in the sources read" often means little was readable. Dighouse reads the open registers (Denmark's, Norway's, England's scheduled monuments and Navarre's), and every find's record names the registers and lists it was checked against, and when. A project says at the top whether its area can be checked against a register at all.
 - **It sees shapes in the ground, not artefacts.** Lidar cannot show buried deposits, pottery scatters, or a feature's date or culture.
 - **It needs a Mac and some setup.** It builds from source on an Apple silicon Mac today; the tools also run on their own in any harness that speaks the Model Context Protocol.
 
@@ -178,7 +178,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (46 tests)
+uv run pytest            # offline, on a synthetic survey (48 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
@@ -241,6 +241,8 @@ Everything Dighouse reads is public. Only Denmark's ground model needs a free to
 | [IGN Géoplateforme](https://geoservices.ign.fr) | The État-major map (1820 to 1866) and aerial photographs of 1950 to 1965 under a find in France |
 | [Fund og Fortidsminder](https://www.kulturarv.dk/fundogfortidsminder/) | Denmark's national register of ancient monuments, for checking a find |
 | [IDENA heritage layer](https://idena.navarra.es) | Navarre's register of protected archaeological sites, for checking a find |
+| [Norway's heritage register](https://kulturminnesok.no) | Riksantikvaren's Askeladden, through Geonorge and api.ra.no: every recorded monument except those kept back as sensitive, for checking a find and for answer keys |
+| [National Heritage List for England](https://historicengland.org.uk/listing/the-list/) | Scheduled monuments as mapped areas, for checking a find and for answer keys; designated monuments only |
 | [OpenStreetMap](https://www.openstreetmap.org/) | Mapped sites through [QLever](https://qlever.dev/); roads and buildings near a find through Overpass, or OpenStreetMap's own map service when Overpass is down |
 | [Wikidata](https://www.wikidata.org/) | Archaeological sites already on record |
 | [Pleiades](https://pleiades.stoa.org/) | About 35,000 located ancient places |
