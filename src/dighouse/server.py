@@ -588,6 +588,9 @@ def sweep(project: str, dataset: str, areas: str) -> dict:
 
     with ThreadPoolExecutor(len(parts)) as pool:
         got = [g for g in pool.map(ground, parts) if g]
+    # The engine stops waiting for a tool after 20 minutes. A slow ground service can use most of that on the fetch
+    # (England's took 9 minutes for three areas, 2026-11-24), so the bulk look is left to its own call past 12.
+    fetch_minutes = (time.time() - started) / 60
     areas_out = []
     for g in got:
         cut = make_tiles(project, g["terrain"])
@@ -595,6 +598,11 @@ def sweep(project: str, dataset: str, areas: str) -> dict:
                           "unreadable": cut["unreadable"]})
     if not got:
         raise ValueError("No area could be fetched: " + "; ".join(failed))
+    if fetch_minutes > 12:
+        p.note(f"Swept {len(got)} areas: fetched and cut in {fetch_minutes:.1f} min; the bulk look is left to look_at_tiles")
+        return {"areas": areas_out, "failed": failed, "minutes": round((time.time() - started) / 60, 1),
+                "next": "The fetch took most of the time this tool may take, so the tiles are cut but not yet looked at: call "
+                        "look_at_tiles once, then look closely at the top of its shortlist as after a sweep."}
     looked = look_at_tiles(project)
     short = looked["shortlist"]
     # The measured rises and the checks are left to their own calls: together with the fetch and the bulk look they can

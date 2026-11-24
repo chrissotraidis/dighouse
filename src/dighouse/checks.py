@@ -99,14 +99,16 @@ out tags 200;"""
 _boxes: dict[tuple, list[dict] | None] = {}
 
 
-def _map_box(lon: float, lat: float, reach_m: float) -> list[dict] | None:
+def _map_box(lon: float, lat: float, reach_m: float, shared: bool = True) -> list[dict] | None:
     """Everything OpenStreetMap's own map service holds in a square around a point. None when it refuses or is down.
-    A square is kept for the session by its 0.01-degree cell, wide enough for any point in the cell, so the hundreds
-    of finds in one area share a few downloads instead of each asking a service that soon turns them away."""
-    cell = (round(lon, 2), round(lat, 2), reach_m)
+    A shared square is kept for the session by its 0.01-degree cell, wide enough for any point in the cell, so the
+    hundreds of finds in one area share a few downloads instead of each asking a service that soon turns them away.
+    shared=False asks for the point's own square, the smallest the service can be asked for."""
+    cell = (round(lon, 2), round(lat, 2), reach_m) if shared else (lon, lat, reach_m, "own")
     if cell in _boxes:
         return _boxes[cell]
-    lon, lat, reach_m = cell[0], cell[1], reach_m + 800  # half a cell is at most about 560 m from its centre
+    if shared:
+        lon, lat, reach_m = cell[0], cell[1], reach_m + 800  # half a cell is at most about 560 m from its centre
     dy, dx = reach_m / 111_320, reach_m / (111_320 * max(0.1, math.cos(math.radians(lat))))
     try:
         r = _client.get(OSM_MAP, params={"bbox": f"{lon - dx:.6f},{lat - dy:.6f},{lon + dx:.6f},{lat + dy:.6f}"}, timeout=25)
@@ -160,6 +162,9 @@ def modern_features(lon: float, lat: float, radius_m: int = 300, named: bool = T
         if box is None:
             # A square of 4 km can hold more than the service gives at once (a town does). Ask for the radius alone.
             box, historic_m = _map_box(lon, lat, radius_m), radius_m
+        if box is None:
+            # Where even a shared square holds too much (a town), the find's own square, as before squares were shared.
+            box = _map_box(lon, lat, radius_m, shared=False)
         if box is None:
             raise RuntimeError("The open map services (OpenStreetMap's Overpass servers and its own map service) did not answer; "
                                "they are busy or down. Leave this check for now and carry on; run it again later.")

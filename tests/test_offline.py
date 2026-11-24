@@ -1125,3 +1125,23 @@ def test_the_calibration_site_says_whether_its_recent_tests_pass(tmp_path, monke
                                                    "scored": "2026-11-24", "test": f"t{i}"} for i in range(4)]))
     got = answers.calibration_site([10.4, 59.3, 10.5, 59.4], "no:nhm-dtm-1m")
     assert got["site"] == "borre" and got["recent_tests"] == 4 and got["recent_passes"] is False
+
+
+def test_where_shared_map_squares_hold_too_much_the_find_gets_its_own(monkeypatch):
+    """In a town even the shared square of a cell can be refused; the find's own small square is then asked for."""
+    import time as _time
+    monkeypatch.setattr(checks, "_boxes", {})
+    monkeypatch.setattr(checks, "_overpass_back", _time.monotonic() + 999)
+    asked = []
+
+    class Reply:
+        def __init__(self, code): self.status_code = code
+        def json(self): return {"elements": [{"type": "way", "id": 1, "tags": {"highway": "track"}, "nodes": []}]}
+
+    def get(url, params=None, **kwargs):
+        w, s, e, n = (float(v) for v in params["bbox"].split(","))
+        asked.append(round((n - s) * 111_320))
+        return Reply(400 if (n - s) * 111_320 > 400 else 200)
+    monkeypatch.setattr(checks._client, "get", get)
+    got = checks.modern_features(0.0, 0.0, 150)
+    assert got["asked"] == "OpenStreetMap's map service" and len(asked) == 3 and asked[-1] <= 400
