@@ -58,6 +58,9 @@ final class TimedResearch {
         }
     }
 
+    /// The longest goal objective the engine accepts. A longer one is refused, and the session never starts.
+    static let objectiveLimit = 4000
+
     func remove(_ id: String) {
         checkFailures.removeValue(forKey: id)
         timers.removeValue(forKey: id)?.cancel()
@@ -164,7 +167,9 @@ final class TimedResearch {
                 if let turn = turn(id), !turn.isEmpty {
                     _ = try await request("turn/steer", ["threadId": id, "expectedTurnId": turn, "input": [["type": "text", "text": prompt]]])
                 } else if canClose {
-                    _ = try await request("thread/goal/set", ["threadId": id, "objective": ((reply["goal"] as? JSON)?["objective"] as? String ?? "") + "\n\n" + prompt, "status": "active"])
+                    // The engine takes an objective of at most 4,000 characters: past that, the close is sent on its own.
+                    let joined = ((reply["goal"] as? JSON)?["objective"] as? String ?? "") + "\n\n" + prompt
+                    _ = try await request("thread/goal/set", ["threadId": id, "objective": joined.count <= Self.objectiveLimit ? joined : prompt, "status": "active"])
                 }
                 sessions[id]?.closing = true
             }
