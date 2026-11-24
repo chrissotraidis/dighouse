@@ -1115,3 +1115,13 @@ def test_run_status_keeps_the_shortlist_until_each_tile_is_looked_at_closely(tmp
                      "t-b": {"terrain": "t", "window": [0, 0, 1, 1], "status": "screened", "model": "GPT-6"}})
     p.save("shortlist", [{"tile": "t-b", "verdict": "built", "note": ""}, {"tile": "t-a", "verdict": "possible", "note": ""}])
     assert server.run_status(root)["close_look_next"] == ["t-a"]
+
+
+def test_the_calibration_site_says_whether_its_recent_tests_pass(tmp_path, monkeypatch):
+    """A session can see, before choosing a region, that its lidar's reference site has lately fallen below the mark."""
+    from dighouse import answers
+    monkeypatch.setenv("DIGHOUSE_CACHE", str(tmp_path / "cache"))
+    answers._scores_file().write_text(json.dumps([{"site": "borre", "sources": ["no:nhm-dtm-1m"], "found": 24, "known": 53,
+                                                   "scored": "2026-11-24", "test": f"t{i}"} for i in range(4)]))
+    got = answers.calibration_site([10.4, 59.3, 10.5, 59.4], "no:nhm-dtm-1m")
+    assert got["site"] == "borre" and got["recent_tests"] == 4 and got["recent_passes"] is False

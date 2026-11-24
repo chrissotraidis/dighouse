@@ -114,6 +114,17 @@ def survey_area(west: float, south: float, east: float, north: float) -> dict:
         out["what_a_search_here_can_do"] = discover.shade([west, south, east, north])["words"]
     except Exception:
         pass
+    # How the method did lately on each ready-made model's reference site, without naming the site (a session that is
+    # about to calibrate must stay blind to it): a source whose recent tests fall below the mark would stop a search.
+    lately = {}
+    for d in national.find([west, south, east, north]):
+        c = answers.calibration_site([west, south, east, north], d["id"]) if d.get("id") else {}
+        if c.get("recent_tests"):
+            lately[d["id"]] = (f"passes ({c['recent_share']:.0%} over the last {c['recent_tests']} tests)" if c["recent_passes"]
+                               else f"below the pass mark ({c['recent_share']:.0%} over the last {c['recent_tests']} tests): "
+                                    "a search on this lidar would stop at calibration")
+    if lately:
+        out["calibration_lately"] = lately
     return out
 
 

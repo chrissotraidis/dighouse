@@ -455,9 +455,15 @@ def calibration_site(box: list[float], dataset: str = "") -> dict:
     if not same:
         return {"available": False, "same_source": False, "how": "No blind reference for this lidar source."}
     _, neg_km, k = max(same, key=lambda r: r[1])
-    return {"site": k["id"], "name": k["name"], "place": k["place"], "data": k["data"], "km_away": round(-neg_km),
-            "same_source": _key_source(k) == want if want else None,
-            "how": f"start_test with site {k['id']}, run it blind to score_test, then record_calibration on this project."}
+    out = {"site": k["id"], "name": k["name"], "place": k["place"], "data": k["data"], "km_away": round(-neg_km),
+           "same_source": _key_source(k) == want if want else None,
+           "how": f"start_test with site {k['id']}, run it blind to score_test, then record_calibration on this project."}
+    recent = pooled_scores(k["id"], [dataset]) if dataset else []
+    if recent:
+        # What the last tests of this site on this lidar found, so a session can choose a source it can pass on.
+        share = sum(r["found"] for r in recent) / max(1, sum(r["known"] for r in recent))
+        out.update(recent_share=round(share, 2), recent_tests=len(recent), recent_passes=share >= PASS_SHARE)
+    return out
 
 
 def record_calibration(p, test_root: str) -> dict:
