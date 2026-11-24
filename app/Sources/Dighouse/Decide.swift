@@ -591,7 +591,8 @@ struct FindCard: View {
 
     /// What marked the find, and the four numbers: its height, its size, the ground under it, and the finds near it.
     private func numbers(_ c: Candidate) -> [String] {
-        var out = [c.flaggedBy.hasPrefix("measured") ? "Measured rise" : c.flaggedBy.contains("bulk") ? "Seen in the bulk look" : "Marked by the agent"]
+        var out = [c.flaggedBy.hasPrefix("measured") ? "Measured rise" : c.flaggedBy.contains("bulk") ? "Seen in the bulk look"
+                   : c.flaggedBy.hasPrefix("a person") ? "Marked by hand" : "Marked by the agent"]
         out.append(Candidate.heightWords(c.checks).capitalizedFirst)
         if let shape = c.checks["shape"] as? JSON, let ew = shape["width_ew_m"], let ns = shape["width_ns_m"] { out.append("\(ew) × \(ns) m") }
         let context = c.checks["context"] as? JSON ?? [:]

@@ -108,6 +108,11 @@ struct MapView: View {
     @State private var line: (CGPoint, CGPoint)?
     @State private var cut: Cut?
     @State private var cutting = false
+    /// Marking a spot by hand: the mode, the place clicked (a tile and where on it), the note, and what is happening.
+    @State private var marking = false
+    @State private var markAt: (tile: String, x: Double, y: Double)?
+    @State private var markNote = ""
+    @State private var markBusy: String?
 
     private struct Cut {
         let image: String
@@ -292,6 +297,21 @@ struct MapView: View {
                                     .onChanged { g in line = (g.startLocation, g.location) }
                                     .onEnded { g in cutSection(from: g.startLocation, to: g.location, spots: spots, scale: scale) })
                         }
+                        if marking {
+                            // Catches one click while marking: the place becomes a tile and a point on it.
+                            Color.white.opacity(0.001)
+                                .gesture(SpatialTapGesture().onEnded { e in
+                                    let m = (x: e.location.x / scale, y: e.location.y / scale)
+                                    if let s = spots.first(where: { m.x >= $0.x && m.x <= $0.x + $0.w && m.y >= $0.y && m.y <= $0.y + $0.h }) {
+                                        markAt = (s.tile.id, (m.x - s.x) / s.w, (m.y - s.y) / s.h)
+                                    }
+                                })
+                        }
+                        if let at = markAt, let s = spots.first(where: { $0.tile.id == at.tile }) {
+                            Circle().strokeBorder(Theme.accent, lineWidth: 2.5).frame(width: 18, height: 18)
+                                .position(x: (s.x + at.x * s.w) * scale, y: (s.y + at.y * s.h) * scale)
+                                .allowsHitTesting(false)
+                        }
                     }
                     .frame(width: width * scale, height: height * scale, alignment: .topLeading)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -333,7 +353,9 @@ struct MapView: View {
                 }
                 .padding(12)
             }
-            .overlay(alignment: .bottomLeading) { cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard) }
+            .overlay(alignment: .bottomLeading) {
+                markAt != nil ? AnyView(markPanel) : cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard)
+            }
             .overlay(alignment: .top) {
                 if drawing && line == nil && !cutting {
                     Text(store.selectedCandidate.map { "Drag a line across the ground. The slice goes on \($0)'s record." }
@@ -399,10 +421,17 @@ struct MapView: View {
                 .buttonStyle(IconButton(size: 28, active: showPins)).help(showPins ? "Hide the finds" : "Show the finds")
             Button {
                 drawing.toggle()
+                marking = false
                 line = nil
                 cut = nil
             } label: { Image(systemName: "line.diagonal") }
                 .buttonStyle(IconButton(size: 28, active: drawing)).help("Draw a line to cut a slice through the ground")
+            Button {
+                marking.toggle()
+                drawing = false
+                markAt = nil
+            } label: { Image(systemName: "mappin.and.ellipse") }
+                .buttonStyle(IconButton(size: 28, active: marking)).help("Mark a spot you see: click it, say what it is, and it gets the usual checks")
             let all = areas
             if all.count > 1 {
                 PillMenu(title: (short ? "" : "Show: ") + Self.shortName(currentArea?.name ?? "Ground"), quiet: true, width: 340) {
@@ -557,6 +586,63 @@ struct MapView: View {
         HStack(spacing: 5) {
             RoundedRectangle(cornerRadius: 2).strokeBorder(color, lineWidth: 1.5).frame(width: 10, height: 10)
             Text(label)
+        }
+    }
+
+    /// What a person says about a spot they clicked, before it becomes a find.
+    @ViewBuilder private var markPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Mark a spot").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Spacer()
+                Button { markAt = nil } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22)).disabled(markBusy != nil)
+            }
+            Text("Say what you see. It becomes a find in your name; a slice and the open maps are checked now, and the agent adds a second opinion and the records.")
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            TextField("A low round mound by the stream", text: $markNote)
+                .textFieldStyle(.plain).font(.system(size: 13 * Theme.scale))
+                .padding(8).background(RoundedRectangle(cornerRadius: 8).fill(Theme.side))
+                .onSubmit { if !markNote.trimmingCharacters(in: .whitespaces).isEmpty { markSpot() } }
+            HStack(spacing: 8) {
+                Button("Mark it and check") { markSpot() }
+                    .buttonStyle(PrimaryButton())
+                    .disabled(markBusy != nil || markNote.trimmingCharacters(in: .whitespaces).isEmpty || !app.engine.ready)
+                if let markBusy {
+                    DigIndicator(size: 12)
+                    Text(markBusy).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                }
+            }
+        }
+        .padding(12).frame(width: 340, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.raised))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
+        .shadow(color: .black.opacity(0.35), radius: 14, y: 4)
+    }
+
+    /// Open a find at the clicked spot in the person's name, slice it and check open maps, then ask the agent for the
+    /// checks that need a model: a second opinion, the records, the literature and a suggested decision.
+    private func markSpot() {
+        guard let root = store.current?.path, let at = markAt else { return }
+        let note = markNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let who = app.userName.isEmpty ? "a person" : "a person, \(app.userName)"
+        markBusy = "Marking…"
+        Task { @MainActor in
+            defer { markBusy = nil }
+            let args: JSON = ["project": root, "tile": at.tile, "x": at.x, "y": at.y,
+                              "name": "Marked by hand: " + String(note.prefix(48)), "note": note, "model": who]
+            guard let reply = try? await app.engine.callTool("flag_candidate", args) else { return }
+            let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON
+                ?? (((try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? [Any])?.first as? JSON) ?? [:]
+            guard let id = info["candidate"] as? String else { return }
+            markBusy = "Cutting a slice and checking open maps…"
+            _ = try? await app.engine.callTool("check_finds", ["project": root, "candidates": id])
+            markAt = nil
+            marking = false
+            markNote = ""
+            store.selectedCandidate = id
+            store.selectedTile = at.tile
+            app.ask("A person marked \(id) by hand: \"\(note)\". Its slice and the open maps are checked. Add the checks still missing: a second opinion from a different model, the records check and a literature search, then suggest a decision. Leave its place and name as they are.",
+                    title: "Checks for \(id)")
         }
     }
 
