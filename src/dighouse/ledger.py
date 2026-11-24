@@ -281,8 +281,11 @@ def distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 def _body(meta: dict) -> str:
     cid, checks, sources = meta["id"], meta["checks"], meta["sources"]
+    by = str(meta["flagged_by"])
+    # "seen in bulk by …" and "measured (…)" already say how; a model's name needs "by".
+    marked = f"{meta['flagged']}, {by}" if by.startswith(("seen in bulk", "measured")) else f"{meta['flagged']} by {by}"
     out = [f"# {cid} {meta['name']}", "",
-           f"Status: {LABELS[meta['status']]} · Marked {meta['flagged']} by {meta['flagged_by']}", ""]
+           f"Status: {LABELS[meta['status']]} · Marked {marked}", ""]
     for kind, caption in (("relief", "Bare-ground relief"), ("section", "Slice through the feature")):
         if (checks.get(kind) or {}).get("image") or kind == "relief":
             out += [f"![{caption}](img/{cid}-{kind}.png)", ""]

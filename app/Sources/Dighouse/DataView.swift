@@ -19,7 +19,7 @@ struct DataView: View {
                         EmptyLine(icon: "dig.mound", text: store.screenedBefore != nil ? "The ground stayed on the Mac this project came from. Get it again, or add a file of your own below, only if you want to look at it yourself."
                                   : "None yet. Get the ground, or add a file of your own below.")
                     }
-                    ForEach(store.terrains) { t in terrainRow(t) }
+                    ForEach(store.terrains.sorted { ($0.area ?? $0.id).localizedStandardCompare($1.area ?? $1.id) == .orderedAscending }) { t in terrainRow(t) }
                     // Wraps in a narrow pane; a row that cannot wrap would widen the window past the screen.
                     Flow(spacing: 8) {
                         Button(store.terrains.isEmpty ? "Get the ground" : "Fetch more") {
@@ -109,7 +109,12 @@ struct DataView: View {
             Image(systemName: t.isOwn ? "doc" : t.points == nil ? "square.stack.3d.up" : "circle.grid.3x3")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 20).padding(.top, 2)
             VStack(alignment: .leading, spacing: 3) {
-                Text(t.name).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                // The area's name first, as the map's area menu calls it, so several downloads of one survey read apart.
+                if let area = t.area, !area.isEmpty {
+                    (Text(area).fontWeight(.medium) + Text("  \(t.name)").foregroundColor(Theme.dim)).font(.system(size: 13.5 * Theme.scale))
+                } else {
+                    Text(t.name).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+                }
                 Text(facts.joined(separator: " · ")).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                 if !t.source.isEmpty { Text(t.source).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint) }
             }

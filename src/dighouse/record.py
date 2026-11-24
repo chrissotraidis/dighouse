@@ -247,11 +247,17 @@ def document(p: Project, commit_it: bool = True) -> dict:
     L = [f"# Research record: {name}", "", "**In short.** " + " ".join(short), ""]
     if records:
         L += ["**The finds.**", ""]
-        for m in records:
+        # Waiting and decided finds by name; a long layer kept on the map is one line, since each has its own page.
+        kept_line = len(on_map) > 20
+        for m in sorted(records, key=lambda m: (m["id"] in on_map, bool(m.get("decisions")))):
+            if kept_line and m["id"] in on_map and not m.get("decisions"):
+                continue
             last = m["decisions"][-1] if m.get("decisions") else None
             state = (f"{ledger.LABELS.get(last['status'], last['status']).lower()}, decided by {last['by']}" if last
                      else "kept on the map" if m["id"] in on_map else "waiting for a person's decision")
             L.append(f"- [{m['id']} {_clean(m['name'], 70)}](candidates/{m['id']}.md): {state}.")
+        if kept_line:
+            L.append(f"- {len(on_map)} more are kept on the map, each with its own page in [candidates/](candidates/).")
         L.append("")
     L += ["**How to continue.** Open this folder in Dighouse (File, then Open Project Folder) and ask the agent to carry on. "
           "It reads this record first, so nothing listed here is done twice."

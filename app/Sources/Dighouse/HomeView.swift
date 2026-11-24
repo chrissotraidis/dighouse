@@ -100,7 +100,8 @@ struct HomeView: View {
     @EnvironmentObject var engine: Engine
 
     private let cards = [GridItem(.adaptive(minimum: 200), spacing: 12, alignment: .top)]
-    private let paths = [GridItem(.adaptive(minimum: 160), spacing: 12, alignment: .top)]
+    /// Four ways to start, always in one row that spans the column, like the chat box above them.
+    private let paths = Array(repeating: GridItem(.flexible(minimum: 140), spacing: 12, alignment: .top), count: 4)
     /// 0 shows the known sites, 1 the open surveys.
     @AppStorage("startTab") private var startKind = 0
     @State private var allSites = false

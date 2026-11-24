@@ -839,7 +839,8 @@ struct RecordsView: View {
                     }
                 }
                 // On a line of its own, so a narrow pane wraps it rather than cutting it to "Marke…".
-                Text("Marked \(c.flaggedOn) by \(c.flaggedBy)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                Text("Marked \(c.flaggedOn)" + (c.flaggedBy.hasPrefix("seen in bulk") || c.flaggedBy.hasPrefix("measured") ? ", " : " by ") + c.flaggedBy)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack(alignment: .top, spacing: 12) {
@@ -1286,6 +1287,7 @@ struct SourcesView: View {
     @State private var address = ""
     @State private var handing = false
     @State private var handProblem: String?
+    @State private var showUnrelated = false
     @StateObject private var web = WebHandle()
 
     /// Save what the person can see, then ask the agent to read it and log it.
@@ -1362,7 +1364,24 @@ struct SourcesView: View {
                         Text("\(all.count) source\(all.count == 1 ? "" : "s") for this project").font(.system(size: 18 * Theme.scale, weight: .semibold))
                         Text("Each source the agent logs appears here as read, could not open, or not relevant. Click one to open it. Publishers often refuse a program and let a person in, so the ones marked could not open are worth opening yourself.")
                             .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                        list(all)
+                        // What was read first, then what a person may open themselves; the off-topic ones fold away.
+                        let order = ["read": 0, "could_not_open": 1]
+                        let useful = all.filter { $0.status != "not_relevant" }.enumerated()
+                            .sorted { (order[$0.element.status] ?? 2, $0.offset) < (order[$1.element.status] ?? 2, $1.offset) }.map(\.element)
+                        let unrelated = all.filter { $0.status == "not_relevant" }
+                        if !useful.isEmpty { list(useful) }
+                        if !unrelated.isEmpty {
+                            Button { showUnrelated.toggle() } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .bold))
+                                        .rotationEffect(.degrees(showUnrelated ? 90 : 0))
+                                    Text("\(unrelated.count) not relevant: about another place or topic")
+                                }
+                                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            if showUnrelated { list(unrelated) }
+                        }
                     }
                     .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
                 }

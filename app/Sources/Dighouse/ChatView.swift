@@ -188,9 +188,15 @@ private enum Block: Identifiable {
             run = []
         }
         for item in items {
-            // Steps with a card (a project made or offered) or a picture stay out of the folded run.
-            if item.kind == .step, item.projectPath == nil, item.tool != "suggest_project", item.state != .failed, !item.showsImage {
-                run.append(item)
+            // Steps with a card (a project made or offered) or a picture stay out of the folded run. A step that failed
+            // folds with the rest, and the run's line counts it, so a string of failed searches cannot break the fold apart.
+            if item.kind == .step, item.projectPath == nil, item.tool != "suggest_project", !item.showsImage {
+                // Waiting on helpers again and again reads as one wait: the latest stands for the ones before it.
+                if item.tool == "sub-agent", let last = run.last, last.tool == "sub-agent", last.text == item.text {
+                    run[run.count - 1] = item
+                } else {
+                    run.append(item)
+                }
             } else {
                 flush(tail: false)
                 out.append(.item(item))
@@ -451,9 +457,14 @@ private struct OfferCard: View {
                 Text(offer.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Text(offer.question).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 if !offer.purpose.isEmpty {
-                    Text(offer.purpose.capitalized).font(.subheadline.weight(.semibold))
-                    if !offer.whyHere.isEmpty { Text(offer.whyHere).font(.subheadline) }
-                    if !offer.feasibility.isEmpty { Text("Data: " + offer.feasibility).font(.caption) }
+                    Text(offer.purpose.prefix(1).uppercased() + offer.purpose.dropFirst()).font(.system(size: 12.5 * Theme.scale, weight: .medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !offer.whyHere.isEmpty {
+                        Text(offer.whyHere).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !offer.feasibility.isEmpty {
+                        Text("Data: " + offer.feasibility).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 if store.current == nil, !offer.folder.isEmpty {
                     Label(Paths.short(offer.folder) + (offer.inGitHub ? ", in your GitHub folder as you asked" : ""), systemImage: "folder")
@@ -485,6 +496,8 @@ private struct StepGroup: View {
                 HStack(spacing: 8) {
                     Image(systemName: "square.stack.3d.up").frame(width: 18)
                     Text("\(steps.count) steps")
+                    let failed = steps.filter { $0.state == .failed }.count
+                    if failed > 0 { Text("· \(failed) did not work").foregroundStyle(Theme.amber) }
                     if !open, let last = steps.last {
                         Text("· " + last.text).foregroundStyle(Theme.faint).lineLimit(1)
                     }

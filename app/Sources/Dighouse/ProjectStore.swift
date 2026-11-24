@@ -56,6 +56,7 @@ final class ProjectStore: ObservableObject {
             // A project can be renamed while the app is closed (name_project), so names are read again at launch.
             projects = saved.filter { FileManager.default.fileExists(atPath: $0.path + "/PROJECT.md") }
                 .map { ProjectRef(path: $0.path, name: Self.savedName(of: $0.path) ?? $0.name) }
+            for i in projects.indices { projects[i].name = listed(projects[i].name, for: projects[i].path, among: projects[..<i]) }
         }
         if let last = UserDefaults.standard.string(forKey: "currentProject") {
             current = projects.first { $0.path == last }
@@ -73,8 +74,19 @@ final class ProjectStore: ObservableObject {
         // A project someone shared has no private state, so its name comes from the heading of PROJECT.md.
         let heading = (try? String(contentsOfFile: path + "/PROJECT.md", encoding: .utf8))?.split(separator: "\n").first
             .flatMap { $0.hasPrefix("# ") ? String($0.dropFirst(2)).trimmingCharacters(in: .whitespaces) : nil }
-        projects.append(ProjectRef(path: path, name: state?["name"] as? String ?? heading ?? URL(fileURLWithPath: path).lastPathComponent))
+        let name = state?["name"] as? String ?? heading ?? URL(fileURLWithPath: path).lastPathComponent
+        projects.append(ProjectRef(path: path, name: listed(name, for: path, among: projects[...])))
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
+    }
+
+    /// The name a project is listed under: its own, or numbered like a chat when another project in the list
+    /// already has it (Find something can search the same region twice). Only the list changes; the project's files keep their name.
+    private func listed(_ name: String, for path: String, among others: ArraySlice<ProjectRef>) -> String {
+        let taken = Set(others.lazy.filter { $0.path != path }.map(\.name))
+        guard taken.contains(name) else { return name }
+        var n = 2
+        while taken.contains("\(name) \(n)") { n += 1 }
+        return "\(name) \(n)"
     }
 
     /// Projects kept in an iCloud folder, whose files can go offline.
@@ -247,7 +259,10 @@ final class ProjectStore: ObservableObject {
 
     /// Show a project under its new name everywhere, as soon as the agent renames it.
     private func followName(_ root: String) {
-        guard let name = Self.savedName(of: root), let i = projects.firstIndex(where: { $0.path == root }), projects[i].name != name else { return }
+        guard let saved = Self.savedName(of: root), let i = projects.firstIndex(where: { $0.path == root }) else { return }
+        let name = projects[i].name == saved || projects[i].name.hasPrefix(saved + " ") && Int(projects[i].name.dropFirst(saved.count + 1)) != nil
+            ? projects[i].name : listed(saved, for: root, among: projects[...])
+        guard projects[i].name != name else { return }
         projects[i].name = name
         if current?.path == root { current = projects[i] }
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }

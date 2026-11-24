@@ -160,6 +160,7 @@ def mark_spots(project: str, shortlist: list[dict], model: str = "") -> dict:
             if any(ledger.distance_m(lonlat, q) < NEAR_M for q in places):
                 continue
             what = (s.get("what") or "a shape").strip().rstrip(".")
+            what = what[6:].strip() if what.lower().startswith("guide:") else what   # the bulk look's word for what a shape resembles
             note = f"Seen in bulk: {what}. The tile: {item.get('note', '')}"
             # A name ends on a whole word; the full words are in the note.
             short = what if len(what) <= 50 else what[:50].rsplit(" ", 1)[0].rstrip(",;: ") + "…"

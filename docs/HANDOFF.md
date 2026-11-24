@@ -59,6 +59,8 @@ The plan is [SEE_LOOP.md](SEE_LOOP.md), from the WYKOPKI video: help a person se
 
 V3 adds three close views from the Relief Visualization Toolbox on the keys 7 to 9: VAT (RVT's flat-ground blend of hillshade, slope, openness and sky view), multi-scale relief (rises 2 to 20 m across) and local dominance (a person 1.70 m tall looking 5 to 10 m around). `src/dighouse/rvt.py` holds the copied functions and their credit; rvt-py itself is not a dependency, since its install metadata stops before Python 3.12. Each view's caption says in one line what it shows. They are for the person only, so the blind tests are unchanged by them. All three draw in about 0.1 s together.
 
+A review of every page in the test copy (SEE_LOOP Log) left the app more consistent: repeated project names are numbered in the list, failed steps fold into a chat run and are counted on its line, Sources puts what was read first and folds the off-topic ones, Data names each download by its area, and the research record lists what waits for a person first.
+
 ## What the home loop added (H0 to H5, 2026-11-23)
 
 The goals, the probe and every check are in [HOME_LOOP.md](HOME_LOOP.md). A project is now the home for its work.
