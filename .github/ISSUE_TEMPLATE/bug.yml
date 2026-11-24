@@ -18,7 +18,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: macOS version, Mac, and the Dighouse commit you built
+      label: macOS version, Mac, and Dighouse version (Dighouse menu, About Dighouse) or the commit you built
   - type: textarea
     id: logs
     attributes:

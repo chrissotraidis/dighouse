@@ -6,7 +6,7 @@ Dighouse runs AI agents on your Mac against public data, and it keeps the locati
 
 - **Report privately, never in a public issue.** Use the repository's Security tab, "Report a vulnerability", once the repository is public. Until then, contact the maintainer through GitHub.
 - **Say what you saw and how to make it happen,** without the coordinates of any site or find.
-- There are no releases yet. Fixes go to `main`.
+- Fixes go to `main` and into the next release.
 
 ## What Dighouse protects, and how
 

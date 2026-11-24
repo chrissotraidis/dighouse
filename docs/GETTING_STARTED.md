@@ -66,3 +66,4 @@ Measured rises and shapes the bulk look pointed at that nothing else supports st
 - **Denmark's ground needs a token.** Get a free one from Dataforsyningen and paste it in Settings, Data and privacy.
 - **A data service does not answer.** National services go down for a while now and then. The search says which, carries on with the rest, and the check can be run again later.
 - **Something else.** [SETUP.md](SETUP.md) covers where projects and chats are kept and more fixes.
+- **Still stuck.** Ask in **dighouse-help** on [Discord](https://discord.gg/xwHfUD2bxW): when you join, pick **Dighouse (lidar archaeology)**. Leave out anything that shows where a find is.

@@ -43,7 +43,7 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
 - **Project state** is saved atomically and changed under a file lock (`Project.change`), because the agent records verdicts from parallel helpers.
 - **Engine**: `codex app-server` as a child process, spoken to in JSON lines by `Engine.swift`. Dighouse starts the **newest** copy of Codex on the Mac (`Setup.detect`); on Chris's Mac that is 0.167 inside the ChatGPT app, because 0.146 on the PATH is refused GPT-6.1 Terra. Dighouse's own tools are approved at launch (`default_tools_approval_mode`), since newer engines ask before every tool call.
 - **Tests**: 49 offline, 10 live (`uv run pytest`, `uv run pytest -m live`), and 4 for the app (`cd app && swift test`). The live test of the national ground models takes two minutes. CI (`.github/workflows/checks.yml`) runs the offline tests and the people-only check on every pull request, once GitHub Actions billing on Chris's account lets jobs start (it did not on 2026-11-22).
-- **README** has pictures in `docs/images`, retaken on 2026-11-14 at 1440 × 900 in Earth after loop 5. Loop 5's own pictures are in `docs/loop5`.
+- **README** is written for people who download the app (2026-11-24): download steps without GitHub, questions people ask, Discord for help (the Kahris server, Dighouse role), and the developer material lower down. Home, the Angel Mounds project, a record and Decide were retaken that day in the real app at 1366 × 974 in Earth, cropped to known sites, the Computer Use indicator painted over. New project was not retaken: its map now shows the ground you have searched. Loop 5's own pictures are in `docs/loop5`.
 
 ## Where it stands (2026-11-22)
 

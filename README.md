@@ -10,28 +10,72 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/chrissotraidis/dighouse/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/chrissotraidis/dighouse?label=release&color=8B5E3C"></a>
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
+  <img alt="Apple silicon" src="https://img.shields.io/badge/Apple%20silicon-arm64-0A84FF?logo=apple">
+  <img alt="Native SwiftUI" src="https://img.shields.io/badge/SwiftUI-native-FF9F0A?logo=swift&logoColor=white">
   <img alt="62 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-62%20tools-8B5E3C">
+  <img alt="Free to use" src="https://img.shields.io/badge/price-free-30D158">
+  <img alt="Site locations stay on your Mac" src="https://img.shields.io/badge/site%20locations-stay%20on%20your%20Mac-30D158">
+  <img alt="No analytics" src="https://img.shields.io/badge/analytics-none-30D158">
   <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache%202.0-8E8E93"></a>
+  <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the Discord" src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white"></a>
 </p>
 
 <p align="center">
-  <a href="#get-started"><b>Get started</b></a> ·
+  <a href="#download-and-set-up"><b>Download</b></a> ·
+  <a href="#questions-people-ask">Questions</a> ·
+  <a href="#get-help-and-share-ideas">Help and Discord</a> ·
   <a href="#benchmarks">Benchmarks</a> ·
   <a href="#how-a-search-works">How a search works</a> ·
-  <a href="#the-tools">Tools</a> ·
   <a href="#open-data">Open data</a> ·
   <a href="#responsible-use">Responsible use</a> ·
   <a href="docs/ROADMAP.md">Roadmap</a>
 </p>
 
-![Angel Mounds, Indiana, opened in Dighouse: the project overview says what happens next and shows the search so far; five finds are marked on the bare-ground map](docs/images/angel-mounds-run.png)
+![Angel Mounds, Indiana, opened in Dighouse: the project page says what happens next and lists the search so far; five finds are marked on the bare-ground map](docs/images/angel-mounds-run.png)
 
 <sub>A search at Angel Mounds, Indiana, from open USGS lidar: 9 tiles looked at, 5 finds marked, each one sliced, given a second model's opinion and searched in the literature.</sub>
 
 Lidar is a laser scan from an aircraft that maps the ground through gaps in the trees, and a great deal of it is public. Most of it has never been searched for archaeology. Dighouse gives an AI model the tools to fetch that data, take the trees away, look over every square of ground, and check each thing it marks, then hands the decision to a person.
 
 A **find** in Dighouse is a shape that might be built and is not yet confirmed. Most finds on open lidar turn out to be published already, and a record that says so is a result too.
+
+> [!NOTE]
+> **This is an early release.** Dighouse finds large earthworks reliably and misses many small, low mounds, and so far no find from a search has gone past "worth a closer look". The quickest way to see what it does is to run it on a known site, where you can check its work against what is published.
+
+## Download and set up
+
+You don't need a GitHub account, Terminal or any coding to use Dighouse.
+
+**What you need**
+
+- A Mac with Apple silicon (M1 or later) and macOS 14 Sonoma or later. Intel Macs are not supported yet.
+- A ChatGPT account on a plan that includes Codex. Dighouse runs its AI through your account, so a search counts toward your plan's usage. The chat box shows how much you have left.
+- An internet connection. A search downloads a few megabytes of ground for each square kilometre.
+
+**Install it**
+
+1. Open the [latest release](https://github.com/chrissotraidis/dighouse/releases/latest). Under **Assets**, click the file whose name starts with `Dighouse-` and ends in `.dmg`.
+2. Open the downloaded file and drag **Dighouse** into **Applications**.
+3. Open Dighouse from Applications. If macOS says it cannot check the app, open **System Settings**, then **Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
+
+**The first launch** shows a short checklist and fixes what it can:
+
+1. **Install it** downloads OpenAI's Codex engine, which runs the agent, into Dighouse's own folder.
+2. **Sign in with ChatGPT** opens your browser. You sign in there, and Dighouse never sees your password.
+3. Dighouse prepares its archaeology tools, which takes about a minute the first time.
+4. You pick the AI model that runs the search. It must be able to read images.
+
+**Good first steps**
+
+- **Your first project.** On a fresh install, Home offers **Start your first project**: six steps at Serpent Mound, Ohio, about ten minutes, from getting the ground to deciding what a find is.
+- **A known site.** Under **Places to start** on Home, one press sets up Cahokia, the Newark Great Circle, a ring fort in Saxony or a wreck in Lake Huron.
+- **Test it blind.** The agent searches a famous site without being told which, then gets a score against what is published.
+- **What is this?** Type a place and see its ground in two views and what is on record nearby, in about a minute.
+- **Find something.** Choose how long; an hour is a good start. The agent picks a region with open lidar and little on record, searches it on its own, and brings back what needs your decision.
+
+[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) covers the first hour in more detail: deciding, what to do if something looks real, what stays on your Mac, and what to do when something goes wrong.
 
 ## What it cannot do
 
@@ -40,11 +84,74 @@ A **find** in Dighouse is a shape that might be built and is not yet confirmed. 
 - **Under water it is a pilot.** It reads NOAA's sonar surveys of US waters only. A wreck lying flat, buried in sediment, among rocks, or in a gap between survey lines will not show.
 - **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are not public, so "no match in the sources read" often means little was readable. Dighouse reads the open registers (Denmark's, Norway's, England's scheduled monuments and Navarre's), and every find's record names the registers and lists it was checked against, and when. A project says at the top whether its area can be checked against a register at all.
 - **It sees shapes in the ground, not artefacts.** Lidar cannot show buried deposits, pottery scatters, or a feature's date or culture.
-- **It needs a Mac and some setup.** It builds from source on an Apple silicon Mac today; the tools also run on their own in any harness that speaks the Model Context Protocol.
+- **It needs an Apple silicon Mac and a ChatGPT plan with Codex.** There is no Windows, Linux or iPad version. The tools also run on their own in any harness that speaks the Model Context Protocol.
+
+## Responsible use
+
+- **Do not visit or dig.** A find is a desk result. Digging or metal-detecting on a site destroys what it holds, and in many places it is illegal without a permit.
+- **Report, do not post.** Send a find to the heritage authority (in the United States, the state historic preservation office; in England, the local Historic Environment Record), not to social media. Published locations invite looting.
+- **Think of the people connected to a place.** Many sites, including the mound sites in the blind tests, matter to descendant communities. Consult them before anything is made public.
+- **Leave wrecks alone.** Many wrecks are war graves or protected by law, and many hold the remains of those who sailed them. Report a wreck find to NOAA's Office of National Marine Sanctuaries or the state's underwater archaeology program, never online.
+- **Keep locations private.** Dighouse keeps coordinates under `private/`. Export for mapping software writes a GeoJSON file there too; that file holds locations, so treat it as you would the site itself.
+
+## Questions people ask
+
+**Is it free?**
+Yes. Dighouse is free and open source under the Apache 2.0 licence. The AI runs on your own ChatGPT account, so it uses your plan's Codex usage. The public data it reads is free, and only Denmark's ground model needs a token, which is also free.
+
+**How much of my ChatGPT usage does a search take?**
+It depends on the model and how long the search runs. On the maintainer's plan, an hour of **Find something** in Norway used about 2% of the account's usage limit. Your plan's limits may differ. The chat box shows how much you have left, and you can stop a search at any time.
+
+**Do I need to know GitHub, Terminal or how to code?**
+No. Download the app from the release page and open it. A GitHub account is only needed to open an issue or to build Dighouse yourself. Questions are welcome on [Discord](#get-help-and-share-ideas).
+
+**Will it run on Windows, Linux, an Intel Mac or an iPad?**
+Not yet. The app is for Macs with Apple silicon. The archaeology tools are plain Python and also run without the app, in Codex ([for developers](#for-developers)); other systems have not been tested.
+
+**Which AI does it use?**
+OpenAI's Codex engine, signed in with your ChatGPT account. Any model your account offers that can read images can run a search; the benchmarks below used primary / 6.1 Terra, a low-cost one. With the [OpenCodex](https://github.com/lidge-jun/opencodex) router you can add models from other makers, so the second opinion on each find comes from a different company.
+
+**Has it discovered any new sites?**
+Not yet. So far no find from a search has gone past "worth a closer look". Dighouse never calls anything new. A find that matches nothing it read is recorded as "no match in the sources read", and confirming a site takes an archaeologist, often with fieldwork.
+
+**How good is it?**
+On thirteen known sites, searched blind, it found 67 of 105 published features. It finds large earthworks reliably and misses many small, low mounds. Every site, score and miss is under [Benchmarks](#benchmarks).
+
+**Where does my data go?**
+Each project is a folder on your Mac. Site locations stay in the project's `private/` folder, which never goes into its history or anything it shares. The AI models see pictures of the ground and the project's records, through your ChatGPT account. The public data services see the area you download, as any map website would. The app has no analytics or tracking.
+
+**Could this help looters?**
+Public lidar is already open to anyone. Dighouse is built to keep what it finds private: locations never leave `private/`, shared files are checked for coordinates before anything is published, and exports leave out pictures of finds that are not on a published record. See [Responsible use](#responsible-use).
+
+**I think I found something. What now?**
+Don't post the location anywhere, and don't visit or dig. Mark the find **Worth reporting** in Decide. The project's Data tab drafts a letter asking the records office whether it is already recorded, and a report for the heritage authority Dighouse names for that country. You read both and send them yourself.
+
+**Where can it search?**
+The United States, Canada, much of Europe, New Zealand and Shizuoka in Japan, plus the seafloor of US and Irish waters. The map on Home shades where open data reaches, and [Open data](#open-data) lists every source. Anywhere else, you can give the agent your own data.
+
+**Can I use my own lidar?**
+Yes. Give the agent a ground model (GeoTIFF) or a point cloud (LAS or LAZ) with a coordinate system in metres, such as UTM or a national grid, and it searches that like ground it fetched.
+
+**Can archaeologists, students or teachers use it?**
+Yes. A project is a folder of plain Markdown records with pictures, so it can be read without the app and handed to someone else. **File › Export Project** makes a zip without the locations, and **Carry on** picks up the work on another Mac.
+
+**Was Dighouse built with AI?**
+Yes. Dighouse was built with substantial AI assistance for code, tests, documentation and debugging. There is no audited share of AI-written code; the run logs in `docs/` state what was checked and how.
+
+**Why is it called Dighouse?**
+A dig house is the building where an excavation team lives, works and keeps its records. The app plays the same role for a search.
+
+## Get help and share ideas
+
+- **Discord.** Join [Kahris on Discord](https://discord.gg/xwHfUD2bxW), the maintainer's server for his open projects. When you join, pick **Dighouse (lidar archaeology)**, or add it later under **Channels & Roles**. That opens **dighouse-help** for setup and problems, **dighouse-chat** for what you tried and ideas, and **dighouse-news** for releases.
+- **GitHub issues** for bugs and new data sources: [open an issue](https://github.com/chrissotraidis/dighouse/issues/new/choose). This needs a free GitHub account.
+- **A security problem or a site location that leaked:** report it privately, as [SECURITY.md](SECURITY.md) explains, never in public.
+
+Never post where a site or a find is, on Discord, in an issue or anywhere else. Describe places by region. The Discord is set to block messages that hold coordinates.
 
 ## Benchmarks
 
-Each test is **blind**: the agent is not told the site, looks at the ground tile by tile, marks what it finds, and is scored against an answer key of published features before it may read any literature. Try one yourself from Home with **Test it on a known site**.
+Each test is **blind**: the agent is not told the site, looks at the ground tile by tile, marks what it finds, and is scored against an answer key of published features before it may read any literature. Try one yourself from Home with **Test it blind**.
 
 | Site | Data | Found of known | Missed | Not in the key |
 |---|---|---|---|---|
@@ -85,9 +192,6 @@ Measured rises are kept as a layer on the map rather than put to a person one by
 
 The second opinion takes about a second a find: the app sends the model the ground 120 m around each find, a few at a time, as soon as each area is done. It is a filter, not a confirmation. Rated blind on 102 crops of known ground, Claude Sonnet 5.5 called 19 of 24 published features built, and when it said "not built" it was right 91% of the time; when it said "built" it was right only 40% of the time. Each record says so: a second opinion that disagrees counts, one that agrees is a weak check.
 
-> [!NOTE]
-> Dighouse builds from source today. The app is signed for local use and is not yet notarized. The archaeology tools also run on their own in Codex or any harness that speaks the Model Context Protocol.
-
 ## Why it exists
 
 In November 2026 Pietro Miotti let AI agents search about 1,200 km² of NASA lidar overnight, and they marked a Maya site. It turned out to be already published. Finding things was cheap; checking them was the part that failed.
@@ -97,8 +201,6 @@ Dighouse is built around the check. Every find gets a slice through the raw lase
 A chat app can talk about archaeology. It cannot download a survey, look at every tile of an area, cut a slice through the points, or keep a record that someone else can pick up. Dighouse gives the same kind of model those abilities, with rules that hold whichever model is running.
 
 We checked. Given the Mound City blind test box with no tools, the same model that found 19 of 19 mounds there through Dighouse answered that it could not reliably identify, count or place any features from the coordinates alone. That is the right answer for a chat app, and the reason the tools exist.
-
-*A dig house is the building where an excavation team lives, works and keeps its records. The app plays the same role for a search.*
 
 ## How a search works
 
@@ -128,20 +230,16 @@ Take the stages one at a time, or press **Find and report back** and the agent c
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.png" alt="Home: the headline beside a slider that takes the trees off Serpent Mound, the message box, four ways in (Pick a place, Suggest a place, Test it blind, Open a project) and the start of Places to start"><br><sub><b>Home.</b> Four ways in, and known sites ready to fetch right below them.</sub></td>
+    <td width="50%"><img src="docs/images/home.png" alt="Home: the headline beside a slider that takes the trees off Serpent Mound, Find something, the message box, four ways in (Pick a place, Suggest a place, Test it blind, Open a project) and the start of Places to start"><br><sub><b>Home.</b> <b>Find something</b> sets the agent searching on its own, and known sites to try are one press away.</sub></td>
+    <td width="50%"><img src="docs/images/decide.png" alt="Decide at Angel Mounds: one find with a close view 60 m across, the whole tile and a slice through the laser points, its measurements, and keys for Natural, Modern, Published and Worth reporting"><br><sub><b>Decide.</b> One find at a time: a close view, the whole tile and a slice through the laser points. A key records your decision and your reason.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/record.png" alt="A find's record at Angel Mounds beside the project page: its relief, its slice, what the agent suggests, the evidence and each check, with Location kept on this Mac at the top"><br><sub><b>A record.</b> Each find with its relief, its slice and every check. Its location stays on your Mac.</sub></td>
     <td width="50%"><img src="docs/images/new-project.png" alt="New project on a world map shaded where open lidar reaches: the United States, Canada, Europe, and dots for surveys flown for archaeology, with a legend"><br><sub><b>New project.</b> The shaded areas have open lidar. Click to zoom in, click again to place the area, and see which surveys cover it.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/maiden-castle.png" alt="Maiden Castle in England from Environment Agency lidar: the project overview with what happens next beside the tiled map of the ramparts and five finds"><br><sub><b>A project.</b> Maiden Castle from England's 1 m ground model. The card at the top says what the agent does next, why, and what follows.</sub></td>
-    <td width="50%"><img src="docs/images/record.png" alt="A find's record at Angel Mounds with its relief, its slice, and the checks: in the ground, second opinion, open maps, what is published"><br><sub><b>A record.</b> Each find with its relief, its slice and every check.</sub></td>
-  </tr>
-  <tr>
     <td width="50%"><img src="docs/images/toolbox.png" alt="The Toolbox on the Check stage of a real search at Cahokia: a line dragged across Monks Mound and the slice it cuts drawn beside it"><br><sub><b>Toolbox.</b> One real search at Cahokia in six stages, each a picture to press or drag. Here a line across Monks Mound draws its slice.</sub></td>
-    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: a map of the world showing where open lidar reaches, and a tile for each service with its status"><br><sub><b>Open data.</b> Where each kind of data reaches, from the United States to New Zealand, and a page for every service the tools read. OpenStreetMap was partly online when this was taken.</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/images/workflows.png" alt="The Workflows tab: three lanes for the agent, a second model and you, with the eight parts of a search in order"><br><sub><b>Workflows.</b> Who does each part of a search, and where the open project stands.</sub></td>
-    <td width="50%"><img src="docs/images/how-it-runs.png" alt="Settings, How it runs: you, the model, the engine and the tools in a row, each with its state and one button"><br><sub><b>How it runs.</b> You, the model, the engine and the tools, each with its state now.</sub></td>
+    <td width="50%"><img src="docs/images/open-data.png" alt="The Open data tab: a map of the world showing where open lidar reaches, and a tile for each service with its status"><br><sub><b>Open data.</b> Where each kind of data reaches, from the United States to New Zealand, and a page for every service the tools read.</sub></td>
   </tr>
 </table>
 
@@ -153,9 +251,9 @@ Take the stages one at a time, or press **Find and report back** and the agent c
 
 **Also in the app:** a ten-minute first project at Serpent Mound, a chat with `/` commands, `@` mentions and ⌘K, any model through the [OpenCodex](https://github.com/lidge-jun/opencodex) router (so a different maker's model can give the second opinion), three colour looks and five text sizes.
 
-## Get started
+## For developers
 
-You need a Mac with Apple silicon and macOS 14 or later, and a ChatGPT account that can use Codex. Download the disk image from [Releases](https://github.com/chrissotraidis/dighouse/releases), drag Dighouse to Applications and open it; the first launch installs the agent engine and signs you in with ChatGPT from inside the app. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) covers the first hour: the first search, deciding, and what to do if something looks real.
+Dighouse is a SwiftUI app (`app/`) and a set of archaeology tools in Python (`src/dighouse`) that speak the Model Context Protocol.
 
 **Build it yourself.** You also need Xcode (free from the App Store). In Terminal:
 
@@ -266,14 +364,6 @@ These live in the tools, so they hold whichever model is running.
 - Nothing is ever called new. A record says how many sources were read and that none matched.
 - Locations are stored only under `private/`. Records, notes and run summaries carry no coordinates, because published coordinates invite looting.
 
-## Responsible use
-
-- **Do not visit or dig.** A find is a desk result. Digging or metal-detecting on a site destroys what it holds, and in many places it is illegal without a permit.
-- **Report, do not post.** Send a find to the heritage authority (in the United States, the state historic preservation office; in England, the local Historic Environment Record), not to social media. Published locations invite looting.
-- **Think of the people connected to a place.** Many sites, including the mound sites in the tests above, matter to descendant communities. Consult them before anything is made public.
-- **Leave wrecks alone.** Many wrecks are war graves or protected by law, and many hold the remains of those who sailed them. Report a wreck find to NOAA's Office of National Marine Sanctuaries or the state's underwater archaeology program, never online.
-- **Keep locations private.** Dighouse keeps coordinates under `private/`. Export for mapping software writes a GeoJSON file there too; that file holds locations, so treat it as you would the site itself.
-
 ## A project is a folder
 
 ~~~
@@ -305,7 +395,7 @@ Markdown is the record of truth, so a project works offline and can be handed to
 
 The [eight-hour research session and replays](docs/2026-11-20-research-session.md) record where the coordinator intervened, why Cahokia's ranking changed, and what still needs a full-session test. Earlier app tests are documented in [TEST_LOOP.md](docs/TEST_LOOP.md), [REFINE_LOOP.md](docs/REFINE_LOOP.md), [POLISH_LOOP.md](docs/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/GOAL_LOOP.md).
 
-- There is no notarized download yet.
+- Releases are signed with a Developer ID. Until a release is notarized by Apple, macOS asks once before opening it.
 - A vision model's eye is the weak point of any search; the benchmarks above show where it is weak. The checks exist because a model marks shapes that are not there, and misses some that are.
 - Open services go down and rate-limit. The tools say "could not check" rather than guess.
 
@@ -317,7 +407,7 @@ Issues and pull requests are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) explain
 
 **Only people are credited.** Contributors may use AI tools, but no AI is listed as an author or co-author of a commit or pull request; a check enforces it. The policy for people and agents is in [AGENTS.md](AGENTS.md).
 
-**AI disclosure.** Dighouse was built with substantial AI assistance for code, tests, documentation and debugging. There is no audited share of AI-written code; the run logs state what was checked and how.
+Questions and ideas are welcome in **dighouse-chat** on [Discord](#get-help-and-share-ideas). How Dighouse was built is under [Questions people ask](#questions-people-ask).
 
 ## Acknowledgements
 

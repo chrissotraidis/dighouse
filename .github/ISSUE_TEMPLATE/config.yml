@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: A question, help with setup, or an idea
+    url: https://discord.gg/xwHfUD2bxW
+    about: Ask in dighouse-help or dighouse-chat on Discord. Pick "Dighouse (lidar archaeology)" when you join.
   - name: A security problem, or a site location that leaked
     url: https://github.com/chrissotraidis/dighouse/security/advisories/new
     about: Report it privately, never in a public issue. See SECURITY.md.
