@@ -448,7 +448,7 @@ struct Sidebar: View {
         let working = threads.contains { chat.live[$0.id] != nil || chat.goals.contains($0.id) }
         // The name opens the project's overview; only the arrow folds its chats away.
         Button {
-            if current { app.newChat() } else { app.open(project) }
+            if current { app.newChat(inProject: true) } else { app.open(project) }
         } label: {
             HStack(spacing: 8) {
                 Color.clear.frame(width: 16, height: 20)   // room for the fold button laid over the row

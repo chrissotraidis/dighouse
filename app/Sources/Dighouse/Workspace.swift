@@ -257,8 +257,13 @@ struct MapView: View {
                         if showPins {
                             // With many finds, labels show on the one pointed at or chosen, or once zoomed in.
                             let quiet = store.candidates.filter { !$0.inLayer }.count > 15 && zoom < 2
+                            // Looked up by tile once, not searched for each pin: a sweep leaves over a thousand finds.
+                            let byTile = Dictionary(spots.map { ($0.tile.id, $0) }, uniquingKeysWith: { a, _ in a })
+                            // Hundreds of finds kept on the map would each be one more element for VoiceOver to read
+                            // (and they stalled the accessibility tree at 1,246); the finds put to a person stay.
+                            let quietLayer = store.candidates.filter(\.inLayer).count > 50
                             ForEach(store.candidates) { c in
-                                if let spot = spots.first(where: { $0.tile.id == c.tile }) {
+                                if let spot = byTile[c.tile] {
                                     Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer, quiet: quiet)
                                         .offset(x: (spot.x + c.x * spot.w) * scale - 8,
                                                 y: (spot.y + c.y * spot.h) * scale - 8)
@@ -268,6 +273,7 @@ struct MapView: View {
                                             store.selectedTile = c.tile
                                         }
                                         .help("Click to see it, double-click to open its record")
+                                        .accessibilityHidden(quietLayer && c.inLayer)
                                 }
                             }
                         }

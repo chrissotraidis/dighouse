@@ -502,11 +502,12 @@ final class AppState: ObservableObject {
         }
     }
 
-    func newChat() {
+    /// New chat in the sidebar, the menu and the command list starts a chat in no project, wherever you are. A project's
+    /// own row (and /new inside it) starts one in that project; the composer's Project menu moves an empty chat either way.
+    func newChat(inProject: Bool = false) {
         sidebarPeek = false
         if layout == .workspace { layout = .split }
-        if route != .chat, store.current != nil {
-            // From Home, Toolbox or Settings, New chat means a general chat, not one inside whichever project was last open.
+        if !inProject, store.current != nil {
             store.close()
             Task { @MainActor in await chat.open(project: nil) }
         } else {

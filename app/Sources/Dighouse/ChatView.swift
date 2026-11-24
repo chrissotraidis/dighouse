@@ -787,6 +787,7 @@ struct Composer: View {
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var store: ProjectStore
     @State private var showFlows = false
+    @State private var showWhere = false
     @State private var showAttach = false
     @State private var dropping = false
     /// The highlighted row in the command list, and the draft at which Escape closed it.
@@ -1079,6 +1080,25 @@ struct Composer: View {
                 WorkflowMenu { showFlows = false }.withApp(app).popoverSurface()
             }
 
+            // Before the first message, say where the chat will go and let the person move it.
+            if chat.active == nil && !chat.running {
+                Button { showWhere.toggle() } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: store.current == nil ? "bubble.left" : "folder").font(.system(size: 11.5 * Theme.scale))
+                        Text(chipName).font(.system(size: 12.5 * Theme.scale)).lineLimit(1)
+                        Image(systemName: "chevron.down").font(.system(size: 9 * Theme.scale, weight: .semibold))
+                    }
+                    .foregroundStyle(Theme.dim).padding(.horizontal, 8).frame(height: 30).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(store.current == nil ? "This chat belongs to no project. Choose one to start it there."
+                                           : "This chat starts in \(store.current!.name). Choose No project for a chat of its own.")
+                .accessibilityLabel("Project: \(store.current?.name ?? "No project")")
+                .popover(isPresented: $showWhere, arrowEdge: .top) {
+                    MenuPanel(entries: whereChoices, width: 280) { showWhere = false }.popoverSurface()
+                }
+            }
+
             Spacer(minLength: 4)
 
             if chat.preparing {
@@ -1100,6 +1120,25 @@ struct Composer: View {
                 .help(chat.running ? "Send this to the running agent" : "Send")
             }
         }
+    }
+
+    /// The open project's name, short enough to sit beside Workflows.
+    private var chipName: String {
+        guard let name = store.current?.name else { return "No project" }
+        return name.count > 28 ? String(name.prefix(27)) + "…" : name
+    }
+
+    /// Where a new chat goes: no project, or one of the projects in the list, the open one ticked.
+    private var whereChoices: [MenuEntry] {
+        var out: [MenuEntry] = [.header("Start this chat in"),
+                                MenuEntry(title: "No project", icon: "bubble.left", checked: store.current == nil) { app.newChat() }]
+        out.append(.divider)
+        for project in store.projects.prefix(12) {
+            out.append(MenuEntry(title: project.name, icon: "folder", checked: project == store.current) {
+                if project != store.current { app.open(project) }
+            })
+        }
+        return out
     }
 
     private func send() {

@@ -161,7 +161,7 @@ extension AppState {
         case "make-project": makeProject()
         case "publish": showPublishing()
         case "review": reviewing = true
-        case "new": newChat()
+        case "new": newChat(inProject: true)
         case "model": pickerRequest = .model
         case "effort": pickerRequest = .effort
         case "rename":
