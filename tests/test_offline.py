@@ -81,6 +81,8 @@ def test_full_chain(tmp_path, survey, monkeypatch):
     assert set(views["views"]) == set(tiles.FIND_VIEWS) and views["metres"] == 60
     first = p.root / views["views"]["sky_view"]
     assert first.parent == p.path("data", "views") and _Image.open(first).size == (480, 480)
+    surface = json.loads((p.root / views["surface"]).read_text())   # the 3D view's heights, in metres above the lowest
+    assert len(surface["z"]) == surface["cells"][0] * surface["cells"][1] and min(surface["z"]) == 0.0
     stamp = first.stat().st_mtime_ns
     server.find_views(root, "C-001")
     assert first.stat().st_mtime_ns == stamp

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageDraw
 
 from . import terrain as T
@@ -117,7 +119,41 @@ def find_views(p: Project, cid: str, metres: float = 60.0, size: int = 480, styl
             ImageDraw.Draw(img).ellipse([size / 2 - ring, size / 2 - ring, size / 2 + ring, size / 2 + ring],
                                         outline=(80, 160, 255), width=3)
             img.save(files[s])
-    return {"metres": metres, "views": {s: str(f.relative_to(p.root)) for s, f in files.items()}}
+    out = {"metres": metres, "views": {s: str(f.relative_to(p.root)) for s, f in files.items()}}
+    if not suffix:
+        out["surface"] = str(find_surface(p, cid).relative_to(p.root))
+    return out
+
+
+def find_surface(p: Project, cid: str, metres: float = 120.0, cells: int = 120) -> Path:
+    """The bare ground around a find as a grid of heights for the 3D view: a square metres across, cells a side, in
+    metres above its lowest point, row by row from the north. Kept under data/views; nothing in it says where it is."""
+    f = p.path("data", "views", f"{cid}-surface.json")
+    if f.exists():
+        return f
+    from scipy import ndimage
+    loc = p.load("locations", {})[cid]
+    tile = p.load("tiles", {})[loc["tile"]]
+    meta = p.load("terrains", {})[tile["terrain"]]
+    res = meta["res"]
+    r, c, h, w = tile["window"]
+    cy, cx = int(r + loc["y"] * h), int(c + loc["x"] * w)
+    half = int(round(metres / 2 / res))
+    import rasterio
+    with rasterio.open(p.path(meta["file"])) as src:
+        rows, cols = src.height, src.width
+    r0, c0 = max(cy - half, 0), max(cx - half, 0)
+    r1, c1 = min(cy + half, rows), min(cx + half, cols)
+    dtm, _, _ = T.load_terrain(p.path(meta["file"]), (r0, c0, r1 - r0, c1 - c0))
+    z = np.where(np.isfinite(dtm), dtm, np.nanmedian(dtm)).astype(np.float64)
+    z = ndimage.zoom(z, (cells / z.shape[0], cells / z.shape[1]), order=1)
+    z -= float(z.min())
+    across = ((c1 - c0) * res, (r1 - r0) * res)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"width_m": round(across[0], 1), "height_m": round(across[1], 1), "cells": [int(z.shape[1]), int(z.shape[0])],
+                             "find": [round((cx - c0) / max(c1 - c0, 1), 3), round((cy - r0) / max(r1 - r0, 1), 3)],
+                             "z": [round(float(v), 2) for v in z.ravel()]}))
+    return f
 
 
 def tile_xy(p: Project, tile_id: str, fx: float, fy: float) -> tuple[float, float, int]:

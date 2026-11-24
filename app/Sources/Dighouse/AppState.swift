@@ -1128,7 +1128,9 @@ final class AppState: ObservableObject {
     /// Draw a find's close views (find_views) if they are not on disk yet. Returns once they are, or on failure.
     func ensureViews(_ c: Candidate) async {
         let root = (c.folder as NSString).deletingLastPathComponent
-        guard engine.ready, !FileManager.default.fileExists(atPath: FindCard.viewPath(c, FindCard.views.last!.style)),
+        let surface = root + "/data/views/\(c.id)-surface.json"
+        guard engine.ready, !FileManager.default.fileExists(atPath: FindCard.viewPath(c, FindCard.views.last!.style))
+                || !FileManager.default.fileExists(atPath: surface),
               !drawingViews.contains(root + c.id) else { return }
         drawingViews.insert(root + c.id)
         defer { drawingViews.remove(root + c.id) }

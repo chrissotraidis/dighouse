@@ -476,6 +476,7 @@ struct FindCard: View {
     @State private var drawn = 0
     @State private var comparing = false
     @State private var cuttingMaps = false
+    @State private var showing3D = false
 
     /// Each view with one line saying what it shows. The last three are from the Relief Visualization Toolbox.
     static let views: [(style: String, title: String, shows: String)] = [
@@ -764,6 +765,12 @@ struct FindCard: View {
         VStack(alignment: .leading, spacing: 6) {
             flights(c)
             oldMaps(c)
+            let surface = (c.folder as NSString).deletingLastPathComponent + "/data/views/\(c.id)-surface.json"
+            if FileManager.default.fileExists(atPath: surface) {
+                Button("See it in 3D") { showing3D = true }.buttonStyle(SecondaryButton())
+                    .help("The ground 120 m around the find in 3D, with a person 1.70 m tall for scale")
+                    .sheet(isPresented: $showing3D) { Relief3D(title: "\(c.id) in 3D", path: surface) }
+            }
             if let look = c.checks["second_look"] as? JSON, let note = look["note"] as? String, !note.isEmpty {
                 DisclosureGroup("What the second model said") {
                     Text("\(look["model"] as? String ?? ""): \(note) " + RecordsView.secondMeaning(look["agrees"] as? Bool == true))
