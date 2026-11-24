@@ -9,6 +9,7 @@ import re
 from urllib.parse import unquote
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import numpy as np
@@ -553,17 +554,42 @@ def look_at_tiles(project: str) -> dict:
 
 
 @tool
-def sweep(project: str, dataset: str, areas: str) -> dict:
+def sweep(project: str, dataset: str, areas: str, prepare: str = "") -> dict:
     """Search up to four areas of a ready-made ground model at once: their ground is fetched side by side, cut into
     tiles, and every tile looked at in bulk, with a find for each shape the bulk look points at. areas is
     "name=west,south,east,north" for each area, separated by "|"; each box under 6 square km, named after the place
     (such as "Elverum B1"), never coordinates. Returns one shortlist across the areas, best first, for the close look
     (run_status lists the tiles still waiting for it), and what failed. Then add_measured_rises and check_finds, once
-    each. For a national ground model or us:3dep-dem-1m; fetch raw points area by area with fetch_terrain."""
-    from concurrent.futures import ThreadPoolExecutor
-    if dataset not in national.NATIONAL:
-        raise ValueError("sweep takes a ready-made ground model (a national one, or us:3dep-dem-1m). "
-                         "Fetch raw points area by area with fetch_terrain.")
+    each. For a national ground model or us:3dep-dem-1m; fetch raw points area by area with fetch_terrain.
+    prepare names the next sweep's areas, written the same way: while you look closely at this sweep's shortlist they are
+    fetched, cut and looked at in bulk in the background, and a later sweep of exactly those areas returns at once (or
+    waits for the rest), so the ground is never the wait."""
+    if prepare.strip():
+        _parse_areas(prepare)   # a badly written next area is said now, before this sweep's work, not lost in the background
+    key = _sweep_key(project, dataset, areas)
+    ready = _PREPARED.pop(key, None)
+    if ready is not None:
+        # Prepared in the background by an earlier sweep: wait for what is left of it, well inside the engine's 20 minutes.
+        out = ready.result(timeout=15 * 60)
+        out["prepared_in_background"] = True
+    else:
+        out = _sweep(project, dataset, areas)
+    if prepare.strip():
+        _PREPARED[_sweep_key(project, dataset, prepare)] = _BACKGROUND.submit(_sweep, project, dataset, prepare, True)
+        out["preparing"] = "The next areas are being fetched and looked at in bulk; sweep them when this shortlist is done."
+    return out
+
+
+# Sweeps prepared ahead, one at a time, by project, dataset and areas. They live as long as the tool server does.
+_PREPARED: dict = {}
+_BACKGROUND = ThreadPoolExecutor(1)
+
+
+def _sweep_key(project: str, dataset: str, areas: str) -> tuple:
+    return (str(Path(project).resolve()), dataset, tuple(sorted((n, tuple(round(v, 5) for v in b)) for n, b in _parse_areas(areas))))
+
+
+def _parse_areas(areas: str) -> list:
     parts = []
     for chunk in [c for c in areas.split("|") if c.strip()]:
         name, _, box = chunk.partition("=")
@@ -574,6 +600,15 @@ def sweep(project: str, dataset: str, areas: str) -> dict:
         parts.append((name.strip(), [w, s, e, n]))
     if not 1 <= len(parts) <= 4:
         raise ValueError("Give one to four areas.")
+    return parts
+
+
+def _sweep(project: str, dataset: str, areas: str, background: bool = False) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
+    if dataset not in national.NATIONAL:
+        raise ValueError("sweep takes a ready-made ground model (a national one, or us:3dep-dem-1m). "
+                         "Fetch raw points area by area with fetch_terrain.")
+    parts = _parse_areas(areas)
     p = Project(project).check()
     answers.guard_calibration(p)
     started, failed = time.time(), []
@@ -598,22 +633,33 @@ def sweep(project: str, dataset: str, areas: str) -> dict:
                           "unreadable": cut["unreadable"]})
     if not got:
         raise ValueError("No area could be fetched: " + "; ".join(failed))
-    if fetch_minutes > 12:
+    if fetch_minutes > 12 and not background:   # nothing waits on a sweep prepared in the background
         p.note(f"Swept {len(got)} areas: fetched and cut in {fetch_minutes:.1f} min; the bulk look is left to look_at_tiles")
         return {"areas": areas_out, "failed": failed, "minutes": round((time.time() - started) / 60, 1),
                 "next": "The fetch took most of the time this tool may take, so the tiles are cut but not yet looked at: call "
                         "look_at_tiles once, then look closely at the top of its shortlist as after a sweep."}
     looked = look_at_tiles(project)
     short = looked["shortlist"]
+    prepared = {}
+    if background:
+        # Nothing waits on a prepared sweep, so it also adds the measured rises and checks every new find: when the agent
+        # sweeps these areas, only the close look and the suggestions are left.
+        rises = add_measured_rises(project)
+        ids = looked["finds_opened"] + rises["added"]
+        if ids:
+            check_finds(project, ",".join(ids))
+        prepared = {"measured_rises_added": rises["count"], "finds_checked": len(ids)}
     # The measured rises and the checks are left to their own calls: together with the fetch and the bulk look they can
     # take longer than the engine waits for one tool (a sweep of three areas took 23 minutes; the engine waits 20).
     p.note(f"Swept {len(got)} areas in {round((time.time() - started) / 60, 1)} min: {looked['looked_at']} tiles looked at in bulk, "
            f"{len(short)} for a closer look, {len(looked['finds_opened'])} finds opened" + (f"; failed: {'; '.join(failed)}" if failed else ""))
     return {"areas": areas_out, "failed": failed, "minutes": round((time.time() - started) / 60, 1),
             "looked_at": looked["looked_at"], "shortlisted": len(short), "shortlist": short[:48],
-            "finds_opened": len(looked["finds_opened"]),
-            "next": "Look closely at the top of the shortlist, then add_measured_rises and check_finds once each, and "
-                    "suggest a decision on each find run_status lists under to_suggest."}
+            "finds_opened": len(looked["finds_opened"]), **prepared,
+            "next": ("The measured rises are added and every new find is checked. Look closely at the top of the shortlist "
+                     "and suggest a decision on each find run_status lists under to_suggest." if background else
+                     "Look closely at the top of the shortlist, then add_measured_rises and check_finds once each, and "
+                     "suggest a decision on each find run_status lists under to_suggest.")}
 
 
 @tool
@@ -739,6 +785,12 @@ def add_measured_rises(project: str, per_km2: float = 40.0) -> dict:
     skipped. Then slice, check and suggest a decision on each like any other find."""
     p = Project(project).check()
     answers.guard_calibration(p)
+    # One at a time: a sweep prepared in the background adds its rises while the agent may call this too.
+    with p.locked("measured_rises"):
+        return _add_measured_rises(p, per_km2)
+
+
+def _add_measured_rises(p: Project, per_km2: float) -> dict:
     tiles_ = p.load("tiles", {}) or {}
     done = {tiles_[m["tile"]]["terrain"] for m in ledger.everything(p) if ledger.is_rise(m) and m.get("tile") in tiles_}
     from concurrent.futures import ThreadPoolExecutor

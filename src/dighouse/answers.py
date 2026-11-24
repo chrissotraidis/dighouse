@@ -442,21 +442,31 @@ def _key_source(k: dict) -> str:
     return next((p for p, v in SOURCE_OF.items() if v.lower().split()[0] in d), k["data"])
 
 
+def _family(source: str, data: str = "") -> str:
+    """Which survey a dataset or key's lidar comes from, for choosing a calibration. USGS's ready-made 1 m model
+    (us:3dep-dem-1m) and its raw points (usgs:...) are both 3DEP; NOAA's seafloor surveys (us:noaa-bag) are not."""
+    if source.startswith("us:noaa") or "noaa" in data.lower():
+        return "noaa"
+    if source.startswith(("us:3dep", "usgs")) or source == "us":
+        return "usgs"
+    return source.split(":")[0]
+
+
 def calibration_site(box: list[float], dataset: str = "") -> dict:
     """The known site that will calibrate a search of this area: the nearest key whose lidar comes from the same source."""
     cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
-    want = dataset.split(":")[0] if dataset else ""
+    want = _family(dataset) if dataset else ""
     rows = []
     for k in keys():
         kx, ky = (k["box"][0] + k["box"][2]) / 2, (k["box"][1] + k["box"][3]) / 2
         km = math.hypot((kx - cx) * 111.32 * math.cos(math.radians(cy)), (ky - cy) * 110.54)
-        rows.append((not want or _key_source(k) == want, -km, k))
+        rows.append((not want or _family(_key_source(k), k["data"]) == want, -km, k))
     same = [r for r in rows if r[0]]
     if not same:
         return {"available": False, "same_source": False, "how": "No blind reference for this lidar source."}
     _, neg_km, k = max(same, key=lambda r: r[1])
     out = {"site": k["id"], "name": k["name"], "place": k["place"], "data": k["data"], "km_away": round(-neg_km),
-           "same_source": _key_source(k) == want if want else None,
+           "same_source": _family(_key_source(k), k["data"]) == want if want else None,
            "how": f"start_test with site {k['id']}, run it blind to score_test, then record_calibration on this project."}
     recent = pooled_scores(k["id"], [dataset]) if dataset else []
     if recent:

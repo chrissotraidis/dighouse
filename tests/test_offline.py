@@ -1164,3 +1164,33 @@ def test_two_flights_say_when_a_rise_appeared(monkeypatch):
     ground["usgs:OH_2010"] = mound
     assert flights.compare_at(-82.0, 39.7, 12.0)[0]["answer"] == "present in both flights, 2010 and 2019"
     assert flights.flown("USGS_LPC_IN_Vanderburgh_2013_LAS_2016") == 2013 and flights.flown("IL_10CoNRCS_3_D23") is None
+
+
+def test_a_sweep_prepares_the_next_areas_in_the_background(monkeypatch, tmp_path):
+    import threading
+    calls, started = [], threading.Event()
+
+    def fake(project, dataset, areas, background=False):
+        calls.append(areas)
+        assert background == ("B1" in areas)
+        if "B1" in areas:
+            started.set()
+        return {"areas": [a.split("=")[0] for a in areas.split("|")], "shortlisted": 3}
+
+    monkeypatch.setattr(server, "_sweep", fake)
+    first = server.sweep(str(tmp_path), "no:nhm-dtm-1m", "A1=10.0,60.0,10.01,60.01", prepare="B1=10.02,60.0,10.03,60.01")
+    assert first["areas"] == ["A1"] and "preparing" in first
+    assert started.wait(5)
+    second = server.sweep(str(tmp_path), "no:nhm-dtm-1m", "B1=10.02,60.0,10.03,60.01")
+    assert second["areas"] == ["B1"] and second["prepared_in_background"] and calls.count("B1=10.02,60.0,10.03,60.01") == 1
+    with pytest.raises(ValueError, match="Could not read the area"):
+        server.sweep(str(tmp_path), "no:nhm-dtm-1m", "A1=10.0,60.0,10.01,60.01", prepare="B2=near the river")
+
+
+def test_a_land_search_on_usgs_ground_calibrates_on_land():
+    # us:3dep-dem-1m and NOAA's seafloor surveys both start "us"; a land search must not be scored on a wreck.
+    from dighouse import answers
+    land = answers.calibration_site([-91.0, 35.0, -90.9, 35.1], "us:3dep-dem-1m")
+    sea = answers.calibration_site([-83.5, 45.0, -83.4, 45.1], "us:noaa-bag")
+    assert land["site"] in {"cahokia", "mound-city", "angel-mounds", "serpent-mound"} and land["same_source"]
+    assert sea["site"].startswith("thunder-bay")
