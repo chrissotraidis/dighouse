@@ -828,7 +828,7 @@ def cut_section(project: str, tile: str, x1: float, y1: float, x2: float, y2: fl
     return _reply(stats, f)
 
 
-def _file_section(p: Project, terrain: str, tile: str, a, b, width_m: float, candidate: str = "") -> tuple[dict, object]:
+def _file_section(p: Project, terrain: str, tile: str, a, b, width_m: float, candidate: str = "", key: str = "section") -> tuple[dict, object]:
     """Cut a slice between two points in the terrain's coordinates, judge whether the feature is in the ground, and file
     it on the candidate's record (or beside the tile when there is no candidate)."""
     img, stats = section.cut(p, terrain, a, b, width_m)
@@ -845,13 +845,35 @@ def _file_section(p: Project, terrain: str, tile: str, a, b, width_m: float, can
     if not stats["has_vegetation_returns"] and not stats.get("from_ground_model_only"):
         stats["note"] = "This dataset holds ground returns only, so the slice cannot show the canopy."
     if candidate:
-        f = p.path("candidates", "img", f"{candidate}-section.png")
+        # The west-to-east slice is "section"; the north-to-south one beside it is "section_ns".
+        f = p.path("candidates", "img", f"{candidate}-{key.replace('_', '-')}.png")
         img.save(f)
-        ledger.set_check(p, candidate, "section", {**stats, "image": True})
+        ledger.set_check(p, candidate, key, {**stats, "image": True})
     else:
         f = p.path("data", "tiles", f"{tile}-section.png")
         img.save(f)
     return stats, f
+
+
+def _file_context(p: Project, ids: list[str]) -> None:
+    """The numbers a find card shows beside the pictures: how many other finds lie within 200 m, and how many ground
+    returns per square metre the lidar under it has (none for a ready-made model). Filed as the find's "context"."""
+    places = p.load("locations", {}) or {}
+    terrains = p.load("terrains", {}) or {}
+    tile_state = p.load("tiles", {}) or {}
+    known = [(cid, v) for cid, v in places.items() if "lon" in v and "lat" in v]
+    if not known:
+        return
+    lon = np.array([v["lon"] for _, v in known]); lat = np.array([v["lat"] for _, v in known])
+    index = {cid: i for i, (cid, _) in enumerate(known)}
+    for cid in ids:
+        i = index.get(cid)
+        if i is None:
+            continue
+        dx = (lon - lon[i]) * 111_320 * np.cos(np.radians(lat[i])); dy = (lat - lat[i]) * 110_540
+        near = int(((dx * dx + dy * dy) < 200 * 200).sum()) - 1
+        meta = terrains.get(tile_state.get(places[cid].get("tile"), {}).get("terrain"), {})
+        ledger.set_check(p, cid, "context", {"finds_within_200m": near, "ground_points_per_m2": meta.get("ground_points_per_m2")})
 
 
 @tool
@@ -881,7 +903,12 @@ def check_finds(project: str, candidates: str = "all") -> dict:
             length = min(120.0, max(30.0, 3 * width))
             place = places[cid]
             x, y, _ = tiles.tile_xy(p, place["tile"], place["x"], place["y"])
-            stats, _ = _file_section(p, tile_state[place["tile"]]["terrain"], place["tile"], (x - length / 2, y), (x + length / 2, y), 4.0, cid)
+            terrain = tile_state[place["tile"]]["terrain"]
+            stats, _ = _file_section(p, terrain, place["tile"], (x - length / 2, y), (x + length / 2, y), 4.0, cid)
+            try:  # the same slice north to south, for a person to switch to on the find card
+                _file_section(p, terrain, place["tile"], (x, y + length / 2), (x, y - length / 2), 4.0, cid, key="section_ns")
+            except Exception:
+                pass
             row.update(height_m=stats.get("feature_height_m"), in_ground=stats.get("in_ground"), rise_m=shape.get("rise_m"),
                        pit_beside_m=shape.get("pit_beside_m"), symmetry=shape.get("symmetry"), hints=shape.get("hints", []))
         except Exception as exc:
@@ -891,6 +918,7 @@ def check_finds(project: str, candidates: str = "all") -> dict:
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(8) as pool:
         rows = list(pool.map(slice_one, todo))
+    _file_context(p, [m["id"] for m in todo])
 
     # The map checks wait on a public server, so three run at once; each writes only its own find's record.
     def maps(row: dict) -> None:

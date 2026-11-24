@@ -115,10 +115,21 @@ def _draw(s: np.ndarray, z: np.ndarray, ground: np.ndarray, length: float, legen
     d.line([(MARGIN, H - 18), (MARGIN + bar_px, H - 18)], fill=ink, width=3)
     d.text((MARGIN + bar_px + 10, H - 18), f"{bar_m} m", fill=ink, font=font, anchor="lm")
     if len(z):
-        v_m = 5 if z1 - z0 < 30 else 10
+        # The largest round height that fits in most of the picture, so its label stays on it.
+        v_m = next((m for m in (10, 5, 2, 1, 0.5) if m <= 0.7 * (z1 - z0)), 0.5)
         v_px = v_m / (z1 - z0) * (H - 2 * MARGIN)
         d.line([(18, H - MARGIN), (18, H - MARGIN - v_px)], fill=ink, width=3)
-        d.text((26, H - MARGIN - v_px), f"{v_m} m", fill=ink, font=font, anchor="lm")
+        d.text((26, H - MARGIN - v_px), f"{v_m:g} m", fill=ink, font=font, anchor="lm")
+    if len(z):
+        # A person 1.70 m tall standing on the ground at the right end, to the slice's height scale.
+        right = s > length * 0.9
+        zr = float(np.median(z[ground & right])) if (ground & right).any() else float(z[-1])
+        gx, gy = W - MARGIN - 24, H - MARGIN - (zr - z0) / (z1 - z0) * (H - 2 * MARGIN)
+        h_px = max(14.0, 1.7 / (z1 - z0) * (H - 2 * MARGIN))
+        head = max(3.0, h_px * 0.12)
+        d.line([(gx, gy), (gx, gy - h_px + 2 * head)], fill=ink, width=3)
+        d.ellipse([gx - head, gy - h_px, gx + head, gy - h_px + 2 * head], outline=ink, width=2)
+        d.text((gx - head - 8, gy - h_px / 2), "1.70 m", fill=faint, font=small, anchor="rm")
     if legend:  # a ground model has one line, not points sorted into ground and trees
         d.text((W - MARGIN, 16), legend, fill=GROUND_RGB, font=small, anchor="ra")
     else:

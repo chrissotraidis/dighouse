@@ -72,7 +72,8 @@ struct DecideView: View {
     // MARK: - Opening
 
     private func start() {
-        let order: (Candidate, Candidate) -> Bool = { ($0.group.rawValue, $0.id) < ($1.group.rawValue, $1.id) }
+        // Within each group, the finds most checks agree on come first (rank A, then B, then C).
+        let order: (Candidate, Candidate) -> Bool = { ($0.group.rawValue, -$0.agreement, $0.id) < ($1.group.rawValue, -$1.agreement, $1.id) }
         let waiting = store.candidates.filter { $0.waiting && $0.group != .layer }.sorted(by: order)
         // The first project's tutorial decides its find on its own page, as the tutorial's words say.
         let tutorial = app.tutorialOn && app.tutorialProject == store.current?.path
@@ -470,6 +471,8 @@ struct FindCard: View {
     var position = ""
     /// The view last chosen, kept from find to find and between launches.
     @AppStorage("decideView") private var view = "composite"
+    /// The slice last chosen: west to east, or north to south.
+    @AppStorage("sliceNorthSouth") private var northSouth = false
     @State private var drawn = 0
 
     static let views: [(style: String, title: String)] = [
@@ -490,7 +493,12 @@ struct FindCard: View {
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("\(c.id) \(c.name)").font(.system(size: 21 * Theme.scale, weight: .bold)).lineLimit(2)
-                if c.waiting { Badge(text: c.group.title, color: c.group == .closer ? Theme.accent : Theme.amber) }
+                if c.waiting {
+                    Badge(text: c.group.title, color: c.group == .closer ? Theme.accent : Theme.amber)
+                    Text("Rank \(c.rank)").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
+                        .help("\(c.agreement) of 3 checks point to something built: the shape, a model's eye, the second model")
+                        .accessibilityLabel("Rank \(c.rank): \(c.agreement) of 3 checks point to something built")
+                }
                 else { Badge(text: Candidate.labels[c.status] ?? c.status, color: c.statusColor) }
                 Spacer()
                 if !position.isEmpty { Text(position).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint) }
@@ -511,9 +519,15 @@ struct FindCard: View {
                 }
                 .frame(maxWidth: 320)
                 picture(Images.load(c.relief), "The whole tile, \(Int(store.tileMetres(c))) m").frame(maxWidth: 300)
-                picture(Images.load(c.section), "Slice straight down through the laser points")
+                VStack(alignment: .leading, spacing: 6) {
+                    sliceSwitch(c)
+                    let ns = northSouth && FileManager.default.fileExists(atPath: c.sectionNS)
+                    picture(Images.load(ns ? c.sectionNS : c.section),
+                            "Slice \(ns ? "north to south" : "west to east"), straight down, a person 1.70 m for scale")
+                }
             }
-            Flow(spacing: 6) { ForEach(chips(c), id: \.self) { chip($0) } }
+            Text(numbers(c).joined(separator: "  ·  ")).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
+            theCase(c)
             details(c)
         }
         .textSelection(.enabled)
@@ -540,6 +554,98 @@ struct FindCard: View {
             }
             Text(Self.views.first { $0.style == view }?.title ?? "").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                 .padding(.leading, 6)
+        }
+    }
+
+    /// West to east or north to south, on the key D; north to south only where check_finds cut it.
+    private func sliceSwitch(_ c: Candidate) -> some View {
+        let both = FileManager.default.fileExists(atPath: c.sectionNS)
+        return HStack(spacing: 2) {
+            ForEach([false, true], id: \.self) { ns in
+                Button { northSouth = ns } label: {
+                    Text(ns ? "N–S" : "W–E").font(.system(size: 11 * Theme.scale, weight: northSouth == ns ? .bold : .regular))
+                        .frame(width: 38, height: 20)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(northSouth == ns ? Theme.ink.opacity(0.14) : .clear))
+                        .foregroundStyle(northSouth == ns ? Theme.text : Theme.dim)
+                }
+                .buttonStyle(.plain).disabled(ns && !both)
+                .accessibilityLabel(ns ? "Slice north to south" : "Slice west to east")
+            }
+            Button("") { if both { northSouth.toggle() } }.keyboardShortcut("d", modifiers: []).opacity(0).frame(width: 0)
+                .accessibilityHidden(true)
+        }
+        .help(both ? "Which way the slice runs (D)" : "Only the west-to-east slice was cut for this find")
+    }
+
+    /// What marked the find, and the four numbers: its height, its size, the ground under it, and the finds near it.
+    private func numbers(_ c: Candidate) -> [String] {
+        var out = [c.flaggedBy.hasPrefix("measured") ? "Measured rise" : c.flaggedBy.contains("bulk") ? "Seen in the bulk look" : "Marked by the agent"]
+        out.append(Candidate.heightWords(c.checks).capitalizedFirst)
+        if let shape = c.checks["shape"] as? JSON, let ew = shape["width_ew_m"], let ns = shape["width_ns_m"] { out.append("\(ew) × \(ns) m") }
+        let context = c.checks["context"] as? JSON ?? [:]
+        if let density = (context["ground_points_per_m2"] as? Double) ?? (context["ground_points_per_m2"] as? Int).map(Double.init) {
+            out.append("\(density.formatted(.number.precision(.fractionLength(0...1)))) ground points per m²")
+        } else if (c.checks["section"] as? JSON)?["from_ground_model_only"] as? Bool == true {
+            out.append("Ground model, no raw points")
+        }
+        if let near = context["finds_within_200m"] as? Int { out.append(near == 1 ? "1 other find within 200 m" : "\(near) other finds within 200 m") }
+        return out
+    }
+
+    /// The checks on the record, sorted into reasons for an old, built feature and reasons against. Counted, never weighed.
+    private func reasons(_ c: Candidate) -> (for: [String], against: [String]) {
+        var yes: [String] = [], no: [String] = []
+        let cut = c.checks["section"] as? JSON
+        if cut?["in_ground"] as? Bool == true { yes.append("In the ground") }
+        if cut?["in_ground"] as? Bool == false { no.append("Not clear in the slice") }
+        if c.secondSaysBuilt == true { yes.append("Second model: built") }
+        if c.secondSaysBuilt == false { no.append("Second model: not built") }
+        if let modern = c.checks["modern"] as? JSON {
+            let near = (modern["near"] as? [String]) ?? []
+            if modern["likely_modern"] as? Bool == true {
+                no.append(near.isEmpty ? "Modern features close by" : ListFormatter.localizedString(byJoining: near).capitalizedFirst + " close by")
+            } else { yes.append("Nothing modern mapped") }
+        }
+        if let old = c.checks["old_maps"] as? JSON { if old["explains"] as? Bool == true { no.append("Old maps explain it") } else { yes.append("Not on old maps") } }
+        if let s = c.likely?.status, s == "natural" || s == "modern" { no.append("Agent: \(s)") }
+        return (yes, no)
+    }
+
+    /// For and against as two rows with a count each, then what was read and what is on record.
+    private func theCase(_ c: Candidate) -> some View {
+        let r = reasons(c)
+        var other: [String] = []
+        if let rec = c.checks["records"] as? JSON {
+            let near = (rec["near"] as? [JSON]) ?? []
+            let registers = ((rec["registers"] as? [JSON]) ?? []).compactMap { $0["register"] as? String }
+            other.append(!near.isEmpty ? "On record: \(near[0]["name"] as? String ?? "a site")"
+                         : registers.isEmpty ? "Not on the open lists; records here not open" : "Not in \(registers[0])")
+        }
+        let read = c.sources.filter { $0.status == "read" }.count, unread = c.sources.filter { $0.status == "could_not_open" }.count
+        other.append(c.sources.isEmpty ? "Nothing published read" : "\(read) read" + (unread > 0 ? ", \(unread) would not open" : ""))
+        return VStack(alignment: .leading, spacing: 6) {
+            reasonRow("For", r.for, Theme.accent)
+            reasonRow("Against", r.against, Theme.amber)
+            HStack(spacing: 6) {
+                Flow(spacing: 6) { ForEach(other, id: \.self) { chip($0) } }
+                Spacer(minLength: 0)
+                Text("A count of reasons, not a probability").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(r.for.count) reasons for, \(r.against.count) against. A count of reasons, not a probability.")
+    }
+
+    private func reasonRow(_ title: String, _ items: [String], _ color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(spacing: 3) {
+                Text("\(title) \(items.count)").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(color)
+                    .frame(width: 74, alignment: .leading)
+                ForEach(0..<max(items.count, 0), id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(color.opacity(0.8)).frame(width: 7, height: 10) }
+            }
+            .frame(width: 120, alignment: .leading)
+            if items.isEmpty { Text("none on the record").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint) }
+            else { Flow(spacing: 6) { ForEach(items, id: \.self) { chip($0) } } }
         }
     }
 
@@ -576,34 +682,6 @@ struct FindCard: View {
         .accessibilityLabel("The agent says \(agentWord). The second model says \(secondWord)."
                             + (together.map { " \($0.0.capitalizedFirst)." } ?? "")
                             + (c.flaggedBy.hasPrefix("measured") ? " Measured, not seen by a model." : ""))
-    }
-
-    private func chips(_ c: Candidate) -> [String] {
-        var out: [String] = []
-        if let cut = c.checks["section"] as? JSON {
-            let h = Candidate.heightWords(c.checks).capitalizedFirst
-            out.append(cut["in_ground"] as? Bool == true ? (cut["from_ground_model_only"] as? Bool == true ? "\(h), ground model only" : "\(h), in the ground")
-                       : "\(h), not clear in the slice")
-        } else { out.append("No slice yet") }
-        if let shape = c.checks["shape"] as? JSON, shape["rise_m"] != nil {
-            // Measured again against the ground farther around, so it can differ from the size in a measured rise's name.
-            out.append("Measured again: \(shape["width_ew_m"] ?? "?") × \(shape["width_ns_m"] ?? "?") m" + (((shape["hints"] as? [String]) ?? []).first.map { ", \($0)" } ?? ""))
-        }
-        if let modern = c.checks["modern"] as? JSON {
-            let near = (modern["near"] as? [String]) ?? []
-            out.append(modern["likely_modern"] as? Bool == true ? (near.isEmpty ? "Modern features close by" : ListFormatter.localizedString(byJoining: near).capitalizedFirst + " close by")
-                       : "Nothing modern mapped on it")
-        }
-        if let rec = c.checks["records"] as? JSON {
-            let near = (rec["near"] as? [JSON]) ?? []
-            let registers = ((rec["registers"] as? [JSON]) ?? []).compactMap { $0["register"] as? String }
-            out.append(!near.isEmpty ? "On record: \(near[0]["name"] as? String ?? "a site")"
-                       : registers.isEmpty ? "Not on the open lists; records here not open" : "Not in \(registers[0])")
-        }
-        if let old = c.checks["old_maps"] as? JSON { out.append(old["explains"] as? Bool == true ? "Old maps explain it" : "Old maps: nothing") }
-        let read = c.sources.filter { $0.status == "read" }.count, unread = c.sources.filter { $0.status == "could_not_open" }.count
-        out.append(c.sources.isEmpty ? "Nothing published read" : "\(read) read" + (unread > 0 ? ", \(unread) would not open" : ""))
-        return out
     }
 
     private func chip(_ text: String) -> some View {

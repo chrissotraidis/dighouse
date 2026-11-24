@@ -378,6 +378,8 @@ struct Candidate: Identifiable {
 
     var relief: String { "\(folder)/img/\(id)-relief.png" }
     var section: String { "\(folder)/img/\(id)-section.png" }
+    /// The same slice north to south (check_finds cuts both).
+    var sectionNS: String { "\(folder)/img/\(id)-section-ns.png" }
     var file: String { "\(folder)/\(id).md" }
 
     static let labels: [String: String] = [
@@ -437,6 +439,18 @@ struct Candidate: Identifiable {
         /// Groups whose suggestions are routine enough to agree with in one step. A lead is always decided alone.
         var confirmable: Bool { self == .published || self == .notAncient }
     }
+
+    /// How many of three independent checks point to something built: the shape check (a coherent, round rise, or a
+    /// hollow with nothing against it), a model's eye (the agent or the bulk look marked it and the agent does not call
+    /// it natural or modern) and the second model. A ranks for three, B for two, C for one or none. It orders finds;
+    /// it never decides which ones wait for a person.
+    var agreement: Int {
+        let hints = ((checks["shape"] as? JSON)?["hints"] as? [String]) ?? []
+        let shapeSays = hints == ["a coherent, round rise"] || (hints.count == 1 && hints[0].hasPrefix("a hollow"))
+        let eyeSays = !flaggedBy.hasPrefix("measured") && !["natural", "modern"].contains(likely?.status ?? "")
+        return [shapeSays, eyeSays, secondSaysBuilt == true].filter { $0 }.count
+    }
+    var rank: String { agreement >= 3 ? "A" : agreement == 2 ? "B" : "C" }
 
     /// Whether the second model called it built (nil when there is no second opinion yet).
     var secondSaysBuilt: Bool? { (checks["second_look"] as? JSON)?["agrees"] as? Bool }
