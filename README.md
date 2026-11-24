@@ -58,7 +58,7 @@ You don't need a GitHub account, Terminal or any coding to use Dighouse.
 
 1. Open the [latest release](https://github.com/chrissotraidis/dighouse/releases/latest). Under **Assets**, click the file whose name starts with `Dighouse-` and ends in `.dmg`.
 2. Open the downloaded file and drag **Dighouse** into **Applications**.
-3. Open Dighouse from Applications. If macOS says it cannot check the app, open **System Settings**, then **Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
+3. Open Dighouse from Applications. It is signed and notarized by Apple, so macOS opens it like any app you download.
 
 **The first launch** shows a short checklist and fixes what it can:
 
@@ -278,7 +278,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (60 tests)
+uv run pytest            # offline, on a synthetic survey (61 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
@@ -395,7 +395,7 @@ Markdown is the record of truth, so a project works offline and can be handed to
 
 The [eight-hour research session and replays](docs/2026-11-20-research-session.md) record where the coordinator intervened, why Cahokia's ranking changed, and what still needs a full-session test. Earlier app tests are documented in [TEST_LOOP.md](docs/TEST_LOOP.md), [REFINE_LOOP.md](docs/REFINE_LOOP.md), [POLISH_LOOP.md](docs/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/GOAL_LOOP.md).
 
-- Releases are signed with a Developer ID. Until a release is notarized by Apple, macOS asks once before opening it.
+- Releases are signed with a Developer ID and notarized by Apple.
 - A vision model's eye is the weak point of any search; the benchmarks above show where it is weak. The checks exist because a model marks shapes that are not there, and misses some that are.
 - Open services go down and rate-limit. The tools say "could not check" rather than guess.
 

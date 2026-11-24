@@ -1188,6 +1188,19 @@ def test_a_sweep_prepares_the_next_areas_in_the_background(monkeypatch, tmp_path
         server.sweep(str(tmp_path), "no:nhm-dtm-1m", "A1=10.0,60.0,10.01,60.01", prepare="B2=near the river")
 
 
+def test_nothing_is_prepared_after_the_session_closes(monkeypatch, tmp_path, survey):
+    """A sweep prepared in the background fetches and looks at nothing once the session's time is up; a later sweep of
+    those areas then does the work itself."""
+    import time
+    from dighouse.project import Project
+    root = str(tmp_path / "proj")
+    server.init_project(root, "Synthetic", "q", *survey["bbox"])
+    Project(root).save("session_until", time.time() - 1)
+    monkeypatch.setattr(server, "fetch_terrain", lambda *a, **k: pytest.fail("fetched after the session closed"))
+    assert server._sweep(root, "no:nhm-dtm-1m", "B1=10.02,60.0,10.03,60.01", background=True) == {"not_prepared": True}
+    assert "the session's time was up" in "".join(p.read_text() for p in (tmp_path / "proj" / "notes").glob("2*.md"))
+
+
 def test_a_land_search_on_usgs_ground_calibrates_on_land():
     # us:3dep-dem-1m and NOAA's seafloor surveys both start "us"; a land search must not be scored on a wreck.
     from dighouse import answers

@@ -572,7 +572,7 @@ def sweep(project: str, dataset: str, areas: str, prepare: str = "") -> dict:
         # Prepared in the background by an earlier sweep: wait for what is left of it, well inside the engine's 20 minutes.
         out = ready.result(timeout=15 * 60)
         out["prepared_in_background"] = True
-    else:
+    if ready is None or out.get("not_prepared"):
         out = _sweep(project, dataset, areas)
     if prepare.strip():
         _PREPARED[_sweep_key(project, dataset, prepare)] = _BACKGROUND.submit(_sweep, project, dataset, prepare, True)
@@ -603,6 +603,13 @@ def _parse_areas(areas: str) -> list:
     return parts
 
 
+def _time_up(p: Project) -> bool:
+    """Whether a timed session in this project has reached its close. The app writes the time when it starts the session
+    (and now, when a person stops it), so a sweep prepared in the background fetches and spends no usage after it."""
+    until = p.load("session_until")
+    return isinstance(until, (int, float)) and time.time() > until
+
+
 def _sweep(project: str, dataset: str, areas: str, background: bool = False) -> dict:
     from concurrent.futures import ThreadPoolExecutor
     if dataset not in national.NATIONAL:
@@ -610,6 +617,9 @@ def _sweep(project: str, dataset: str, areas: str, background: bool = False) -> 
                          "Fetch raw points area by area with fetch_terrain.")
     parts = _parse_areas(areas)
     p = Project(project).check()
+    if background and _time_up(p):
+        p.note(f"Did not prepare {', '.join(n for n, _ in parts)}: the session's time was up")
+        return {"not_prepared": True}
     answers.guard_calibration(p)
     started, failed = time.time(), []
 
@@ -638,6 +648,9 @@ def _sweep(project: str, dataset: str, areas: str, background: bool = False) -> 
         return {"areas": areas_out, "failed": failed, "minutes": round((time.time() - started) / 60, 1),
                 "next": "The fetch took most of the time this tool may take, so the tiles are cut but not yet looked at: call "
                         "look_at_tiles once, then look closely at the top of its shortlist as after a sweep."}
+    if background and _time_up(p):   # the bulk look is what spends the account's usage
+        p.note(f"Fetched {len(got)} areas for the next sweep; not looked at, because the session's time was up")
+        return {"not_prepared": True}
     looked = look_at_tiles(project)
     short = looked["shortlist"]
     prepared = {}

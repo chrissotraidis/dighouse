@@ -144,8 +144,15 @@ enum Keys {
 }
 
 enum Paths {
+    /// The home folder. DIGHOUSE_HOME points a copy of the app at another, empty home, so a first run can be tried
+    /// without touching the real one. macOS's own folder lookups ignore HOME, so everything here goes through this.
+    static var home: String { ProcessInfo.processInfo.environment["DIGHOUSE_HOME"] ?? NSHomeDirectory() }
+    static var homeURL: URL { URL(fileURLWithPath: home) }
+
     static var support: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let base = ProcessInfo.processInfo.environment["DIGHOUSE_HOME"] != nil
+            ? homeURL.appendingPathComponent("Library/Application Support")
+            : FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let dir = base.appendingPathComponent("Dighouse")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
@@ -172,7 +179,7 @@ enum Paths {
     /// installed, not Codex's own projects, hooks or tool servers. Run at every launch, so a change to the router carries over.
     static func prepareCodexHome() {
         let fm = FileManager.default
-        let codex = fm.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
+        let codex = homeURL.appendingPathComponent(".codex")
         let home = codexHome
         for name in ["auth.json", "plugins"] {
             let source = codex.appendingPathComponent(name), link = home.appendingPathComponent(name)
@@ -202,7 +209,6 @@ enum Paths {
     /// Folders that macOS keeps in iCloud when Desktop and Documents sync is on. Files there go offline, and every read
     /// of one waits for a download, so Dighouse offers to move projects out of them.
     static var cloudFolders: [String] {
-        let home = NSHomeDirectory()
         var out: [String] = []
         if FileManager.default.fileExists(atPath: home + "/Library/Mobile Documents/com~apple~CloudDocs/Documents") {
             out += [home + "/Documents", home + "/Desktop", home + "/Library/Mobile Documents"]
@@ -217,20 +223,20 @@ enum Paths {
     static var localProjectsHome: URL {
         let chosen = UserDefaults.standard.string(forKey: "projectsHome")
         if let chosen, !inCloud(chosen) { return URL(fileURLWithPath: chosen) }
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Dighouse")
+        return homeURL.appendingPathComponent("Dighouse")
     }
 
     /// Where new projects go: ~/Dighouse, or the folder the person chose in Settings if it is not kept in iCloud.
     /// Projects made earlier stay where they are; Home offers to move any that sit in iCloud.
     static var projectsHome: URL {
         if let custom = UserDefaults.standard.string(forKey: "projectsHome"), !inCloud(custom) { return URL(fileURLWithPath: custom) }
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Dighouse")
+        return homeURL.appendingPathComponent("Dighouse")
     }
 
     /// The person's GitHub folder, used for a project only when they ask to work out of it.
     static var githubHome: URL {
         if let custom = UserDefaults.standard.string(forKey: "githubHome") { return URL(fileURLWithPath: custom) }
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("GitHub")
+        return homeURL.appendingPathComponent("GitHub")
     }
 
     /// Why the GitHub folder can't hold projects, or nil when it can.
@@ -243,7 +249,6 @@ enum Paths {
 
     /// A path as a person reads it, with the home folder as ~.
     static func short(_ path: String) -> String {
-        let home = NSHomeDirectory()
         return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
     }
 }

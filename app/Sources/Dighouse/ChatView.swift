@@ -118,6 +118,9 @@ private struct RecoveryBar: View {
         if has("usage limit", "quota") {
             return ("The usage limit was reached", "Wait until it resets (/status says when), or choose a model that runs through another provider.")
         }
+        if has("mcp startup", "mcp server") {
+            return ("The archaeology tools did not start", "Restart Dighouse. If it happens again, open Settings, where the tools show what went wrong.")
+        }
         if has("rate limit", "429", "too many requests") {
             return ("The provider limited this request", raw)
         }

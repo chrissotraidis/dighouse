@@ -10,7 +10,7 @@ Dighouse helps you look for earthworks and other remains that may not be on reco
 
 ## Install it
 
-Download `Dighouse-<version>.dmg` from the [releases page](https://github.com/chrissotraidis/dighouse/releases), open it and drag Dighouse to Applications. Until a release is notarized by Apple, macOS may say it cannot check the app: open System Settings, Privacy & Security, and press Open Anyway once.
+Download `Dighouse-<version>.dmg` from the [releases page](https://github.com/chrissotraidis/dighouse/releases), open it and drag Dighouse to Applications. It is signed and notarized by Apple, so it opens like any app you download.
 
 To build it yourself instead, see [SETUP.md](SETUP.md).
 

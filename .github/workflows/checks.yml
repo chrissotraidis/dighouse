@@ -43,3 +43,5 @@ jobs:
           python-version: "3.12"
       - run: uv sync --locked
       - run: uv run pytest -q
+      # pyproject allows Python 3.11, and the app's tools run on whatever Python a Mac has, so the code must parse there.
+      - run: uv run --python 3.11 --no-project python -m compileall -q src scripts

@@ -806,7 +806,7 @@ final class AppState: ObservableObject {
     }
 
     private var githubTool: String? {
-        ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", NSHomeDirectory() + "/.local/bin/gh"].first { FileManager.default.isExecutableFile(atPath: $0) }
+        ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", Paths.home + "/.local/bin/gh"].first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
     private var publishEnv: [String: String] { ProcessInfo.processInfo.environment.merging(["PATH": setup.path]) { _, new in new } }
@@ -913,7 +913,9 @@ final class AppState: ObservableObject {
                     "west": 0, "south": 0, "east": 0, "north": 0,
                 ])
             } catch {
-                chat.note("The session's project could not be made: \(error.localizedDescription)")
+                let tools = error.localizedDescription.lowercased().contains("mcp")
+                chat.note(tools ? "The archaeology tools did not start, so the session could not begin. Restart Dighouse; if it happens again, Settings shows what went wrong."
+                                : "The session's project could not be made: \(error.localizedDescription)")
                 return
             }
             store.register(path: path)
@@ -924,6 +926,7 @@ final class AppState: ObservableObject {
             let objective = flow.prompt + " The deadline is " + ISO8601DateFormatter().string(from: end)
                 + ". Save progress after every pass, including the next action and the strongest competing area. Use the existing session records after any interruption."
             await chat.setGoal(objective, title: flow.title, deadline: end)
+            TimedResearch.markClose(path, at: TimedResearch.closing(deadline: end))
             if let id = chat.active {
                 UserDefaults.standard.set(id, forKey: "timedThread")
                 UserDefaults.standard.set(path, forKey: "timedProject")

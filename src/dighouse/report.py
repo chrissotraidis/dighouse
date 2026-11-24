@@ -209,7 +209,7 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     read = [s for s in sources.values() if s["status"] == "read"]
     for s in read[:cut["sources"]]:
         link = f" ([link]({s['link']}))" if s.get("link") else ""
-        L.append(f"- **{_short(s['title'], 70)}**{link}. {_first(s.get('finding', ''), cut["finding"])}")
+        L.append(f"- **{_short(s['title'], 70)}**{link}. {_first(s.get('finding', ''), cut['finding'])}")
     unopened = sum(s["status"] == "could_not_open" for s in sources.values())
     rest = [_s(len(read) - cut["sources"], "more source") + " read"] if len(read) > cut["sources"] else []
     rest += [f"{unopened} could not be opened by the agent"] if unopened else []
@@ -260,7 +260,7 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
     for m in open_:
         sug = m.get("suggestion")
         if sug:
-            say = f"The agent suggests: {ledger.LABELS.get(sug['status'], sug['status']).lower()}. {_first(sug.get('reason', ''), cut["reason"])}"
+            say = f"The agent suggests: {ledger.LABELS.get(sug['status'], sug['status']).lower()}. {_first(sug.get('reason', ''), cut['reason'])}"
         else:
             say = "No suggestion yet. " + (_first(m["evidence"][0], cut["reason"]) if m.get("evidence") else "")
         line = f"- **[{m['id']} {_short(m['name'], 45)}](../candidates/{m['id']}.md).** {say} {_checks(m, failed_maps, not no_maps)}"

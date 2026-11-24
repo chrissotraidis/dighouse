@@ -104,6 +104,9 @@ final class ChatModel: ObservableObject {
         timer.announce = { [weak self] id, message in
             if self?.active == id { self?.note(message) }
         }
+        timer.folder = { [weak self] id in
+            self?.folder(of: id) ?? (UserDefaults.standard.string(forKey: "timedThread") == id ? UserDefaults.standard.string(forKey: "timedProject") : nil)
+        }
         return timer
     }()
 

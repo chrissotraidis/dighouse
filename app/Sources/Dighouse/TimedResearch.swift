@@ -19,6 +19,8 @@ final class TimedResearch {
     var request: Request?
     var turn: (String) -> String? = { _ in nil }
     var announce: (String, String) -> Void = { _, _ in }
+    /// The project folder a session runs in, so the tool server can be told when it ends.
+    var folder: (String) -> String? = { _ in nil }
     private let defaults: UserDefaults
     private let key = "timedResearchSessions"
     private var sessions: [String: Session] {
@@ -46,9 +48,21 @@ final class TimedResearch {
     }
 
     func start(_ id: String, model: String, deadline: Date, now: Date = Date()) {
-        let reserve = min(600, max(1, deadline.timeIntervalSince(now) / 5))
-        sessions[id] = Session(model: model, deadline: deadline, closeAt: deadline.addingTimeInterval(-reserve))
+        sessions[id] = Session(model: model, deadline: deadline, closeAt: Self.closing(deadline: deadline, now: now))
         schedule(id)
+    }
+
+    /// When the agent is asked to close: a fifth of the session before its end, at most ten minutes.
+    static func closing(deadline: Date, now: Date = Date()) -> Date {
+        deadline.addingTimeInterval(-min(600, max(1, deadline.timeIntervalSince(now) / 5)))
+    }
+
+    /// Tells the tool server when a session in this project closes (private/state/session_until.json), so a sweep it
+    /// prepares in the background fetches nothing and spends no usage after that.
+    static func markClose(_ project: String, at date: Date) {
+        let dir = URL(fileURLWithPath: project).appendingPathComponent("private/state")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? String(date.timeIntervalSince1970).write(to: dir.appendingPathComponent("session_until.json"), atomically: true, encoding: .utf8)
     }
 
     func restore() {
@@ -64,7 +78,10 @@ final class TimedResearch {
     func remove(_ id: String) {
         checkFailures.removeValue(forKey: id)
         timers.removeValue(forKey: id)?.cancel()
-        if sessions[id] != nil { sessions.removeValue(forKey: id) }
+        if sessions[id] != nil {
+            if let path = folder(id) { Self.markClose(path, at: Date()) }
+            sessions.removeValue(forKey: id)
+        }
     }
 
     func goalChanged(_ id: String, status: String) {

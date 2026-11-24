@@ -40,7 +40,7 @@ final class Setup: ObservableObject {
         func value(_ key: String) -> String? {
             probe.out.split(separator: "\n").last { $0.hasPrefix(key + "=") }.map { String($0.dropFirst(key.count + 1)) }
         }
-        let home = NSHomeDirectory()
+        let home = Paths.home
         path = value("DH_PATH") ?? "/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin:\(home)/.local/bin"
         // A downloaded Dighouse carries its own uv, so nothing has to be installed first.
         uv = existing([Bundle.main.resourceURL?.appendingPathComponent("bin/uv").path, value("DH_UV"), "\(home)/.local/bin/uv",
@@ -129,12 +129,14 @@ final class Setup: ObservableObject {
         env["PATH"] = path
         env["UV_PROJECT_ENVIRONMENT"] = venv
         let run = await Shell.run(uv, ["sync", "--frozen", "--no-dev", "--directory", toolsSource], env: env)
+        // Installed is not the same as working: load the tool server once, so a Python that can't run it shows here.
+        let load = run.code == 0 ? await Shell.run(venv + "/bin/python", ["-c", "import dighouse.server"], env: env) : run
         toolsBusy = false
-        if run.code == 0, FileManager.default.isExecutableFile(atPath: toolsBinary) {
+        if load.code == 0, FileManager.default.isExecutableFile(atPath: toolsBinary) {
             try? stamp?.write(to: marker, atomically: true, encoding: .utf8)
             toolsReady = true
         } else {
-            toolsProblem = String(run.out.suffix(400))
+            toolsProblem = String(load.out.suffix(400))
         }
     }
 

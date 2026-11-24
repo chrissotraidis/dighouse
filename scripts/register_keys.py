@@ -145,10 +145,6 @@ if __name__ == "__main__":
     made = england() + norway()
     for k in made:
         head = json.dumps({x: v for x, v in k.items() if x != "features"}, ensure_ascii=False)[1:-1]
-        feats = ",
-".join(json.dumps(f, ensure_ascii=False, separators=(",", ":")) for f in k["features"])
-        (OUT / f"{k['id']}.json").write_text("{" + head + ', "features": [
-' + feats + "
-]}
-")   # one feature a line
+        feats = ",\n".join(json.dumps(f, ensure_ascii=False, separators=(",", ":")) for f in k["features"])
+        (OUT / f"{k['id']}.json").write_text("{" + head + ', "features": [\n' + feats + "\n]}\n")   # one feature a line
         print(k["id"], len(k["features"]), "features,", sum(f["expect"] for f in k["features"]), "counted")
