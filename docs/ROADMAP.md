@@ -4,6 +4,7 @@ Where Dighouse goes next, in rough order. Nothing here is promised by a date. Wh
 
 ## Next, for archaeology
 
+- **Seeing a find clearly.** Reasons for and against on each find, ranks by how many methods agree, better relief views, flights from different years, old maps beside the ground, a 3D view and find similar. Planned as V0 to V9 in [SEE_LOOP.md](SEE_LOOP.md); every idea, asked for or seen, is listed in [ENHANCEMENTS.md](ENHANCEMENTS.md).
 - **Deciding finds.** 744 finds wait across Chris's projects and 18 have been decided. One Decide view (the ones that need a person one at a time, the routine ones agreed in bulk, with Undo), a find card that reads at a glance, measured rises kept as a layer until raised, and counts that agree everywhere. Planned as D0 to D4 in [DECIDE_LOOP.md](DECIDE_LOOP.md).
   Done on 2026-11-22. Then [HOME_LOOP.md](HOME_LOOP.md), 2026-11-23: a project holds its areas and its chats, the sidebar puts projects first, and Search on its own works inside one project named for its region.
 - **Leads that reach an answer.** Read open heritage registers (England, Norway, Bavaria) in the checks, send searches where a register is open, and draft site-file requests a person sends where it is not (D5).
