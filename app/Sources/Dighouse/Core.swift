@@ -376,7 +376,11 @@ struct Candidate: Identifiable {
     var inLayer = false
     var x = 0.5, y = 0.5
 
-    var relief: String { "\(folder)/img/\(id)-relief.png" }
+    /// The find's tile with it ringed: a JPEG for new finds, a PNG in projects from before.
+    var relief: String {
+        let jpg = "\(folder)/img/\(id)-relief.jpg"
+        return FileManager.default.fileExists(atPath: jpg) ? jpg : "\(folder)/img/\(id)-relief.png"
+    }
     var section: String { "\(folder)/img/\(id)-section.png" }
     /// The same slice north to south (check_finds cuts both).
     var sectionNS: String { "\(folder)/img/\(id)-section-ns.png" }

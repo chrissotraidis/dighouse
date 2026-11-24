@@ -807,7 +807,7 @@ def _add_measured_rises(p: Project, per_km2: float) -> dict:
 
     def draw(job) -> None:
         cid, m = job
-        tiles.tile_image(p, m["tile"], "composite", mark=(m["x"], m["y"])).save(p.path("candidates", "img", f"{cid}-relief.png"))
+        tiles.save_find_picture(p, cid, m["tile"], (m["x"], m["y"]))
 
     with ThreadPoolExecutor(8) as pool:  # the pictures are independent, one file each
         list(pool.map(draw, pictures))
@@ -847,8 +847,7 @@ def flag_candidate(project: str, tile: str, x: float, y: float, name: str, note:
         ledger.write(p, meta, notes)
     else:
         meta = ledger.create(p, name, tile, lonlat, note, model, at=(x, y))
-    f = p.path("candidates", "img", f"{meta['id']}-relief.png")
-    tiles.tile_image(p, tile, "composite", mark=(x, y)).save(f)
+    f = tiles.save_find_picture(p, meta["id"], tile, (x, y))
     p.note(f"{meta['id']} {'taken over from the bulk look' if taken else 'marked'} on {tile} by {model}: {name}")
     reply = {"candidate": meta["id"], "record": f"candidates/{meta['id']}.md", "status": meta["status"]}
     if taken:

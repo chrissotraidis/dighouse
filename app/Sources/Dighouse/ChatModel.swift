@@ -325,12 +325,17 @@ final class ChatModel: ObservableObject {
         var settings = threadSettings(["threadId": id])
         if let pinned = timed.model(for: id) {
             settings["model"] = pinned
-            settings["cwd"] = Paths.general.path
+            // A session works in the project it started in. Resumed anywhere else (the app reopened on another project),
+            // the sandbox would not let it write its own records, and it stopped saying so.
+            settings["cwd"] = folder(of: id) ?? Paths.general.path
             settings["developerInstructions"] = timedInstructions()
         }
         _ = try await engine.request("thread/resume", settings)
         resumed.insert(id)
     }
+
+    /// The folder a listed chat was started in.
+    private func folder(of id: String) -> String? { allChats.first { $0.1.id == id }?.0 }
 
     func rename(_ thread: ChatThread, to name: String) async {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)

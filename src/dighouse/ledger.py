@@ -73,7 +73,7 @@ def everything(p: Project) -> list[dict]:
 
 def write(p: Project, meta: dict, notes: str = "") -> None:
     head = "\n".join(f"{k}: {json.dumps(v, ensure_ascii=False)}" for k, v in meta.items())
-    _file(p, meta["id"]).write_text(f"---\n{head}\n---\n{_body(meta)}\n{NOTES}\n\n{notes}\n")
+    _file(p, meta["id"]).write_text(f"---\n{head}\n---\n{_body(meta, p)}\n{NOTES}\n\n{notes}\n")
 
 
 def create(p: Project, name: str, tile: str, lonlat: tuple[float, float], note: str, flagged_by: str,
@@ -279,7 +279,7 @@ def distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 111_320 * math.hypot((lon1 - lon2) * k, lat1 - lat2)
 
 
-def _body(meta: dict) -> str:
+def _body(meta: dict, p=None) -> str:
     cid, checks, sources = meta["id"], meta["checks"], meta["sources"]
     by = str(meta["flagged_by"])
     # "seen in bulk by …" and "measured (…)" already say how; a model's name needs "by".
@@ -288,7 +288,10 @@ def _body(meta: dict) -> str:
            f"Status: {LABELS[meta['status']]} · Marked {marked}", ""]
     for kind, caption in (("relief", "Bare-ground relief"), ("section", "Slice through the feature")):
         if (checks.get(kind) or {}).get("image") or kind == "relief":
-            out += [f"![{caption}](img/{cid}-{kind}.png)", ""]
+            # New finds' pictures are JPEGs (written just after the record); finds from before keep their PNGs.
+            ext = "png" if kind != "relief" or (p is not None and p.path("candidates", "img", f"{cid}-relief.png").exists()
+                                                   and not p.path("candidates", "img", f"{cid}-relief.jpg").exists()) else "jpg"
+            out += [f"![{caption}](img/{cid}-{kind}.{ext})", ""]
     out += ["## Evidence", ""] + [f"- {e}" for e in meta["evidence"]] + [""]
     out += ["## Checks", ""]
     s = checks.get("section")

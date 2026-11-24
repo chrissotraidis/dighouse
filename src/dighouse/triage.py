@@ -166,7 +166,7 @@ def mark_spots(project: str, shortlist: list[dict], model: str = "") -> dict:
             short = what if len(what) <= 50 else what[:50].rsplit(" ", 1)[0].rstrip(",;: ") + "…"
             meta = ledger.create(p, f"Seen in bulk: {short}", item["tile"], lonlat, note, SEEN_BY.format(model=model),
                                  at=(s["x"], s["y"]))
-            tiles.tile_image(p, item["tile"], "composite", mark=(s["x"], s["y"])).save(p.path("candidates", "img", f"{meta['id']}-relief.png"))
+            tiles.save_find_picture(p, meta["id"], item["tile"], (s["x"], s["y"]))
             places.append(lonlat)
             made.append(meta["id"])
     p.note(f"Opened {len(made)} finds from the bulk look" + (f": {', '.join(made)}" if made else ""))

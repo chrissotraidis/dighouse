@@ -73,7 +73,8 @@ def test_full_chain(tmp_path, survey, monkeypatch):
     assert tile in server.next_tiles(root, 100)
     server.record_verdict(root, tile, "built", "regular mound beside a flat rectangle", "model-a")
     flagged = server.flag_candidate(root, tile, fx, fy, "Mound group", "Oval mound beside a levelled plaza", "model-a")
-    assert '"C-001"' in flagged[0] and p.path("candidates", "img", "C-001-relief.png").exists()
+    assert '"C-001"' in flagged[0] and p.path("candidates", "img", "C-001-relief.jpg").exists()
+    assert "img/C-001-relief.jpg" in p.path("candidates", "C-001.md").read_text()
 
     # close views for the person: the same 60 m square in every style, kept out of the history, drawn once
     views = server.find_views(root, "C-001")

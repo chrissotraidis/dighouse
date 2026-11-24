@@ -54,6 +54,15 @@ def make_tiles(p: Project, terrain_id: str, tile_m: float = 250, overlap_m: floa
     return {"tiles_added": added, "unreadable": int(unreadable)}
 
 
+def save_find_picture(p: Project, cid: str, tile_id: str, at: tuple[float, float]) -> Path:
+    """A find's picture for its record and card: its whole tile with the find ringed, 640 px as a JPEG (about 90 KB,
+    against 600 KB as a 1000 px PNG; a sweep makes thousands, and each is kept in the project's history too)."""
+    f = p.path("candidates", "img", f"{cid}-relief.jpg")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tile_image(p, tile_id, "composite", mark=at).resize((640, 640), Image.LANCZOS).convert("RGB").save(f, "JPEG", quality=85)
+    return f
+
+
 def tile_image(p: Project, tile_id: str, style: str = "composite", mark: tuple[float, float] | None = None) -> Image.Image:
     tile = p.load("tiles", {})[tile_id]
     meta = p.load("terrains", {})[tile["terrain"]]
