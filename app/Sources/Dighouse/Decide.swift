@@ -716,9 +716,7 @@ struct FindCard: View {
             DisclosureGroup("Two flights: " + answer) {
                 VStack(alignment: .leading, spacing: 6) {
                     if let path = f["image"] as? String, let image = Images.load((c.folder as NSString).deletingLastPathComponent + "/" + path) {
-                        Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxWidth: 640, maxHeight: 230, alignment: .leading)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .accessibilityLabel("The ground in both flights, and the change between them")
+                        FlightCompare(image: image, years: (f["years"] as? [Int]) ?? [])
                     }
                     if let rise = f["rise_m"] as? [Double], let noise = f["noise_m"] as? Double, rise.count == 2 {
                         Text("Rises \(rise[0].formatted()) m, then \(rise[1].formatted()) m above the ground around it. The ground away from it differs by up to \(noise.formatted()) m between flights, so less than that is noise. Blue where ground went, red where it came.")
@@ -834,12 +832,60 @@ extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }
 
+/// The two flights over a find, one over the other with a divider to slide between them, and the change map beside
+/// them. compare_flights draws the three side by side in one picture (300 px each, 8 px apart); this cuts it up.
+private struct FlightCompare: View {
+    let image: NSImage
+    let years: [Int]
+    @State private var split = 0.5
+
+    private func panel(_ i: Int) -> NSImage? {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil), cg.height > 26 else { return nil }
+        let side = cg.height - 26
+        guard cg.width >= 3 * side + 16, let part = cg.cropping(to: CGRect(x: i * (side + 8), y: 0, width: side, height: side)) else { return nil }
+        return NSImage(cgImage: part, size: NSSize(width: side, height: side))
+    }
+
+    var body: some View {
+        let side: CGFloat = 230
+        let first = years.first.map(String.init) ?? "Older", last = years.last.map(String.init) ?? "Newer"
+        if let old = panel(0), let new = panel(1), let change = panel(2) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    ZStack(alignment: .leading) {
+                        Image(nsImage: new).resizable().frame(width: side, height: side)
+                        Image(nsImage: old).resizable().frame(width: side, height: side)
+                            .mask(alignment: .leading) { Rectangle().frame(width: side * split) }
+                        Rectangle().fill(.white).frame(width: 2, height: side).offset(x: side * split - 1)
+                    }
+                    .frame(width: side, height: side).clipShape(RoundedRectangle(cornerRadius: 8))
+                    .contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 0).onChanged { split = min(max($0.location.x / side, 0), 1) })
+                    .accessibilityElement().accessibilityLabel("The ground in \(first) on the left of the line, in \(last) on the right")
+                    Slider(value: $split, in: 0...1).frame(width: side).accessibilityLabel("Divider between the two flights")
+                    Text("\(first) left of the line, \(last) right").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Image(nsImage: change).resizable().frame(width: side, height: side).clipShape(RoundedRectangle(cornerRadius: 8))
+                        .accessibilityLabel("The change between the flights")
+                    Text("Change").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                }
+            }
+        } else {
+            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxWidth: 640, maxHeight: 230, alignment: .leading)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel("The ground in both flights, and the change between them")
+        }
+    }
+}
+
 /// The bare ground with an old map laid over it, the same 240 m square of each. Drag across it, or use the slider,
-/// to move the divider; the sheet buttons choose which old map.
+/// to move the divider; the second slider fades the map so the ground shows through it; the sheet buttons choose which.
 private struct OldMapCompare: View {
     let root: String
     let file: String
     @State private var split = 0.5
+    @State private var strength = 1.0
     @State private var sheet = 0
 
     private var info: (ground: String, maps: [(title: String, image: String)]) {
@@ -864,6 +910,7 @@ private struct OldMapCompare: View {
                     if let ground = Images.load(root + "/" + info.ground) { Image(nsImage: ground).resizable().frame(width: side, height: side) }
                     if let map = Images.load(root + "/" + info.maps[pick].image) {
                         Image(nsImage: map).resizable().frame(width: side, height: side)
+                            .opacity(strength)
                             .mask(alignment: .leading) { Rectangle().frame(width: side * split) }
                     }
                     Rectangle().fill(.white).frame(width: 2, height: side).offset(x: side * split - 1)
@@ -872,17 +919,26 @@ private struct OldMapCompare: View {
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0).onChanged { split = min(max($0.location.x / side, 0), 1) })
                 .accessibilityElement().accessibilityLabel("\(info.maps[pick].title) on the left, the bare ground on the right")
-                Slider(value: $split, in: 0...1).frame(width: side).accessibilityLabel("Divider between the old map and the ground")
+                sliderRow("Line", value: $split, side: side).accessibilityLabel("Divider between the old map and the ground")
+                sliderRow("Map", value: $strength, side: side).accessibilityLabel("How strongly the old map shows over the ground")
                 HStack(spacing: 6) {
                     ForEach(Array(info.maps.enumerated()), id: \.offset) { i, m in
                         Button(m.title.replacingOccurrences(of: "USGS ", with: "")) { sheet = i }
                             .buttonStyle(SecondaryButton()).opacity(i == pick ? 1 : 0.6)
                     }
                 }
-                Text("Old map on the left of the line, the bare ground on the right; both 240 m across, the find in the middle.")
+                Text("Old map on the left of the line, the bare ground on the right; both 240 m across, the find in the middle. Fade the map to see the ground through it.")
                     .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
             }
         }
+    }
+
+    private func sliderRow(_ name: String, value: Binding<Double>, side: CGFloat) -> some View {
+        HStack(spacing: 8) {
+            Text(name).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).frame(width: 34, alignment: .leading)
+            Slider(value: value, in: 0...1)
+        }
+        .frame(width: side)
     }
 }
 

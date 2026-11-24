@@ -46,6 +46,8 @@ What needs you waits on Home under **Waiting for you**, across every project. Pr
 
 Measured rises and shapes the bulk look pointed at that nothing else supports stay on the map instead of being put to you. You can raise any of them.
 
+On the Map, the pin-and-circle button marks what you see yourself: click a spot and it becomes a find with the usual checks, or drag a box and the agent looks closely at the tiles under it.
+
 ## If something looks real
 
 - **Do not post the location anywhere public, and do not dig or remove anything.** In most countries that needs a permit, and a published location invites looting.

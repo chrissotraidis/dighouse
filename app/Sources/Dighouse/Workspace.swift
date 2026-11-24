@@ -113,6 +113,9 @@ struct MapView: View {
     @State private var markAt: (tile: String, x: Double, y: Double)?
     @State private var markNote = ""
     @State private var markBusy: String?
+    /// Or an area dragged out while marking: the box as drawn, and the tiles it covers.
+    @State private var markBox: (CGPoint, CGPoint)?
+    @State private var markTiles: [String] = []
 
     private struct Cut {
         let image: String
@@ -298,14 +301,32 @@ struct MapView: View {
                                     .onEnded { g in cutSection(from: g.startLocation, to: g.location, spots: spots, scale: scale) })
                         }
                         if marking {
-                            // Catches one click while marking: the place becomes a tile and a point on it.
+                            // Catches one click while marking (the place becomes a tile and a point on it), or a drag
+                            // that boxes an area (the tiles it covers).
                             Color.white.opacity(0.001)
-                                .gesture(SpatialTapGesture().onEnded { e in
-                                    let m = (x: e.location.x / scale, y: e.location.y / scale)
-                                    if let s = spots.first(where: { m.x >= $0.x && m.x <= $0.x + $0.w && m.y >= $0.y && m.y <= $0.y + $0.h }) {
-                                        markAt = (s.tile.id, (m.x - s.x) / s.w, (m.y - s.y) / s.h)
+                                .gesture(DragGesture(minimumDistance: 6)
+                                    .onChanged { g in markBox = (g.startLocation, g.location); markAt = nil; markTiles = [] }
+                                    .onEnded { g in
+                                        let a = g.startLocation, b = g.location
+                                        let box = CGRect(x: min(a.x, b.x) / scale, y: min(a.y, b.y) / scale,
+                                                         width: abs(a.x - b.x) / scale, height: abs(a.y - b.y) / scale)
+                                        markTiles = spots.filter { CGRect(x: $0.x, y: $0.y, width: $0.w, height: $0.h).intersects(box) }.map(\.tile.id)
+                                        if markTiles.isEmpty { markBox = nil }
                                     }
-                                })
+                                    .exclusively(before: SpatialTapGesture().onEnded { e in
+                                        markBox = nil
+                                        markTiles = []
+                                        let m = (x: e.location.x / scale, y: e.location.y / scale)
+                                        if let s = spots.first(where: { m.x >= $0.x && m.x <= $0.x + $0.w && m.y >= $0.y && m.y <= $0.y + $0.h }) {
+                                            markAt = (s.tile.id, (m.x - s.x) / s.w, (m.y - s.y) / s.h)
+                                        }
+                                    }))
+                        }
+                        if let box = markBox {
+                            Path { p in p.addRect(CGRect(x: min(box.0.x, box.1.x), y: min(box.0.y, box.1.y),
+                                                         width: abs(box.0.x - box.1.x), height: abs(box.0.y - box.1.y))) }
+                                .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                                .allowsHitTesting(false)
                         }
                         if let at = markAt, let s = spots.first(where: { $0.tile.id == at.tile }) {
                             Circle().strokeBorder(Theme.accent, lineWidth: 2.5).frame(width: 18, height: 18)
@@ -323,7 +344,7 @@ struct MapView: View {
                 // Drag the ground to move it. While drawing a slice, the drag draws instead.
                 .simultaneousGesture(DragGesture(minimumDistance: 3)
                     .onChanged { g in
-                        guard !drawing else { return }
+                        guard !drawing, !marking else { return }
                         if dragStart == nil { dragStart = pan }
                         pan = clamped(CGSize(width: (dragStart?.width ?? 0) + g.translation.width, height: (dragStart?.height ?? 0) + g.translation.height))
                     }
@@ -354,7 +375,7 @@ struct MapView: View {
                 .padding(12)
             }
             .overlay(alignment: .bottomLeading) {
-                markAt != nil ? AnyView(markPanel) : cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard)
+                markAt != nil || !markTiles.isEmpty ? AnyView(markPanel) : cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard)
             }
             .overlay(alignment: .top) {
                 if drawing && line == nil && !cutting {
@@ -430,8 +451,11 @@ struct MapView: View {
                 marking.toggle()
                 drawing = false
                 markAt = nil
+                markBox = nil
+                markTiles = []
             } label: { Image(systemName: "mappin.and.ellipse") }
-                .buttonStyle(IconButton(size: 28, active: marking)).help("Mark a spot you see: click it, say what it is, and it gets the usual checks")
+                .buttonStyle(IconButton(size: 28, active: marking))
+                .help("Mark what you see: click a spot and it gets the usual checks, or drag a box and the agent looks closely at that area")
             let all = areas
             if all.count > 1 {
                 PillMenu(title: (short ? "" : "Show: ") + Self.shortName(currentArea?.name ?? "Ground"), quiet: true, width: 340) {
@@ -554,7 +578,7 @@ struct MapView: View {
                 Text(cutting ? "Cutting the slice…" : "Slice").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 if cutting { DigIndicator() }
                 Spacer()
-                Button { cut = nil; line = nil } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22))
+                Button { cut = nil; line = nil } label: { Image(systemName: "xmark").accessibilityLabel("Close") }.buttonStyle(IconButton(size: 22))
             }
             if let cut {
                 if !cut.image.isEmpty, let img = Images.load(cut.image) {
@@ -593,20 +617,23 @@ struct MapView: View {
     @ViewBuilder private var markPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Mark a spot").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text(area ? "Mark an area" : "Mark a spot").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Spacer()
-                Button { markAt = nil } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22)).disabled(markBusy != nil)
+                Button { markAt = nil; markBox = nil; markTiles = [] } label: { Image(systemName: "xmark").accessibilityLabel("Close") }
+                    .buttonStyle(IconButton(size: 22)).disabled(markBusy != nil)
             }
-            Text("Say what you see. It becomes a find in your name; a slice and the open maps are checked now, and the agent adds a second opinion and the records.")
+            Text(!area ? "Say what you see. It becomes a find in your name; a slice and the open maps are checked now, and the agent adds a second opinion and the records."
+                 : tooBig ? "\(markTiles.count) tiles. Draw a smaller box, at most \(Self.areaLimit) tiles, so the agent can look at each closely."
+                 : "\(markTiles.count) \(markTiles.count == 1 ? "tile" : "tiles"). Say what you see. The agent looks closely at each in two views, marks what it finds, checks it and suggests what it is.")
                 .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            TextField("A low round mound by the stream", text: $markNote)
+            TextField(area ? "Banks along the ridge, maybe an enclosure" : "A low round mound by the stream", text: $markNote)
                 .textFieldStyle(.plain).font(.system(size: 13 * Theme.scale))
                 .padding(8).background(RoundedRectangle(cornerRadius: 8).fill(Theme.side))
-                .onSubmit { if !markNote.trimmingCharacters(in: .whitespaces).isEmpty { markSpot() } }
+                .onSubmit { if !markNote.trimmingCharacters(in: .whitespaces).isEmpty, !tooBig { area ? markArea() : markSpot() } }
             HStack(spacing: 8) {
-                Button("Mark it and check") { markSpot() }
+                Button(area ? "Ask the agent to look" : "Mark it and check") { area ? markArea() : markSpot() }
                     .buttonStyle(PrimaryButton())
-                    .disabled(markBusy != nil || markNote.trimmingCharacters(in: .whitespaces).isEmpty || !app.engine.ready)
+                    .disabled(markBusy != nil || tooBig || markNote.trimmingCharacters(in: .whitespaces).isEmpty || !app.engine.ready)
                 if let markBusy {
                     DigIndicator(size: 12)
                     Text(markBusy).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
@@ -617,6 +644,24 @@ struct MapView: View {
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.raised))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
         .shadow(color: .black.opacity(0.35), radius: 14, y: 4)
+    }
+
+    private var area: Bool { markAt == nil && !markTiles.isEmpty }
+    private var tooBig: Bool { area && markTiles.count > Self.areaLimit }
+    /// The most tiles one marked area asks the agent to look at closely, as many as a timed session's close look.
+    static let areaLimit = 24
+
+    /// Ask the agent to look closely at the tiles under a box the person drew, by their names (no places).
+    private func markArea() {
+        let note = markNote.trimmingCharacters(in: .whitespacesAndNewlines), tiles = markTiles
+        app.ask("A person marked an area of \(tiles.count) \(tiles.count == 1 ? "tile" : "tiles") by hand: \"\(note)\". "
+                + "Look closely at each in two views (view_tile), record a verdict and mark every feature you see; then add_measured_rises "
+                + "and check_finds once, and suggest a decision on each new find. Tiles: \(tiles.joined(separator: ", ")).",
+                title: "A look at a marked area")
+        markBox = nil
+        markTiles = []
+        marking = false
+        markNote = ""
     }
 
     /// Open a find at the clicked spot in the person's name, slice it and check open maps, then ask the agent for the
@@ -663,7 +708,7 @@ struct MapView: View {
                     Button {
                         store.selectedTile = nil
                         store.selectedCandidate = nil
-                    } label: { Image(systemName: "xmark") }.buttonStyle(IconButton(size: 22))
+                    } label: { Image(systemName: "xmark").accessibilityLabel("Close") }.buttonStyle(IconButton(size: 22))
                 }
                 if let candidate {
                     if let section = Images.load(candidate.section) {

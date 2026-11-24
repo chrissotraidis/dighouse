@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
+import threading
 from urllib.parse import unquote, urlparse
 
 from .project import Project, commit, today
@@ -73,7 +75,12 @@ def everything(p: Project) -> list[dict]:
 
 def write(p: Project, meta: dict, notes: str = "") -> None:
     head = "\n".join(f"{k}: {json.dumps(v, ensure_ascii=False)}" for k, v in meta.items())
-    _file(p, meta["id"]).write_text(f"---\n{head}\n---\n{_body(meta, p)}\n{NOTES}\n\n{notes}\n")
+    f = _file(p, meta["id"])
+    # Written beside the file and swapped in whole: checks run on many finds at once while the record and the report
+    # read them, and a half-written find once stopped the report ("not enough values to unpack").
+    tmp = f.with_name(f".{f.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    tmp.write_text(f"---\n{head}\n---\n{_body(meta, p)}\n{NOTES}\n\n{notes}\n")
+    os.replace(tmp, f)
 
 
 def create(p: Project, name: str, tile: str, lonlat: tuple[float, float], note: str, flagged_by: str,
@@ -284,8 +291,11 @@ def _body(meta: dict, p=None) -> str:
     by = str(meta["flagged_by"])
     # "seen in bulk by …" and "measured (…)" already say how; a model's name needs "by".
     marked = f"{meta['flagged']}, {by}" if by.startswith(("seen in bulk", "measured")) else f"{meta['flagged']} by {by}"
+    # As the app says it: a flag with its slice and its open-map check on record waits for a person, not for checks.
+    state = ("Checked, waiting for a person's decision" if meta["status"] == "flagged" and checks.get("section") and checks.get("modern")
+             else LABELS[meta["status"]])
     out = [f"# {cid} {meta['name']}", "",
-           f"Status: {LABELS[meta['status']]} · Marked {marked}", ""]
+           f"Status: {state} · Marked {marked}", ""]
     for kind, caption in (("relief", "Bare-ground relief"), ("section", "Slice through the feature")):
         if (checks.get(kind) or {}).get("image") or kind == "relief":
             # New finds' pictures are JPEGs (written just after the record); finds from before keep their PNGs.

@@ -540,32 +540,45 @@ private struct PrivacySettings: View {
     }
 }
 
-/// Accounts some open data services ask for. Denmark's ground model needs a free token from Dataforsyningen.
+/// Accounts some open data services ask for. Denmark's ground model needs a free token from Dataforsyningen; OpenAlex,
+/// where the literature is searched, shares a small daily budget among everyone without a key.
 private struct OpenDataKeys: View {
-    @State private var token = Keys.read("dataforsyningen")
-    @State private var saved = Keys.read("dataforsyningen")
-
     var body: some View {
         VStack(spacing: 0) {
-            SettingRow(title: "Denmark's ground model",
-                       note: "Dataforsyningen asks for a free account and a token. Paste the token here. It stays in a file only you can read on this Mac.") {
-                HStack(spacing: 8) {
-                    SecureField("Token", text: $token).textFieldStyle(.plain).font(.system(size: 13 * Theme.scale))
-                        .padding(.horizontal, 10).frame(width: 190, height: 30)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
-                    Button(token == saved ? (saved.isEmpty ? "Save" : "Saved") : "Save") {
-                        Keys.write("dataforsyningen", token)
-                        saved = Keys.read("dataforsyningen")
-                    }
-                    .buttonStyle(SecondaryButton()).disabled(token == saved)
-                    Link(destination: URL(string: "https://confluence.kds.dk/display/MYD/Log%2Bind%2Bog%2BToken")!) {
-                        Label("Get a token", systemImage: "arrow.up.right").font(.system(size: 12.5 * Theme.scale))
-                    }
-                    .foregroundStyle(Theme.green)
+            KeyRow(name: "dataforsyningen", title: "Denmark's ground model", field: "Token", get: "Get a token",
+                   note: "Dataforsyningen asks for a free account and a token. Paste the token here. It stays in a file only you can read on this Mac.",
+                   link: "https://confluence.kds.dk/display/MYD/Log%2Bind%2Bog%2BToken")
+            KeyRow(name: "openalex", title: "Books and papers (OpenAlex)", field: "Key", get: "Get a key",
+                   note: "Without a key, everyone on your network shares about 100 literature searches a day, and Dighouse falls back to Crossref after that. A free key gives you your own. Asking for one sends OpenAlex your email address.",
+                   link: "https://help.openalex.org/api/authentication/")
+        }
+        .panel()
+    }
+}
+
+private struct KeyRow: View {
+    let name: String, title: String, field: String, get: String, note: String, link: String
+    @State private var value = ""
+    @State private var saved = ""
+
+    var body: some View {
+        SettingRow(title: title, note: note) {
+            HStack(spacing: 8) {
+                SecureField(field, text: $value).textFieldStyle(.plain).font(.system(size: 13 * Theme.scale))
+                    .padding(.horizontal, 10).frame(width: 190, height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
+                Button(value == saved ? (saved.isEmpty ? "Save" : "Saved") : "Save") {
+                    Keys.write(name, value)
+                    saved = Keys.read(name)
+                }
+                .buttonStyle(SecondaryButton()).disabled(value == saved)
+                if let url = URL(string: link) {
+                    Link(destination: url) { Label(get, systemImage: "arrow.up.right").font(.system(size: 12.5 * Theme.scale)) }
+                        .foregroundStyle(Theme.green)
                 }
             }
         }
-        .panel()
+        .onAppear { value = Keys.read(name); saved = value }
     }
 }
 

@@ -311,10 +311,14 @@ def source_page(folder: Path, url: str, page: int) -> tuple[dict, bytes]:
 def _openalex(query: str, limit: int) -> list[dict] | None:
     """Search OpenAlex. None when it refuses: without a key, a network address shares a small daily budget, and it is
     turned away for a few seconds when the service is busy."""
+    from .national import access_key
+    params = {"search": query, "per-page": limit}
+    # A free key has its own daily budget; sent as a header, so it is never part of an address.
+    headers = {"Authorization": f"Bearer {key}"} if (key := access_key("openalex")) else {}
     r = None
     for attempt in (0, 1):
         try:
-            r = _client.get(OPENALEX, params={"search": query, "per-page": limit})
+            r = _client.get(OPENALEX, params=params, headers=headers)
         except httpx.HTTPError:
             return None
         if r.status_code != 429 or attempt:

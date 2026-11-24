@@ -143,7 +143,8 @@ def commit(root: Path, message: str) -> bool:
     """Save the project's records, notes and sources in its history. data/ and private/ are never included."""
     if not (root / ".git").exists() and not _git(root, "init", "-q"):
         return False
-    _git(root, "add", "-A", "--", ".", ":(exclude)data", ":(exclude)private")
+    # A file half written beside its record (ledger.write) is never part of the history.
+    _git(root, "add", "-A", "--", ".", ":(exclude)data", ":(exclude)private", ":(exclude,glob)**/.*.tmp")
     return _git(root, "-c", "user.name=Dighouse", "-c", "user.email=dighouse@localhost", "commit", "-q", "-m", message)
 
 

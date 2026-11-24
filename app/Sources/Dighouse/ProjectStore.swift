@@ -164,6 +164,7 @@ final class ProjectStore: ObservableObject {
         screenedBefore = nil
         selectedTile = nil
         selectedCandidate = nil
+        status = RunStatus()   // the last project's counts must not show beside this one's ground
         UserDefaults.standard.set(ref.path, forKey: "currentProject")
         signature = ""
         reloadIfChanged()
@@ -290,6 +291,15 @@ final class ProjectStore: ObservableObject {
 
         candidates = Self.readCandidates(root, records)
         projectSources = Self.readProjectSources(root)
+        // Until the tools answer with the run status, the header counts what was just read: a large project took a few
+        // seconds and showed "Ground ready, not cut into tiles · 1 find" meanwhile.
+        if status.tiles == 0, status.candidates == 0 {
+            status.tiles = tiles.count
+            status.unreadable = tiles.filter { $0.status == "unreadable" }.count
+            status.unscreened = tiles.filter { $0.status == "unscreened" }.count
+            status.screened = status.tiles - status.unreadable - status.unscreened
+            status.candidates = candidates.count
+        }
     }
 
     /// The read log's lines for the project as a whole: "- date · project · status · title · link · what it says".

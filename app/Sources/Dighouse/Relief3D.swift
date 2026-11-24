@@ -33,7 +33,8 @@ struct Relief3D: View {
                         .accessibilityLabel("The direction the light comes from")
                     Spacer()
                 }
-                Text("\(Int(surface.width)) m across. The white post is a person 1.70 m tall, at the find; heights are drawn ×\(Int(exaggerate)). Drag to turn, scroll to come closer.")
+                let top = Int((surface.z.max() ?? 1).rounded(.up))
+                Text("\(Int(surface.width)) m across. The white post is a person 1.70 m tall, at the find; the ruler at the near corner rises \(top) m from the lowest ground to the highest, marked every \(top > 12 ? 5 : 1) m. Heights are drawn ×\(Int(exaggerate)). Drag to turn, scroll to come closer.")
                     .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
             } else {
                 Text("The 3D ground is drawn with the close views. Open the find again in a moment.")
@@ -97,6 +98,25 @@ struct Relief3D: View {
         person.position = SCNVector3(Float(fi) * dx - s.width / 2 + 6, s.height(fi + Int(6 / dx), fj) * exaggerate + 0.85 * exaggerate, Float(fj) * dz - s.depth / 2)
         scene.rootNode.addChildNode(person)
 
+        // A ruler just outside the lower of the two near corners, where nothing stands between it and the camera, from
+        // the lowest ground to the highest, a tick every metre (every 5 m on steep ground), at the same height scale.
+        let top = max(1, (s.z.max() ?? 1).rounded(.up)), step: Float = top > 12 ? 5 : 1
+        let left = s.height(0, s.ny - 1) <= s.height(s.nx - 1, s.ny - 1)
+        let rx = left ? -s.width / 2 - 2 : s.width / 2 + 2, rz = s.depth / 2 + 2
+        let pole = SCNNode(geometry: SCNCylinder(radius: 0.15, height: CGFloat(top * exaggerate)))
+        pole.position = SCNVector3(rx, top * exaggerate / 2, rz)
+        var marks = [pole]
+        for metre in stride(from: Float(0), through: top, by: step) {
+            let tick = SCNNode(geometry: SCNBox(width: 1.6, height: 0.12, length: 0.12, chamferRadius: 0))
+            tick.position = SCNVector3(rx + (left ? -0.8 : 0.8), metre * exaggerate, rz)
+            marks.append(tick)
+        }
+        for mark in marks {
+            mark.geometry?.firstMaterial?.diffuse.contents = NSColor(white: 0.85, alpha: 1)
+            mark.geometry?.firstMaterial?.lightingModel = .constant
+            scene.rootNode.addChildNode(mark)
+        }
+
         let sun = SCNNode()
         sun.light = SCNLight()
         sun.light?.type = .directional
@@ -114,7 +134,10 @@ struct Relief3D: View {
         let camera = SCNNode()
         camera.camera = SCNCamera()
         camera.camera?.zFar = 2000
-        camera.position = SCNVector3(0, s.width * 0.42, s.depth * 0.62)
+        // A narrow lens from further back: the whole square fits, so the ruler at a near corner is in view, and upright
+        // things such as the ruler and the post stay upright instead of leaning out at the edges.
+        camera.camera?.fieldOfView = 34
+        camera.position = SCNVector3(0, s.width * 1.0, s.depth * 1.75)
         camera.look(at: SCNVector3(0, 0, 0))
         scene.rootNode.addChildNode(camera)
         return scene
