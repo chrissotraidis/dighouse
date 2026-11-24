@@ -1145,3 +1145,20 @@ def test_where_shared_map_squares_hold_too_much_the_find_gets_its_own(monkeypatc
     monkeypatch.setattr(checks._client, "get", get)
     got = checks.modern_features(0.0, 0.0, 150)
     assert got["asked"] == "OpenStreetMap's map service" and len(asked) == 3 and asked[-1] <= 400
+
+
+def test_two_flights_say_when_a_rise_appeared(monkeypatch):
+    from dighouse import flights
+    rng = np.random.default_rng(1)
+    yy, xx = np.mgrid[:120, :120]
+    flat = 200 + 0.02 * xx + rng.normal(0, 0.03, (120, 120))
+    mound = flat + 1.2 * np.exp(-((yy - 60) ** 2 + (xx - 60) ** 2) / (2 * 4.0 ** 2))
+    ground = {"usgs:OH_2010": flat, "usgs:OH_2019": mound + 0.4}   # the later flight sits 0.4 m higher all over
+    monkeypatch.setattr(sources, "_find_usgs", lambda box: [{"id": k, "title": k.split(":")[1]} for k in ground])
+    monkeypatch.setattr(flights, "_ground", lambda d, lon, lat: (ground[d], np.zeros((120, 120)), {"ground_points_per_m2": 8.0}))
+    check, picture = flights.compare_at(-82.0, 39.7, 12.0)
+    assert check["answer"] == "absent in 2010, present in 2019: possibly modern" and picture is not None
+    assert check["years"] == [2010, 2019] and abs(check["change_m"] - 1.0) < 0.3 and check["noise_m"] < 0.2
+    ground["usgs:OH_2010"] = mound
+    assert flights.compare_at(-82.0, 39.7, 12.0)[0]["answer"] == "present in both flights, 2010 and 2019"
+    assert flights.flown("USGS_LPC_IN_Vanderburgh_2013_LAS_2016") == 2013 and flights.flown("IL_10CoNRCS_3_D23") is None

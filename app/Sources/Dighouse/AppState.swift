@@ -1135,6 +1135,16 @@ final class AppState: ObservableObject {
         _ = try? await engine.callTool("find_views", ["project": root, "candidate": c.id])
     }
 
+    /// Compare the oldest and newest dated flights over a find (compare_flights). The record changes on disk, and the
+    /// card follows it.
+    func compareFlights(_ c: Candidate) async {
+        let root = (c.folder as NSString).deletingLastPathComponent
+        guard engine.ready, !drawingViews.contains(root + c.id + "-flights") else { return }
+        drawingViews.insert(root + c.id + "-flights")
+        defer { drawingViews.remove(root + c.id + "-flights") }
+        _ = try? await engine.callTool("compare_flights", ["project": root, "candidate": c.id])
+    }
+
     /// Projects whose finds the agent was already asked to suggest decisions for, this session.
     private var suggestedFor = Set<String>()
 

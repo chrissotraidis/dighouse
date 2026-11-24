@@ -97,6 +97,7 @@ enum ToolGuide {
                      Tool(name: "opinion_pictures", title: "Draw the second opinion's pictures", does: "Draws a find's tile in two views with the find ringed, for a second model asked through the chat. Only the app calls it."),
                      Tool(name: "second_look_failed", title: "Note a missing opinion", does: "Notes that a second model was asked and could not answer, and why. It does not count as an opinion."),
                      Tool(name: "find_views", title: "Draw close views", does: "Draws a find 60 m across, ringed, in nine styles, for the person deciding it."),
+                     Tool(name: "compare_flights", title: "Compare two flights", does: "Where two dated flights cover a find, shows whether it was there in both, or appeared or went between them."),
                      Tool(name: "check_modern", title: "Check open maps", does: "Looks on open maps for roads, buildings and sites already mapped nearby."),
                      Tool(name: "check_finds", title: "Check all the finds", does: "Slices every open find, measures its shape and checks open maps, in one go."),
                      Tool(name: "add_control", title: "Add a known site", does: "Registers a published site the run should find again, as a test of the run itself."),
@@ -537,6 +538,7 @@ enum ToolGuide {
         case "cut_section": return ("dig.layers", "Cut a slice" + (s("candidate").isEmpty ? " on tile \(tile)" : " through \(s("candidate"))"))
         case "second_look": return ("person.2", "Second opinion on \(s("candidate")) by \(s("model"))")
         case "check_modern": return ("building.2", "Checked open maps near \(s("candidate"))")
+        case "compare_flights": return ("clock.arrow.circlepath", "Compared two flights over \(s("candidate"))")
         case "check_finds": return ("dig.layers", "Checked " + (s("candidates").isEmpty || s("candidates") == "all" ? "every open find" : s("candidates")) + ": slices, shapes, open maps")
         case "search_literature": return ("dig.sieve", "Searched the literature: \(s("query"))")
         case "read_source": return ("doc.text.magnifyingglass", "Opened a source: \(URL(string: s("url"))?.host ?? s("url"))")

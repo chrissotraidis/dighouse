@@ -1275,6 +1275,18 @@ def find_views(project: str, candidate: str) -> dict:
 
 
 @tool
+def compare_flights(project: str, candidate: str) -> dict:
+    """When did it appear. Where two dated USGS point flights cover a find, fetch the oldest and the newest over a square
+    120 m across, take out the steady offset between them, and file a "flights" check: present in both flights, absent
+    in the first and present in the last (possibly modern), gone by the last (possibly levelled), or no clear rise in
+    either. Draws candidates/img/<id>-flights.png: both flights and the change, blue where ground went, red where it
+    came. Elsewhere it files that there is one dated flight or none. About 3 to 10 seconds a find."""
+    from . import flights
+    p = Project(project).check()
+    return flights.compare(p, candidate)
+
+
+@tool
 def undo_decision(project: str, candidate: str, by: str) -> dict:
     """The app's tool for taking back a person's last decision on a find. Agents do not call it."""
     p = Project(project).check()

@@ -474,6 +474,7 @@ struct FindCard: View {
     /// The slice last chosen: west to east, or north to south.
     @AppStorage("sliceNorthSouth") private var northSouth = false
     @State private var drawn = 0
+    @State private var comparing = false
 
     /// Each view with one line saying what it shows. The last three are from the Relief Visualization Toolbox.
     static let views: [(style: String, title: String, shows: String)] = [
@@ -617,6 +618,10 @@ struct FindCard: View {
             } else { yes.append("Nothing modern mapped") }
         }
         if let old = c.checks["old_maps"] as? JSON { if old["explains"] as? Bool == true { no.append("Old maps explain it") } else { yes.append("Not on old maps") } }
+        if let answer = (c.checks["flights"] as? JSON)?["answer"] as? String {
+            if answer.hasPrefix("present in both") { yes.append("In both flights") }
+            else if answer.contains("possibly modern") { no.append("Absent in the older flight") }
+        }
         if let s = c.likely?.status, s == "natural" || s == "modern" { no.append("Agent: \(s)") }
         return (yes, no)
     }
@@ -702,8 +707,39 @@ struct FindCard: View {
             .background(Capsule().fill(Theme.ink.opacity(0.07)))
     }
 
+    /// When did it appear: the oldest and newest dated flights over the find, once compared; before that, a button.
+    @ViewBuilder private func flights(_ c: Candidate) -> some View {
+        if let f = c.checks["flights"] as? JSON, let answer = f["answer"] as? String {
+            DisclosureGroup("Two flights: " + answer) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let path = f["image"] as? String, let image = Images.load((c.folder as NSString).deletingLastPathComponent + "/" + path) {
+                        Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxWidth: 640, maxHeight: 230, alignment: .leading)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .accessibilityLabel("The ground in both flights, and the change between them")
+                    }
+                    if let rise = f["rise_m"] as? [Double], let noise = f["noise_m"] as? Double, rise.count == 2 {
+                        Text("Rises \(rise[0].formatted()) m, then \(rise[1].formatted()) m above the ground around it. The ground away from it differs by up to \(noise.formatted()) m between flights, so less than that is noise. Blue where ground went, red where it came.")
+                            .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.top, 4).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else if store.terrains.contains(where: { $0.dataset.hasPrefix("usgs:") || $0.dataset.hasPrefix("us:") }) {
+            HStack(spacing: 8) {
+                Button(comparing ? "Comparing flights…" : "Compare two flights") {
+                    comparing = true
+                    Task { await app.compareFlights(c); comparing = false }
+                }
+                .buttonStyle(SecondaryButton()).disabled(comparing || !app.engine.ready)
+                .help("Where two dated flights cover this find: was it there in both, or did it appear or go between them? About ten seconds.")
+                if comparing { DigIndicator(size: 12) }
+            }
+        }
+    }
+
     @ViewBuilder private func details(_ c: Candidate) -> some View {
         VStack(alignment: .leading, spacing: 6) {
+            flights(c)
             if let look = c.checks["second_look"] as? JSON, let note = look["note"] as? String, !note.isEmpty {
                 DisclosureGroup("What the second model said") {
                     Text("\(look["model"] as? String ?? ""): \(note) " + RecordsView.secondMeaning(look["agrees"] as? Bool == true))

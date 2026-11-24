@@ -14,7 +14,7 @@
   <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-0A84FF?logo=apple">
   <img alt="Apple silicon" src="https://img.shields.io/badge/Apple%20silicon-arm64-0A84FF?logo=apple">
   <img alt="Native SwiftUI" src="https://img.shields.io/badge/SwiftUI-native-FF9F0A?logo=swift&logoColor=white">
-  <img alt="62 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-62%20tools-8B5E3C">
+  <img alt="63 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-63%20tools-8B5E3C">
   <img alt="Free to use" src="https://img.shields.io/badge/price-free-30D158">
   <img alt="Site locations stay on your Mac" src="https://img.shields.io/badge/site%20locations-stay%20on%20your%20Mac-30D158">
   <img alt="No analytics" src="https://img.shields.io/badge/analytics-none-30D158">
@@ -247,7 +247,7 @@ Take the stages one at a time, or press **Find and report back** and the agent c
 
 **A project is the home for its work.** It holds its areas of ground, its finds and decisions, and its chats: the run that searched it, a chat that checks one lead, a chat that writes the report. The project page lists its chats and what each is doing. Anything typed there starts a new chat in the project, and every chat starts from the research record. **New chat** in the sidebar starts a chat in no project, wherever you are; until its first message, the Project menu beside Workflows says where the chat will go and moves it. In the sidebar, projects come first, each with its chats folded under it, then chats that belong to no project, then the blind tests in a group of their own. The map shows one area at a time, by name.
 
-**Decide** is where a person makes the calls. **Needs you** shows the leads, then the finds where the agent and the second model disagree, one at a time and in order of rank: a close view 60 m across in nine styles on the keys 1 to 9 (among them VAT, multi-scale relief and local dominance from the Relief Visualization Toolbox), the whole tile, the slice (west to east or north to south, press D, with a 1.70 m figure for scale), one line of numbers (what marked it, height, size, ground points per m² and other finds within 200 m), and the checks sorted into **For** and **Against**. The rank, A, B or C, says how many of three checks call it built: the shape, the agent's eye and the second opinion. It is a count of reasons, not a probability, and it never changes what needs you. Return agrees with the suggestion; a letter picks another decision and asks for your reason. **Agree in bulk** shows the routine finds as a grid of close views; untick any that look wrong and agree with the rest in one press. **Done** lists what you decided, with Undo. Your name and a reason go on every record.
+**Decide** is where a person makes the calls. **Needs you** shows the leads, then the finds where the agent and the second model disagree, one at a time and in order of rank: a close view 60 m across in nine styles on the keys 1 to 9 (among them VAT, multi-scale relief and local dominance from the Relief Visualization Toolbox), the whole tile, the slice (west to east or north to south, press D, with a 1.70 m figure for scale), one line of numbers (what marked it, height, size, ground points per m² and other finds within 200 m), and the checks sorted into **For** and **Against**. The rank, A, B or C, says how many of three checks call it built: the shape, the agent's eye and the second opinion. It is a count of reasons, not a probability, and it never changes what needs you. In the United States, where two dated USGS flights cover a find, **Compare two flights** shows both and the change between them, and says whether the find was there in both, appeared between them (possibly modern) or went. Return agrees with the suggestion; a letter picks another decision and asks for your reason. **Agree in bulk** shows the routine finds as a grid of close views; untick any that look wrong and agree with the rest in one press. **Done** lists what you decided, with Undo. Your name and a reason go on every record.
 
 **Also in the app:** a ten-minute first project at Serpent Mound, a chat with `/` commands, `@` mentions and ⌘K, any model through the [OpenCodex](https://github.com/lidge-jun/opencodex) router (so a different maker's model can give the second opinion), three colour looks and five text sizes.
 
@@ -278,7 +278,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (57 tests)
+uv run pytest            # offline, on a synthetic survey (58 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
