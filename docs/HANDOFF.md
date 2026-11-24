@@ -57,6 +57,8 @@ The aim and every check are in [FIND_LOOP.md](FIND_LOOP.md): a person downloads 
 
 The plan is [SEE_LOOP.md](SEE_LOOP.md), from the WYKOPKI video: help a person see a find clearly before deciding. V1 and V2 put the case on the Decide card. `check_finds` also cuts a north-to-south slice (`C-xxx-section-ns.png`, D switches) and files a `context` check with the finds within 200 m and the ground points per m². Slices show a 1.70 m figure. The card shows one line of numbers, the checks as **For** and **Against**, and a rank: A when the shape, the agent's eye and the second opinion all say built, B for two, C for one or none. Needs you is sorted by rank inside each group; the rank never changes what needs a person.
 
+V3 adds three close views from the Relief Visualization Toolbox on the keys 7 to 9: VAT (RVT's flat-ground blend of hillshade, slope, openness and sky view), multi-scale relief (rises 2 to 20 m across) and local dominance (a person 1.70 m tall looking 5 to 10 m around). `src/dighouse/rvt.py` holds the copied functions and their credit; rvt-py itself is not a dependency, since its install metadata stops before Python 3.12. Each view's caption says in one line what it shows. They are for the person only, so the blind tests are unchanged by them. All three draw in about 0.1 s together.
+
 ## What the home loop added (H0 to H5, 2026-11-23)
 
 The goals, the probe and every check are in [HOME_LOOP.md](HOME_LOOP.md). A project is now the home for its work.

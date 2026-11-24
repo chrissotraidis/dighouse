@@ -82,7 +82,8 @@ def cached_tile(p: Project, tile_id: str, style: str = "composite") -> Path:
 
 
 # The views a person can switch between when deciding a find, in the order of the keys 1 to 6.
-FIND_VIEWS = ("composite", "relief_small", "sky_view", "hillshade", "positive_openness", "negative_openness")
+FIND_VIEWS = ("composite", "relief_small", "sky_view", "hillshade", "positive_openness", "negative_openness",
+              "vat", "msrm", "local_dominance")
 
 
 def find_views(p: Project, cid: str, metres: float = 60.0, size: int = 480, styles: tuple[str, ...] = FIND_VIEWS) -> dict:

@@ -161,7 +161,9 @@ def mark_spots(project: str, shortlist: list[dict], model: str = "") -> dict:
                 continue
             what = (s.get("what") or "a shape").strip().rstrip(".")
             note = f"Seen in bulk: {what}. The tile: {item.get('note', '')}"
-            meta = ledger.create(p, f"Seen in bulk: {what[:50]}", item["tile"], lonlat, note, SEEN_BY.format(model=model),
+            # A name ends on a whole word; the full words are in the note.
+            short = what if len(what) <= 50 else what[:50].rsplit(" ", 1)[0].rstrip(",;: ") + "…"
+            meta = ledger.create(p, f"Seen in bulk: {short}", item["tile"], lonlat, note, SEEN_BY.format(model=model),
                                  at=(s["x"], s["y"]))
             tiles.tile_image(p, item["tile"], "composite", mark=(s["x"], s["y"])).save(p.path("candidates", "img", f"{meta['id']}-relief.png"))
             places.append(lonlat)

@@ -1267,8 +1267,9 @@ def decide_many(project: str, decisions: list[dict], decided_by: str) -> dict:
 
 @tool
 def find_views(project: str, candidate: str) -> dict:
-    """Close views of a find, 60 m across with the find ringed, in six styles: composite, local relief (5 to 15 m),
-    sky view, hillshade, positive openness and negative openness. For the person deciding it. Paths are under data/views."""
+    """Close views of a find, 60 m across with the find ringed, in nine styles: composite, local relief (5 to 15 m),
+    sky view, hillshade, positive openness, negative openness, and from RVT: VAT, multi-scale relief and local
+    dominance. For the person deciding it. Paths are under data/views."""
     p = Project(project).check()
     return tiles.find_views(p, candidate)
 

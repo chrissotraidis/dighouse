@@ -10,6 +10,7 @@ from PIL import Image
 from rasterio.transform import from_origin
 from scipy import ndimage
 
+from . import rvt
 from .sources import Points
 
 GAP_M = 3.0  # a cell further than this from any ground return has no usable ground data
@@ -163,7 +164,8 @@ def openness(dtm: np.ndarray, res: float, radius_m: float = 15.0, directions: in
 
 
 STYLES = ("composite", "hillshade", "slope", "local_relief", "sky_view",
-          "relief_small", "relief_large", "positive_openness", "negative_openness")
+          "relief_small", "relief_large", "positive_openness", "negative_openness",
+          "vat", "msrm", "local_dominance")
 
 
 def render(dtm: np.ndarray, gap: np.ndarray, outside: np.ndarray, res: float, style: str = "composite") -> Image.Image:
@@ -189,6 +191,17 @@ def render(dtm: np.ndarray, gap: np.ndarray, outside: np.ndarray, res: float, st
     elif style in ("positive_openness", "negative_openness"):
         pos, neg = openness(dtm, res)
         img = _stretch(pos if style == "positive_openness" else neg, 1, 99)
+    elif style == "vat":
+        img = _stretch(rvt.vat(hillshade(dtm, res, 315), slope_degrees(dtm, res), openness(dtm, res)[0], sky_view(dtm, res)), 1, 99)
+    elif style == "msrm":
+        # Features 2 to 20 m across, the size of the mounds looked for; symmetric about flat ground.
+        m = rvt.msrm(dtm, res, 2.0, 20.0, 2)
+        span = max(float(np.nanpercentile(np.abs(m), 98)), 0.02)
+        img = np.clip(m / (2 * span) + 0.5, 0, 1)
+    elif style == "local_dominance":
+        # A person 1.70 m tall looking at the ground 5 to 10 m around, as RVT's default is at 0.5 m cells.
+        lo, hi = max(int(round(5 / res)), 1), max(int(round(10 / res)), 2)
+        img = _stretch(rvt.local_dominance(dtm, lo, hi, max((hi - lo) // 10, 1)), 2, 98)
     else:
         lrm = np.clip(local_relief(dtm, res) / 2.0 + 0.5, 0, 1)
         img = (0.6 * _stretch(many) + 0.4 * lrm) * (1 - 0.35 * np.clip(slope_degrees(dtm, res) / 35, 0, 1))

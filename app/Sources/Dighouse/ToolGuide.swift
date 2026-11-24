@@ -96,7 +96,7 @@ enum ToolGuide {
                      Tool(name: "ask_second_opinions", title: "Ask for second opinions", does: "Asks a different model about each open find, a few at a time, and writes each answer on its record."),
                      Tool(name: "opinion_pictures", title: "Draw the second opinion's pictures", does: "Draws a find's tile in two views with the find ringed, for a second model asked through the chat. Only the app calls it."),
                      Tool(name: "second_look_failed", title: "Note a missing opinion", does: "Notes that a second model was asked and could not answer, and why. It does not count as an opinion."),
-                     Tool(name: "find_views", title: "Draw close views", does: "Draws a find 60 m across, ringed, in six styles, for the person deciding it."),
+                     Tool(name: "find_views", title: "Draw close views", does: "Draws a find 60 m across, ringed, in nine styles, for the person deciding it."),
                      Tool(name: "check_modern", title: "Check open maps", does: "Looks on open maps for roads, buildings and sites already mapped nearby."),
                      Tool(name: "check_finds", title: "Check all the finds", does: "Slices every open find, measures its shape and checks open maps, in one go."),
                      Tool(name: "add_control", title: "Add a known site", does: "Registers a published site the run should find again, as a test of the run itself."),

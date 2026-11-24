@@ -475,9 +475,17 @@ struct FindCard: View {
     @AppStorage("sliceNorthSouth") private var northSouth = false
     @State private var drawn = 0
 
-    static let views: [(style: String, title: String)] = [
-        ("composite", "Composite"), ("relief_small", "Local relief"), ("sky_view", "Sky view"),
-        ("hillshade", "Hillshade"), ("positive_openness", "Openness up"), ("negative_openness", "Openness down"),
+    /// Each view with one line saying what it shows. The last three are from the Relief Visualization Toolbox.
+    static let views: [(style: String, title: String, shows: String)] = [
+        ("composite", "Composite", "Shading and local relief together"),
+        ("relief_small", "Local relief", "Rises and dips 5 to 15 m across"),
+        ("sky_view", "Sky view", "Dark where little sky is seen: ditches and hollows"),
+        ("hillshade", "Hillshade", "Lit from four directions"),
+        ("positive_openness", "Openness up", "Bright on rises and edges"),
+        ("negative_openness", "Openness down", "Bright in hollows and ditches"),
+        ("vat", "VAT", "Four views blended; reads in most ground"),
+        ("msrm", "Multi-scale relief", "Rises 2 to 20 m across, every size between"),
+        ("local_dominance", "Local dominance", "Bright where ground stands over its surroundings: low mounds"),
     ]
 
     static func viewPath(_ c: Candidate, _ style: String) -> String {
@@ -493,9 +501,10 @@ struct FindCard: View {
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("\(c.id) \(c.name)").font(.system(size: 21 * Theme.scale, weight: .bold)).lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true).layoutPriority(1)
                 if c.waiting {
-                    Badge(text: c.group.title, color: c.group == .closer ? Theme.accent : Theme.amber)
-                    Text("Rank \(c.rank)").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
+                    Badge(text: c.group.title, color: c.group == .closer ? Theme.accent : Theme.amber).fixedSize()
+                    Text("Rank \(c.rank)").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim).fixedSize()
                         .help("\(c.agreement) of 3 checks point to something built: the shape, a model's eye, the second model")
                         .accessibilityLabel("Rank \(c.rank): \(c.agreement) of 3 checks point to something built")
                 }
@@ -512,9 +521,9 @@ struct FindCard: View {
             HStack(alignment: .bottom, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     viewPicker
-                    let title = Self.views.first { $0.style == view }?.title ?? "Composite"
+                    let shown = Self.views.first { $0.style == view } ?? Self.views[0]
                     picture(Images.load(Self.viewPath(c, view)) ?? Images.crop(c.relief, x: c.x, y: c.y, side: store.closeSide(c)),
-                            "\(title), \(Int(ProjectStore.closeMetres)) m across, find ringed")
+                            "\(shown.shows). \(Int(ProjectStore.closeMetres)) m across, find ringed")
                         .id(drawn)
                 }
                 .frame(maxWidth: 320)
@@ -537,7 +546,7 @@ struct FindCard: View {
         }
     }
 
-    /// The six ways of drawing the close view, on the keys 1 to 6, with the chosen one named.
+    /// The nine ways of drawing the close view, on the keys 1 to 9, with the chosen one named.
     private var viewPicker: some View {
         HStack(spacing: 2) {
             ForEach(Array(Self.views.enumerated()), id: \.element.style) { i, v in
@@ -549,11 +558,12 @@ struct FindCard: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: [])
-                .help("\(v.title) (\(i + 1))")
+                .help("\(v.title): \(v.shows) (\(i + 1))")
                 .accessibilityLabel(v.title)
+                .accessibilityHint(v.shows)
             }
             Text(Self.views.first { $0.style == view }?.title ?? "").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                .padding(.leading, 6)
+                .lineLimit(1).padding(.leading, 6)
         }
     }
 
@@ -626,7 +636,9 @@ struct FindCard: View {
         return VStack(alignment: .leading, spacing: 6) {
             reasonRow("For", r.for, Theme.accent)
             reasonRow("Against", r.against, Theme.amber)
-            HStack(spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("Records").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
+                    .frame(width: 120, alignment: .leading)
                 Flow(spacing: 6) { ForEach(other, id: \.self) { chip($0) } }
                 Spacer(minLength: 0)
                 Text("A count of reasons, not a probability").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint)
