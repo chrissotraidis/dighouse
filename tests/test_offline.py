@@ -1092,3 +1092,26 @@ def test_a_calibration_is_judged_on_the_last_few_tests_of_its_site(tmp_path, mon
     out = server.record_calibration(root, poor)
     assert out["found"] == 0 and out["pooled_tests"] == 4 and out["pooled_share"] == 0.75 and out["passed"] is True
     assert "75% over the last 4 tests" in Project(root).path("notes").joinpath(f"{__import__('datetime').date.today()}.md").read_text()
+
+
+def test_a_sweep_takes_only_ready_made_ground_and_says_what_it_could_not_read(tmp_path, survey):
+    """Raw points are fetched area by area; an area written wrongly is named in a sentence the agent can act on."""
+    root = str(tmp_path / "proj")
+    server.init_project(root, "Synthetic", "q", *survey["bbox"])
+    with pytest.raises(Exception, match="ready-made ground model"):
+        server.sweep(root, "usgs:synthetic", "A=0,0,1,1")
+    with pytest.raises(Exception, match="name=west,south,east,north"):
+        server.sweep(root, "no:nhm-dtm-1m", "Elverum B1=somewhere")
+    with pytest.raises(Exception, match="one to four"):
+        server.sweep(root, "no:nhm-dtm-1m", "|".join(f"A{i}=0,0,0.01,0.01" for i in range(5)))
+
+
+def test_run_status_keeps_the_shortlist_until_each_tile_is_looked_at_closely(tmp_path, survey):
+    """A session that lost the bulk look's reply can still take the shortlisted tiles in order."""
+    root = str(tmp_path / "proj")
+    server.init_project(root, "Synthetic", "q", *survey["bbox"])
+    p = Project(root)
+    p.save("tiles", {"t-a": {"terrain": "t", "window": [0, 0, 1, 1], "status": "screened", "model": "m (sorted in bulk)"},
+                     "t-b": {"terrain": "t", "window": [0, 0, 1, 1], "status": "screened", "model": "GPT-6"}})
+    p.save("shortlist", [{"tile": "t-b", "verdict": "built", "note": ""}, {"tile": "t-a", "verdict": "possible", "note": ""}])
+    assert server.run_status(root)["close_look_next"] == ["t-a"]

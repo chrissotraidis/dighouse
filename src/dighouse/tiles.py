@@ -23,6 +23,7 @@ def make_tiles(p: Project, terrain_id: str, tile_m: float = 250, overlap_m: floa
     rows, cols = gap.shape
     size, step = int(tile_m / res), int((tile_m - overlap_m) / res)
     tiles = p.load("tiles", {})
+    new: dict[str, dict] = {}
     added = unreadable = 0
     for i, r in enumerate(range(0, max(rows - size // 4, 1), step)):
         for j, c in enumerate(range(0, max(cols - size // 4, 1), step)):
@@ -35,15 +36,19 @@ def make_tiles(p: Project, terrain_id: str, tile_m: float = 250, overlap_m: floa
                 continue  # outside the survey
             no_data = float(window.sum()) / surveyed
             bad = no_data > 0.5
-            tiles[tid] = {"terrain": terrain_id, "window": [r, c, int(window.shape[0]), int(window.shape[1])],
-                          "status": "unreadable" if bad else "unscreened",
-                          "share_without_ground_data": round(no_data, 2)}
+            new[tid] = {"terrain": terrain_id, "window": [r, c, int(window.shape[0]), int(window.shape[1])],
+                        "status": "unreadable" if bad else "unscreened",
+                        "share_without_ground_data": round(no_data, 2)}
             added += 1
             unreadable += bad
-    p.save("tiles", tiles)
-    for tid in tiles:
+    # Added under the lock, so verdicts recorded meanwhile by helpers on other tiles are kept.
+    with p.change("tiles", {}) as tiles:
+        for tid, t in new.items():
+            tiles.setdefault(tid, t)
+    for tid in new:
         cached_tile(p, tid)
-    p.save("tiles", tiles)  # saved again so anything watching the project sees the finished images
+    with p.change("tiles", {}):
+        pass  # saved again so anything watching the project sees the finished images
     return {"tiles_added": added, "unreadable": int(unreadable)}
 
 

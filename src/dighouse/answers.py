@@ -169,7 +169,7 @@ def _save_registry(reg: dict) -> None:
     _registry_file().write_text(json.dumps(reg, indent=1))
 
 
-POOLED = 5  # a calibration counts the last few tests of the same site on the same lidar, since one test varies by a few features
+POOLED = 10  # a calibration counts the last ten tests of the same site on the same lidar: one test varies by a few features
 
 
 def _scores_file() -> Path:
@@ -184,7 +184,7 @@ def _remember_score(p, result: dict) -> None:
     rows = json.loads(f.read_text()) if f.exists() else []
     sources = sorted({t["dataset"] for t in (p.load("terrains", {}) or {}).values() if t.get("dataset")})
     rows.append({"site": result["key"]["id"], "sources": sources, "found": result["found"], "known": result["known"],
-                 "scored": result["scored"], "test": p.root.name})
+                 "scored": result["scored"], "test": str(p.root)})
     f.write_text(json.dumps(rows[-500:], indent=1))
 
 
@@ -470,8 +470,8 @@ def record_calibration(p, test_root: str) -> dict:
     share = s.get("found_share") or 0
     sources = sorted({t["dataset"] for t in test.load("terrains", {}).values() if t.get("dataset")})
     pool = pooled_scores((s.get("key") or {}).get("id", ""), sources)
-    if not any(r["test"] == test.root.name for r in pool):
-        pool = (pool + [{"found": s["found"], "known": s["known"], "test": test.root.name}])[-POOLED:]
+    if not any(r["test"] == str(test.root) for r in pool):
+        pool = (pool + [{"found": s["found"], "known": s["known"], "test": str(test.root)}])[-POOLED:]
     pooled = sum(r["found"] for r in pool) / max(1, sum(r["known"] for r in pool))
     out = {"site": s["site"], "found": s["found"], "known": s["known"], "missed": len(s["missed"]), "extra": len(s["extra"]),
            "found_share": share, "pooled_share": round(pooled, 3), "pooled_tests": len(pool),

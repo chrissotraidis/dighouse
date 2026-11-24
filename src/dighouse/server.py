@@ -389,9 +389,8 @@ def _fetch(p, dataset: str, bbox: list[float], km2: float, tid: str, resolution_
     year = re.search(r"(?<!\d)(19|20)\d\d(?!\d)", dataset)  # most survey names carry the year they were flown
     if year:
         meta["collected"] = year.group(0)
-    terrains = p.load("terrains", {})
-    terrains[tid] = meta
-    p.save("terrains", terrains)
+    with p.change("terrains", {}) as terrains:  # areas can be fetched side by side
+        terrains[tid] = meta
     p.note(f"Fetched {dataset} as terrain {tid}: {summary}")
     warn = [] if stats["ground_classified"] else ["This dataset has no ground classification; the model uses the lowest return per cell and will include low vegetation."]
     if how.get("seafloor"):
@@ -535,9 +534,67 @@ def look_at_tiles(project: str) -> dict:
     got = triage.sort_tiles(project)
     made = triage.mark_spots(project, got["shortlist"])
     got["shortlist"].sort(key=lambda t: (t["verdict"] != "built", -len(t["spots"])))
+    # Kept with the project, so a session that lost the reply (a long call cut off) can still take the tiles in order.
+    p.save("shortlist", [{"tile": t["tile"], "verdict": t["verdict"], "note": t["note"]} for t in got["shortlist"]])
     p.note(f"Looked at {got['looked_at']} tiles in bulk with {got['model']} in {got['seconds']} s; "
            f"{len(got['shortlist'])} for a closer look, {made['count']} finds opened")
     return {**got, "finds_opened": made["added"]}
+
+
+@tool
+def sweep(project: str, dataset: str, areas: str) -> dict:
+    """Search up to four areas of a ready-made ground model at once: their ground is fetched side by side, cut into
+    tiles, and every tile looked at in bulk, with a find for each shape the bulk look points at. areas is
+    "name=west,south,east,north" for each area, separated by "|"; each box under 6 square km, named after the place
+    (such as "Elverum B1"), never coordinates. Returns one shortlist across the areas, best first, for the close look
+    (run_status lists the tiles still waiting for it), and what failed. Then add_measured_rises and check_finds, once
+    each. For a national ground model or us:3dep-dem-1m; fetch raw points area by area with fetch_terrain."""
+    from concurrent.futures import ThreadPoolExecutor
+    if dataset not in national.NATIONAL:
+        raise ValueError("sweep takes a ready-made ground model (a national one, or us:3dep-dem-1m). "
+                         "Fetch raw points area by area with fetch_terrain.")
+    parts = []
+    for chunk in [c for c in areas.split("|") if c.strip()]:
+        name, _, box = chunk.partition("=")
+        try:
+            w, s, e, n = (float(v) for v in box.split(","))
+        except ValueError:
+            raise ValueError(f"Could not read the area {chunk.strip()[:40]!r}: write it as name=west,south,east,north.") from None
+        parts.append((name.strip(), [w, s, e, n]))
+    if not 1 <= len(parts) <= 4:
+        raise ValueError("Give one to four areas.")
+    p = Project(project).check()
+    answers.guard_calibration(p)
+    started, failed = time.time(), []
+
+    def ground(part):
+        name, (w, s, e, n) = part
+        try:
+            return {"area": name, **fetch_terrain(project, dataset, w, s, e, n, area=name)}
+        except Exception as exc:  # one area failing leaves the others
+            failed.append(f"{name}: {str(exc)[:160]}")
+            return None
+
+    with ThreadPoolExecutor(len(parts)) as pool:
+        got = [g for g in pool.map(ground, parts) if g]
+    areas_out = []
+    for g in got:
+        cut = make_tiles(project, g["terrain"])
+        areas_out.append({"area": g["area"], "terrain": g["terrain"], "km2": g.get("area_km2"), "tiles": cut["tiles_added"],
+                          "unreadable": cut["unreadable"]})
+    if not got:
+        raise ValueError("No area could be fetched: " + "; ".join(failed))
+    looked = look_at_tiles(project)
+    short = looked["shortlist"]
+    # The measured rises and the checks are left to their own calls: together with the fetch and the bulk look they can
+    # take longer than the engine waits for one tool (a sweep of three areas took 23 minutes; the engine waits 20).
+    p.note(f"Swept {len(got)} areas in {round((time.time() - started) / 60, 1)} min: {looked['looked_at']} tiles looked at in bulk, "
+           f"{len(short)} for a closer look, {len(looked['finds_opened'])} finds opened" + (f"; failed: {'; '.join(failed)}" if failed else ""))
+    return {"areas": areas_out, "failed": failed, "minutes": round((time.time() - started) / 60, 1),
+            "looked_at": looked["looked_at"], "shortlisted": len(short), "shortlist": short[:48],
+            "finds_opened": len(looked["finds_opened"]),
+            "next": "Look closely at the top of the shortlist, then add_measured_rises and check_finds once each, and "
+                    "suggest a decision on each find run_status lists under to_suggest."}
 
 
 @tool
@@ -592,25 +649,32 @@ def measured_rises(p, per_km2: float = 40.0, verdicts: tuple = tiles.VERDICTS, e
     tiles_ = p.load("tiles", {}) or {}
     terrains = p.load("terrains", {}) or {}
     places = exclude if exclude is not None else (p.load("locations", {}) or {})
+    from concurrent.futures import ThreadPoolExecutor
     picked: list[dict] = []
     area = 0.0
     grids: dict[str, tuple] = {}
+    todo = []
     for tid, t in tiles_.items():
         if t.get("verdict") not in verdicts or t["terrain"] in (skip_terrains or ()):
             continue
         meta = terrains.get(t["terrain"])
         if not meta or meta.get("seafloor"):
             continue
-        res = meta["res"]
         r, c, h, w = t["window"]
-        area += h * w * res * res / 1e6
+        area += h * w * meta["res"] * meta["res"] / 1e6
         if t["terrain"] not in grids:
-            grids[t["terrain"]] = T.load_terrain(p.path(meta["file"]))
-        dtm, gap, out = grids[t["terrain"]]
-        valid = ~((gap > T.GAP_M) | out.astype(bool))
+            dtm, gap, out = T.load_terrain(p.path(meta["file"]))
+            grids[t["terrain"]] = (dtm, gap, ~((gap > T.GAP_M) | out.astype(bool)))
+        todo.append((tid, t, meta["res"]))
+
+    def one(job) -> list[dict]:
+        tid, t, res = job
+        dtm, gap, valid = grids[t["terrain"]]
+        r, c, h, w = t["window"]
         pad = int(40 / res)
         r0, c0 = max(r - pad, 0), max(c - pad, 0)
         sub = (slice(r0, r + h + pad), slice(c0, c + w + pad))
+        found = []
         for b in mounds.bumps(dtm[sub], res, min_d=3.0 if min_h < 0.25 else 4.0, min_h=min_h, valid=valid[sub]):
             rr, cc = b["row"] + r0, b["col"] + c0
             if not (r <= rr < r + h and c <= cc < c + w):
@@ -626,8 +690,14 @@ def measured_rises(p, per_km2: float = 40.0, verdicts: tuple = tiles.VERDICTS, e
                     continue
             fx, fy = (cc - c + 0.5) / w, (rr - r + 0.5) / h
             lon, lat = tiles.tile_lonlat(p, tid, fx, fy)
-            picked.append({"tile": tid, "x": round(fx, 3), "y": round(fy, 3), "lon": lon, "lat": lat,
-                           "diameter_m": b["diameter_m"], "height_m": b["height_m"], "shape": s})
+            found.append({"tile": tid, "x": round(fx, 3), "y": round(fy, 3), "lon": lon, "lat": lat,
+                          "diameter_m": b["diameter_m"], "height_m": b["height_m"], "shape": s})
+        return found
+
+    # Tiles are measured side by side: the filters spend most of their time outside Python's lock.
+    with ThreadPoolExecutor(8) as pool:
+        for found in pool.map(one, todo):
+            picked.extend(found)
     picked.sort(key=lambda m: -m["shape"]["rank"])
     keep: list[dict] = []
     near = lambda a, b: math.hypot((a["lon"] - b["lon"]) * 111_320 * math.cos(math.radians(a["lat"])), (a["lat"] - b["lat"]) * 110_540) < 10
@@ -652,7 +722,8 @@ def add_measured_rises(project: str, per_km2: float = 40.0) -> dict:
     answers.guard_calibration(p)
     tiles_ = p.load("tiles", {}) or {}
     done = {tiles_[m["tile"]]["terrain"] for m in ledger.everything(p) if ledger.is_rise(m) and m.get("tile") in tiles_}
-    made = []
+    from concurrent.futures import ThreadPoolExecutor
+    made, pictures = [], []
     for m in measured_rises(p, per_km2, skip_terrains=done):
         s = m["shape"]
         note = (f"Measured, not seen: a rise {m['diameter_m']:.0f} m across and {m['height_m']:.1f} m high, "
@@ -660,8 +731,15 @@ def add_measured_rises(project: str, per_km2: float = 40.0) -> dict:
         meta = ledger.create(p, f"Measured rise, {m['diameter_m']:.0f} m across", m["tile"], (m["lon"], m["lat"]), note, MEASURED_BY,
                              at=(m["x"], m["y"]))
         ledger.set_check(p, meta["id"], "shape", s)
-        tiles.tile_image(p, m["tile"], "composite", mark=(m["x"], m["y"])).save(p.path("candidates", "img", f"{meta['id']}-relief.png"))
         made.append(meta["id"])
+        pictures.append((meta["id"], m))
+
+    def draw(job) -> None:
+        cid, m = job
+        tiles.tile_image(p, m["tile"], "composite", mark=(m["x"], m["y"])).save(p.path("candidates", "img", f"{cid}-relief.png"))
+
+    with ThreadPoolExecutor(8) as pool:  # the pictures are independent, one file each
+        list(pool.map(draw, pictures))
     p.note(f"Added {len(made)} measured rises as finds for review" + (f": {', '.join(made)}" if made else ""))
     return {"added": made, "count": len(made), "per_km2": per_km2}
 
@@ -770,12 +848,13 @@ def check_finds(project: str, candidates: str = "all") -> dict:
     places = p.load("locations", {}) or {}
     tile_state = p.load("tiles", {}) or {}
     rows, failed = [], []
-    for m in ledger.everything(p):
+    todo = [m for m in ledger.everything(p)
+            if (wanted is None or m["id"] in wanted)
+            and not (wanted is None and (m["status"] not in ("flagged", "ground_confirmed") or "section" in m["checks"]))]
+
+    # Each find's slice and shape write only its own record, so they are cut side by side.
+    def slice_one(m: dict) -> dict:
         cid = m["id"]
-        if wanted is not None and cid not in wanted:
-            continue
-        if wanted is None and (m["status"] not in ("flagged", "ground_confirmed") or "section" in m["checks"]):
-            continue
         row = {"candidate": cid}
         try:
             shape = m["checks"].get("shape") or shape_check(project, cid)
@@ -788,7 +867,11 @@ def check_finds(project: str, candidates: str = "all") -> dict:
                        pit_beside_m=shape.get("pit_beside_m"), symmetry=shape.get("symmetry"), hints=shape.get("hints", []))
         except Exception as exc:
             failed.append(f"{cid}: slice or shape, {str(exc)[:120]}")
-        rows.append(row)
+        return row
+
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(8) as pool:
+        rows = list(pool.map(slice_one, todo))
 
     # The map checks wait on a public server, so three run at once; each writes only its own find's record.
     def maps(row: dict) -> None:
@@ -797,7 +880,6 @@ def check_finds(project: str, candidates: str = "all") -> dict:
         except Exception as exc:
             failed.append(f"{row['candidate']}: open maps, {str(exc)[:120]}")
 
-    from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(3) as pool:
         list(pool.map(maps, rows))
     p.note(f"Checked {len(rows)} finds in one pass: slices, shapes and open maps" + (f"; {len(failed)} checks failed" if failed else ""))
@@ -1348,6 +1430,9 @@ def run_status(project: str) -> dict:
         "to_suggest": [m["id"] for m in records if m["status"] in ("flagged", "ground_confirmed") and m["id"] not in on_map
                        and not m.get("suggestion")],
         "kept_on_the_map": len(on_map),
+        # The bulk look's shortlist, best first, without the tiles a model has since looked at closely.
+        "close_look_next": [t["tile"] for t in (p.load("shortlist", []) or [])
+                            if "(sorted in bulk)" in str((p.load("tiles", {}) or {}).get(t["tile"], {}).get("model", ""))][:24],
         **({"blind_test": answers.BLIND} if answers.is_blind(p) else {}),
         **({"calibration": answers.calibration(p)} if answers.calibration(p) else {}),
     }
