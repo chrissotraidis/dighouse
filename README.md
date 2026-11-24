@@ -399,7 +399,7 @@ The [eight-hour research session and replays](docs/2026-11-20-research-session.m
 - A vision model's eye is the weak point of any search; the benchmarks above show where it is weak. The checks exist because a model marks shapes that are not there, and misses some that are.
 - Open services go down and rate-limit. The tools say "could not check" rather than guess.
 
-What comes next is in the [roadmap](docs/ROADMAP.md), and the next loop of work, on deciding finds, is planned in [DECIDE_LOOP.md](docs/DECIDE_LOOP.md). The concept is in [concept.md](docs/concept.md), the design rules in [DESIGN.md](docs/DESIGN.md), and the state of the work in [HANDOFF.md](docs/HANDOFF.md).
+What comes next is in the [roadmap](docs/ROADMAP.md), and the loop under way, on making the app easy, fast and good to watch, is planned in [EASE_LOOP.md](docs/EASE_LOOP.md). The concept is in [concept.md](docs/concept.md), the design rules in [DESIGN.md](docs/DESIGN.md), and the state of the work in [HANDOFF.md](docs/HANDOFF.md).
 
 ## Contributing
 
