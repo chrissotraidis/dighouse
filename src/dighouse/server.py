@@ -1052,6 +1052,32 @@ def record_old_maps(project: str, candidate: str, finding: str, explains: bool, 
     return {"candidate": candidate, "old_maps_explain_it": explains}
 
 
+OLD_MAP_M = 240.0   # the old maps and the ground beside them are both this wide, the find in the middle
+
+
+@tool
+def old_map_views(project: str, candidate: str) -> dict:
+    """For the person deciding a find: the old maps that check_old_maps reads, each cut to the same square of ground
+    240 m across as a drawing of the bare ground, so the app can lay one over the other. In the United States and
+    France only. Kept under data/views, out of the project's history; the sheet titles go in data/views/<id>-oldmaps.json."""
+    from . import history
+    p = Project(project).check()
+    lon, lat = ledger.location(p, candidate)
+    if not history.where(lon, lat):
+        return {"candidate": candidate, "maps": [], "note": "Old maps are read in the United States and France only."}
+    out_dir = p.path("data", "views")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ground = tiles.find_views(p, candidate, metres=OLD_MAP_M, styles=("composite",), suffix=f"-{OLD_MAP_M:.0f}")
+    maps = []
+    for i, s in enumerate(history.maps(lon, lat)[:3]):
+        f = out_dir / f"{candidate}-oldmap-{i}.png"
+        if not f.exists():
+            f.write_bytes(history.crop(s, lon, lat, OLD_MAP_M / 2))
+        maps.append({"title": s["title"], "page": s.get("page", ""), "image": str(f.relative_to(p.root))})
+    (out_dir / f"{candidate}-oldmaps.json").write_text(json.dumps({"ground": ground["views"]["composite"], "maps": maps}))
+    return {"candidate": candidate, "ground": ground["views"]["composite"], "maps": maps}
+
+
 @tool
 def check_modern(project: str, candidate: str, radius_m: int = 150) -> dict:
     """Check OpenStreetMap around a candidate for roads, buildings and land use, and for sites already mapped nearby."""

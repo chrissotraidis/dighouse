@@ -475,6 +475,7 @@ struct FindCard: View {
     @AppStorage("sliceNorthSouth") private var northSouth = false
     @State private var drawn = 0
     @State private var comparing = false
+    @State private var cuttingMaps = false
 
     /// Each view with one line saying what it shows. The last three are from the Relief Visualization Toolbox.
     static let views: [(style: String, title: String, shows: String)] = [
@@ -737,9 +738,31 @@ struct FindCard: View {
         }
     }
 
+    /// Old maps beside the ground (old_map_views), in the United States and France; before they are cut, a button.
+    @ViewBuilder private func oldMaps(_ c: Candidate) -> some View {
+        let root = (c.folder as NSString).deletingLastPathComponent
+        let file = root + "/data/views/\(c.id)-oldmaps.json"
+        if FileManager.default.fileExists(atPath: file) {
+            DisclosureGroup("Old maps beside the ground") {
+                OldMapCompare(root: root, file: file).padding(.top, 4).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else if store.terrains.contains(where: { ["us:", "usgs:", "fr:"].contains(where: $0.dataset.hasPrefix) }) {
+            HStack(spacing: 8) {
+                Button(cuttingMaps ? "Cutting the old maps…" : "Old maps beside the ground") {
+                    cuttingMaps = true
+                    Task { await app.oldMapViews(c); cuttingMaps = false; drawn += 1 }
+                }
+                .buttonStyle(SecondaryButton()).disabled(cuttingMaps || !app.engine.ready)
+                .help("The oldest USGS sheets here (in France, the État-major map and the 1950s photographs), cut to the same 240 m as the ground, with a divider to slide between them.")
+                if cuttingMaps { DigIndicator(size: 12) }
+            }
+        }
+    }
+
     @ViewBuilder private func details(_ c: Candidate) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             flights(c)
+            oldMaps(c)
             if let look = c.checks["second_look"] as? JSON, let note = look["note"] as? String, !note.isEmpty {
                 DisclosureGroup("What the second model said") {
                     Text("\(look["model"] as? String ?? ""): \(note) " + RecordsView.secondMeaning(look["agrees"] as? Bool == true))
@@ -801,5 +824,57 @@ extension Candidate {
 
 extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+}
+
+/// The bare ground with an old map laid over it, the same 240 m square of each. Drag across it, or use the slider,
+/// to move the divider; the sheet buttons choose which old map.
+private struct OldMapCompare: View {
+    let root: String
+    let file: String
+    @State private var split = 0.5
+    @State private var sheet = 0
+
+    private var info: (ground: String, maps: [(title: String, image: String)]) {
+        guard let data = FileManager.default.contents(atPath: file),
+              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return ("", []) }
+        let maps = ((json["maps"] as? [[String: Any]]) ?? []).compactMap { m -> (String, String)? in
+            guard let t = m["title"] as? String, let i = m["image"] as? String else { return nil }
+            return (t, i)
+        }
+        return (json["ground"] as? String ?? "", maps)
+    }
+
+    var body: some View {
+        let info = info
+        let side: CGFloat = 340
+        VStack(alignment: .leading, spacing: 8) {
+            if info.maps.isEmpty {
+                Text("No old map covers this place.").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+            } else {
+                let pick = min(sheet, info.maps.count - 1)
+                ZStack(alignment: .leading) {
+                    if let ground = Images.load(root + "/" + info.ground) { Image(nsImage: ground).resizable().frame(width: side, height: side) }
+                    if let map = Images.load(root + "/" + info.maps[pick].image) {
+                        Image(nsImage: map).resizable().frame(width: side, height: side)
+                            .mask(alignment: .leading) { Rectangle().frame(width: side * split) }
+                    }
+                    Rectangle().fill(.white).frame(width: 2, height: side).offset(x: side * split - 1)
+                }
+                .frame(width: side, height: side).clipShape(RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 0).onChanged { split = min(max($0.location.x / side, 0), 1) })
+                .accessibilityElement().accessibilityLabel("\(info.maps[pick].title) on the left, the bare ground on the right")
+                Slider(value: $split, in: 0...1).frame(width: side).accessibilityLabel("Divider between the old map and the ground")
+                HStack(spacing: 6) {
+                    ForEach(Array(info.maps.enumerated()), id: \.offset) { i, m in
+                        Button(m.title.replacingOccurrences(of: "USGS ", with: "")) { sheet = i }
+                            .buttonStyle(SecondaryButton()).opacity(i == pick ? 1 : 0.6)
+                    }
+                }
+                Text("Old map on the left of the line, the bare ground on the right; both 240 m across, the find in the middle.")
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+            }
+        }
+    }
 }
 

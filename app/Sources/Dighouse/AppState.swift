@@ -1145,6 +1145,13 @@ final class AppState: ObservableObject {
         _ = try? await engine.callTool("compare_flights", ["project": root, "candidate": c.id])
     }
 
+    /// Cut the old maps and the ground beside them to one square (old_map_views), for the find card.
+    func oldMapViews(_ c: Candidate) async {
+        let root = (c.folder as NSString).deletingLastPathComponent
+        guard engine.ready else { return }
+        _ = try? await engine.callTool("old_map_views", ["project": root, "candidate": c.id])
+    }
+
     /// Projects whose finds the agent was already asked to suggest decisions for, this session.
     private var suggestedFor = Set<String>()
 

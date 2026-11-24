@@ -86,7 +86,8 @@ FIND_VIEWS = ("composite", "relief_small", "sky_view", "hillshade", "positive_op
               "vat", "msrm", "local_dominance")
 
 
-def find_views(p: Project, cid: str, metres: float = 60.0, size: int = 480, styles: tuple[str, ...] = FIND_VIEWS) -> dict:
+def find_views(p: Project, cid: str, metres: float = 60.0, size: int = 480, styles: tuple[str, ...] = FIND_VIEWS,
+               suffix: str = "") -> dict:
     """Close views of one find, every one the same square of ground (metres across, the find in the middle and
     ringed as on its record), in each style. Kept under data/views, out of the project's history. Views already
     drawn are not drawn again."""
@@ -96,7 +97,7 @@ def find_views(p: Project, cid: str, metres: float = 60.0, size: int = 480, styl
     res = meta["res"]
     out_dir = p.path("data", "views")
     out_dir.mkdir(parents=True, exist_ok=True)
-    files = {s: out_dir / f"{cid}-{s}.png" for s in styles}
+    files = {s: out_dir / f"{cid}-{s}{suffix}.png" for s in styles}
     todo = [s for s, f in files.items() if not f.exists()]
     if todo:
         import rasterio
