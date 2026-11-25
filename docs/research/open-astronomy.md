@@ -1,6 +1,6 @@
 # Could Dighouse search the sky? Open astronomy with the same method
 
-Research for Chris Sotraidis, 14 November 2026, for goal R6 of [REFINE_LOOP.md](../REFINE_LOOP.md). No code was written.
+Research for Chris Sotraidis, 14 November 2026, for goal R6 of [REFINE_LOOP.md](../loops/REFINE_LOOP.md). No code was written.
 
 A service marked "probed" was called that day with one small, read-only request and no account or key. Afterwards three things were fetched a second time, independently: the OpenAlex notice, the CDS incident notice, and five of the arXiv records cited. All matched. Dighouse's words are used throughout: a shape the agent marked is a find, a cut through the laser points is a slice, and another model gives a second opinion. "Candidate" is kept where it is astronomy's own term.
 

@@ -2,7 +2,7 @@
 
 Written 2026-11-20. Not started: Chris reviews this plan before any goal is worked.
 
-Read [HANDOFF.md](HANDOFF.md) and [2026-11-20-research-session.md](2026-11-20-research-session.md) first. Earlier loops made Dighouse work. This one makes it hold up when people who have never met us open it, read its records and look for faults. People will criticise three things first: a tool that leaves the person to do the work, a screen they can't read, and anything that looks careless with heritage sites or with their Mac. Each goal below answers one of those.
+Read [HANDOFF.md](../HANDOFF.md) and [2026-11-20-research-session.md](2026-11-20-research-session.md) first. Earlier loops made Dighouse work. This one makes it hold up when people who have never met us open it, read its records and look for faults. People will criticise three things first: a tool that leaves the person to do the work, a screen they can't read, and anything that looks careless with heritage sites or with their Mac. Each goal below answers one of those.
 
 ## Chris's review, 2026-11-20
 

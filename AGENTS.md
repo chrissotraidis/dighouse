@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for AI coding agents working in this repository, and a short guide for the people who direct them. Read the [README](README.md), [docs/HANDOFF.md](docs/HANDOFF.md) and the newest loop log in `docs/` before changing anything.
+Instructions for AI coding agents working in this repository, and a short guide for the people who direct them. Read the [README](README.md), [docs/HANDOFF.md](docs/HANDOFF.md) and the current loop log (the top row of [docs/loops/](docs/loops/README.md)) before changing anything.
 
 ## Credit goes to people only
 

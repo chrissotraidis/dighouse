@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-14
 
-Read [HANDOFF.md](HANDOFF.md) first, then the end of [POLISH_LOOP.md](POLISH_LOOP.md), whose Log says what loop 4 did. Loop 4 gave Dighouse its own look, a tutorial and one button that runs a whole search. Chris used that build and said it looks a lot more polished, and then said where it still falls short. This loop is his list.
+Read [HANDOFF.md](../HANDOFF.md) first, then the end of [POLISH_LOOP.md](POLISH_LOOP.md), whose Log says what loop 4 did. Loop 4 gave Dighouse its own look, a tutorial and one button that runs a whole search. Chris used that build and said it looks a lot more polished, and then said where it still falls short. This loop is his list.
 
 ## What Chris said (2026-11-14, after using the loop 4 build)
 
@@ -149,7 +149,7 @@ Words on each page at 1440 × 900, counted the same way as R3:
 
 ### R6, open astronomy research: done 2026-11-14
 
-- **The report is [research/open-astronomy.md](research/open-astronomy.md),** about 2,800 words with a source linked for each claim, written by a helper agent beside the other goals and then read through and checked here. No code was written.
+- **The report is [research/open-astronomy.md](../research/open-astronomy.md),** about 2,800 words with a source linked for each claim, written by a helper agent beside the other goals and then read through and checked here. No code was written.
 - **Its answer:** the method carries over almost whole. People already do each part of it for the sky as separate projects, and survey teams already run classifiers over most of the data, so the chance of adding something is small and sits in a few places. The best fits are faint companions and tidal features around nearby galaxies in Legacy Survey images, and variable stars in ZTF checked against the AAVSO index.
 - **Where it breaks:** privacy flips (an object's coordinates are its identity), nobody can look at every tile of sky, and confirming most things needs a telescope.
 - **Its recommendation:** a second field inside the one app, built as a separate tool server on the shared record core, about 19 tools. The cheapest first step is to write that tool server and run one search in plain Codex before touching the app.
@@ -190,7 +190,7 @@ Words on each page at 1440 × 900, counted the same way as R3:
 | It is odd that models are "tested or not tested" | Testing is gone. A model that fails says so in the chat | [r4-models.jpg](loop5/r4-models.jpg) |
 | How it runs needs to be more refined | One picture of you, the model, the engine and the tools, each with its state now and one button | [r4-how-it-runs.jpg](loop5/r4-how-it-runs.jpg) |
 | "Essentially everything under Settings needs to be better" | Seven pages on one row style, each with half the words or fewer. Counts are under R4 | [r4-general.jpg](loop5/r4-general.jpg), [r4-personalize.jpg](loop5/r4-personalize.jpg), [r4-tools.jpg](loop5/r4-tools.jpg), [r4-data-and-privacy.jpg](loop5/r4-data-and-privacy.jpg), [r4-about.jpg](loop5/r4-about.jpg) |
-| Research open astronomy in parallel | A report with sources, a recommendation and what was not checked | [research/open-astronomy.md](research/open-astronomy.md) |
+| Research open astronomy in parallel | A report with sources, a recommendation and what was not checked | [research/open-astronomy.md](../research/open-astronomy.md) |
 | Fix what is rough, retry the modern-features check, cap the report | Under R1 | [r1-report.jpg](loop5/r1-report.jpg) |
 
 - **Other looks:** a project and the Toolbox in [Canopy](loop5/r7-project-canopy.jpg) ([Toolbox](loop5/r7-toolbox-canopy.jpg)) and [Graphite](loop5/r7-project-graphite.jpg) ([Toolbox](loop5/r7-toolbox-graphite.jpg)). Canopy's accent is tan, which made the national models and the United States the same colour on the map; the national models are now green in every look.
@@ -214,4 +214,4 @@ Chris asked for one more pass: text that grows and shrinks with ⌘+ and ⌘−,
 - **Not checked:** a real pointer's hover (the test tools move the pointer themselves), and Reduce Motion switched on in System Settings, which was left alone.
 - `uv run pytest -q`: 13 passed.
 
-- **Docs:** the README is rewritten for a public release (what it is, why, how a search works, getting started, tools, data, rules, known sites, limits, contributing), with a new Home picture. [ROADMAP.md](ROADMAP.md) holds what comes next and summarizes the open astronomy study as a possible second field. HANDOFF and concept link to it. Nothing was made public or released.
+- **Docs:** the README is rewritten for a public release (what it is, why, how a search works, getting started, tools, data, rules, known sites, limits, contributing), with a new Home picture. [ROADMAP.md](../ROADMAP.md) holds what comes next and summarizes the open astronomy study as a possible second field. HANDOFF and concept link to it. Nothing was made public or released.

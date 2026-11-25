@@ -54,7 +54,7 @@ V1 and V2 come first, because they help the finds already waiting. Then V4 and V
 
 ## Ground rules
 
-As in [AGENTS.md](../AGENTS.md) and [DESIGN.md](DESIGN.md). Few words. One word for one thing. A person decides. Nothing is called new. Locations stay under `private/`. Tests that talk to a model use primary / 6.1 Terra. The benchmark guards any change to how finds are made. Work in the test copy, and leave Chris's settings and projects as they were. Credit RVT and ADAF in the README's sources and in each file taken from them.
+As in [AGENTS.md](../../AGENTS.md) and [DESIGN.md](../DESIGN.md). Few words. One word for one thing. A person decides. Nothing is called new. Locations stay under `private/`. Tests that talk to a model use primary / 6.1 Terra. The benchmark guards any change to how finds are made. Work in the test copy, and leave Chris's settings and projects as they were. Credit RVT and ADAF in the README's sources and in each file taken from them.
 
 ## Log
 

@@ -177,7 +177,7 @@ Each test is **blind**. The agent is not told the site, looks at the ground tile
 
 \* Rerun on 2026-11-23, as the notes below explain. The rest ran on 2026-11-16 (the two Basque hillforts a day later) with primary / 6.1 Terra, a low-cost model, at medium effort, for about 3 to 10 minutes a site. Results will differ with other models.
 
-Most answer keys are partial, so a find "not in the key" can be a real feature. The keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them. Every site, run, miss and fix is in [TEST_LOOP.md](docs/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/WORLD_LOOP.md#log).
+Most answer keys are partial, so a find "not in the key" can be a real feature. The keys come from official registers (Norway, Navarre, the Bavarian monument office, Auckland Council), from NOAA's charts for the wrecks, and from OpenStreetMap features with the publications that describe them. Every site, run, miss and fix is in [TEST_LOOP.md](docs/loops/TEST_LOOP.md#log) and [WORLD_LOOP.md](docs/loops/WORLD_LOOP.md#log).
 
 <table>
   <tr>
@@ -296,7 +296,7 @@ Yes. A project is a folder of plain Markdown records with pictures, so it can be
 <details>
 <summary><b>Was Dighouse built with AI?</b></summary>
 
-Yes. Dighouse was built with substantial AI assistance for code, tests, documentation and debugging. There is no audited share of AI-written code. The run logs in `docs/` state what was checked and how.
+Yes. Dighouse was built with substantial AI assistance for code, tests, documentation and debugging. There is no audited share of AI-written code. The [loop logs](docs/loops/README.md) state what was checked and how.
 </details>
 
 <details>
@@ -394,7 +394,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (66 tests)
+uv run pytest            # offline, on a synthetic survey (67 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
@@ -454,7 +454,7 @@ Markdown is the record of truth, so a project works offline and can be handed to
 
 ### Where the work stands
 
-The state of the work is in [HANDOFF.md](docs/HANDOFF.md), what comes next in the [roadmap](docs/ROADMAP.md), and the loop under way, on making the app easy, fast and good to watch, in [EASE_LOOP.md](docs/EASE_LOOP.md). The concept is in [concept.md](docs/concept.md) and the design rules in [DESIGN.md](docs/DESIGN.md). The [eight-hour research session and replays](docs/2026-11-20-research-session.md) record where the coordinator intervened and what still needs a full-session test. Earlier app tests are in [TEST_LOOP.md](docs/TEST_LOOP.md), [REFINE_LOOP.md](docs/REFINE_LOOP.md), [POLISH_LOOP.md](docs/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/GOAL_LOOP.md).
+The state of the work is in [HANDOFF.md](docs/HANDOFF.md), what comes next in the [roadmap](docs/ROADMAP.md), and the loop under way, on what a public download still needs, in [OPEN_LOOP.md](docs/loops/OPEN_LOOP.md). Every loop log, newest first, is listed in [docs/loops](docs/loops/README.md). The concept is in [concept.md](docs/concept.md) and the design rules in [DESIGN.md](docs/DESIGN.md). The [eight-hour research session and replays](docs/loops/2026-11-20-research-session.md) record where the coordinator intervened and what still needs a full-session test. Earlier app tests are in [TEST_LOOP.md](docs/loops/TEST_LOOP.md), [REFINE_LOOP.md](docs/loops/REFINE_LOOP.md), [POLISH_LOOP.md](docs/loops/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/loops/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/loops/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/loops/GOAL_LOOP.md).
 
 ## Contributing
 

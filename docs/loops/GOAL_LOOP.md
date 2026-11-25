@@ -135,4 +135,4 @@ Not done: the agent driving the Sources browser; reading Pleiades in bulk; tDAR 
 
 ### Handoff, 2026-11-12
 
-Work on this loop stopped here at Chris's request. What was in progress, what is unverified and what remains are in [HANDOFF.md](HANDOFF.md). The goals that follow are in [NEXT_LOOP.md](NEXT_LOOP.md).
+Work on this loop stopped here at Chris's request. What was in progress, what is unverified and what remains are in [HANDOFF.md](../HANDOFF.md). The goals that follow are in [NEXT_LOOP.md](NEXT_LOOP.md).

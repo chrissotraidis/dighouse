@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-16
 
-Read [HANDOFF.md](HANDOFF.md), [PROVING_IT.md](PROVING_IT.md) and the end of [TEST_LOOP.md](TEST_LOOP.md) first. Dighouse
+Read [HANDOFF.md](../HANDOFF.md), [PROVING_IT.md](../PROVING_IT.md) and the end of [TEST_LOOP.md](TEST_LOOP.md) first. Dighouse
 fetches ground from the US, England, the Netherlands, France, Flanders, Norway, Estonia and Switzerland. This loop adds
 five more places (Spain, Bavaria, Saxony, New Zealand, Denmark), each proven with a blind test on a known site. Then it
 tries the same method on the seafloor, with a blind test on charted wrecks.

@@ -96,7 +96,7 @@ D0 to D4 are the review work and come first. D5 is what lets a find get past "le
 
 ## Ground rules
 
-As in [AGENTS.md](../AGENTS.md): few words, a person decides, nothing is called new, locations stay under `private/`, only people are credited, tests that talk to a model use primary / 6.1 Terra, and the benchmark guards the method. Work in the test copy and leave Chris's settings and projects as they were.
+As in [AGENTS.md](../../AGENTS.md): few words, a person decides, nothing is called new, locations stay under `private/`, only people are credited, tests that talk to a model use primary / 6.1 Terra, and the benchmark guards the method. Work in the test copy and leave Chris's settings and projects as they were.
 
 ## Log
 

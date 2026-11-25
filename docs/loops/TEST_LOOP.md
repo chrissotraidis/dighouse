@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-15
 
-Read [HANDOFF.md](HANDOFF.md) first, then the end of [REFINE_LOOP.md](REFINE_LOOP.md). Loops 1 to 5 built the app, the tools, the look and the research record. This loop answers the question an archaeologist asks first: how often does it find what is really there, and how often does it mark things that are not? It does that with **blind tests on known sites**, scored against published answers. The same tests become the easiest way for a newcomer to try Dighouse, from Home.
+Read [HANDOFF.md](../HANDOFF.md) first, then the end of [REFINE_LOOP.md](REFINE_LOOP.md). Loops 1 to 5 built the app, the tools, the look and the research record. This loop answers the question an archaeologist asks first: how often does it find what is really there, and how often does it mark things that are not? It does that with **blind tests on known sites**, scored against published answers. The same tests become the easiest way for a newcomer to try Dighouse, from Home.
 
 ## Who this is for
 

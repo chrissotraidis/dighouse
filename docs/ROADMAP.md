@@ -1,6 +1,6 @@
 # Roadmap
 
-Where Dighouse goes next, in rough order. Nothing here is promised by a date. What already works is in the [README](../README.md); what was checked, and how, is in the loop logs ([EASE_LOOP.md](EASE_LOOP.md) is the newest). The first four sections come from a review on 2026-11-25 of what a person who downloads the app would still miss.
+Where Dighouse goes next, in rough order. Nothing here is promised by a date. What already works is in the [README](../README.md); what was checked, and how, is in the loop logs ([EASE_LOOP.md](loops/EASE_LOOP.md) is the newest). The first four sections come from a review on 2026-11-25 of what a person who downloads the app would still miss.
 
 ## What a public download still lacks
 
@@ -52,7 +52,7 @@ The coverage map shows where open lidar reaches, not where you have already sear
 
 ## Done since the last roadmap
 
-Seeing a find clearly ([SEE_LOOP.md](SEE_LOOP.md): reasons for and against, ranks, two flights, old maps, 3D), deciding finds ([DECIDE_LOOP.md](DECIDE_LOOP.md)), a project's areas and chats ([HOME_LOOP.md](HOME_LOOP.md)), registers for England, Norway and Denmark read in the checks and letters to records offices drafted ([FIND_LOOP.md](FIND_LOOP.md) G2 and G5), an OpenAlex key field in Settings, and a signed, notarized release build. That build is not published yet; publishing it is Chris's decision.
+Seeing a find clearly ([SEE_LOOP.md](loops/SEE_LOOP.md): reasons for and against, ranks, two flights, old maps, 3D), deciding finds ([DECIDE_LOOP.md](loops/DECIDE_LOOP.md)), a project's areas and chats ([HOME_LOOP.md](loops/HOME_LOOP.md)), registers for England, Norway and Denmark read in the checks and letters to records offices drafted ([FIND_LOOP.md](loops/FIND_LOOP.md) G2 and G5), an OpenAlex key field in Settings, and a signed, notarized release build. That build is not published yet; publishing it is Chris's decision.
 
 ## Later: a second field, open astronomy
 

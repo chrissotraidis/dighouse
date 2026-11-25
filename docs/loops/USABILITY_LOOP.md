@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-13
 
-This loop follows [NEXT_LOOP.md](NEXT_LOOP.md). Read [HANDOFF.md](HANDOFF.md) first. The first loop made the app understandable and the second made it find things. This one makes it easy: a person who is curious about archaeology, and is not a programmer, should be able to open Dighouse, start a project, pull in data, run a search and decide on what it finds, without reading anything first. Someone who knows Codex should find the chat works the way they expect.
+This loop follows [NEXT_LOOP.md](NEXT_LOOP.md). Read [HANDOFF.md](../HANDOFF.md) first. The first loop made the app understandable and the second made it find things. This one makes it easy: a person who is curious about archaeology, and is not a programmer, should be able to open Dighouse, start a project, pull in data, run a search and decide on what it finds, without reading anything first. Someone who knows Codex should find the chat works the way they expect.
 
 ## What "easier" means here
 
@@ -69,7 +69,7 @@ Still with Chris from loop 2: dragging the two edges and dropping a Finder file 
 
 ## The loop (every turn)
 
-1. Read [HANDOFF.md](HANDOFF.md), this file and the Log below.
+1. Read [HANDOFF.md](../HANDOFF.md), this file and the Log below.
 2. Pick the lowest unfinished goal (or a U1 finding that is breaking something).
 3. Build it, then run its check in the running app and look at the result.
 4. Fix what the check shows. Repeat until it passes.

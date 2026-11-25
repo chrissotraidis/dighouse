@@ -4,7 +4,7 @@ Last updated: 2026-11-14
 
 **Status: finished on 2026-11-14.** All eight goals are checked, in pull requests #22 to #29. The Log below says what was seen for each, and what was not verified.
 
-Read [HANDOFF.md](HANDOFF.md) first, then the end of [USABILITY_LOOP.md](USABILITY_LOOP.md), whose Log says what loop 3 did. Loop 3 made Dighouse easy to use. This loop makes it look and feel like a finished archaeology product. The menus and buttons should be professional, every tool should work, and the research record should hold up when a project changes hands. A newcomer should be able to start a first project with a short tutorial, or press one button and have the agent go, search and report back.
+Read [HANDOFF.md](../HANDOFF.md) first, then the end of [USABILITY_LOOP.md](USABILITY_LOOP.md), whose Log says what loop 3 did. Loop 3 made Dighouse easy to use. This loop makes it look and feel like a finished archaeology product. The menus and buttons should be professional, every tool should work, and the research record should hold up when a project changes hands. A newcomer should be able to start a first project with a short tutorial, or press one button and have the agent go, search and report back.
 
 ## Who this is for
 
@@ -81,7 +81,7 @@ Each goal is done when its check passes in the running app. Record the date and 
 
 ### 2026-11-14, A1: the audit
 
-Every screen was captured from the running app in Earth at 1440 × 900, and Home and a project in Canopy and Graphite. The pictures are in [loop4/](loop4/). The menu bar was read through accessibility, because a menu opened by test tooling is not drawn on screen, so there is no picture of it. The list is ranked: wrong first, then inconsistent, then plain.
+Every screen was captured from the running app in Earth at 1440 × 900, and Home and a project in Canopy and Graphite. The pictures are in [loop4/](loop4). The menu bar was read through accessibility, because a menu opened by test tooling is not drawn on screen, so there is no picture of it. The list is ranked: wrong first, then inconsistent, then plain.
 
 **Wrong or misleading**
 
@@ -422,7 +422,7 @@ Nothing new was found in the second pass that is wrong. Two things read as unfin
 
 ### Where loop 4 stopped
 
-All eight goals are checked. Nothing is half done. What was not verified, and what waits on Chris, is listed in [HANDOFF.md](HANDOFF.md).
+All eight goals are checked. Nothing is half done. What was not verified, and what waits on Chris, is listed in [HANDOFF.md](../HANDOFF.md).
 
 
 

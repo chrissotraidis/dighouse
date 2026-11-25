@@ -2,7 +2,7 @@
 
 Things to build into Dighouse, one line each. Add to it freely. When an item becomes a goal in a loop, link the loop. When it ships, move it to Done with the pull request.
 
-## Seeing a find (planned in [SEE_LOOP.md](SEE_LOOP.md))
+## Seeing a find (planned in [SEE_LOOP.md](loops/SEE_LOOP.md))
 
 - Closed hollows as a view of their own (sky view and openness down show them now), and ground points per m² as a picture rather than a number.
 - Flights from different years: the Netherlands' older AHN (PDOK serves only the current one), and a check of "possibly modern" on known modern features.

@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-13
 
-This loop follows [GOAL_LOOP.md](GOAL_LOOP.md), whose goals G1 to G21 are logged there. Read [HANDOFF.md](HANDOFF.md) first. The first loop made the app understandable. This one makes it something a person can use to do real work, and finishes what was left unverified.
+This loop follows [GOAL_LOOP.md](GOAL_LOOP.md), whose goals G1 to G21 are logged there. Read [HANDOFF.md](../HANDOFF.md) first. The first loop made the app understandable. This one makes it something a person can use to do real work, and finishes what was left unverified.
 
 ## Goals
 
@@ -25,7 +25,7 @@ Still waiting on a decision from Chris, so not goals yet: a notarized download, 
 
 ## The loop (every turn)
 
-1. Read [HANDOFF.md](HANDOFF.md), this file and the Log below.
+1. Read [HANDOFF.md](../HANDOFF.md), this file and the Log below.
 2. Pick the lowest unfinished goal. N1 and N2 come first: N1 is Chris's latest request and N2 is owed.
 3. Build it, then run its check in the app and look at the result.
 4. Fix what the check shows. Repeat until it passes.

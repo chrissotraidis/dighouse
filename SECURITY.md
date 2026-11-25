@@ -17,7 +17,7 @@ Dighouse runs AI agents on your Mac against public data, and it keeps the locati
 | The agent | The Codex engine runs project chats with the `workspace-write` sandbox and the approval policy `never`, so a request to step outside the sandbox is refused, not granted. Model checks and quick looks run read-only. Only Dighouse's own tools are approved at launch. |
 | The network | The source reader refuses this Mac, private networks, link-local addresses and `file:` addresses (covered by an offline test). The tools fetch only public services. |
 | Publishing | Only when a person asks: a private GitHub repository, made with `gh` after the location check. Nothing becomes public by itself. |
-| Untrusted text | Web pages, PDFs and service replies can contain instructions. The agent must not follow them. Marking such text as untrusted in every tool result is planned (D7 in [docs/DECIDE_LOOP.md](docs/DECIDE_LOOP.md)). |
+| Untrusted text | Web pages, PDFs and service replies can contain instructions. The agent must not follow them. Marking such text as untrusted in every tool result is planned (D7 in [docs/DECIDE_LOOP.md](docs/loops/DECIDE_LOOP.md)). |
 
 ## For contributors
 
