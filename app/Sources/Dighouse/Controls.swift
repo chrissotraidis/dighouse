@@ -419,6 +419,16 @@ struct MarkdownText: View {
     /// text is parsed once and kept. The cache is emptied when it grows, which costs only a parse.
     @MainActor private static var cache: [String: [Block]] = [:]
 
+    /// Parse a text in the background into the cache, so MarkdownText(text:) then finds it at once.
+    static func prepare(_ text: String) async {
+        if await MainActor.run(body: { cache[text] != nil }) { return }
+        let made = await Task.detached(priority: .userInitiated) { parse(text) }.value
+        await MainActor.run {
+            if cache.count > 300 { cache.removeAll() }
+            cache[text] = made
+        }
+    }
+
     /// Read a long file and parse it in the background, so opening it later is instant (a research record can run to
     /// 12,000 lines, which took over half a second to parse).
     @MainActor static func warm(_ path: String) {
@@ -556,6 +566,42 @@ struct MarkdownText: View {
             }
         }
         .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.text).textSelection(.enabled)
+    }
+}
+
+/// A Markdown file on disk, shown formatted. A small file shows at once; a long one (a research record can run to
+/// 12,000 lines) is read and parsed in the background, with a line saying so, so opening it never stalls the window.
+struct FileMarkdown: View {
+    let path: String
+    @State private var text: String?
+    @State private var shownStamp = ""
+
+    init(path: String) {
+        self.path = path
+        let small = (FileInfo.size(path) ?? 0) < 60_000
+        _text = State(initialValue: small ? try? String(contentsOfFile: path, encoding: .utf8) : nil)
+        _shownStamp = State(initialValue: small ? Self.stamp(path) : "")
+    }
+
+    private static func stamp(_ path: String) -> String { "\(path)@\(FileInfo.modified(path)?.timeIntervalSince1970 ?? 0)" }
+
+    var body: some View {
+        Group {
+            if let text { MarkdownText(text: text) } else {
+                HStack(spacing: 8) { DigIndicator(size: 12); Text("Reading the record…").foregroundStyle(Theme.faint) }
+                    .font(.system(size: 13 * Theme.scale))
+            }
+        }
+        .task(id: Self.stamp(path)) {
+            let key = Self.stamp(path)
+            guard key != shownStamp else { return }
+            let file = path
+            guard let read = await Task.detached(priority: .userInitiated, operation: { try? String(contentsOfFile: file, encoding: .utf8) }).value else { return }
+            await MarkdownText.prepare(read)
+            guard !Task.isCancelled else { return }
+            text = read
+            shownStamp = key
+        }
     }
 }
 

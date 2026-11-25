@@ -79,7 +79,7 @@ struct FindChatSheet: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
         }
-        .frame(width: min(620, app.windowSize.width - 40), height: min(440, app.windowSize.height - 40))
+        .frame(width: min(620, max(420, app.windowSize.width - 40)), height: min(440, max(300, app.windowSize.height - 40)))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .closesOnOutsideClick { dismiss() }
         .onAppear { focused = true }

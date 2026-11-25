@@ -256,7 +256,8 @@ struct MapView: View {
                 ZStack(alignment: .topLeading) {
                     ZStack(alignment: .topLeading) {
                         ForEach(spots, id: \.tile.id) { spot in
-                            TileView(tile: spot.tile, selected: store.selectedTile == spot.tile.id, style: style, outlined: showTiles)
+                            TileView(tile: spot.tile, base: "\(store.current?.path ?? "")/data/tiles/\(spot.tile.id)-",
+                                     selected: store.selectedTile == spot.tile.id, style: style, outlined: showTiles)
                                 .frame(width: spot.w * scale, height: spot.h * scale)
                                 .offset(x: spot.x * scale, y: spot.y * scale)
                                 .onTapGesture {
@@ -275,7 +276,9 @@ struct MapView: View {
                             // Finds kept on the map are dots drawn in one picture, not a view each: a sweep keeps thousands,
                             // and a view each made every redraw of a large project take seconds. A press near one selects it;
                             // a press elsewhere selects the tile, as the tiles do.
-                            let layer = store.candidates.filter { $0.inLayer && $0.id != store.selectedCandidate }
+                            // Only the finds on the area shown: a sweep's other areas can hold thousands more.
+                            let here = store.candidates.filter { byTile[$0.tile] != nil }
+                            let layer = here.filter { $0.inLayer && $0.id != store.selectedCandidate }
                             let dots: [(id: String, tile: String, at: CGPoint)] = layer.compactMap { c in
                                 byTile[c.tile].map { (c.id, c.tile, CGPoint(x: ($0.x + c.x * $0.w) * scale, y: ($0.y + c.y * $0.h) * scale)) }
                             }
@@ -300,7 +303,7 @@ struct MapView: View {
                                 }
                             })
                             .accessibilityHidden(true)
-                            ForEach(store.candidates.filter { !$0.inLayer || $0.id == store.selectedCandidate }) { c in
+                            ForEach(here.filter { !$0.inLayer || $0.id == store.selectedCandidate }) { c in
                                 if let spot = byTile[c.tile] {
                                     Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer, quiet: quiet,
                                         fresh: store.fresh.contains(c.id))
@@ -797,8 +800,11 @@ struct MapView: View {
 }
 
 private struct TileView: View {
-    @EnvironmentObject var store: ProjectStore
+    // Given its folder rather than watching the project: a view that watches the project redraws whenever anything in it
+    // changes, and a map holds a tile view for every tile of the area.
     let tile: Tile
+    /// The start of the tile's picture paths, up to the style.
+    let base: String
     let selected: Bool
     var style = "composite"
     var outlined = true
@@ -806,7 +812,6 @@ private struct TileView: View {
     @State private var glow = 0.0
 
     var body: some View {
-        let base = "\(store.current?.path ?? "")/data/tiles/\(tile.id)-"
         ZStack {
             if let image = Images.load(base + style + ".png") ?? Images.load(base + "composite.png") {
                 Image(nsImage: image).resizable().interpolation(.medium)
@@ -1477,8 +1482,8 @@ struct NotesView: View {
                              : "The running log the tools write as work happens, the sources read, and report drafts.")
                             .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
                     }
-                    if let file, let text = try? String(contentsOfFile: root + "/" + file, encoding: .utf8) {
-                        MarkdownText(text: text)
+                    if let file, FileManager.default.fileExists(atPath: root + "/" + file) {
+                        FileMarkdown(path: root + "/" + file).id(root + "/" + file)
                     } else if part == "record" {
                         EmptyLine(icon: "dig.layers", text: "The record is written the next time this project opens, when a run ends, or when a decision is recorded.")
                     } else if part == "method" {

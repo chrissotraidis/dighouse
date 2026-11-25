@@ -11,9 +11,9 @@ final class ProjectStore: ObservableObject {
     @Published var current: ProjectRef?
     @Published var terrains: [Terrain] = []
     @Published var tiles: [Tile] = []
-    @Published var candidates: [Candidate] = [] { didSet { recount() } }
+    @Published var candidates: [Candidate] = []
     /// Sources logged for the project as a whole, such as a survey's metadata or a search that found nothing of use.
-    @Published var projectSources: [Source] = [] { didSet { recount() } }
+    @Published var projectSources: [Source] = []
 
     /// Counts the pages ask for on every redraw, made once whenever the finds are read: counting 8,065 finds five
     /// times a redraw, each reading its checks, took a good part of a second.
@@ -22,12 +22,25 @@ final class ProjectStore: ObservableObject {
         var checked = 0, seconded = 0, sourced = 0
     }
     private(set) var tally = Tally()
+    /// The finds sorted for Decide, worked out with the reading: the overview, the header and the map ask for them on
+    /// every redraw, and filtering 8,065 finds each time made opening ⌘K over a sweep take half a second.
+    struct Groups: Sendable {
+        var needsYou: [Candidate] = [], toAgree: [Candidate] = [], onMap = 0
+    }
+    private(set) var groups = Groups()
     /// Every source the project logged, each title once: those on its records first, then those for the whole project.
     private(set) var allSources: [Source] = []
 
-    private func recount() {
-        var t = Tally()
+    /// The counts and the sources, worked out with the reading (in the background for a large project).
+    nonisolated static func count(_ candidates: [Candidate], _ projectSources: [Source]) -> (Tally, [Source], Groups) {
+        var t = Tally(), g = Groups()
         for c in candidates {
+            switch c.group {
+            case .closer, .lookAgain, .open: g.needsYou.append(c)
+            case .layer: g.onMap += 1
+            case let group where group.confirmable: g.toAgree.append(c)
+            default: break
+            }
             let section = c.checks["section"] != nil, modern = c.checks["modern"] != nil, second = c.checks["second_look"] != nil
             if section && modern { t.checked += 1 }
             if second { t.seconded += 1 }
@@ -40,9 +53,8 @@ final class ProjectStore: ObservableObject {
             if c.sources.isEmpty { t.toSearch += 1 }
             if c.suggestion == nil && !c.inLayer { t.unprepared += 1 }
         }
-        tally = t
         var seen = Set<String>()
-        allSources = (candidates.flatMap(\.sources) + projectSources).filter { seen.insert($0.title).inserted }
+        return (t, (candidates.flatMap(\.sources) + projectSources).filter { seen.insert($0.title).inserted }, g)
     }
     @Published var status = RunStatus()
     @Published var selectedTile: String?
@@ -61,10 +73,8 @@ final class ProjectStore: ObservableObject {
 
     /// A blind test (or a calibration) is scored against a published key, before and after scoring, so its finds wait
     /// for no decision.
-    var isBlindTest: Bool {
-        guard let root = current?.path else { return false }
-        return FileManager.default.fileExists(atPath: root + "/private/state/test.json")
-    }
+    /// Read with the project rather than asked of the disk: the overview and the header ask many times a redraw.
+    private(set) var isBlindTest = false
 
     struct Download: Equatable {
         let dataset: String
@@ -265,11 +275,11 @@ final class ProjectStore: ObservableObject {
 
     /// The finds a person decides one at a time: leads, disagreements, and finds with no suggestion. The one count
     /// the header, the overview and Decide all show.
-    var needsYou: [Candidate] { isBlindTest ? [] : candidates.filter { [.closer, .lookAgain, .open].contains($0.group) } }
+    var needsYou: [Candidate] { isBlindTest ? [] : groups.needsYou }
     /// The routine finds a person can agree with together, from their pictures.
-    var toAgree: [Candidate] { isBlindTest ? [] : candidates.filter { $0.group.confirmable } }
+    var toAgree: [Candidate] { isBlindTest ? [] : groups.toAgree }
     /// Measured rises kept on the map rather than put to a person.
-    var onMap: Int { isBlindTest ? 0 : candidates.filter { $0.group == .layer }.count }
+    var onMap: Int { isBlindTest ? 0 : groups.onMap }
 
     /// "6 need you · 70 to agree", or whichever part there is.
     var decideWords: String {
@@ -302,17 +312,44 @@ final class ProjectStore: ObservableObject {
     func reloadIfChanged() {
         guard let root = current?.path else {
             terrains = []; tiles = []; candidates = []; projectSources = []; status = RunStatus(); download = nil
+            tally = Tally(); allSources = []; groups = Groups(); isBlindTest = false
             return
         }
         readDownload(root)
+        // Polling a large open project looks at every find's file, 8,065 of them in a sweep: 29 ms each time, every
+        // 2 seconds of a run, so that look is taken in the background. Opening a project still looks at once.
+        if knownRoot == root, candidates.count > 400 {
+            guard looking == nil else { return }
+            looking = Task.detached(priority: .utility) { [weak self] in
+                let (now, records) = Self.look(root)
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.looking = nil
+                    if self.current?.path == root { self.changed(root, now, records) }
+                }
+            }
+            return
+        }
+        let (now, records) = Self.look(root)
+        changed(root, now, records)
+    }
+
+    private var looking: Task<Void, Never>?
+
+    /// The project's find records and a line that changes whenever any file the window shows changes.
+    nonisolated static func look(_ root: String) -> (signature: String, records: [String]) {
         let fm = FileManager.default
         let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
-        let watched = ["terrains", "tiles", "locations", "controls", "project"].map { root + "/private/state/\($0).json" }
+        let watched = ["terrains", "tiles", "locations", "controls", "project", "test"].map { root + "/private/state/\($0).json" }
             + records.map { root + "/candidates/" + $0 } + [root + "/sources/read-log.md"]
         let now = watched.map { path -> String in
             let date = FileInfo.modified(path)
             return "\(path)@\(date?.timeIntervalSince1970 ?? 0)"
         }.joined(separator: "|")
+        return (now, records)
+    }
+
+    private func changed(_ root: String, _ now: String, _ records: [String]) {
         guard now != signature else { return }
         signature = now
         if Perf.on { Perf.label = "reading the open project (\(records.count) finds)" }
@@ -352,6 +389,7 @@ final class ProjectStore: ObservableObject {
     /// What a project's folder holds, read without touching the window, so a large project can be read in the background.
     struct Snapshot: Sendable {
         var terrains: [Terrain] = [], tiles: [Tile] = [], candidates: [Candidate] = [], sources: [Source] = []
+        var tally = Tally(), allSources: [Source] = [], groups = Groups(), blindTest = false
     }
     private var reading: Task<Void, Never>?
 
@@ -376,6 +414,8 @@ final class ProjectStore: ObservableObject {
         }.sorted { $0.id < $1.id }
         out.candidates = readCandidates(root, records)
         out.sources = readProjectSources(root)
+        (out.tally, out.allSources, out.groups) = count(out.candidates, out.sources)
+        out.blindTest = FileManager.default.fileExists(atPath: root + "/private/state/test.json")
         return out
     }
 
@@ -385,7 +425,7 @@ final class ProjectStore: ObservableObject {
         followName(root)
         reading?.cancel()
         guard records.count > 400 else { apply(root, Self.read(root, records)); return }
-        if knownRoot != root { terrains = []; tiles = []; candidates = []; projectSources = [] }
+        if knownRoot != root { terrains = []; tiles = []; candidates = []; projectSources = []; tally = Tally(); allSources = []; groups = Groups() }
         reading = Task.detached(priority: .userInitiated) { [weak self] in
             let snapshot = Self.read(root, records)
             guard !Task.isCancelled else { return }
@@ -397,6 +437,12 @@ final class ProjectStore: ObservableObject {
     }
 
     private func apply(_ root: String, _ snapshot: Snapshot) {
+        let started = Date()
+        defer { if Perf.on { Perf.log("showed \(snapshot.candidates.count) finds in \(Int(Date().timeIntervalSince(started) * 1000)) ms") } }
+        tally = snapshot.tally
+        allSources = snapshot.allSources
+        groups = snapshot.groups
+        isBlindTest = snapshot.blindTest
         terrains = snapshot.terrains
         tiles = snapshot.tiles
         candidates = snapshot.candidates

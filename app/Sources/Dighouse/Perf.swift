@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// Measuring how quickly the app answers. Off unless Dighouse is launched with -measure YES (and -measureTour YES for
 /// the scripted tour). A watcher thread notes every time the main thread stops answering for more than 250 ms, with
@@ -56,6 +56,18 @@ enum Perf {
     }
 }
 
+extension Perf {
+    /// How many AppKit views the main window holds, by kind, the most common first: laying out the window walks them all.
+    @MainActor
+    static func views() -> String {
+        var kinds: [String: Int] = [:]
+        func walk(_ v: NSView) { kinds[String(describing: type(of: v)), default: 0] += 1; v.subviews.forEach(walk) }
+        if let root = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil })?.contentView { walk(root) }
+        let total = kinds.values.reduce(0, +)
+        return "\(total): " + kinds.sorted { $0.value > $1.value }.prefix(8).map { "\($0.key) \($0.value)" }.joined(separator: ", ")
+    }
+}
+
 extension AppState {
     /// The scripted tour: Home, the largest project and each of its tabs, the Toolbox, Settings, New project, and the
     /// longest chat. Run with -measure YES -measureTour YES; it leaves the app on Home.
@@ -72,6 +84,10 @@ extension AppState {
                             ready: { self.store.current?.path == p.path && self.store.candidates.count >= sizes[i] }) { self.open(p) }
             for tab in [WorkTab.records, .notes, .sources, .data, .map] { await Perf.step("Tab \(tab.rawValue)") { self.tab = tab } }
             // ⌘+ and ⌘− on the largest project, with the map showing: the size a person feels.
+            Perf.log("window views: \(Perf.views())")
+            // ⌘K over the largest project: the palette reads every project's finds.
+            await Perf.step("Open ⌘K over the largest project") { self.jumping = true }
+            await Perf.step("Close ⌘K") { self.jumping = false }
             let size = textSize
             await Perf.step("Bigger text (⌘+)") { self.textSize = "large" }
             await Perf.step("Smaller text (⌘−)") { self.textSize = size }
@@ -89,6 +105,9 @@ extension AppState {
             await Perf.step("Switch to \(p.name)", ready: { self.store.current?.path == p.path && !self.store.candidates.isEmpty }) { self.open(p) }
         }
         await Perf.step("Home from a project") { self.goHome() }
+        Perf.log("window views on Home: \(Perf.views())")
+        await Perf.step("Open ⌘K on Home") { self.jumping = true }
+        await Perf.step("Close ⌘K on Home") { self.jumping = false }
         await Perf.step("Toolbox") { self.route = .toolbox }
         await Perf.step("Settings") { self.route = .settings }
         await Perf.step("New project") { self.route = .newProject }
@@ -124,7 +143,7 @@ extension AppState {
             try? await Task.sleep(for: .seconds(2))
             chat.items.removeAll { $0.id.hasPrefix("perf-") }
         }
-        await Perf.step("Home again") { self.route = .home }
+        await Perf.step("Home again") { self.goHome() }
         Perf.log("tour end")
     }
 }

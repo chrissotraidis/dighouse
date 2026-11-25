@@ -34,6 +34,22 @@ final class SettledFindTests: XCTestCase {
         XCTAssertEqual(all[1].group, .lookAgain)
     }
 
+    /// The header, the overview and Decide read the groups worked out with the reading; they must be the finds the
+    /// old filters picked, in the same order.
+    func testKeptGroupsMatchTheFilters() {
+        let all = [
+            find("C-001"), find("C-002", suggestion: "natural", second: true), find("C-003", suggestion: "modern"),
+            find("C-004", sources: [Source(title: "A survey", status: "read", finding: "C-004 is on it", link: "")]),
+            find("C-005", status: "natural"), find("C-006", suggestion: "natural", second: false),
+        ].map { c -> Candidate in var c = c; c.settle(); return c }
+        let (_, _, groups) = ProjectStore.count(all, [])
+        XCTAssertEqual(groups.needsYou.map(\.id), all.filter { [.closer, .lookAgain, .open].contains($0.group) }.map(\.id))
+        XCTAssertEqual(groups.toAgree.map(\.id), all.filter { $0.group.confirmable }.map(\.id))
+        XCTAssertEqual(groups.onMap, all.filter { $0.group == .layer }.count)
+        XCTAssertFalse(groups.needsYou.isEmpty)
+        XCTAssertFalse(groups.toAgree.isEmpty)
+    }
+
     func testStrongestPutsWaitingFindsFirstThenTheStrongest() {
         let store = ProjectStore()
         let finds = [

@@ -69,7 +69,7 @@ struct ReportSheet: View {
             }
             .padding(.horizontal, 24).padding(.vertical, 14)
         }
-        .frame(width: min(760, app.windowSize.width - 40), height: min(740, app.windowSize.height - 40))
+        .frame(width: min(760, max(480, app.windowSize.width - 40)), height: min(740, max(400, app.windowSize.height - 40)))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .closesOnOutsideClick { app.reportShown = nil }
     }

@@ -8,8 +8,18 @@ struct CommandPalette: View {
     @Environment(\.dismiss) private var dismiss
     @State private var term = ""
     @State private var picked = 0
-    @State private var records: [Item] = []
+    /// Every find in every project, with the lowercased words each is found by: a sweep leaves thousands, and lowercasing
+    /// 27,000 finds on each key press stalled the window for up to half a second.
+    @State private var records: [Find] = []
+    /// What the typed words match, worked out when the words change rather than on every redraw.
+    @State private var rows: [Item] = []
     @FocusState private var focused: Bool
+
+    /// A find as plain words, made in the background. Rows are made only for the few that match: a row for each of
+    /// 27,000 finds took a third of a second to make on opening and as long to free on closing.
+    struct Find: Sendable {
+        let path: String, id: String, title: String, detail: String, hay: String
+    }
 
     struct Item: Identifiable {
         enum Kind: String { case page = "Go to", project = "Project", candidate = "Candidate", chat = "Chat", command = "Command" }
@@ -68,24 +78,36 @@ struct CommandPalette: View {
         }
     }
 
-    private var shown: [Item] {
+    nonisolated private static func hay(_ title: String, _ detail: String, _ kind: Item.Kind) -> String {
+        (title + " " + detail + " " + kind.rawValue).lowercased()
+    }
+
+    private func match() -> [Item] {
         let words = term.lowercased().split(separator: " ").map(String.init)
-        let all = pages + projects + records + chats + commands
         guard !words.isEmpty else { return Array((pages.prefix(5) + projects.prefix(6) + chats.prefix(6)).prefix(20)) }
-        func score(_ item: Item) -> Int? {
-            let hay = (item.title + " " + item.detail + " " + item.kind.rawValue).lowercased()
+        let order: [Item.Kind: Int] = [.project: 0, .candidate: 1, .page: 2, .chat: 3, .command: 2]
+        func score(_ title: String, _ hay: String, _ kind: Item.Kind, blocked: Bool) -> Int? {
             guard words.allSatisfy({ hay.contains($0) }) else { return nil }
-            let title = item.title.lowercased()
-            let order: [Item.Kind: Int] = [.project: 0, .candidate: 1, .page: 2, .chat: 3, .command: 2]
-            return (title.hasPrefix(words[0]) ? 0 : title.contains(words[0]) ? 1 : 2) * 100 + (item.blocked == nil ? 0 : 50) + (order[item.kind] ?? 4)
+            let title = title.lowercased()
+            return (title.hasPrefix(words[0]) ? 0 : title.contains(words[0]) ? 1 : 2) * 100 + (blocked ? 50 : 0) + (order[kind] ?? 4)
         }
-        return all.compactMap { item in score(item).map { (item, $0) } }
-            .enumerated().sorted { ($0.element.1, $0.offset) < ($1.element.1, $1.offset) }
-            .prefix(40).map(\.element.0)
+        // In the order pages, projects, finds, chats, commands, which breaks ties.
+        let before = pages + projects, after = chats + commands
+        var ranked: [(item: Item, score: Int, n: Int)] = []
+        for (n, it) in before.enumerated() {
+            if let sc = score(it.title, Self.hay(it.title, it.detail, it.kind), it.kind, blocked: it.blocked != nil) { ranked.append((it, sc, n)) }
+        }
+        let finds = records.indices.compactMap { i in score(records[i].title, records[i].hay, .candidate, blocked: false).map { ($0, i) } }
+        for (sc, i) in finds.sorted(by: <).prefix(40) { ranked.append((item(records[i]), sc, before.count + i)) }
+        for (n, it) in after.enumerated() {
+            if let sc = score(it.title, Self.hay(it.title, it.detail, it.kind), it.kind, blocked: it.blocked != nil) {
+                ranked.append((it, sc, before.count + records.count + n))
+            }
+        }
+        return ranked.sorted { ($0.score, $0.n) < ($1.score, $1.n) }.prefix(40).map(\.item)
     }
 
     var body: some View {
-        let rows = shown
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.faint)
@@ -121,12 +143,15 @@ struct CommandPalette: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
         }
-        .frame(width: min(620, app.windowSize.width - 40), height: min(440, app.windowSize.height - 40))
+        .frame(width: min(620, max(420, app.windowSize.width - 40)), height: min(440, max(300, app.windowSize.height - 40)))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .closesOnOutsideClick { dismiss() }
-        .onAppear { focused = true }
-        .onChange(of: term) { _, _ in picked = 0 }
-        .task { records = await Self.candidates(in: store.projects, app: app) }
+        .onAppear { focused = true; rows = match() }
+        .onChange(of: term) { _, _ in picked = 0; rows = match() }
+        .task {
+            records = await Self.candidates(in: store.projects, app: app)
+            if !term.isEmpty { rows = match() }
+        }
     }
 
     private func row(_ item: Item, selected: Bool) -> some View {
@@ -152,9 +177,18 @@ struct CommandPalette: View {
     }
 
     /// Every candidate in every project, read from the records' front matter.
-    private static func candidates(in projects: [ProjectRef], app: AppState) async -> [Item] {
-        let found: [(ProjectRef, String, String, String)] = await Task.detached {
-            var out: [(ProjectRef, String, String, String)] = []
+    /// The row for a find, made when it matches.
+    private func item(_ find: Find) -> Item {
+        Item(id: "r-\(find.path)-\(find.id)", kind: .candidate, title: find.title, detail: find.detail, icon: "mappin") { [app] in
+            guard let project = app.store.projects.first(where: { $0.path == find.path }) else { return }
+            if app.store.current?.path != project.path { app.open(project) }
+            app.showRecords(find.id)
+        }
+    }
+
+    private static func candidates(in projects: [ProjectRef], app: AppState) async -> [Find] {
+        await Task.detached {
+            var out: [Find] = []
             for p in projects {
                 let dir = p.path + "/candidates"
                 for file in ((try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []).sorted() where file.hasSuffix(".md") {
@@ -167,20 +201,15 @@ struct CommandPalette: View {
                         guard ["id", "name", "status"].contains(key) else { continue }
                         meta[key] = (try? JSONSerialization.jsonObject(with: Data(raw.utf8), options: .fragmentsAllowed)) as? String ?? raw
                     }
-                    if let id = meta["id"] { out.append((p, id, meta["name"] ?? "", meta["status"] ?? "")) }
+                    if let id = meta["id"] {
+                        let status = meta["status"] ?? ""
+                        let title = "\(id) \(meta["name"] ?? "")", detail = "\(p.name) · \(Candidate.labels[status] ?? status)"
+                        out.append(Find(path: p.path, id: id, title: title, detail: detail, hay: hay(title, detail, .candidate)))
+                    }
                 }
             }
             return out
         }.value
-        return found.map { project, id, name, status in
-            Item(id: "r-\(project.path)-\(id)", kind: .candidate, title: "\(id) \(name)",
-                 detail: "\(project.name) · \(Candidate.labels[status] ?? status)", icon: "mappin") {
-                if store(app).current?.path != project.path { app.open(project) }
-                app.showRecords(id)
-            }
-        }
     }
-
-    private static func store(_ app: AppState) -> ProjectStore { app.store }
 }
 

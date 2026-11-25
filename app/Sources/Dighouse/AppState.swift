@@ -78,7 +78,11 @@ final class AppState: ObservableObject {
     /// A file to show first in the Notes tab, such as PROJECT.md from the project's folder list.
     @Published var notesFile: String?
     /// The window's size, so sheets fit inside it.
-    @Published var windowSize = CGSize(width: 1380, height: 880)
+    /// The window's size, kept outside AppState (WindowSize) so a resize does not redraw every page.
+    var windowSize: CGSize {
+        get { WindowSize.shared.value }
+        set { if WindowSize.shared.value != newValue { WindowSize.shared.value = newValue } }
+    }
     /// Whether the one-at-a-time review of candidates is open.
     @Published var reviewing = false
     /// The find Decide opens on, when it is opened from that find's record.
@@ -1244,10 +1248,11 @@ final class AppState: ObservableObject {
     /// minutes; they carry on by themselves once there is room.
     private func roomForOpinions() -> Bool {
         guard let model = secondOpinionModels.first, onThisAccount(model), let left = chat.usageLeft, left < Self.opinionFloor else {
-            opinionsWaiting = nil
+            if opinionsWaiting != nil { opinionsWaiting = nil }   // set only on a change: each set redraws every page
             return true
         }
-        opinionsWaiting = "Second opinions wait: \(left)% of the account's usage is left. They carry on when it resets."
+        let words = "Second opinions wait: \(left)% of the account's usage is left. They carry on when it resets."
+        if opinionsWaiting != words { opinionsWaiting = words }
         if opinionsRecheck == nil {
             opinionsRecheck = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(300))
@@ -1473,17 +1478,26 @@ final class AppState: ObservableObject {
     }
 
     /// Queue a second opinion for every open find without one in these project folders, and start.
+    /// The folders are read in the background: a sweep's 8,065 finds took 1.4 s to read, which froze the window.
     func askSecondOpinions(in folders: [String]) {
-        for folder in folders {
-            let records = ((try? FileManager.default.contentsOfDirectory(atPath: folder + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
-            let all = ProjectStore.readCandidates(folder, records)
-            let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-            for id in ProjectStore.worthAsking(all) where !sessionLooks.contains(where: { $0.path == folder && $0.id == id }) {
-                guard let c = byID[id], !c.tile.isEmpty else { continue }
-                sessionLooks.append(SecondLookItem(path: folder, id: id, tile: c.tile, x: c.x, y: c.y))
+        Task { @MainActor in
+            let found: [(folder: String, finds: [Candidate], ids: [String])] = await Task.detached {
+                folders.map { folder in
+                    let records = ((try? FileManager.default.contentsOfDirectory(atPath: folder + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
+                    let all = ProjectStore.readCandidates(folder, records)
+                    return (folder, all, ProjectStore.worthAsking(all))
+                }
+            }.value
+            var queued = Set(sessionLooks.map { $0.path + "/" + $0.id })
+            for (folder, all, ids) in found {
+                let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                for id in ids where queued.insert(folder + "/" + id).inserted {
+                    guard let c = byID[id], !c.tile.isEmpty else { continue }
+                    sessionLooks.append(SecondLookItem(path: folder, id: id, tile: c.tile, x: c.x, y: c.y))
+                }
             }
+            nextSessionLook()
         }
-        nextSessionLook()
     }
 }
 
@@ -1494,7 +1508,6 @@ extension View {
             .environmentObject(app.engine)
             .environmentObject(app.store)
             .environmentObject(app.chat)
-            .preferredColorScheme(.dark)
     }
 }
 
@@ -1520,6 +1533,9 @@ struct DighouseApp: App {
         Window("Dighouse", id: "main") {
             RootView()
                 .withApp(app)
+                // Set once, on the window. Sheets and popovers take it from the window; set again on each sheet, it
+                // made the whole window update when a sheet opened and closed.
+                .preferredColorScheme(.dark)
                 .frame(minWidth: 560, maxWidth: .infinity, minHeight: 520, maxHeight: .infinity)
                 .onOpenURL { attach([$0]) }
                 .onAppear { delegate.openFiles = attach }

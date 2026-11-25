@@ -2,7 +2,6 @@
 answer is read, and the words when it is not signed in."""
 
 import json
-import os
 import stat
 
 import pytest

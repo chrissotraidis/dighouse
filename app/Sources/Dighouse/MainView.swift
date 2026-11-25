@@ -307,7 +307,9 @@ struct Sidebar: View {
             nav("magnifyingglass", "Find a chat", selected: false) { app.findingChat = true }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
+                // Lazy, so only the rows in view are made: a hundred projects made two hundred buttons, and the window
+                // walks every one of them each time it lays itself out.
+                LazyVStack(alignment: .leading, spacing: 2) {
                     // Projects first: a project is where work lives, with its chats folded under it.
                     HStack {
                         header("Projects")
@@ -326,6 +328,7 @@ struct Sidebar: View {
                     blindTestRows
                 }
             }
+            .background(place(Self.listID))
             .padding(.top, 6)
             // A fold is remembered only while the project keeps its place: opening another project resets both rows.
             .onChange(of: store.current?.path) { old, new in
@@ -361,7 +364,9 @@ struct Sidebar: View {
                 guard event.type == .rightMouseDown || event.modifierFlags.contains(.control),
                       let window = event.window, window === NSApp.mainWindow, let content = window.contentView else { return event }
                 let at = CGPoint(x: event.locationInWindow.x, y: content.bounds.height - event.locationInWindow.y)
-                guard let id = frames.value.first(where: { $0.value.contains(at) })?.key else { return event }
+                // Only a row in view: a row scrolled out of sight keeps a place under the buttons below the list.
+                guard frames.value[Self.listID]?.contains(at) == true,
+                      let id = frames.value.first(where: { $0.key != Self.listID && $0.value.contains(at) })?.key else { return event }
                 menuFor = id
                 return nil
             }
@@ -389,6 +394,8 @@ struct Sidebar: View {
     private func hover(_ id: String, _ inside: Bool) {
         if inside { hovered = id } else if hovered == id { hovered = nil }
     }
+
+    private static let listID = "the list"
 
     /// Reports where a row sits in the window, so a right-click can find the row under it.
     private func place(_ id: String) -> some View {

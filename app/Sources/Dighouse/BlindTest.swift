@@ -115,7 +115,7 @@ struct TestPicker: View {
             .frame(maxHeight: max(320, app.windowSize.height - 260))
         }
         .padding(24)
-        .frame(width: min(860, app.windowSize.width - 40))
+        .frame(width: min(860, max(520, app.windowSize.width - 40)))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .closesOnOutsideClick { dismiss() }
         .onAppear { scores = Self.lastScores(app.store.projects.map(\.path)) }

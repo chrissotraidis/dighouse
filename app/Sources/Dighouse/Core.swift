@@ -79,6 +79,14 @@ final class TextScale: @unchecked Sendable {
     var value: CGFloat = TextSize.scale(UserDefaults.standard.string(forKey: "textSize") ?? "standard")
 }
 
+/// The window's size, observed: only the sheets and menus that size themselves to the window read it, so a resize redraws
+/// them and not the whole app. On AppState, every step of a resize redrew every page.
+@Observable
+final class WindowSize: @unchecked Sendable {
+    static let shared = WindowSize()   // set only on the main thread, from MainView
+    var value = CGSize(width: 1380, height: 880)
+}
+
 enum Theme {
     /// How large text is drawn, from ⌘+ and ⌘− or Settings › How it looks. Every font size is multiplied by it.
     static var scale: CGFloat { TextScale.shared.value }

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-from . import ledger, terrain as T
+from . import ledger
 from .project import Project, today, without_coordinates
 
 ROUTER = os.environ.get("DIGHOUSE_ROUTER", "http://127.0.0.1:10100/v1/responses")
