@@ -273,22 +273,26 @@ struct MenuPanel: View {
 
     var body: some View {
         Group {
-            if height > maxHeight { ScrollView { rows }.frame(height: maxHeight) } else { rows }
+            // A menu that scrolls makes only the rows in view: Records' list of finds is 8,065 long, and making every row
+            // froze the window for 7 seconds.
+            if height > maxHeight {
+                ScrollView { LazyVStack(alignment: .leading, spacing: 1) { rows } }.frame(height: maxHeight)
+            } else {
+                VStack(alignment: .leading, spacing: 1) { rows }
+            }
         }
         .padding(6).frame(width: width).foregroundStyle(Theme.text)
     }
 
     private var rows: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            ForEach(entries) { entry in
-                if entry.isDivider {
-                    Hairline().padding(.vertical, 4)
-                } else if entry.isHeader {
-                    Text(entry.title).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.faint)
-                        .padding(.horizontal, 10).padding(.top, 4).padding(.bottom, 4)
-                } else {
-                    MenuRow(entry: entry) { close(); entry.action() }
-                }
+        ForEach(entries) { entry in
+            if entry.isDivider {
+                Hairline().padding(.vertical, 4)
+            } else if entry.isHeader {
+                Text(entry.title).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.faint)
+                    .padding(.horizontal, 10).padding(.top, 4).padding(.bottom, 4)
+            } else {
+                MenuRow(entry: entry) { close(); entry.action() }
             }
         }
     }

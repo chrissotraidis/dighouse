@@ -77,7 +77,7 @@ extension AppState {
         try? await Task.sleep(for: .seconds(3))
         Perf.log("tour start: \(store.projects.count) projects")
         await Perf.step("Home") { self.route = .home }
-        let sizes: [Int] = await Task.detached { [refs = store.projects] in refs.map { ProjectStore.glance($0.path).finds } }.value
+        let sizes: [Int] = await Task.detached { [refs = store.projects, file = ProjectStore.glanceFile] in ProjectStore.glances(refs.map(\.path), keptIn: file).map(\.finds) }.value
         if let i = sizes.indices.max(by: { sizes[$0] < sizes[$1] }) {
             let p = store.projects[i]
             await Perf.step("Open the largest project (\(sizes[i]) finds)",
@@ -88,6 +88,8 @@ extension AppState {
             // ⌘K over the largest project: the palette reads every project's finds.
             await Perf.step("Open ⌘K over the largest project") { self.jumping = true }
             await Perf.step("Close ⌘K") { self.jumping = false }
+            await Perf.step("Open Decide on the largest project") { self.openDecide() }
+            await Perf.step("Close Decide") { self.reviewing = false }
             let size = textSize
             await Perf.step("Bigger text (⌘+)") { self.textSize = "large" }
             await Perf.step("Smaller text (⌘−)") { self.textSize = size }
@@ -108,6 +110,7 @@ extension AppState {
         Perf.log("window views on Home: \(Perf.views())")
         await Perf.step("Open ⌘K on Home") { self.jumping = true }
         await Perf.step("Close ⌘K on Home") { self.jumping = false }
+        await Perf.step("New chat") { self.newChat() }
         await Perf.step("Toolbox") { self.route = .toolbox }
         await Perf.step("Settings") { self.route = .settings }
         await Perf.step("New project") { self.route = .newProject }

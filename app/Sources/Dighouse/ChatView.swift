@@ -1183,7 +1183,7 @@ struct Composer: View {
         if let tile = store.selectedTile, let root = store.current?.path {
             out.append(MenuEntry(title: "The selected tile", icon: "dig.grid") { chat.attach("\(root)/data/tiles/\(tile)-composite.png") })
         }
-        if let c = store.candidates.first(where: { $0.id == store.selectedCandidate }) {
+        if let c = store.candidate(store.selectedCandidate) {
             out.append(MenuEntry(title: "The slice through \(c.id)", icon: "chart.xyaxis.line") { chat.attach(c.section) })
         }
         if out.count > 1 { out.insert(.header("Attach"), at: 0); out.insert(.divider, at: 2) }

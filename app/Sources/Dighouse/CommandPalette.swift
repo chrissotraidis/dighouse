@@ -5,7 +5,6 @@ struct CommandPalette: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
     @EnvironmentObject var chat: ChatModel
-    @Environment(\.dismiss) private var dismiss
     @State private var term = ""
     @State private var picked = 0
     /// Every find in every project, with the lowercased words each is found by: a sweep leaves thousands, and lowercasing
@@ -116,6 +115,7 @@ struct CommandPalette: View {
                     .onSubmit { run(rows) }
                     .onKeyPress(.downArrow) { picked = min(picked + 1, max(rows.count - 1, 0)); return .handled }
                     .onKeyPress(.upArrow) { picked = max(picked - 1, 0); return .handled }
+                    .onKeyPress(.escape) { close(); return .handled }
             }
             .padding(.horizontal, 16).frame(height: 52)
             Hairline()
@@ -139,14 +139,17 @@ struct CommandPalette: View {
             HStack(spacing: 14) {
                 Text("↑↓ to move · Return to open · Esc to close").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                 Spacer()
-                Button("Close") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
+                Button("Close") { close() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
         }
         .frame(width: min(620, max(420, app.windowSize.width - 40)), height: min(440, max(300, app.windowSize.height - 40)))
         .background(Theme.bg).foregroundStyle(Theme.text)
-        .closesOnOutsideClick { dismiss() }
-        .onAppear { focused = true; rows = match() }
+        .onAppear {
+            rows = match()
+            // Over the window, the field can take the keyboard only once it is on screen.
+            DispatchQueue.main.async { focused = true }
+        }
         .onChange(of: term) { _, _ in picked = 0; rows = match() }
         .task {
             records = await Self.candidates(in: store.projects, app: app)
@@ -168,11 +171,13 @@ struct CommandPalette: View {
         .contentShape(Rectangle())
     }
 
+    private func close() { app.jumping = false }
+
     private func run(_ rows: [Item]) {
         guard rows.indices.contains(picked) else { return }
         let item = rows[picked]
         guard item.blocked == nil else { return }
-        dismiss()
+        close()
         item.action()
     }
 

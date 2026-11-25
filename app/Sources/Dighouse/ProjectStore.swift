@@ -28,6 +28,13 @@ final class ProjectStore: ObservableObject {
         var needsYou: [Candidate] = [], toAgree: [Candidate] = [], onMap = 0
     }
     private(set) var groups = Groups()
+    /// Where each find is in candidates, by its id: Decide looks up hundreds of finds on every redraw, and searching
+    /// 8,065 for each took millions of comparisons.
+    private var place: [String: Int] = [:]
+    func candidate(_ id: String?) -> Candidate? {
+        guard let id, let i = place[id], candidates.indices.contains(i), candidates[i].id == id else { return nil }
+        return candidates[i]
+    }
     /// Every source the project logged, each title once: those on its records first, then those for the whole project.
     private(set) var allSources: [Source] = []
 
@@ -261,6 +268,57 @@ final class ProjectStore: ObservableObject {
         return projects.max { written($0) < written($1) }
     }
 
+    typealias Glance = (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int)
+
+    /// What glance found for a project, kept with a mark of its files' last changes.
+    private struct Kept: Codable, Sendable {
+        var mark: String
+        var counts: [Int]
+    }
+
+    /// Where the glances are kept between launches.
+    static var glanceFile: URL { Paths.support.appendingPathComponent("glances.json") }
+
+    /// glance for many projects. A project whose files have not changed since the last time is not read again (Home
+    /// read all 27,000 finds of 104 projects after every launch: 5.5 s), and those that have are read side by side.
+    nonisolated static func glances(_ roots: [String], keptIn file: URL) -> [Glance] {
+        // The version is in the key, so a new build that counts differently reads everything again.
+        let version = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        var kept = (try? JSONDecoder().decode([String: Kept].self, from: Data(contentsOf: file))) ?? [:]
+        var out = [Glance](repeating: (0, 0, 0, 0, 0, 0), count: roots.count)
+        var changed = false
+        let lock = NSLock()
+        DispatchQueue.concurrentPerform(iterations: roots.count) { i in
+            let root = roots[i], mark = version + "|" + glanceMark(root)
+            lock.lock(); let hit = kept[root]; lock.unlock()
+            if let hit, hit.mark == mark, hit.counts.count == 6 {
+                let c = hit.counts
+                lock.lock(); out[i] = (c[0], c[1], c[2], c[3], c[4], c[5]); lock.unlock()
+                return
+            }
+            let g = glance(root)
+            lock.lock()
+            out[i] = g
+            kept[root] = Kept(mark: mark, counts: [g.tiles, g.unscreened, g.finds, g.undecided, g.needsYou, g.toAgree])
+            changed = true
+            lock.unlock()
+        }
+        if changed, let data = try? JSONEncoder().encode(kept) { try? data.write(to: file, options: .atomic) }
+        return out
+    }
+
+    /// Changes whenever a file glance reads changes: how many find records there are, the newest of them, the tiles,
+    /// and whether the project is a blind test.
+    nonisolated static func glanceMark(_ root: String) -> String {
+        let fm = FileManager.default
+        let dir = root + "/candidates"
+        let records = ((try? fm.contentsOfDirectory(atPath: dir)) ?? []).filter { $0.hasSuffix(".md") }
+        let newest = records.compactMap { FileInfo.modified(dir + "/" + $0)?.timeIntervalSince1970 }.max() ?? 0
+        let tiles = FileInfo.modified(root + "/private/state/tiles.json")?.timeIntervalSince1970 ?? 0
+        let test = fm.fileExists(atPath: root + "/private/state/test.json")
+        return "\(records.count)|\(newest)|\(tiles)|\(test)"
+    }
+
     /// What a project holds, read from its folder without opening it.
     nonisolated static func glance(_ root: String) -> (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int) {
         let fm = FileManager.default
@@ -312,7 +370,7 @@ final class ProjectStore: ObservableObject {
     func reloadIfChanged() {
         guard let root = current?.path else {
             terrains = []; tiles = []; candidates = []; projectSources = []; status = RunStatus(); download = nil
-            tally = Tally(); allSources = []; groups = Groups(); isBlindTest = false
+            tally = Tally(); allSources = []; groups = Groups(); isBlindTest = false; place = [:]
             return
         }
         readDownload(root)
@@ -390,6 +448,7 @@ final class ProjectStore: ObservableObject {
     struct Snapshot: Sendable {
         var terrains: [Terrain] = [], tiles: [Tile] = [], candidates: [Candidate] = [], sources: [Source] = []
         var tally = Tally(), allSources: [Source] = [], groups = Groups(), blindTest = false
+        var place: [String: Int] = [:]
     }
     private var reading: Task<Void, Never>?
 
@@ -416,6 +475,7 @@ final class ProjectStore: ObservableObject {
         out.sources = readProjectSources(root)
         (out.tally, out.allSources, out.groups) = count(out.candidates, out.sources)
         out.blindTest = FileManager.default.fileExists(atPath: root + "/private/state/test.json")
+        out.place = Dictionary(out.candidates.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
         return out
     }
 
@@ -443,6 +503,7 @@ final class ProjectStore: ObservableObject {
         allSources = snapshot.allSources
         groups = snapshot.groups
         isBlindTest = snapshot.blindTest
+        place = snapshot.place
         terrains = snapshot.terrains
         tiles = snapshot.tiles
         candidates = snapshot.candidates
@@ -524,7 +585,7 @@ final class ProjectStore: ObservableObject {
     nonisolated static func readCandidates(_ root: String, _ records: [String]) -> [Candidate] {
         let places = (FileManager.default.contents(atPath: root + "/private/state/locations.json")
             .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: JSON]) ?? [:]
-        var found: [Candidate] = records.compactMap { file in
+        let parse: (String) -> Candidate? = { file in
             guard let text = try? String(contentsOfFile: root + "/candidates/" + file, encoding: .utf8) else { return nil }
             let parts = text.components(separatedBy: "---\n")
             guard parts.count >= 3 else { return nil }
@@ -557,13 +618,32 @@ final class ProjectStore: ObservableObject {
             }
             return c
         }
+        // Read side by side, each record into its own slot so the order stays: one after another, a sweep's 8,065
+        // records took 1.4 s.
+        var slots = [Candidate?](repeating: nil, count: records.count)
+        let chunk = max(64, records.count / (ProcessInfo.processInfo.activeProcessorCount * 4))
+        slots.withUnsafeMutableBufferPointer { buf in
+            let out = Slots(buf: buf)
+            DispatchQueue.concurrentPerform(iterations: (records.count + chunk - 1) / chunk) { k in
+                for i in k * chunk ..< min(records.count, (k + 1) * chunk) { out.buf[i] = parse(records[i]) }
+            }
+        }
+        var found = slots.compactMap { $0 }
         let kept = Self.layer(found)
-        for i in found.indices {
-            if kept.contains(found[i].id) { found[i].inLayer = true }
-            found[i].settle()
+        found.withUnsafeMutableBufferPointer { buf in
+            let out = Slots(buf: buf)
+            DispatchQueue.concurrentPerform(iterations: (buf.count + chunk - 1) / chunk) { k in
+                for i in k * chunk ..< min(out.buf.count, (k + 1) * chunk) {
+                    if kept.contains(out.buf[i].id) { out.buf[i].inLayer = true }
+                    out.buf[i].settle()
+                }
+            }
         }
         return found
     }
+
+    /// A buffer that several threads write at once, each at its own places.
+    private struct Slots<T>: @unchecked Sendable { let buf: UnsafeMutableBufferPointer<T> }
 
     private func json(_ path: String) -> Any? {
         guard let data = FileManager.default.contents(atPath: path) else { return nil }

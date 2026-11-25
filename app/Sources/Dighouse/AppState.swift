@@ -1273,11 +1273,11 @@ final class AppState: ObservableObject {
         if directOpinions, let path = store.current?.path {
             let ids = Array(secondLookQueue.prefix(40))
             secondLookQueue.removeFirst(ids.count)
-            askDirect(ids.compactMap { id in store.candidates.first { $0.id == id }.map { SecondLookItem(path: path, id: $0.id, tile: $0.tile, x: $0.x, y: $0.y) } })
+            askDirect(ids.compactMap { id in store.candidate(id).map { SecondLookItem(path: path, id: $0.id, tile: $0.tile, x: $0.x, y: $0.y) } })
             return
         }
         let id = secondLookQueue.removeFirst()
-        if let candidate = store.candidates.first(where: { $0.id == id }) { secondLook(candidate) }
+        if let candidate = store.candidate(id) { secondLook(candidate) }
     }
 
     /// Queue a chat for a short name, written by the agent model from the message it began with.

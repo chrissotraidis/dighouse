@@ -39,7 +39,7 @@ struct DecideView: View {
     @State private var problem: String?
     @FocusState private var typing: Bool
 
-    private func find(_ id: String) -> Candidate? { store.candidates.first { $0.id == id } }
+    private func find(_ id: String) -> Candidate? { store.candidate(id) }
     private var current: Candidate? { needs.indices.contains(index) ? find(needs[index]) : nil }
     private var needsLeft: Int { needs.compactMap(find).filter(\.waiting).count }
     private var bulkLeft: [Candidate] { bulk.compactMap(find).filter(\.waiting) }
@@ -537,7 +537,8 @@ struct FindCard: View {
                     sliceSwitch(c)
                     let ns = northSouth && FileManager.default.fileExists(atPath: c.sectionNS)
                     picture(Images.load(ns ? c.sectionNS : c.section),
-                            "Slice \(ns ? "north to south" : "west to east"), straight down, a person 1.70 m for scale")
+                            "Slice \(ns ? "north to south" : "west to east"), straight down, a person 1.70 m for scale",
+                            missing: "Not cut yet. Checking the finds cuts one.")
                 }
             }
             Text(numbers(c).joined(separator: "  ·  ")).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
@@ -821,14 +822,14 @@ struct FindCard: View {
         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
     }
 
-    @ViewBuilder private func picture(_ image: NSImage?, _ caption: String) -> some View {
+    @ViewBuilder private func picture(_ image: NSImage?, _ caption: String, missing: String = "None yet") -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if let image {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 280, alignment: .bottomLeading)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 RoundedRectangle(cornerRadius: 8).fill(Theme.side).frame(height: 160)
-                    .overlay(Text("None yet").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint))
+                    .overlay(Text(missing).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint))
             }
             Text(caption).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
         }

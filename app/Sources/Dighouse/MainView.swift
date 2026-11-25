@@ -36,6 +36,21 @@ struct MainView: View {
             }
         }
         .ignoresSafeArea(edges: .top)
+        // ⌘K is drawn over the window rather than in a sheet: a sheet makes a window of its own each time, which took a
+        // third of a second to open and as long to close.
+        .overlay {
+            if app.jumping {
+                ZStack(alignment: .top) {
+                    Color.black.opacity(0.35).onTapGesture { app.jumping = false }.accessibilityHidden(true)
+                    CommandPalette()
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
+                        .shadow(color: .black.opacity(0.45), radius: 24, y: 8)
+                        .padding(.top, 48)
+                }
+                .ignoresSafeArea()
+            }
+        }
         // A page from one project's sources does not follow the person into another project.
         .onChange(of: store.current?.path) { app.browserURL = nil }
         .background(GeometryReader { geo in
@@ -46,13 +61,13 @@ struct MainView: View {
         .sheet(isPresented: $app.testPicking) { TestPicker().withApp(app) }
         // On the window, not the sidebar, so they open when the sidebar is hidden too.
         .sheet(isPresented: $app.findingChat) { FindChatSheet().withApp(app) }
-        .sheet(isPresented: $app.jumping) { CommandPalette().withApp(app) }
         .sheet(isPresented: Binding(get: { app.reportShown != nil }, set: { if !$0 { app.reportShown = nil } })) {
             if let file = app.reportShown { ReportSheet(file: file).withApp(app) }
         }
         .modifier(RenameChat())
         // The tutorial moves on when the project or the page changes in the way its step asked for.
-        .onChange(of: "\(app.tab.rawValue) \(store.tiles.count) \(store.tiles.filter { $0.status == "unscreened" }.count) \(store.candidates.count) \(store.candidates.filter { !$0.decisions.isEmpty }.count) \(chat.running) \(store.current?.path ?? "")") { _, _ in
+        // Built only while the tutorial runs: it filters every tile and find, and MainView redraws often.
+        .onChange(of: !app.tutorialOn ? "" : "\(app.tab.rawValue) \(store.tiles.count) \(store.tiles.filter { $0.status == "unscreened" }.count) \(store.candidates.count) \(store.candidates.filter { !$0.decisions.isEmpty }.count) \(chat.running) \(store.current?.path ?? "")") { _, _ in
             app.advanceTutorial()
         }
     }
@@ -103,7 +118,7 @@ struct MainView: View {
             case .settings:
                 SettingsPage()
                     // Escape goes back where Settings was opened from, wherever the focus is.
-                    .background(Button("") { app.closeSettings() }.keyboardShortcut(.escape, modifiers: [])
+                    .background(Button("") { app.closeSettings() }.keyboardShortcut(.escape, modifiers: []).disabled(app.jumping)
                         .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true))
             case .chat:
                 if store.current == nil { ChatView() } else { split(width: width) }

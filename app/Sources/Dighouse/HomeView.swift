@@ -551,14 +551,19 @@ private struct WelcomeBack: View {
     }
 
     private func read() async {
+        let began = Date()
+        defer { Perf.log("Home read \(store.projects.count) projects in \(Int(Date().timeIntervalSince(began) * 1000)) ms") }
         session = await readSession()
         let refs = store.projects
-        let found: (ProjectRef, (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int), [(tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int)])? = await Task.detached {
+        let file = ProjectStore.glanceFile
+        let found: (ProjectRef, ProjectStore.Glance, [ProjectStore.Glance])? = await Task.detached {
             func written(_ ref: ProjectRef) -> Date {
                 ["/RESEARCH.md", "/PROJECT.md"].lazy.compactMap { FileInfo.modified(ref.path + $0) }.first ?? .distantPast
             }
             guard let last = refs.max(by: { written($0) < written($1) }) else { return nil }
-            return (last, ProjectStore.glance(last.path), refs.map { ProjectStore.glance($0.path) })
+            let all = ProjectStore.glances(refs.map(\.path), keptIn: file)
+            guard let i = refs.firstIndex(of: last) else { return nil }
+            return (last, all[i], all)
         }.value
         guard let (last, it, all) = found else { project = nil; inbox = []; return }
         let blind = Set(store.blindTests)

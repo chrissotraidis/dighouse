@@ -733,7 +733,7 @@ struct MapView: View {
 
     @ViewBuilder private var selection: some View {
         let tile = store.tiles.first { $0.id == store.selectedTile }
-        let candidate = store.candidates.first { $0.id == store.selectedCandidate }
+        let candidate = store.candidate(store.selectedCandidate)
         if tile != nil || candidate != nil {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
@@ -981,7 +981,7 @@ struct RecordsView: View {
 
     /// The chosen find, or else the first that needs a person, in the order the list shows them.
     private var current: Candidate? {
-        store.candidates.first { $0.id == store.selectedCandidate }
+        store.candidate(store.selectedCandidate)
             ?? Candidate.Group.allCases.lazy.compactMap { g in store.candidates.first { $0.group == g } }.first
     }
 
@@ -1006,11 +1006,17 @@ struct RecordsView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             if geo.size.width < 760, let c = current {
+                                // In the list's groups and order, so the finds that need a person come first.
                                 PillMenu(title: "\(c.id) \(c.name)", width: 340) {
-                                    store.candidates.map { other in
-                                        MenuEntry(title: "\(other.id) \(other.name)", icon: "mappin", checked: other.id == c.id) {
-                                            store.selectedCandidate = other.id
-                                        }
+                                    let groups = store.isBlindTest ? [(nil as Candidate.Group?, store.candidates)]
+                                        : Candidate.Group.allCases.map { g in (Optional(g), store.candidates.filter { $0.group == g }) }
+                                    return groups.filter { !$0.1.isEmpty }.flatMap { group, finds in
+                                        (group.map { [MenuEntry.header("\($0.title) · \(finds.count)")] } ?? [])
+                                            + finds.map { other in
+                                                MenuEntry(title: "\(other.id) \(other.name)", icon: "mappin", checked: other.id == c.id) {
+                                                    store.selectedCandidate = other.id
+                                                }
+                                            }
                                     }
                                 }
                                 .padding(.bottom, 16)
@@ -1026,7 +1032,8 @@ struct RecordsView: View {
 
     /// The finds, grouped by what they probably are. A blind test lists them plainly, since it is scored, not decided.
     @ViewBuilder private var list: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        // Lazy, so only the rows in view are made: a sweep lists thousands.
+        LazyVStack(alignment: .leading, spacing: 2) {
             if store.isBlindTest {
                 Text("A blind test. Its finds are scored against the published features, so none needs a decision.")
                     .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)

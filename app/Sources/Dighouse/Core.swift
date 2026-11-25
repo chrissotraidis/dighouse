@@ -426,8 +426,13 @@ struct Candidate: Identifiable {
 
     /// The find's tile with it ringed: a JPEG for new finds, a PNG in projects from before.
     var relief: String {
-        let jpg = "\(folder)/img/\(id)-relief.jpg"
-        return FileManager.default.fileExists(atPath: jpg) ? jpg : "\(folder)/img/\(id)-relief.png"
+        let jpg = "\(folder)/img/\(id)-relief.jpg", png = "\(folder)/img/\(id)-relief.png"
+        if FileManager.default.fileExists(atPath: jpg) { return jpg }
+        if tile.isEmpty || FileManager.default.fileExists(atPath: png) { return png }
+        // A find not checked yet has no relief of its own (Decide showed "None yet" for thousands of measured rises);
+        // its tile's picture, drawn when the ground was cut, is the same whole tile.
+        let whole = (folder as NSString).deletingLastPathComponent + "/data/tiles/\(tile)-composite.png"
+        return FileManager.default.fileExists(atPath: whole) ? whole : png
     }
     var section: String { "\(folder)/img/\(id)-section.png" }
     /// The same slice north to south (check_finds cuts both).
