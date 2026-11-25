@@ -477,6 +477,8 @@ struct FindCard: View {
     @State private var comparing = false
     @State private var cuttingMaps = false
     @State private var showing3D = false
+    @State private var flightsOpen = true
+    @State private var mapsOpen = true
 
     /// Each view with one line saying what it shows. The last three are from the Relief Visualization Toolbox.
     static let views: [(style: String, title: String, shows: String)] = [
@@ -546,6 +548,26 @@ struct FindCard: View {
         .task(id: c.id) {
             await app.ensureViews(c)
             drawn += 1
+            // The old maps and the two flights come by themselves for a find that waits for a person, after a moment on
+            // its card, so going through cards quickly does not queue them (EASE_LOOP E8).
+            try? await Task.sleep(for: .seconds(1.2))
+            guard !Task.isCancelled, c.waiting, !c.inLayer, app.engine.ready else { return }
+            let root = (c.folder as NSString).deletingLastPathComponent
+            let datasets = store.terrains.map(\.dataset)
+            if c.checks["flights"] == nil, datasets.contains(where: { $0.hasPrefix("usgs:") || $0.hasPrefix("us:") }), !comparing {
+                comparing = true
+                await app.compareFlights(c)
+                comparing = false
+                store.reloadIfChanged()
+            }
+            guard !Task.isCancelled else { return }
+            if !FileManager.default.fileExists(atPath: root + "/data/views/\(c.id)-oldmaps.json"),
+               datasets.contains(where: { ["us:", "usgs:", "fr:"].contains(where: $0.hasPrefix) }), !cuttingMaps {
+                cuttingMaps = true
+                await app.oldMapViews(c)
+                cuttingMaps = false
+                drawn += 1
+            }
         }
     }
 
@@ -713,7 +735,7 @@ struct FindCard: View {
     /// When did it appear: the oldest and newest dated flights over the find, once compared; before that, a button.
     @ViewBuilder private func flights(_ c: Candidate) -> some View {
         if let f = c.checks["flights"] as? JSON, let answer = f["answer"] as? String {
-            DisclosureGroup("Two flights: " + answer) {
+            DisclosureGroup(isExpanded: $flightsOpen) {
                 VStack(alignment: .leading, spacing: 6) {
                     if let path = f["image"] as? String, let image = Images.load((c.folder as NSString).deletingLastPathComponent + "/" + path) {
                         FlightCompare(image: image, years: (f["years"] as? [Int]) ?? [])
@@ -724,7 +746,7 @@ struct FindCard: View {
                     }
                 }
                 .padding(.top, 4).frame(maxWidth: .infinity, alignment: .leading)
-            }
+            } label: { Text("Two flights: " + answer) }
         } else if store.terrains.contains(where: { $0.dataset.hasPrefix("usgs:") || $0.dataset.hasPrefix("us:") }) {
             HStack(spacing: 8) {
                 Button(comparing ? "Comparing flights…" : "Compare two flights") {
@@ -743,9 +765,9 @@ struct FindCard: View {
         let root = (c.folder as NSString).deletingLastPathComponent
         let file = root + "/data/views/\(c.id)-oldmaps.json"
         if FileManager.default.fileExists(atPath: file) {
-            DisclosureGroup("Old maps beside the ground") {
+            DisclosureGroup(isExpanded: $mapsOpen) {
                 OldMapCompare(root: root, file: file).padding(.top, 4).frame(maxWidth: .infinity, alignment: .leading)
-            }
+            } label: { Text("Old maps beside the ground") }
         } else if store.terrains.contains(where: { ["us:", "usgs:", "fr:"].contains(where: $0.dataset.hasPrefix) }) {
             HStack(spacing: 8) {
                 Button(cuttingMaps ? "Cutting the old maps…" : "Old maps beside the ground") {

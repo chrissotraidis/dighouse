@@ -10,7 +10,7 @@ import io
 import json
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from . import review, tiles
@@ -124,20 +124,24 @@ def sort_tiles(project: str, model: str = "", at_once: int = 8, limit: int = 0) 
         except Exception as exc:  # one tile failing should not stop the rest
             return tid, None, str(exc)[:200]
 
-    with ThreadPoolExecutor(at_once) as pool:
-        results = list(pool.map(one, todo))
     looked, failed, shortlist = 0, [], []
-    for tid, v, problem in results:
-        if v is None:
-            failed.append({"tile": tid, "problem": without_coordinates(problem or "")})
-            continue
-        note = without_coordinates(v["note"])
-        tiles.record_verdict(p, tid, v["verdict"], note, f"{model} (sorted in bulk)")
-        looked += 1
-        # The closer look takes possible and built tiles, and any tile where the model pointed at a shape.
-        if v["verdict"] in ("possible", "built") or (v["spots"] and v["verdict"] != "nothing"):
-            shortlist.append({"tile": tid, "verdict": v["verdict"], "note": note,
-                              "spots": [{"x": round(float(s["x"]), 3), "y": round(float(s["y"]), 3), "what": str(s.get("what", ""))[:60]} for s in v["spots"]]})
+    # Each verdict is written as its answer comes, so the app's map lights the tile up while the rest are still asked.
+    with ThreadPoolExecutor(at_once) as pool:
+        for tid, v, problem in (f.result() for f in as_completed([pool.submit(one, tid) for tid in todo])):
+            if v is None:
+                failed.append({"tile": tid, "problem": without_coordinates(problem or "")})
+                continue
+            note = without_coordinates(v["note"])
+            tiles.record_verdict(p, tid, v["verdict"], note, f"{model} (sorted in bulk)")
+            looked += 1
+            # The closer look takes possible and built tiles, and any tile where the model pointed at a shape.
+            if v["verdict"] in ("possible", "built") or (v["spots"] and v["verdict"] != "nothing"):
+                shortlist.append({"tile": tid, "verdict": v["verdict"], "note": note,
+                                  "spots": [{"x": round(float(s["x"]), 3), "y": round(float(s["y"]), 3), "what": str(s.get("what", ""))[:60]} for s in v["spots"]]})
+    # In the order the tiles were asked, as before answers were written as they came.
+    order = {tid: i for i, tid in enumerate(todo)}
+    shortlist.sort(key=lambda t: order[t["tile"]])
+    failed.sort(key=lambda t: order[t["tile"]])
     return {"model": model, "looked_at": looked, "failed": failed, "seconds": round(time.time() - start, 1),
             "shortlist": shortlist, "verdicts": tiles.coverage(p).get("verdicts", {})}
 

@@ -116,6 +116,9 @@ struct MapView: View {
     /// Or an area dragged out while marking: the box as drawn, and the tiles it covers.
     @State private var markBox: (CGPoint, CGPoint)?
     @State private var markTiles: [String] = []
+    /// A find's ground in 3D, opened straight from its card on the map.
+    @State private var relief3D: (id: String, path: String)?
+    @State private var drawingViews = false
 
     private struct Cut {
         let image: String
@@ -272,7 +275,8 @@ struct MapView: View {
                             let quietLayer = store.candidates.filter(\.inLayer).count > 50
                             ForEach(store.candidates) { c in
                                 if let spot = byTile[c.tile] {
-                                    Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer, quiet: quiet)
+                                    Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer, quiet: quiet,
+                                        fresh: store.fresh.contains(c.id))
                                         .offset(x: (spot.x + c.x * spot.w) * scale - 8,
                                                 y: (spot.y + c.y * spot.h) * scale - 8)
                                         .onTapGesture(count: 2) { app.showRecords(c.id) }
@@ -376,6 +380,13 @@ struct MapView: View {
             }
             .overlay(alignment: .bottomLeading) {
                 markAt != nil || !markTiles.isEmpty ? AnyView(markPanel) : cut == nil && !cutting ? AnyView(selection) : AnyView(cutCard)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if store.watching, !store.tiles.isEmpty { LiveSearch().padding(12).transition(.move(edge: .trailing).combined(with: .opacity)) }
+            }
+            .animation(Motion.ease(0.3), value: store.watching)
+            .sheet(isPresented: Binding(get: { relief3D != nil }, set: { if !$0 { relief3D = nil } })) {
+                if let relief3D { Relief3D(title: "\(relief3D.id) in 3D", path: relief3D.path) }
             }
             .overlay(alignment: .top) {
                 if drawing && line == nil && !cutting {
@@ -715,7 +726,28 @@ struct MapView: View {
                         Image(nsImage: section).resizable().aspectRatio(contentMode: .fit)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
-                    Button("Open record") { app.showRecords(candidate.id) }.buttonStyle(SecondaryButton())
+                    // The views a person checks a find with, one press from the map: Decide has the slice, the nine close
+                    // views, the old maps and the two flights; 3D opens here.
+                    HStack(spacing: 8) {
+                        if candidate.waiting, !candidate.inLayer {
+                            Button("Look closely") { app.openDecide(on: candidate.id) }.buttonStyle(PrimaryButton())
+                                .help("Decide on this find, with its close views, the old maps and the two flights beside it.")
+                        }
+                        Button {
+                            let surface = (candidate.folder as NSString).deletingLastPathComponent + "/data/views/\(candidate.id)-surface.json"
+                            drawingViews = true
+                            Task {
+                                await app.ensureViews(candidate)
+                                drawingViews = false
+                                if FileManager.default.fileExists(atPath: surface) { relief3D = (candidate.id, surface) }
+                            }
+                        } label: {
+                            HStack(spacing: 6) { if drawingViews { DigIndicator(size: 11) }; Text("3D") }
+                        }
+                        .buttonStyle(SecondaryButton()).disabled(drawingViews || !app.engine.ready)
+                        .help("The ground 120 m around the find in 3D, with a person for scale.")
+                        Button("Record") { app.showRecords(candidate.id) }.buttonStyle(SecondaryButton())
+                    }
                 } else if let tile {
                     Text(tile.status == "unreadable" ? "Unreadable: the laser did not reach the ground here."
                          : tile.status == "screened" ? (tile.note ?? "") : "Nobody has looked at this tile yet.")
@@ -744,6 +776,8 @@ private struct TileView: View {
     let selected: Bool
     var style = "composite"
     var outlined = true
+    /// A light that fades when the tile has just been looked at, in the colour of its verdict.
+    @State private var glow = 0.0
 
     var body: some View {
         let base = "\(store.current?.path ?? "")/data/tiles/\(tile.id)-"
@@ -762,8 +796,25 @@ private struct TileView: View {
             if outlined || selected {
                 Rectangle().strokeBorder(outline, lineWidth: selected ? 2 : (tile.verdict == "built" || tile.verdict == "possible" ? 1.5 : 0.5))
             }
+            Rectangle().fill(lit.opacity(0.35 * glow)).allowsHitTesting(false)
+            Rectangle().strokeBorder(lit.opacity(glow), lineWidth: 3).allowsHitTesting(false)
         }
+        .animation(.easeOut(duration: 0.5), value: tile.status)
         .contentShape(Rectangle())
+        .onChange(of: tile.status) { old, new in
+            guard old == "unscreened", new != "unscreened" else { return }
+            glow = 1
+            withAnimation(.easeOut(duration: 1.6)) { glow = 0 }
+        }
+    }
+
+    /// The light a tile gives when it has just been looked at: green for built, amber for possible, pale otherwise.
+    private var lit: Color {
+        switch tile.verdict {
+        case "built": return Theme.green
+        case "possible": return Theme.amber
+        default: return .white.opacity(0.6)
+        }
     }
 
     private var outline: Color {
@@ -783,7 +834,10 @@ private struct Pin: View {
     var onMap = false
     /// Many finds and zoomed out: the label shows only when pointed at.
     var quiet = false
+    /// Just made: it arrives with a pulse.
+    var fresh = false
     @State private var hovering = false
+    @State private var pulse = false
 
     var body: some View {
         Group {
@@ -799,6 +853,17 @@ private struct Pin: View {
                 labelled
             }
         }
+        // Just made: it grows in, and a ring goes out from it three times.
+        .scaleEffect(fresh && !pulse ? 0.4 : 1, anchor: .leading)
+        .animation(.spring(response: 0.4, dampingFraction: 0.6), value: pulse)
+        .background(alignment: .leading) {
+            if fresh {
+                Circle().strokeBorder(Theme.green, lineWidth: 2).frame(width: 16, height: 16)
+                    .scaleEffect(pulse ? 3 : 1).opacity(pulse ? 0 : 0.9)
+                    .onAppear { withAnimation(.easeOut(duration: 1.4).repeatCount(3, autoreverses: false)) { pulse = true } }
+                    .allowsHitTesting(false)
+            }
+        }
         .onHover { hovering = $0 }
         .accessibilityLabel(label)
     }
@@ -812,6 +877,67 @@ private struct Pin: View {
                 .background(Capsule().fill(selected ? Theme.accent : .black.opacity(0.78)))
         }
         .fixedSize().contentShape(Rectangle())
+    }
+}
+
+/// The search as it goes, on the map while an agent works: how much ground has been looked at, how many finds, and the
+/// strongest leads so far, which move up as checks come in. A lead selects its find on the map (EASE_LOOP E8).
+private struct LiveSearch: View {
+    @EnvironmentObject var store: ProjectStore
+
+    var body: some View {
+        let tiles = store.tiles, looked = tiles.filter { $0.status != "unscreened" }.count
+        let finds = store.candidates.filter { !$0.inLayer }
+        let leads = Array(finds.sorted { a, b in
+            a.agreement != b.agreement ? a.agreement > b.agreement : store.fresh.contains(a.id) && !store.fresh.contains(b.id)
+        }.prefix(3))
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 7) {
+                DigIndicator(size: 12)
+                Text("Searching").font(.system(size: 13 * Theme.scale, weight: .semibold))
+                Spacer(minLength: 0)
+                Text("\(looked) of \(tiles.count) tiles").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                    .contentTransition(.numericText()).animation(Motion.ease(0.25), value: looked)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.ink.opacity(0.1))
+                    Capsule().fill(Theme.green).frame(width: geo.size.width * (tiles.isEmpty ? 0 : Double(looked) / Double(tiles.count)))
+                        .animation(Motion.ease(0.4), value: looked)
+                }
+            }
+            .frame(height: 4)
+            Text(finds.isEmpty ? "No finds yet" : "\(finds.count) find\(finds.count == 1 ? "" : "s")" + (store.onMap > 0 ? ", \(store.onMap) more kept on the map" : ""))
+                .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+            if !leads.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Strongest so far").font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
+                    ForEach(leads) { c in
+                        Button {
+                            store.selectedCandidate = c.id
+                            store.selectedTile = c.tile
+                        } label: {
+                            HStack(spacing: 7) {
+                                Text(c.rank).font(.system(size: 10.5 * Theme.scale, weight: .bold, design: .rounded)).foregroundStyle(.black)
+                                    .frame(width: 18, height: 18)
+                                    .background(Circle().fill(c.rank == "A" ? Theme.green : c.rank == "B" ? Theme.tan : Theme.ink.opacity(0.45)))
+                                Text(c.id).font(.system(size: 12 * Theme.scale, weight: .semibold))
+                                Text(c.name).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
+                                Spacer(minLength: 0)
+                                if store.fresh.contains(c.id) { Circle().fill(Theme.green).frame(width: 6, height: 6).help("Just found") }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .animation(.spring(response: 0.45, dampingFraction: 0.8), value: leads.map(\.id))
+            }
+        }
+        .padding(12).frame(width: 270 * Theme.scale, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.raised))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
+        .shadow(color: .black.opacity(0.35), radius: 14, y: 4)
     }
 }
 

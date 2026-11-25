@@ -89,6 +89,8 @@ On the first launch a short checklist installs OpenAI's Codex engine into Dighou
 
 Take the stages one at a time, or press **Find and report back** and the agent carries the search to its end, then returns a report of at most 400 words with your decisions listed first.
 
+You can watch it work. On the project's map each tile lights up as it is looked at, in green where it looks built and amber where it might be, each find arrives with a pulse, and a small panel keeps the strongest leads so far at the top. Press a find for its slice, then **Look closely** for its close views, the old maps and the two flights beside it, or **3D**.
+
 ### Rules the tools enforce
 
 These live in the tools, so they hold whichever model is running.

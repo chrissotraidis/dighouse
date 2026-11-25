@@ -338,7 +338,7 @@ final class ChatModel: ObservableObject {
     }
 
     /// The folder a listed chat was started in.
-    private func folder(of id: String) -> String? { allChats.first { $0.1.id == id }?.0 }
+    func folder(of id: String) -> String? { allChats.first { $0.1.id == id }?.0 }
 
     func rename(_ thread: ChatThread, to name: String) async {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -401,6 +401,22 @@ final class AppState: ObservableObject {
             return ProjectStore.status(from: text)
         }
         Task { await boot() }
+        watchRuns()
+    }
+
+    /// Whether an agent works in the open project, so the map shows the search as it goes (EASE_LOOP E8).
+    private func watchRuns() {
+        Task { @MainActor [weak self] in
+            while let self {
+                let path = self.store.current?.path
+                // -watchAlways YES shows the live map with no agent running, to rehearse it with tools run by hand.
+                let busy = path != nil && (self.runningSearch != nil || self.chat.live.keys.contains { self.chat.folder(of: $0) == path }
+                                           || UserDefaults.standard.bool(forKey: "watchAlways"))
+                if self.store.watching != busy { self.store.watching = busy }
+                // The store reads the open project's folder every two seconds by itself.
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
     }
 
     /// Find the engine and the tools, then start the engine if everything is in place.

@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// The projects this app knows about, and everything on disk for the one that is open.
 @MainActor
@@ -17,6 +17,12 @@ final class ProjectStore: ObservableObject {
     @Published var status = RunStatus()
     @Published var selectedTile: String?
     @Published var selectedCandidate: String?
+    /// True while an agent works in this project, so the map shows the search as it goes (EASE_LOOP E8).
+    @Published var watching = false
+    /// Finds that appeared since the project was opened, for a few seconds, so the map can show them arriving.
+    @Published private(set) var fresh: Set<String> = []
+    private var knownRoot = ""
+    private var known: Set<String> = []
     /// A download in progress, from the file the tools write while they fetch terrain.
     @Published var download: Download?
     /// How many tiles were screened before this project was handed over, when it arrived without its downloads.
@@ -61,15 +67,50 @@ final class ProjectStore: ObservableObject {
         if let last = UserDefaults.standard.string(forKey: "currentProject") {
             current = projects.first { $0.path == last }
         }
+        var ticks = 0
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.reloadIfChanged() }
+            ticks += 1
+            let look = ticks % 5 == 0
+            Task { @MainActor in
+                self?.reloadIfChanged()
+                // Every ten seconds, any project another harness has made since.
+                if look { self?.adoptNew() }
+            }
         }
         reloadIfChanged()
+        adoptNew()
+        // Projects made outside the app (from Claude Code, or the tools in another harness) are listed when it comes forward.
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.adoptNew() }
+        }
+    }
+
+    /// List the projects in the projects folder that the list does not have yet: those made outside the app, by Claude
+    /// Code or the tools in another harness. A project the person removed from the list stays off it.
+    func adoptNew() {
+        let home = Paths.projectsHome.path
+        let removed = Set(UserDefaults.standard.stringArray(forKey: "removedProjects") ?? [])
+        // Only folders made since this was added: before, a project taken off the list was not remembered, and it
+        // should not come back.
+        let since = UserDefaults.standard.object(forKey: "adoptSince") as? Date ?? {
+            UserDefaults.standard.set(Date(), forKey: "adoptSince")
+            return Date()
+        }()
+        let fm = FileManager.default
+        for name in ((try? fm.contentsOfDirectory(atPath: home)) ?? []).sorted() where !name.hasPrefix(".") {
+            let path = home + "/" + name
+            guard !removed.contains(path), !projects.contains(where: { $0.path == path }),
+                  fm.fileExists(atPath: path + "/PROJECT.md"), fm.fileExists(atPath: path + "/private/state/project.json"),
+                  let made = (try? fm.attributesOfItem(atPath: path + "/PROJECT.md"))?[.creationDate] as? Date, made > since else { continue }
+            register(path: path)
+        }
     }
 
     /// Add a project folder to the list without opening it.
     func register(path: String) {
         guard FileManager.default.fileExists(atPath: path + "/PROJECT.md"), !projects.contains(where: { $0.path == path }) else { return }
+        // Opened on purpose, so it is no longer one the person removed.
+        UserDefaults.standard.set((UserDefaults.standard.stringArray(forKey: "removedProjects") ?? []).filter { $0 != path }, forKey: "removedProjects")
         let state = json(path + "/private/state/project.json") as? JSON
         // A project someone shared has no private state, so its name comes from the heading of PROJECT.md.
         let heading = (try? String(contentsOfFile: path + "/PROJECT.md", encoding: .utf8))?.split(separator: "\n").first
@@ -155,6 +196,7 @@ final class ProjectStore: ObservableObject {
 
     func remove(_ ref: ProjectRef) {
         projects.removeAll { $0 == ref }
+        UserDefaults.standard.set((UserDefaults.standard.stringArray(forKey: "removedProjects") ?? []) + [ref.path], forKey: "removedProjects")
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
         if current == ref { close() }
     }
@@ -290,6 +332,22 @@ final class ProjectStore: ObservableObject {
         }.sorted { $0.id < $1.id }
 
         candidates = Self.readCandidates(root, records)
+        // Finds that were not there at the last reading of the same project arrive on the map with a pulse.
+        let ids = Set(candidates.map(\.id))
+        if knownRoot == root {
+            let added = ids.subtracting(known)
+            if !added.isEmpty {
+                fresh.formUnion(added)
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(8))
+                    self?.fresh.subtract(added)
+                }
+            }
+        } else {
+            fresh = []
+        }
+        knownRoot = root
+        known = ids
         projectSources = Self.readProjectSources(root)
         // Until the tools answer with the run status, the header counts what was just read: a large project took a few
         // seconds and showed "Ground ready, not cut into tiles · 1 find" meanwhile.
