@@ -17,7 +17,7 @@ enum WorkTab: String, CaseIterable {
 }
 
 enum SettingsSection: String, CaseIterable {
-    case general = "General", look = "Personalize", models = "Models", engine = "How it runs", tools = "Tools", privacy = "Data and privacy", about = "About"
+    case account = "Account and models", data = "Data and keys", look = "How it looks", tools = "Tools", advanced = "Advanced"
 }
 
 @MainActor
@@ -87,7 +87,7 @@ final class AppState: ObservableObject {
     @Published var sidebarVisible = true
     @Published var sidebarPeek = false
     @Published var tab = WorkTab.map
-    @Published var settingsSection = SettingsSection.general
+    @Published var settingsSection = SettingsSection.account
     @Published var draftProject = StartingPoints.own
     @Published var surveys: [Survey] = []
     @Published var surveysLoading = false
@@ -151,7 +151,13 @@ final class AppState: ObservableObject {
 
     /// Ask a model what one lidar picture shows, in a throwaway chat, to see that it answers and can read images.
     func checkModel(_ id: String) {
-        guard engine.ready, let picture = Bundle.main.resourceURL?.appendingPathComponent("starts/borre.jpg").path else { return }
+        guard let picture = Bundle.main.resourceURL?.appendingPathComponent("starts/borre.jpg").path else { return }
+        if ModelInfo.viaClaudeCode(id), let claude = setup.claude {
+            modelCheck[id] = (true, "Asking…")
+            Task { @MainActor in modelCheck[id] = await ClaudeCode.describe(claude, model: id, picture: picture) }
+            return
+        }
+        guard engine.ready else { return }
         modelCheck[id] = (true, "Asking…")
         Task { @MainActor in
             do {
@@ -169,8 +175,11 @@ final class AppState: ObservableObject {
 
     /// The models a second opinion is asked of, in order: the person's choice, then Dighouse's order, keeping only
     /// models on offer that read images and have not failed this run.
+    /// Every model a second opinion can be asked of: the engine's that read images, and Claude through Claude Code.
+    var opinionChoices: [ModelInfo] { engine.models.filter(\.readsImages) + (setup.claude != nil ? ModelInfo.claudeCode : []) }
+
     var secondOpinionModels: [String] {
-        let offered = Set(engine.models.filter(\.readsImages).map(\.id))
+        let offered = Set(opinionChoices.map(\.id))
         var seen = Set<String>()
         let chosen = ([secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder)
             .filter { offered.contains($0) && secondFailed[$0] == nil && seen.insert($0).inserted }
@@ -183,7 +192,7 @@ final class AppState: ObservableObject {
 
     /// A second model's name as the record keeps it: from the same maker as the agent's, when no other maker is on offer.
     func secondOpinionLabel(_ id: String) -> String {
-        let name = engine.models.first { $0.id == id }?.name ?? id
+        let name = opinionChoices.first { $0.id == id }?.name ?? id
         let same = ModelInfo.maker(id) == ModelInfo.maker(modelID ?? engine.defaultModel ?? "")
         return same ? name + " (same maker as the agent)" : name
     }
@@ -206,7 +215,7 @@ final class AppState: ObservableObject {
                 notes.append("Second opinions now use \(secondModelName) on your ChatGPT account, so testing does not use up another account. Sonnet finds more of the known features; you can choose it here.")
             }
         }
-        if secondModelID == nil || !offered.contains(secondModelID ?? "") || ModelInfo.unsupported(secondModelID ?? "") {
+        if secondModelID == nil || !opinionChoices.contains(where: { $0.id == secondModelID }) || ModelInfo.unsupported(secondModelID ?? "") {
             let old = secondModelID
             if let next = ModelInfo.secondOpinionOrder.first(where: { id in engine.models.contains { $0.id == id && $0.readsImages } }) {
                 secondModelID = next
@@ -246,7 +255,7 @@ final class AppState: ObservableObject {
         return engine.models.first { $0.id == id }
     }
     var modelName: String { model?.name ?? modelID ?? engine.defaultModel ?? "Default model" }
-    var secondModelName: String { engine.models.first { $0.id == secondModelID }?.name ?? "Choose a model" }
+    var secondModelName: String { opinionChoices.first { $0.id == secondModelID }?.name ?? "Choose a model" }
     var activeEffort: String? {
         guard let model, !model.efforts.isEmpty else { return nil }
         if let effort, model.efforts.contains(effort) { return effort }
@@ -405,7 +414,7 @@ final class AppState: ObservableObject {
         // After an update the tools may need new parts. Fetch them without asking, since nothing else works until then.
         if onboarded, !setup.toolsReady, setup.uv != nil, setup.toolsSource != nil { await setup.prepareTools() }
         if let codex = setup.codex, setup.toolsReady {
-            await engine.start(codex: codex, toolsBinary: setup.toolsBinary, path: setup.path, extraServers: toolServers)
+            await engine.start(codex: codex, toolsBinary: setup.toolsBinary, path: setup.path, extraServers: toolServers, claude: setup.claude)
             if engine.ready {
                 reconcileModels()
                 if let read = try? await engine.request("account/rateLimits/read"), let limits = read["rateLimits"] as? JSON {
@@ -1017,7 +1026,7 @@ final class AppState: ObservableObject {
                     if let errors = data.compactMap({ $0["errors"] as? [String] }).first, !errors.isEmpty {
                         placeProblem = "The open catalogs did not all answer, so Dighouse could not tell what covers \(place). Try again in a minute."
                     } else if data.contains(where: { $0["needs_token"] as? Bool == true }) {
-                        placeProblem = "\(place) is covered only by data that needs a free token. Paste it in Settings, Data and privacy, then try again."
+                        placeProblem = "\(place) is covered only by data that needs a free token. Paste it in Settings, Data and keys, then try again."
                     } else {
                         placeProblem = "No open lidar or sonar Dighouse reads covers \(place). How it works, on Home, shows where it can look; you can also give the agent your own ground model."
                     }
@@ -1213,7 +1222,7 @@ final class AppState: ObservableObject {
 
     /// Whether a model's opinions are billed to the account whose usage the engine reports: the engine's own models, and
     /// the router's "primary" account, which is the same sign-in.
-    private func onThisAccount(_ model: String) -> Bool { !model.contains("/") || model.hasPrefix("primary/") }
+    func onThisAccount(_ model: String) -> Bool { !model.contains("/") || model.hasPrefix("primary/") }
 
     /// False, and second opinions wait, while the account they use has less than the floor left. Checked again every five
     /// minutes; they carry on by themselves once there is room.
@@ -1335,9 +1344,10 @@ final class AppState: ObservableObject {
     /// minute. Without the router, the chat is used as before.
     private var directOpinions: Bool {
         // -chatOpinions YES keeps the agent chat, for comparing the two ways.
-        !UserDefaults.standard.bool(forKey: "chatOpinions") && setup.ocxRunning && !secondOpinionModels.isEmpty
-            && secondOpinionModels.allSatisfy { $0.contains("/") }
+        !UserDefaults.standard.bool(forKey: "chatOpinions") && secondOpinionModels.first.map(askedDirectly) == true
     }
+    /// Whether a model is asked straight, without an agent chat: Claude through Claude Code, or a model through the router.
+    private func askedDirectly(_ id: String) -> Bool { ModelInfo.viaClaudeCode(id) || (setup.ocxRunning && id.contains("/")) }
     /// Finds in the batch being asked straight of the model.
     @Published private(set) var directLeft = 0
 
@@ -1345,7 +1355,7 @@ final class AppState: ObservableObject {
     /// set aside for this run, as in the chat path; each record names the model that answered.
     private func askDirect(_ looks: [SecondLookItem]) {
         guard let path = looks.first?.path, secondLookBusy == nil else { return }
-        let models = secondOpinionModels.map { id in id + "=" + secondOpinionLabel(id) }.joined(separator: "|")
+        let models = secondOpinionModels.filter(askedDirectly).map { id in id + "=" + secondOpinionLabel(id) }.joined(separator: "|")
         secondLookBusy = looks[0].id
         directLeft = looks.count
         for look in looks { secondLookProblem[look.id] = nil }
@@ -1374,7 +1384,8 @@ final class AppState: ObservableObject {
     }
 
     private func ask(_ look: SecondLookItem) {
-        guard let model = secondOpinionModels.first, secondLookBusy == nil else { return }
+        // Claude Code's models are asked only straight, through the tools; an agent chat runs on the engine's own models.
+        guard let model = secondOpinionModels.first(where: { !ModelInfo.viaClaudeCode($0) }), secondLookBusy == nil else { return }
         let modelName = secondOpinionLabel(model)
         secondLookBusy = look.id
         secondLookProblem[look.id] = nil

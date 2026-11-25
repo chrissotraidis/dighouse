@@ -48,7 +48,8 @@ You don't need a GitHub account, Terminal or any coding to use Dighouse.
 **What you need**
 
 - A Mac with Apple silicon (M1 or later) and macOS 14 Sonoma or later. Intel Macs are not supported yet.
-- A ChatGPT account on a plan that includes Codex. Dighouse runs its AI through your account, so a search counts toward your plan's usage. The chat box shows how much you have left.
+- A ChatGPT account on a plan that includes Codex, or an OpenAI API key. Dighouse runs its AI through your account, so a search counts toward your plan's usage (or is billed to the key). The chat box shows how much you have left.
+- Optional: [Claude Code](https://docs.claude.com/en/docs/claude-code/setup). With it, second opinions can come from Claude on your Claude account, and Claude Code can run searches with Dighouse's tools ([how](docs/SETUP.md#if-you-use-claude)).
 - An internet connection. A search downloads a few megabytes of ground for each square kilometre.
 
 **Install it**
@@ -128,7 +129,7 @@ These live in the tools, so they hold whichever model is running.
 - **Mark a spot** on the Map makes anything you see into a find in your name, with its slice and checks. Drag a box instead and the agent looks closely at the tiles under it, up to 24.
 - **Agree in bulk** shows the routine finds as a grid. Untick any that look wrong and agree with the rest in one press. **Done** lists what you decided, with Undo.
 
-**Also in the app:** a chat with `/` commands, `@` mentions and ⌘K, any model through the [OpenCodex](https://github.com/lidge-jun/opencodex) router (so a different maker's model can give the second opinion), three colour looks and five text sizes.
+**Also in the app:** a chat with `/` commands, `@` mentions and ⌘K, any model through the [OpenCodex](https://github.com/lidge-jun/opencodex) router, and Claude through Claude Code (so a different maker's model can give the second opinion), three colour looks and five text sizes.
 
 ## What it cannot do
 
@@ -138,7 +139,7 @@ These live in the tools, so they hold whichever model is running.
 - **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are closed, so "no match in the sources read" often means little was readable. Dighouse reads the open registers of Denmark, Norway, Navarre and England's scheduled monuments. Every record names what it was checked against, and when, and each project says at the top whether its area has a register to check against.
 - **It sees shapes in the ground.** Lidar cannot show buried deposits, pottery scatters, or a feature's date or culture.
 - **Open services go down and rate-limit.** The tools then say "could not check" and never guess.
-- **It needs an Apple silicon Mac and a ChatGPT plan with Codex.** There is no Windows, Linux or iPad version. The tools also run on their own in any harness that speaks the Model Context Protocol.
+- **It needs an Apple silicon Mac and a ChatGPT plan with Codex, or an OpenAI API key.** There is no Windows, Linux or iPad version. The tools also run on their own in any harness that speaks the Model Context Protocol.
 
 ## Responsible use
 
@@ -356,7 +357,7 @@ Everything Dighouse reads is public. Only Denmark's ground model needs a free to
 | [Pleiades](https://pleiades.stoa.org/) | About 35,000 located ancient places |
 | [National Register of Historic Places](https://www.nps.gov/subjects/nationalregister/) | Historic places in the United States |
 | [Open Context](https://opencontext.org/) | Published excavation and survey records |
-| [OpenAlex](https://openalex.org/) and [Crossref](https://www.crossref.org/) | The literature search. Without a key, OpenAlex allows about 100 searches a day for each network address, and Crossref takes over past that. A free key, pasted in Settings under Data and privacy, gives you your own |
+| [OpenAlex](https://openalex.org/) and [Crossref](https://www.crossref.org/) | The literature search. Without a key, OpenAlex allows about 100 searches a day for each network address, and Crossref takes over past that. A free key, pasted in Settings under Data and keys, gives you your own |
 
 </details>
 
@@ -389,7 +390,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (61 tests)
+uv run pytest            # offline, on a synthetic survey (63 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)

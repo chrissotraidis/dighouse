@@ -10,6 +10,9 @@ final class Setup: ObservableObject {
     @Published var codexVersion = ""
     @Published var uv: String?
     @Published var ocxRunning = false
+    /// Claude Code, when the person has it: second opinions can go to Claude through it, and its agent can use the tools.
+    @Published var claude: String?
+    @Published var claudeVersion = ""
     @Published var toolsSource: String?
     @Published var toolsReady = false
     @Published var toolsBusy = false
@@ -36,7 +39,7 @@ final class Setup: ObservableObject {
 
     func detect() async {
         // A login shell knows where the person's command-line tools live; an app started from Finder does not.
-        let probe = await Shell.run("/bin/zsh", ["-lic", "echo DH_PATH=$PATH; echo DH_CODEX=$(command -v codex); echo DH_UV=$(command -v uv)"])
+        let probe = await Shell.run("/bin/zsh", ["-lic", "echo DH_PATH=$PATH; echo DH_CODEX=$(command -v codex); echo DH_UV=$(command -v uv); echo DH_CLAUDE=$(command -v claude)"])
         func value(_ key: String) -> String? {
             probe.out.split(separator: "\n").last { $0.hasPrefix(key + "=") }.map { String($0.dropFirst(key.count + 1)) }
         }
@@ -59,8 +62,11 @@ final class Setup: ObservableObject {
         codex = best?.path
         codexVersion = best?.version ?? ""
         ocxRunning = await routerAnswers()
+        claude = existing([value("DH_CLAUDE"), "\(home)/.local/bin/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"])
+        claudeVersion = claude == nil ? "" : await Shell.run(claude!, ["--version"]).out.trimmingCharacters(in: .whitespacesAndNewlines)
         findTools()
-        UserDefaults.standard.set(["path": path, "codex": codex ?? "", "version": codexVersion, "uv": uv ?? ""], forKey: "setupFound")
+        UserDefaults.standard.set(["path": path, "codex": codex ?? "", "version": codexVersion, "uv": uv ?? "",
+                                   "claude": claude ?? "", "claudeVersion": claudeVersion], forKey: "setupFound")
     }
 
     /// What the last full check found, if the engine it found is still there. A full check starts a login shell to learn
@@ -72,6 +78,8 @@ final class Setup: ObservableObject {
         codex = engine
         codexVersion = found["version"] ?? ""
         uv = found["uv"].flatMap { $0.isEmpty || !FileManager.default.fileExists(atPath: $0) ? nil : $0 }
+        claude = found["claude"].flatMap { $0.isEmpty || !FileManager.default.isExecutableFile(atPath: $0) ? nil : $0 }
+        claudeVersion = claude == nil ? "" : found["claudeVersion"] ?? ""
         findTools()
         return toolsReady
     }

@@ -149,7 +149,7 @@ struct TopBar: View {
             if inProject, width > 640 { stats(s) }
             Spacer(minLength: 8)
             if let problem = engine.problem {
-                Button { app.settingsSection = .engine; app.show(.settings) } label: { Badge(text: problem, color: Theme.amber) }
+                Button { app.settingsSection = .account; app.show(.settings) } label: { Badge(text: problem, color: Theme.amber) }
                     .buttonStyle(.plain)
             } else if inProject {
                 // A whole search shows the trowel in the strip, beside its stage.
@@ -322,7 +322,7 @@ struct Sidebar: View {
 
             Hairline().padding(.vertical, 6)
             if !engine.ready {
-                Button { app.settingsSection = .engine; app.show(.settings) } label: {
+                Button { app.settingsSection = .account; app.show(.settings) } label: {
                     Label("Engine not running", systemImage: "exclamationmark.triangle").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.amber)
                 }
                 .buttonStyle(RowButton())

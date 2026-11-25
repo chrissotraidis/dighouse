@@ -126,7 +126,7 @@ extension AppState {
     func explainUnavailable(_ c: SlashCommand, _ reason: String) {
         route = .chat
         if reason == "Second model refused" {
-            chat.note("\(c.name) can't run: \(secondModelName) refused the last second opinion. Choose another model in Settings, Models, then try again.")
+            chat.note("\(c.name) can't run: \(secondModelName) refused the last second opinion. Choose another model in Settings, Account and models, then try again.")
             return
         }
         if reason == "This chat is already in a project" {

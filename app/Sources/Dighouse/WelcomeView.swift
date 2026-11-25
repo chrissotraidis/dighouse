@@ -238,7 +238,7 @@ struct SetupChecklist: View {
                     }
                 }
                 Rectangle().fill(Theme.line).frame(height: 1)
-                row(engine.account != nil, "Signed in", "The engine uses a ChatGPT account's models. You sign in in your browser; Dighouse never sees the password.",
+                row(engine.account != nil, "Signed in", "The engine uses a ChatGPT account's models, or an OpenAI API key. With ChatGPT you sign in in your browser; Dighouse never sees the password.",
                     engine.account.map { "Signed in as \($0)" } ?? (signInProblem ?? (setup.codex == nil ? "After the engine is installed." : "Not signed in yet."))) {
                     if engine.account == nil, setup.codex != nil {
                         if signingIn { DigIndicator() } else {
@@ -253,6 +253,9 @@ struct SetupChecklist: View {
                             .buttonStyle(PrimaryButton()).disabled(!engine.running)
                         }
                     }
+                }
+                if engine.account == nil, setup.codex != nil, engine.running, !signingIn {
+                    APIKeySignIn().padding(.leading, 50).padding(.trailing, 16).padding(.bottom, 14)
                 }
                 Rectangle().fill(Theme.line).frame(height: 1)
                 row(setup.toolsReady, "Archaeology tools", "\(ToolGuide.toolCount) tools that fetch lidar, build the bare ground, cut slices, check maps, read the literature and keep records.",
@@ -308,5 +311,49 @@ struct SetupChecklist: View {
             action()
         }
         .padding(16)
+    }
+}
+
+/// Sign the engine in with an OpenAI API key instead of a ChatGPT account. Offered only while nothing is signed in, so it
+/// never replaces a person's Codex sign-in.
+struct APIKeySignIn: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var engine: Engine
+    @State private var open = false
+    @State private var key = ""
+    @State private var busy = false
+    @State private var problem: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { withAnimation(.easeOut(duration: 0.15)) { open.toggle() } } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .bold)).rotationEffect(.degrees(open ? 90 : 0))
+                    Text("Use an OpenAI API key instead")
+                }
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if open {
+                HStack(spacing: 8) {
+                    SecureField("sk-…", text: $key).textFieldStyle(.plain).font(.system(size: 13 * Theme.scale))
+                        .padding(.horizontal, 10).frame(width: 260, height: 30)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.ink.opacity(0.06)))
+                    if busy { DigIndicator() } else {
+                        Button("Sign in") {
+                            busy = true
+                            problem = nil
+                            Task {
+                                do { try await engine.signIn(apiKey: key); key = ""; await app.boot() } catch { problem = error.localizedDescription }
+                                busy = false
+                            }
+                        }
+                        .buttonStyle(SecondaryButton()).disabled(key.trimmingCharacters(in: .whitespaces).count < 20)
+                    }
+                }
+                Text(problem ?? "Each request is billed to the key, so there is no plan limit to run into. The engine keeps the key the way Codex does, in a file only you can read.")
+                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(problem == nil ? Theme.faint : Theme.amber).fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }

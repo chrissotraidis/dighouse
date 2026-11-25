@@ -25,10 +25,17 @@ If the script stops, it says what to install and how. Do that, then run it again
 
 ## The first launch
 
-1. **Welcome.** A checklist shows what is ready. **Install it** fetches the Codex engine if none is found, **Sign in with ChatGPT** opens the sign-in page in your browser, and the tools are prepared, which takes about a minute the first time.
-2. **Choose a model** in Settings, Models. The agent model must read images, because the agent looks at pictures of the ground. A cheaper model is fine to start.
-3. **Optional: a second-opinion model.** Each find can get a second opinion from a model made by a different company, when your Codex setup offers one (through the OpenCodex router, for example). Choose it in Settings, Models. Without one, the second opinion comes from a different model of the same maker, and the record says so.
+1. **Welcome.** A checklist shows what is ready. **Install it** fetches the Codex engine if none is found, **Sign in with ChatGPT** opens the sign-in page in your browser (or, without a ChatGPT plan, **Use an OpenAI API key instead**, billed to the key), and the tools are prepared, which takes about a minute the first time.
+2. **Choose a model** in Settings, Account and models. The agent model must read images, because the agent looks at pictures of the ground. A cheaper model is fine to start.
+3. **Optional: a second-opinion model.** Each find can get a second opinion from a model made by a different company: Claude Sonnet or Haiku through Claude Code, if you have it, or another maker's model through the OpenCodex router. Choose it in Settings, Account and models. Without one, the second opinion comes from a different model of the same maker (GPT-6 Luna by default), and the record says so.
 4. **Try it.** On Home, press **Find something** and choose how long: the agent picks a region and searches it. Or press **Pick a place on the map** and click where you want to look, or start the ten-minute project at Serpent Mound. [GETTING_STARTED.md](GETTING_STARTED.md) explains what you will see.
+
+## If you use Claude
+
+The search itself runs on Codex, so Dighouse needs a ChatGPT account or an OpenAI API key for it. With [Claude Code](https://docs.claude.com/en/docs/claude-code/setup) on the Mac, two more things work, both in Settings, Account and models:
+
+- **Second opinions from Claude.** Choose *Claude Sonnet, through Claude Code* (or Haiku). Each find's two pictures go to Claude Code with no tools, settings or memory of yours, and the answer is billed to your Claude account. Claude Code must be signed in: run `claude` in Terminal and `/login`.
+- **Searching from Claude Code.** **Add to Claude Code** gives Claude Code Dighouse's tools and its search guide. Ask Claude Code to search a place; the project it makes appears in Dighouse, to look at and decide. **Remove** takes both out again. Without the OpenCodex router, a Claude Code search looks at each tile itself, which is slower than the bulk look; it is not yet held to the blind tests.
 
 ## Where things go
 
@@ -43,7 +50,7 @@ If the script stops, it says what to install and how. Do that, then run it again
 | "Codex is not signed in" | Press **Sign in with ChatGPT** on the welcome checklist and finish signing in in your browser. |
 | "Agent engine not found" | Press **Install it** on the welcome checklist, or install Codex yourself, then press Check again. |
 | The tools never finish preparing | Check the Mac is online; quit and reopen Dighouse. |
-| "The second model is refused" | Its provider turned the request down. Choose another model in Settings, Models. |
+| "The second model is refused" | Its provider turned the request down. Choose another model in Settings, Account and models. |
 | A place "has no open data" | Dighouse only reaches places with open lidar or sonar. The map on Home, under Where you can search, shades them. |
 
 ## Updating

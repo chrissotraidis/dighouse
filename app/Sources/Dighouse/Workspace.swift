@@ -1120,13 +1120,13 @@ struct RecordsView: View {
             }
             Hairline()
             CheckRow(done: look?["agrees"] as? Bool, title: "Second opinion",
-                     detail: app.secondLookProblem[c.id].map { "The second opinion did not run: " + ProjectOverview.shortReason($0) + " Choose another model in Settings, Models." }
+                     detail: app.secondLookProblem[c.id].map { "The second opinion did not run: " + ProjectOverview.shortReason($0) + " Choose another model in Settings, Account and models." }
                         ?? look.map { "\($0["model"] as? String ?? ""): \($0["note"] as? String ?? "") " + Self.secondMeaning($0["agrees"] as? Bool == true) }
-                        ?? (c.checks["second_look_tried"] as? JSON).map { "\($0["model"] as? String ?? "The second model") could not answer: \($0["reason"] as? String ?? ""). Choose another in Settings, Models." }
+                        ?? (c.checks["second_look_tried"] as? JSON).map { "\($0["model"] as? String ?? "The second model") could not answer: \($0["reason"] as? String ?? ""). Choose another in Settings, Account and models." }
                         ?? "A different model looks at the tile without seeing the first opinion.") {
                 HStack(spacing: 6) {
                     if app.secondLookBusy == c.id { DigIndicator() }
-                    ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
+                    ModelPicker(title: app.secondModelName, models: app.opinionChoices,
                                 current: app.secondModelID) { app.secondModelID = $0.id }
                     Button("Ask") { app.secondLook(c) }.buttonStyle(SecondaryButton())
                         .disabled(app.secondLookBusy != nil || app.secondOpinionModels.isEmpty)

@@ -601,7 +601,7 @@ struct NewProjectView: View {
                 guard let id = row["id"] as? String else { return nil }
                 return Coverage(id: id, title: row["title"] as? String ?? id, source: row["source"] as? String ?? "",
                                 collected: String((row["collected"] as? String ?? "").prefix(4)),
-                                needs: row["needs_token"] as? Bool == true ? "Needs a free token: paste it in Settings, Data and privacy." : "")
+                                needs: row["needs_token"] as? Bool == true ? "Needs a free token: paste it in Settings, Data and keys." : "")
             }
             if let errors = rows.compactMap({ $0["errors"] as? [String] }).first, coverage?.isEmpty == true {
                 coverageProblem = "A catalog did not answer: " + errors.joined(separator: "; ")

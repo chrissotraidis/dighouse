@@ -156,7 +156,7 @@ struct ProjectOverview: View {
            app.nextStep == nil || app.nextStep?.id == "decide" {
             return Next(title: "The second model is refused", what: "\(app.secondModelName) answered the last request with: \(Self.shortReason(refusal))",
                         after: "Choose a model from a different maker in Settings, then ask again. Or decide without a second opinion.",
-                        icon: "person.2", label: "Choose another model", action: { app.settingsSection = .models; app.show(.settings) },
+                        icon: "person.2", label: "Choose another model", action: { app.settingsSection = .account; app.show(.settings) },
                         other: (decide.label, "Go to the review without a second opinion.", decide.action))
         }
         if let flow = app.nextStep {

@@ -458,7 +458,7 @@ enum ToolGuide {
                    ask: "Fetch the INFOMAR seafloor for a small box off the Old Head of Kinsale where the Lusitania lies, and describe the wreck."),
         DataSource(name: "Danmarks Højdemodel (Denmark)",
                    what: "A 0.4 m bare-ground model of Denmark.", reach: "Denmark",
-                   gives: "The ground model for any area of Denmark, once you paste a free Dataforsyningen token in Settings, Data and privacy.",
+                   gives: "The ground model for any area of Denmark, once you paste a free Dataforsyningen token in Settings, Data and keys.",
                    usedFor: "Bare ground",
                    url: "https://dataforsyningen.dk/data/930", probe: "https://api.dataforsyningen.dk/dhm_wcs_DAF?service=WCS&request=GetCapabilities",
                    ask: "Is Denmark's ground model ready to use on this Mac? If it needs a token, say where to get one."),

@@ -51,7 +51,7 @@ enum Look: String, CaseIterable {
     }
 }
 
-/// The text sizes, smallest first. ⌘+ and ⌘− step through them, and Settings › Personalize lists them.
+/// The text sizes, smallest first. ⌘+ and ⌘− step through them, and Settings › How it looks lists them.
 enum TextSize {
     static let all: [(id: String, name: String, scale: CGFloat)] = [
         ("small", "Small", 0.92), ("standard", "Standard", 1), ("large", "Large", 1.1), ("larger", "Larger", 1.2), ("largest", "Largest", 1.3),
@@ -80,7 +80,7 @@ final class TextScale: @unchecked Sendable {
 }
 
 enum Theme {
-    /// How large text is drawn, from ⌘+ and ⌘− or Settings › Personalize. Every font size is multiplied by it.
+    /// How large text is drawn, from ⌘+ and ⌘− or Settings › How it looks. Every font size is multiplied by it.
     static var scale: CGFloat { TextScale.shared.value }
 
     static var palette = (Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth).palette
@@ -110,7 +110,7 @@ enum Theme {
 
 enum Shell {
     /// Run a program and collect what it prints.
-    static func run(_ exe: String, _ args: [String], env: [String: String]? = nil, in folder: String? = nil) async -> (code: Int32, out: String) {
+    static func run(_ exe: String, _ args: [String], env: [String: String]? = nil, in folder: String? = nil, input: String? = nil) async -> (code: Int32, out: String) {
         await withCheckedContinuation { done in
             DispatchQueue.global().async {
                 let p = Process()
@@ -121,9 +121,15 @@ enum Shell {
                 let pipe = Pipe()
                 p.standardOutput = pipe
                 p.standardError = pipe
+                let feed = input.map { _ in Pipe() }
+                if let feed { p.standardInput = feed }
                 do { try p.run() } catch {
                     done.resume(returning: (-1, error.localizedDescription))
                     return
+                }
+                if let feed, let input {
+                    feed.fileHandleForWriting.write(Data(input.utf8))
+                    try? feed.fileHandleForWriting.close()
                 }
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 p.waitUntilExit()
@@ -289,6 +295,16 @@ struct ModelInfo: Identifiable, Hashable {
     /// Kimi are no longer asked on their own: a fall-through to them used up other accounts without saying so. Sonnet
     /// stays a choice; rated on 102 known views it finds more of the published features (19 of 24 against 9).
     static let secondOpinionOrder = ["primary/gpt-6-luna", "gpt-6-luna"]
+
+    /// Claude models asked through Claude Code, on the person's own Claude plan, for second opinions only: the agent runs
+    /// through Codex (EASE_LOOP E5). Sonnet found 19 of 24 published features on the known views; Haiku 9.
+    static let claudeCode = [
+        ModelInfo(id: "claude-code/claude-sonnet", name: "Claude Sonnet, through Claude Code", readsImages: true, hearsAudio: false,
+                  isDefault: false, efforts: [], defaultEffort: nil),
+        ModelInfo(id: "claude-code/claude-haiku", name: "Claude Haiku, through Claude Code", readsImages: true, hearsAudio: false,
+                  isDefault: false, efforts: [], defaultEffort: nil),
+    ]
+    static func viaClaudeCode(_ id: String) -> Bool { id.hasPrefix("claude-code/") }
 
     /// Who makes a model, from its id: "anthropic/claude-sonnet-5-5" and "primary/gpt-6-luna" give "claude" and "gpt".
     static func maker(_ id: String) -> String {

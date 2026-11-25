@@ -79,7 +79,7 @@ final class Engine: ObservableObject {
     /// True once the engine has said what else is connected, so a page can tell "none" from "not read yet".
     @Published private(set) var connectionsRead = false
 
-    func start(codex: String, toolsBinary: String, path: String, extraServers: [ToolServer]) async {
+    func start(codex: String, toolsBinary: String, path: String, extraServers: [ToolServer], claude: String? = nil) async {
         stop()
         problem = nil
         connectionsLoaded = false
@@ -102,7 +102,9 @@ final class Engine: ObservableObject {
             // The engine starts tool servers with only a few of its own variables, so the folders go in the server's own
             // settings: where init_project puts a project named without a folder, and the GitHub folder, used only when
             // the person asks to work out of it.
-            "-c", "mcp_servers.dighouse.env={DIGHOUSE_PROJECTS_HOME=\(toml(Paths.projectsHome.path)),DIGHOUSE_GITHUB_HOME=\(toml(Paths.githubHome.path))}",
+            // Claude Code's place too, when there is one, so second opinions can be asked of Claude through it.
+            "-c", "mcp_servers.dighouse.env={DIGHOUSE_PROJECTS_HOME=\(toml(Paths.projectsHome.path)),DIGHOUSE_GITHUB_HOME=\(toml(Paths.githubHome.path))"
+                + (claude.map { ",DIGHOUSE_CLAUDE=\(toml($0))" } ?? "") + "}",
         ]
         for server in extraServers {
             let parts = Self.words(server.command)
@@ -145,7 +147,7 @@ final class Engine: ObservableObject {
             send(["method": "initialized"])
             let who = try await request("account/read")
             if let acct = who["account"] as? JSON {
-                account = (acct["email"] as? String) ?? (acct["type"] as? String)
+                account = Self.who(acct)
                 plan = acct["planType"] as? String
             }
             try await loadModels()
@@ -233,11 +235,29 @@ final class Engine: ObservableObject {
         for _ in 0..<300 {
             try await Task.sleep(for: .seconds(1))
             if let who = try? await request("account/read"), let acct = who["account"] as? JSON {
-                account = (acct["email"] as? String) ?? (acct["type"] as? String)
+                account = Self.who(acct)
                 return
             }
         }
         throw EngineError(message: "Sign-in did not finish within five minutes. Press Sign in to try again.")
+    }
+
+    /// Sign the engine in with an OpenAI API key, for a person without a ChatGPT plan. Each request is billed to the key.
+    func signIn(apiKey: String) async throws {
+        _ = try await request("account/login/start", ["type": "apiKey", "apiKey": apiKey.trimmingCharacters(in: .whitespacesAndNewlines)])
+        guard let acct = (try await request("account/read"))["account"] as? JSON else { throw EngineError(message: "The engine did not take the key.") }
+        account = Self.who(acct)
+        plan = nil
+    }
+
+    /// The account in words: an email for a ChatGPT sign-in, or what kind of key it is.
+    static func who(_ acct: JSON) -> String {
+        if let email = acct["email"] as? String, !email.isEmpty { return email }
+        switch acct["type"] as? String {
+        case "apiKey": return "an OpenAI API key"
+        case "amazonBedrock": return "Amazon Bedrock"
+        default: return acct["type"] as? String ?? "an account"
+        }
     }
 
     func request(_ method: String, _ params: JSON = [:]) async throws -> JSON {
