@@ -245,6 +245,7 @@ struct ProjectOverview: View {
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.tan.opacity(0.3)))
                     .arrives(1)
                 }
+                if !store.candidates.isEmpty { FoundStrip().arrives(2) }
                 ProjectChats().arrives(2)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("The search so far").font(.system(size: 14 * Theme.scale, weight: .semibold))
@@ -305,6 +306,77 @@ struct ProjectOverview: View {
         }
         .onAppear { if app.publishing != nil, app.publishing?.path == store.current?.path { reader.scrollTo("history", anchor: .bottom) } }
         }
+    }
+}
+
+/// What the search found, best first: the finds waiting for a person, then the strongest of the rest, each with its
+/// picture and where it stands. A press opens it in Decide, or its record once it is decided or kept on the map.
+private struct FoundStrip: View {
+    @EnvironmentObject var app: AppState
+    @EnvironmentObject var store: ProjectStore
+
+    var body: some View {
+        let all = store.candidates
+        let needs = store.needsYou
+        let waitingIDs = Set(needs.map(\.id))
+        // The strongest first: more checks that say built, then the older find.
+        let order: (Candidate, Candidate) -> Bool = { a, b in a.agreement != b.agreement ? a.agreement > b.agreement : a.id < b.id }
+        let best = Array((needs.sorted(by: order) + all.filter { !waitingIDs.contains($0.id) }.sorted(by: order)).prefix(4))
+        let decided = all.filter { !$0.waiting }.count
+        let parts = ["\(needs.count) need\(needs.count == 1 ? "s" : "") you", "\(store.toAgree.count) to agree with",
+                     "\(store.onMap) kept on the map", "\(decided) decided"]
+            .filter { !$0.hasPrefix("0 ") }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("What was found").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                    Text("\(all.count) find\(all.count == 1 ? "" : "s")" + (parts.isEmpty ? "" : ": " + parts.joined(separator: ", ")) + ". The strongest first.")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Button { app.tab = .map; app.route = .chat; if app.layout == .chat { app.layout = .split } } label: {
+                    Label("On the map", systemImage: "map")
+                }
+                .buttonStyle(SecondaryButton()).help("Every find on the map of the project.")
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 128 * Theme.scale), spacing: 10, alignment: .top)], spacing: 10) {
+                ForEach(best) { c in card(c, waiting: waitingIDs.contains(c.id)) }
+            }
+        }
+    }
+
+    private func card(_ c: Candidate, waiting: Bool) -> some View {
+        Button {
+            if waiting { app.openDecide(on: c.id) } else { app.showRecords(c.id) }
+        } label: {
+            VStack(alignment: .leading, spacing: 7) {
+                ZStack(alignment: .topLeading) {
+                    Group {
+                        if let image = Images.crop(c.relief, x: c.x, y: c.y, side: store.closeSide(c)) {
+                            Image(nsImage: image).resizable().interpolation(.high).aspectRatio(1, contentMode: .fill)
+                        } else {
+                            Rectangle().fill(Theme.ink.opacity(0.06)).overlay(Glyph(name: "dig.mound", size: 18).foregroundStyle(Theme.faint))
+                        }
+                    }
+                    .frame(maxWidth: .infinity).aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 9))
+                    Text(c.rank).font(.system(size: 11 * Theme.scale, weight: .bold, design: .rounded))
+                        .foregroundStyle(.black).frame(width: 20, height: 20)
+                        .background(Circle().fill(c.rank == "A" ? Theme.green : c.rank == "B" ? Theme.tan : Theme.ink.opacity(0.5)))
+                        .padding(6)
+                        .help(c.rank == "A" ? "The shape, the agent's eye and the second opinion all say built." : c.rank == "B" ? "Two of the three checks say built." : "One check or none says built.")
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(c.id).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
+                    Text(c.name).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1).help(c.name)
+                    Text(waiting ? "Needs you" : c.inLayer ? "Kept on the map" : c.statusLabel)
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(waiting ? Theme.accent : Theme.dim).lineLimit(1)
+                }
+            }
+            .padding(8).frame(maxWidth: .infinity, alignment: .leading).panel()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(c.id), \(c.name), rank \(c.rank), \(waiting ? "needs you" : c.statusLabel)")
     }
 }
 

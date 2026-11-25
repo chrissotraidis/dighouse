@@ -819,7 +819,7 @@ def test_a_refused_second_opinion_is_on_the_record(tmp_path):
     cid = ledger.create(p, "Low bank", "t1-r000c000", (0.005, 51.005), "A straight low bank", "model-a")["id"]
     server.second_look_failed(str(p.root), cid, "Other model", "403: this service has been disabled")
     todo = record.document(p)["still_to_do"]
-    assert any("could not be answered" in t and "Settings, Models" in t for t in todo)
+    assert any("could not be answered" in t and "Settings, Account and models" in t for t in todo)
     assert "asked, no answer" in p.path("RESEARCH.md").read_text()
     assert "second_look" not in ledger.get(p, cid)[0]["checks"]
     report.write(p) if hasattr(report, "write") else server.write_report(str(p.root))

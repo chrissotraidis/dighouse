@@ -152,23 +152,25 @@ def still_to_do(p: Project) -> list[str]:
     if left:
         out.append(f"Look at {left} tile{'s' if left != 1 else ''} nobody has looked at yet.")
     open_ = [m for m in records if m["status"] in ("flagged", "ground_confirmed")]
+    on_map = ledger.layer(records)
     for key, what in (("section", "a slice through the laser points"), ("modern", "a check of open maps for modern features"),
                       ("second_look", "a second opinion from another model")):
         ids = [m["id"] for m in open_ if key not in m["checks"]]
         if ids:
             tried = [m["checks"]["second_look_tried"] for m in open_ if key == "second_look" and m["id"] in ids and "second_look_tried" in m["checks"]]
-            out.append(f"Give {', '.join(ids)} {what}."
+            out.append(f"Give {_ids(ids)} {what}."
                        + (f" The last request, to {tried[-1].get('model')}, could not be answered ({tried[-1].get('reason')}); "
-                          "choose another second model in Settings, Models." if tried else ""))
+                          "choose another second model in Settings, Account and models." if tried else ""))
     ids = [m["id"] for m in open_ if not any(s["status"] == "read" for s in m["sources"])]
     if ids:
-        out.append(f"Search the literature for {', '.join(ids)}; no source has been read for them.")
+        out.append(f"Search the literature for {_ids(ids)}; no source has been read for them.")
     unopened = sorted({s["title"] for m in records for s in m["sources"] if s["status"] == "could_not_open"})
     if unopened:
         out.append(f"Try the {len(unopened)} source{'s' if len(unopened) != 1 else ''} that could not be opened (listed below); "
                    "a person can open them in the Sources tab and hand them to the agent.")
-    if open_:
-        out.append(f"Decide {', '.join(m['id'] for m in open_)}: a person makes each decision.")
+    waiting = [m["id"] for m in open_ if m["id"] not in on_map]
+    if waiting:
+        out.append(f"Decide {_ids(waiting)}: a person makes each decision.")
     if not out and records:
         out.append("Every find here is decided. Widen the area, try another survey or view, or write up what was found.")
     elif not out and tiles:
@@ -178,6 +180,11 @@ def still_to_do(p: Project) -> list[str]:
     if notice:
         out.append(notice)
     return out
+
+
+def _ids(ids: list[str]) -> str:
+    """Finds by number, or for a long list how many and the first and last, so a line stays readable."""
+    return ", ".join(ids) if len(ids) <= 8 else f"{len(ids)} finds, {ids[0]} to {ids[-1]}"
 
 
 def document(p: Project, commit_it: bool = True) -> dict:

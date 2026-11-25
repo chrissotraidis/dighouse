@@ -248,7 +248,7 @@ NATIONAL = {
         "url": "https://api.dataforsyningen.dk/dhm_wcs_DAF", "coverage": "dhm_terraen", "token": "dataforsyningen",
         "citation": "Danmarks Højdemodel, © Klimadatastyrelsen, through Dataforsyningen. Free data, attribution required.",
         "landing_page": "https://dataforsyningen.dk/data/930",
-        "note": "Dataforsyningen asks for a free account and token. Paste it in Settings, Data and privacy.",
+        "note": "Dataforsyningen asks for a free account and token. Paste it in Settings, Data and keys.",
     },
     "cz:dmr5g": {
         "publisher": "ČÚZK (Czechia)",
@@ -444,7 +444,7 @@ def find(bbox: list[float]) -> list[dict]:
                 out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
                             "citation": d["citation"], "ready_made_ground_model": False, "needs_token": True,
                             "about": f"{d['source']} asks for a free token before it hands out its ground model. Get one at "
-                                     f"{TOKEN_HELP[d['token']]}, then paste it in Settings, Data and privacy."})
+                                     f"{TOKEN_HELP[d['token']]}, then paste it in Settings, Data and keys."})
                 continue
             out.append({"id": key, "source": d["source"], "title": d["title"], "landing_page": d["landing_page"],
                         "citation": d["citation"], "ready_made_ground_model": True, **({"seafloor": True} if d.get("seafloor") else {}),
@@ -715,7 +715,7 @@ def _request(d: dict, x0: float, y0: float, x1: float, y1: float) -> tuple[np.nd
             ("service", "WCS"), ("version", "2.0.1"), ("request", "GetCoverage"), ("coverageId", d["coverage"]),
             ("format", "image/tiff"), ("subset", f"{ax}({x0},{x1})"), ("subset", f"{ay}({y0},{y1})")])
     if d.get("token") and r.status_code in (401, 403):
-        raise ValueError(f"{d['source']} did not accept the token. Check it at {TOKEN_HELP[d['token']]} and paste it again in Settings, Data and privacy.")
+        raise ValueError(f"{d['source']} did not accept the token. Check it at {TOKEN_HELP[d['token']]} and paste it again in Settings, Data and keys.")
     r.raise_for_status()
     body = r.content
     if "multipart" in r.headers.get("content-type", ""):  # some servers wrap the picture in a description of it
@@ -737,7 +737,7 @@ def fetch_dtm(dataset: str, bbox: list[float], res: float | None = None) -> tupl
     if d.get("epsg") == "utm":  # a service that answers in any projection: use the box's own UTM zone
         d = {**d, "epsg": sources.utm_epsg((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)}
     if d.get("token") and not access_key(d["token"]):
-        raise ValueError(f"{d['source']} asks for a free token. Get one at {TOKEN_HELP[d['token']]}, then paste it in Settings, Data and privacy.")
+        raise ValueError(f"{d['source']} asks for a free token. Get one at {TOKEN_HELP[d['token']]}, then paste it in Settings, Data and keys.")
     res = max(res or d["res"], d["res"])
     x0, y0, x1, y1 = (math.floor(v / res) * res if i < 2 else math.ceil(v / res) * res
                       for i, v in enumerate(sources.project_bbox(bbox, d["epsg"])))
