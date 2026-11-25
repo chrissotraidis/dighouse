@@ -9,18 +9,19 @@ private struct Pressable<Label: View>: View {
     let fill: (Bool, Bool) -> Color
     let text: Color
     let outline: Color
+    var large = false
     @State private var hover = false
     @Environment(\.isEnabled) private var enabled
 
     var body: some View {
         label
             .labelStyle(ButtonLabelStyle())
-            .font(.system(size: 13 * Theme.scale, weight: .medium))
+            .font(.system(size: (large ? 15 : 13) * Theme.scale, weight: large ? .semibold : .medium))
             .lineLimit(1).fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(text.opacity(enabled ? 1 : 0.4))
-            .padding(.horizontal, 12).frame(height: 30)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(fill(hover && enabled, pressed).opacity(enabled ? 1 : 0.35)))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(outline.opacity(enabled ? 1 : 0.5)))
+            .padding(.horizontal, large ? 20 : 12).frame(height: large ? 42 : 30)
+            .background(RoundedRectangle(cornerRadius: large ? 11 : 8, style: .continuous).fill(fill(hover && enabled, pressed).opacity(enabled ? 1 : 0.35)))
+            .overlay(RoundedRectangle(cornerRadius: large ? 11 : 8, style: .continuous).strokeBorder(outline.opacity(enabled ? 1 : 0.5)))
             .shadow(color: .black.opacity(enabled ? 0.18 : 0), radius: 1, y: 1)
             .contentShape(RoundedRectangle(cornerRadius: 8))
             .scaleEffect(pressed ? 0.98 : 1)
@@ -41,19 +42,22 @@ private struct ButtonLabelStyle: LabelStyle {
 
 /// The one main action on a screen: white, like the send button.
 struct PrimaryButton: ButtonStyle {
+    /// The one main action of a page, such as Find something on Home: taller, with larger words.
+    var large = false
     func makeBody(configuration: Configuration) -> some View {
         Pressable(label: configuration.label, pressed: configuration.isPressed,
                   fill: { hover, pressed in Theme.primary.opacity(pressed ? 0.72 : hover ? 0.86 : 1) },
-                  text: .black, outline: .clear)
+                  text: .black, outline: .clear, large: large)
     }
 }
 
 /// A quiet filled button for everything else.
 struct SecondaryButton: ButtonStyle {
+    var large = false
     func makeBody(configuration: Configuration) -> some View {
         Pressable(label: configuration.label, pressed: configuration.isPressed,
                   fill: { hover, pressed in Theme.ink.opacity(pressed ? 0.16 : hover ? 0.12 : 0.07) },
-                  text: Theme.text, outline: Theme.ink.opacity(0.12))
+                  text: Theme.text, outline: Theme.ink.opacity(0.12), large: large)
     }
 }
 

@@ -652,12 +652,16 @@ private struct EmptyChat: View {
     }
 
     private var general: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            if let research = ToolGuide.workflows.first(where: { $0.id == "research" }) {
-                StartTile(icon: research.icon, title: research.title, text: research.summary, strong: true) { app.run(research) }
+        // One main action, then four equal choices in two even columns (EASE_LOOP E3): nothing hangs on its own.
+        let all = ToolGuide.workflows
+        let main = all.first { $0.id == "timed-research" }
+        let choices = ["research", "choose", "place", "surveys"].compactMap { id in all.first { $0.id == id } }
+        return VStack(alignment: .leading, spacing: 18) {
+            if let main {
+                StartTile(icon: main.icon, title: main.title, text: main.summary, strong: true) { app.run(main) }
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10, alignment: .top)], spacing: 10) {
-                ForEach(flows) { flow in
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), spacing: 10, alignment: .top)], spacing: 10) {
+                ForEach(choices) { flow in
                     StartTile(icon: flow.icon, title: flow.title, text: flow.summary) { app.run(flow) }
                 }
             }
@@ -709,7 +713,7 @@ struct StartTile: View {
                     }
                 }
             }
-            .padding(14).frame(maxWidth: .infinity, minHeight: strong ? 0 : 128, alignment: .topLeading)
+            .padding(strong ? 18 : 14).frame(maxWidth: .infinity, minHeight: strong ? 0 : 118, maxHeight: strong ? nil : .infinity, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.08 : strong ? 0.055 : 0.035)))
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(strong ? Theme.tan.opacity(hover ? 0.9 : 0.5) : hover ? Theme.ink.opacity(0.22) : Theme.line))
             .contentShape(Rectangle())
@@ -721,7 +725,7 @@ struct StartTile: View {
 
     private var words: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.system(size: strong ? 15.5 : 13.5, weight: .semibold))
+            Text(title).font(.system(size: (strong ? 15.5 : 13.5) * Theme.scale, weight: .semibold))
             Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                 .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
         }

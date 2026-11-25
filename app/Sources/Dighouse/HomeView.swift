@@ -101,7 +101,7 @@ struct HomeView: View {
 
     private let cards = [GridItem(.adaptive(minimum: 200), spacing: 12, alignment: .top)]
     /// Four ways to start, always in one row that spans the column, like the chat box above them.
-    private let paths = Array(repeating: GridItem(.flexible(minimum: 140), spacing: 12, alignment: .top), count: 4)
+    private let paths = Array(repeating: GridItem(.flexible(minimum: 160), spacing: 12, alignment: .top), count: 3)
     /// 0 shows the known sites, 1 the open surveys.
     @AppStorage("startTab") private var startKind = 0
     @State private var allSites = false
@@ -139,11 +139,6 @@ struct HomeView: View {
                         app.testPicking = true
                     }
                     .help("Choose a site; the agent's finds are scored against the published features.")
-                    StartChoice(icon: "folder", title: "Open a project",
-                                text: "Carry on from a project folder, yours or one someone shared.") {
-                        app.chooseProjectFolder()
-                    }
-                    .help("A project is a folder of Markdown records, so it opens like any folder.")
                 }
                 .padding(.top, -8)
                 .arrives(1)
@@ -187,13 +182,17 @@ struct HomeView: View {
                 .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.78)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 // The one thing Dighouse is for, one press away: the agent picks a region and searches it for as long as you choose.
-                Button("Find something") {
+                Button {
                     if let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) { app.run(flow) }
-                }
-                .buttonStyle(PrimaryButton())
+                } label: { Label("Find something", systemImage: "sparkle.magnifyingglass") }
+                .buttonStyle(PrimaryButton(large: true))
                 .help("The agent picks a region with open lidar and little on record, searches it on its own for as long as you choose, and brings back what needs your decision.")
-                Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton())
+                Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton(large: true))
             }
+            // A project someone shared, or one from before: a folder, opened like any folder.
+            Button("Open a project folder…") { app.chooseProjectFolder() }
+                .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan)
+                .help("A project is a folder of Markdown records, so it opens like any folder, yours or one someone shared.")
             .padding(.top, 2)
         }
     }
@@ -445,12 +444,21 @@ private struct HowItWorks: View {
 private struct WelcomeBack: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
-    @State private var waiting = ""
-    @State private var totals = ""
-    @State private var project: ProjectRef?
-    @State private var session: (text: String, foot: String)?
+    /// The last reading, kept while the app runs: Home shows it at once when you come back to it, and the page does not
+    /// jump as 80 project folders are read again (EASE_LOOP E3).
+    @MainActor private static var last = Reading()
+    private struct Reading {
+        var waiting = "", totals = ""
+        var project: ProjectRef?
+        var session: (text: String, foot: String)?
+        var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = []
+    }
+    @State private var waiting = WelcomeBack.last.waiting
+    @State private var totals = WelcomeBack.last.totals
+    @State private var project: ProjectRef? = WelcomeBack.last.project
+    @State private var session: (text: String, foot: String)? = WelcomeBack.last.session
     /// Projects with finds that wait for a person, most first: the inbox across projects.
-    @State private var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = []
+    @State private var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = WelcomeBack.last.inbox
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -568,6 +576,7 @@ private struct WelcomeBack: View {
         let finds = all.reduce(0) { $0 + $1.finds }
         let decided = finds - all.reduce(0) { $0 + $1.undecided }
         totals = "\(count(all.count, "project")) · \(count(finds, "find")) · \(decided) decided"
+        Self.last = Reading(waiting: waiting, totals: totals, project: project, session: session, inbox: inbox)
     }
 }
 
