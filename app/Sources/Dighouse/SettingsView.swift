@@ -472,7 +472,7 @@ private struct ToolsSettings: View {
             }
             .padding(.horizontal, 10).frame(height: 32)
             .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ink.opacity(0.06)))
-            Button { UserDefaults.standard.set("More tools", forKey: "toolboxTab"); app.show(.toolbox) } label: { Label("Add tools", systemImage: "plus") }
+            Button { UserDefaults.standard.set(ToolboxView.Tab.act.rawValue, forKey: "toolboxPart"); app.show(.toolbox) } label: { Label("Add tools", systemImage: "plus") }
                 .buttonStyle(SecondaryButton()).help("Other tools the agent can use, and adding a tool server, are in the Toolbox.")
         }
         let shown = ToolGuide.packs.map { pack in (pack, pack.tools.filter(matches)) }.filter { !$0.1.isEmpty }

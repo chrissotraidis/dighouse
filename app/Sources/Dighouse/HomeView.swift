@@ -187,7 +187,11 @@ struct HomeView: View {
                 } label: { Label("Find something", systemImage: "sparkle.magnifyingglass") }
                 .buttonStyle(PrimaryButton(large: true))
                 .help("The agent picks a region with open lidar and little on record, searches it on its own for as long as you choose, and brings back what needs your decision.")
-                Button("See how it works") { app.show(.toolbox) }.buttonStyle(SecondaryButton(large: true))
+                Button("See how it works") {
+                    UserDefaults.standard.set(ToolboxView.Tab.how.rawValue, forKey: "toolboxPart")
+                    app.show(.toolbox)
+                }
+                .buttonStyle(SecondaryButton(large: true))
             }
             // A project someone shared, or one from before: a folder, opened like any folder.
             Button("Open a project folder…") { app.chooseProjectFolder() }
@@ -315,7 +319,7 @@ private struct WhereItReaches: View {
                     legend(.icon("plus.circle"), "Anywhere else", "give the agent your own ground model or point cloud, and it searches that")
                 }
                 Button("Data sources and their status") {
-                    UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxTab")
+                    UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxPart")
                     app.show(.toolbox)
                 }
                 .buttonStyle(SecondaryButton())

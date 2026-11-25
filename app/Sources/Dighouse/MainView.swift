@@ -124,7 +124,7 @@ struct TopBar: View {
     @EnvironmentObject var engine: Engine
 
     private var inProject: Bool { app.route == .chat && store.current != nil }
-    @AppStorage("toolboxTab") private var toolboxTab = ToolboxView.Tab.how.rawValue
+    @AppStorage("toolboxPart") private var toolboxTab = ToolboxView.Tab.act.rawValue
 
     private var title: String {
         switch app.route {

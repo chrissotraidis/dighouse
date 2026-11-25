@@ -1,17 +1,16 @@
 import AppKit
 import SwiftUI
 
-/// The Toolbox: what Dighouse gives the agent that a chat app does not. A walk through one real search, the workflows
-/// that run each part, where the data comes from, and other tools the agent can use.
-/// Each tab is a picture to press or drag first, and words second.
+/// The Toolbox: what Dighouse can do, what it can read, and how a search works (EASE_LOOP E4). Doing comes first; each
+/// tab is a picture to press or drag first, and words second.
 struct ToolboxView: View {
     enum Tab: String, CaseIterable {
-        case how = "How a search works", workflows = "Workflows", data = "Open data", more = "More tools"
+        case act = "Do something", data = "What it can read", how = "How a search works"
     }
 
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
-    @AppStorage("toolboxTab") private var tab = Tab.how
+    @AppStorage("toolboxPart") private var tab = Tab.act
 
     var body: some View {
         // The page is always a little taller than the window, so the scroll bar never comes and goes and nothing shifts sideways.
@@ -21,7 +20,7 @@ struct ToolboxView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Toolbox").font(.system(size: 26 * Theme.scale, weight: .bold))
-                        Text("\(ToolGuide.toolCount) built-in tools, the workflows that run them, and the open data behind them.")
+                        Text("Start a search or any step of one, see the open data the \(ToolGuide.toolCount) tools read, and how a search works.")
                             .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -44,10 +43,9 @@ struct ToolboxView: View {
                 }
                 Group {
                     switch tab {
-                    case .how: HowTab()
-                    case .workflows: WorkflowsTab()
+                    case .act: ActTab()
                     case .data: DataTab()
-                    case .more: MoreTab()
+                    case .how: HowTab()
                     }
                 }
                 .id(tab).arrives()
@@ -618,6 +616,10 @@ struct CoverageMap: View {
     var surveys: [[Double]] = []
     /// Clicking a spot opens New project with its map on that region.
     var pickable = true
+    /// Europe drawn larger at the right. A map that zooms leaves it out: zooming in shows Europe better.
+    var europeInset = true
+    /// What a click does instead of opening New project: the place clicked, as longitude and latitude.
+    var onPick: ((Double, Double) -> Void)? = nil
     @State private var hover: CGPoint?
 
     private static let land: [[Double]] = {
@@ -638,22 +640,24 @@ struct CoverageMap: View {
     }
 
     /// The world, and Europe drawn larger at the right.
-    private static func frames(_ size: CGSize) -> (world: Frame, europe: Frame) {
-        let gap: CGFloat = 10, inset = size.height * 1.05
-        return (Frame(west: -168, east: 180, south: -57, north: 76, rect: CGRect(x: 0, y: 0, width: size.width - inset - gap, height: size.height)),
-                Frame(west: -12, east: 33, south: 41.5, north: 66, rect: CGRect(x: size.width - inset, y: 0, width: inset, height: size.height)))
+    private static func frames(_ size: CGSize, inset: Bool = true) -> (world: Frame, europe: Frame?) {
+        let world = Frame(west: -168, east: 180, south: -57, north: 76, rect: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        guard inset else { return (world, nil) }
+        let gap: CGFloat = 10, side = size.height * 1.05
+        return (Frame(west: -168, east: 180, south: -57, north: 76, rect: CGRect(x: 0, y: 0, width: size.width - side - gap, height: size.height)),
+                Frame(west: -12, east: 33, south: 41.5, north: 66, rect: CGRect(x: size.width - side, y: 0, width: side, height: size.height)))
     }
 
-    private static func place(at p: CGPoint, in size: CGSize) -> (lon: Double, lat: Double)? {
-        let (world, europe) = frames(size)
-        for frame in [europe, world] where frame.rect.contains(p) { return frame.place(p) }
+    private static func place(at p: CGPoint, in size: CGSize, inset: Bool = true) -> (lon: Double, lat: Double)? {
+        let (world, europe) = frames(size, inset: inset)
+        for frame in [europe, world].compactMap({ $0 }) where frame.rect.contains(p) { return frame.place(p) }
         return nil
     }
 
     var body: some View {
         Canvas { context, size in
-            let (world, europe) = Self.frames(size)
-            for frame in [world, europe] {
+            let (world, europe) = Self.frames(size, inset: europeInset)
+            for frame in [world, europe].compactMap({ $0 }) {
                 var layer = context
                 layer.clip(to: Path(roundedRect: frame.rect, cornerRadius: 10))
                 layer.fill(Path(frame.rect), with: .color(Theme.side))
@@ -680,8 +684,10 @@ struct CoverageMap: View {
                 context.stroke(Path(roundedRect: frame.rect, cornerRadius: 10), with: .color(Theme.line), lineWidth: 1)
             }
             // Where the larger picture of Europe sits on the world.
-            let a = world.point(europe.west, europe.north), b = world.point(europe.east, europe.south)
-            context.stroke(Path(CGRect(x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y)), with: .color(Theme.faint), lineWidth: 0.8)
+            if let europe {
+                let a = world.point(europe.west, europe.north), b = world.point(europe.east, europe.south)
+                context.stroke(Path(CGRect(x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y)), with: .color(Theme.faint), lineWidth: 0.8)
+            }
             // Where a click would start a project.
             if let hover {
                 let ring = CGRect(x: hover.x - 9, y: hover.y - 9, width: 18, height: 18)
@@ -696,7 +702,7 @@ struct CoverageMap: View {
                         .onContinuousHover { phase in
                             switch phase {
                             case .active(let p):
-                                if Self.place(at: p, in: geo.size) != nil {
+                                if Self.place(at: p, in: geo.size, inset: europeInset) != nil {
                                     if hover == nil { NSCursor.pointingHand.push() }
                                     hover = p
                                 } else if hover != nil { hover = nil; NSCursor.pop() }
@@ -705,16 +711,17 @@ struct CoverageMap: View {
                             }
                         }
                         .onTapGesture(coordinateSpace: .local) { p in
-                            guard let spot = Self.place(at: p, in: geo.size) else { return }
+                            guard let spot = Self.place(at: p, in: geo.size, inset: europeInset) else { return }
+                            if let onPick { onPick(spot.lon, spot.lat); return }
                             if hover != nil { hover = nil; NSCursor.pop() }
                             app.startProject(near: spot.lat, lon: spot.lon)
                         }
-                        .help("Click to start a project here")
+                        .help(onPick == nil ? "Click to start a project here" : "Click a place to see what is open there")
                 }
             }
         }
         .onDisappear { if hover != nil { hover = nil; NSCursor.pop() } }
-        .aspectRatio(3.7, contentMode: .fit)
+        .aspectRatio(europeInset ? 3.7 : 348.0 / 133.0, contentMode: .fit)
         .accessibilityElement()
         .accessibilityLabel("A map of the world showing where open lidar reaches: the United States, \(Reach.national.map(\.name).joined(separator: ", ")), and \(surveys.count) surveys flown for archaeology." + (pickable ? " Click a spot to start a project there." : ""))
     }
@@ -802,190 +809,6 @@ enum Reach {
     ]
 }
 
-// MARK: - Workflows
-
-/// A search from left to right: who does each part, where the open project stands, and a button for each.
-private struct WorkflowsTab: View {
-    @EnvironmentObject var app: AppState
-    @EnvironmentObject var store: ProjectStore
-    @State private var picked: String?
-
-    /// The parts of a search in order, and the lane each sits in: 0 the agent, 1 a second model, 2 you.
-    private let parts: [(id: String, lane: Int)] = [("terrain", 0), ("screen", 0), ("check", 0), ("second", 1), ("prior", 0), ("decide", 0), ("review", 2), ("report", 0)]
-    private let lanes: [(icon: String, name: String)] = [("dig.trowel", "Agent"), ("eye", "Second model"), ("person", "You")]
-
-    private func flow(_ id: String) -> ToolGuide.Workflow? { ToolGuide.workflows.first { $0.id == id } }
-    /// What waits on a person, counted as Home and Decide count it: measured rises kept on the map are not waiting.
-    private var waiting: Int { store.needsYou.count + store.toAgree.count }
-
-    /// A part's short name, where it stands, and whether it can run now.
-    private func facts(_ id: String) -> (title: String, icon: String, note: String, ready: Bool, done: Bool) {
-        if id == "review" {
-            let note = store.current == nil ? "Needs a project" : store.candidates.isEmpty ? "Needs finds" : waiting == 0 ? "Done" : "\(waiting) waiting"
-            return ("Decide", "dig.brush", note, waiting > 0, note == "Done")
-        }
-        guard let flow = flow(id) else { return (id, "questionmark", "", false, false) }
-        let state = app.state(of: flow)
-        let done = state.note == "Done" || state.note == "All decided" || state.note == "Prepared"
-        return (id == "second" ? "Second opinion" : id == "prior" ? "What is published" : flow.title, flow.icon, state.note, state.ready, done)
-    }
-
-    var body: some View {
-        let general = ToolGuide.workflows.filter { $0.scope == .general }
-        let chosen = picked ?? app.nextStep?.id ?? "full"
-        Text("A workflow is a ready-made request. Press one to see what it does, then Run.")
-            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim)
-
-        PageSection(title: "Before a project") {
-            Flow(spacing: 8) {
-                ForEach(general) { flow in
-                    chip(flow.id, flow.icon, flow.title, chosen == flow.id)
-                }
-            }
-        }
-
-        PageSection(title: store.current.map { "In \($0.name)" } ?? "In a project") {
-            VStack(alignment: .leading, spacing: 12) {
-                if let whole = flow("full") {
-                    HStack(spacing: 12) {
-                        Button { app.run(whole) } label: { Label(whole.title, glyph: whole.icon) }
-                            .buttonStyle(PrimaryButton()).disabled(!app.state(of: whole).ready)
-                        Text(store.current == nil ? "Open a project from the sidebar to run these." : "Every step below, in one press.")
-                            .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                    }
-                }
-                // The lanes need room. In a narrow window they keep their width and scroll sideways.
-                GeometryReader { geo in
-                    ScrollView(.horizontal, showsIndicators: false) { picture(chosen).frame(width: max(geo.size.width, 760)) }
-                }
-                .frame(height: 3 * tall + 3 * 6 + 16)
-            }
-        }
-
-        detail(chosen).id(chosen).arrives()
-    }
-
-    /// How tall a lane is. It grows with the text, so a three-line name still fits.
-    private var tall: CGFloat { 92 * max(Theme.scale, 1) }
-
-    /// The lanes: one row for each of the three who take part, one column for each part of the search.
-    private func picture(_ chosen: String) -> some View {
-        Grid(alignment: .topLeading, horizontalSpacing: 6, verticalSpacing: 6) {
-            GridRow {
-                Color.clear.frame(width: 116, height: 1)
-                ForEach(parts.indices, id: \.self) { i in
-                    HStack(spacing: 4) {
-                        Text("\(i + 1)").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
-                        Rectangle().fill(Theme.line).frame(height: 1)
-                        if i < parts.count - 1 {
-                            Image(systemName: "chevron.right").font(.system(size: 7 * Theme.scale, weight: .bold)).foregroundStyle(Theme.faint)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-            ForEach(lanes.indices, id: \.self) { lane in
-                GridRow {
-                    HStack(spacing: 7) {
-                        Glyph(name: lanes[lane].icon, size: 13 * Theme.scale).foregroundStyle(lane == 2 ? Theme.accent : Theme.tan).frame(width: 18)
-                        Text(lanes[lane].name).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
-                    }
-                    .frame(width: 116, height: tall, alignment: .leading)
-                    ForEach(parts.indices, id: \.self) { i in
-                        if parts[i].lane == lane {
-                            card(parts[i].id, chosen == parts[i].id)
-                        } else if lane == 2, parts[i].id == "report" {
-                            Text("You send it").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.accent)
-                                .frame(maxWidth: .infinity, minHeight: tall)
-                        } else {
-                            RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.02)).frame(maxWidth: .infinity, minHeight: tall)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func card(_ id: String, _ on: Bool) -> some View {
-        let part = facts(id)
-        return Button { picked = id } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Glyph(name: part.icon, size: 14 * Theme.scale).foregroundStyle(id == "review" ? Theme.accent : Theme.tan)
-                    Spacer(minLength: 0)
-                    if part.done { Image(systemName: "checkmark").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.green) }
-                }
-                Text(part.title).font(.system(size: 12 * Theme.scale, weight: .semibold)).lineLimit(3).minimumScaleFactor(0.85).multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                if !part.note.isEmpty, part.ready, !part.done {
-                    Text(part.note).font(.system(size: 10.5 * Theme.scale)).foregroundStyle(part.ready ? Theme.tan : Theme.faint).lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-            }
-            .padding(9).frame(maxWidth: .infinity, minHeight: tall, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(on ? 0.1 : 0.045)))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? Theme.tan : Theme.line, lineWidth: on ? 1.5 : 1))
-            .opacity(part.ready || part.done || on ? 1 : 0.7)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(CardButton())
-        .accessibilityLabel("\(part.title), \(lanes[parts.first { $0.id == id }?.lane ?? 0].name)\(part.note.isEmpty ? "" : ", \(part.note)")")
-    }
-
-    private func chip(_ id: String, _ icon: String, _ title: String, _ on: Bool) -> some View {
-        Button { picked = id } label: {
-            HStack(spacing: 7) {
-                Glyph(name: icon, size: 13 * Theme.scale).foregroundStyle(Theme.tan)
-                Text(title).font(.system(size: 12.5 * Theme.scale, weight: .medium))
-            }
-            .padding(.horizontal, 12).frame(height: 34)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(on ? 0.1 : 0.045)))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? Theme.tan : Theme.line, lineWidth: on ? 1.5 : 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(CardButton())
-    }
-
-    /// The chosen workflow: one sentence, who does it, and the button that runs it.
-    @ViewBuilder private func detail(_ id: String) -> some View {
-        let lane = parts.first { $0.id == id }?.lane ?? 0
-        HStack(alignment: .center, spacing: 14) {
-            if id == "review" {
-                IconTile(name: "dig.brush", size: 38)
-                words("Decide the finds", "You look at each find and decide what it is. Nothing is final before that.", lanes[2].name)
-                Spacer(minLength: 10)
-                Button("Decide") { app.reviewing = true; app.route = .chat }.buttonStyle(SecondaryButton()).disabled(waiting == 0)
-            } else if let flow = flow(id) {
-                let state = app.state(of: flow)
-                IconTile(name: flow.icon, size: 38)
-                words(flow.title, flow.summary, flow.scope == .general ? "Agent, then you" : id == "report" ? "Agent, then you" : lanes[lane].name)
-                Spacer(minLength: 10)
-                VStack(alignment: .trailing, spacing: 5) {
-                    Button(state.note == "Done" ? "Run again" : "Run") { app.run(flow) }.buttonStyle(SecondaryButton()).disabled(!state.ready)
-                    if !state.note.isEmpty {
-                        Text(state.note).font(.system(size: 11.5 * Theme.scale, weight: .medium))
-                            .foregroundStyle(state.note == "Done" ? Theme.green : state.ready ? Theme.tan : Theme.faint).lineLimit(1).fixedSize()
-                    }
-                }
-            }
-        }
-        .panel(padding: 14)
-    }
-
-    private func words(_ title: String, _ text: String, _ who: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 8) {
-                Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
-                Badge(text: who, color: who == "You" ? Theme.accent : Theme.tan)
-            }
-            Text(text).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
-// MARK: - Open data
-
 private struct DataTab: View {
     @EnvironmentObject var app: AppState
     @State private var online: [String: Bool] = [:]
@@ -1000,6 +823,19 @@ private struct DataTab: View {
     }
     @State private var layer: String?
     @State private var asking: ToolGuide.DataSource?
+    /// A place clicked on the map: its name as the sources name where they reach, or "" for somewhere only the
+    /// worldwide sources reach; with where it was, to start a project there.
+    @State private var picked: (name: String, lon: Double, lat: Double)?
+
+    /// The sources that reach the picked place: those named for it, and those that reach the whole world.
+    private var shown: [ToolGuide.DataSource] {
+        guard let picked else { return ToolGuide.allSources }
+        func norm(_ s: String) -> String { s.lowercased().replacingOccurrences(of: "the ", with: "") }
+        return ToolGuide.allSources.filter { source in
+            let reach = norm(source.reach)
+            return reach.hasPrefix("worldwide") || (!picked.name.isEmpty && reach.hasPrefix(norm(picked.name)))
+        }
+    }
 
     private let layers: [(id: String, name: String)] = [("us", "United States"), ("national", "National ground models"),
                                                          ("surveys", "Surveys flown for archaeology"), ("sonar", "Sonar, the seafloor"), ("ancient", "Ancient places on record")]
@@ -1024,7 +860,7 @@ private struct DataTab: View {
 
     @ViewBuilder private var overview: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("All of it is public and needs no account. Press one to see what Dighouse takes from it.")
+            Text("All of it is public and needs no account. Click a place on the map to see what reaches it, or press a source to see what Dighouse takes from it.")
                 .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             if let checked {
@@ -1037,7 +873,9 @@ private struct DataTab: View {
                 .help("Sends a small test request to each service from this Mac.")
         }
         VStack(alignment: .leading, spacing: 10) {
-            CoverageMap(highlight: layer, surveys: app.surveys.map(\.box))
+            ZoomableCoverage(highlight: layer, surveys: app.surveys.map(\.box)) { lon, lat in
+                withAnimation(Motion.ease(0.15)) { picked = (Reach.place(lon: lon, lat: lat) ?? "", lon, lat) }
+            }
             Flow(spacing: 6) {
                 ForEach(layers, id: \.id) { item in
                     Button { layer = layer == item.id ? nil : item.id } label: {
@@ -1053,8 +891,22 @@ private struct DataTab: View {
             }
             caption("Lidar is open in few places. Maps, site lists and papers are read worldwide.")
         }
+        if let picked {
+            HStack(spacing: 10) {
+                Image(systemName: "mappin.circle.fill").foregroundStyle(Theme.tan)
+                Text(picked.name.isEmpty ? "No open lidar here. These sources reach everywhere: maps, site lists and papers."
+                     : "\(picked.name): \(shown.count) sources reach it.")
+                    .font(.system(size: 13.5 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                if !picked.name.isEmpty {
+                    Button("Start a project here") { app.startProject(near: picked.lat, lon: picked.lon) }.buttonStyle(PrimaryButton())
+                }
+                Button("Show all") { withAnimation(Motion.ease(0.15)) { self.picked = nil } }.buttonStyle(SecondaryButton())
+            }
+            .padding(12).panel(radius: 12)
+        }
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
-            ForEach(ToolGuide.allSources) { source in tile(source) }
+            ForEach(shown) { source in tile(source) }
         }
         Disclosure(title: "Not read yet, and why (\(ToolGuide.notYet.count))") {
             VStack(alignment: .leading, spacing: 7) {
@@ -1233,7 +1085,7 @@ private struct DataTab: View {
 
 // MARK: - More tools
 
-private struct MoreTab: View {
+struct MoreTools: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var engine: Engine
     @State private var name = ""
@@ -1246,9 +1098,7 @@ private struct MoreTab: View {
     private var others: [String] { engine.plugins.filter { ToolGuide.addons[$0] == nil } }
 
     var body: some View {
-        Text("The agent can also use what your Codex app has. Press one to put a request in a new chat.")
-            .font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-
+      VStack(alignment: .leading, spacing: 12) {
         if !engine.connectionsRead {
             HStack(spacing: 8) {
                 DigIndicator()
@@ -1322,6 +1172,7 @@ private struct MoreTab: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+      }
     }
 
     /// A tool server's name and the command that starts it.

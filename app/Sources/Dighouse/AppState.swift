@@ -1517,7 +1517,7 @@ struct DighouseApp: App {
                 Button("Welcome Guide") { app.showWelcome = true }
                 Button("First Project Tutorial") { app.startTutorial() }
                 Button("Commands and Shortcuts") { app.route = .chat; app.chat.note(SlashCommands.help) }.keyboardShortcut("/")
-                Button("How a Search Works") { UserDefaults.standard.set(ToolboxView.Tab.how.rawValue, forKey: "toolboxTab"); app.show(.toolbox) }
+                Button("How a Search Works") { UserDefaults.standard.set(ToolboxView.Tab.how.rawValue, forKey: "toolboxPart"); app.show(.toolbox) }
                 Divider()
                 Link("Dighouse on GitHub", destination: URL(string: "https://github.com/chrissotraidis/dighouse")!)
             }

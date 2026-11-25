@@ -653,18 +653,8 @@ private struct EmptyChat: View {
 
     private var general: some View {
         // One main action, then four equal choices in two even columns (EASE_LOOP E3): nothing hangs on its own.
-        let all = ToolGuide.workflows
-        let main = all.first { $0.id == "timed-research" }
-        let choices = ["research", "choose", "place", "surveys"].compactMap { id in all.first { $0.id == id } }
-        return VStack(alignment: .leading, spacing: 18) {
-            if let main {
-                StartTile(icon: main.icon, title: main.title, text: main.summary, strong: true) { app.run(main) }
-            }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), spacing: 10, alignment: .top)], spacing: 10) {
-                ForEach(choices) { flow in
-                    StartTile(icon: flow.icon, title: flow.title, text: flow.summary) { app.run(flow) }
-                }
-            }
+        VStack(alignment: .leading, spacing: 18) {
+            StartChoices()
             VStack(alignment: .leading, spacing: 4) {
                 Text("Or ask a question").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint).padding(.leading, 10)
                 VStack(spacing: 0) {
