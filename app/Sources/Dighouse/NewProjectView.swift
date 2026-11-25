@@ -289,21 +289,7 @@ struct NewProjectView: View {
     /// The search boxes of the person's projects, read off the main thread. Blind tests are left out: they are known sites.
     private func loadSearched() async {
         let refs = app.store.projects
-        searched = await Task.detached {
-            refs.flatMap { ref -> [[Double]] in
-                guard !FileManager.default.fileExists(atPath: ref.path + "/private/state/test.json") else { return [] }
-                // Each area's own box where the project kept it: a region project's box is far bigger than what was searched.
-                if let data = FileManager.default.contents(atPath: ref.path + "/private/state/terrains.json"),
-                   let all = (try? JSONSerialization.jsonObject(with: data)) as? [String: JSON] {
-                    let boxes = all.values.compactMap { $0["lonlat"] as? [Double] }.filter { $0.count == 4 }
-                    if !boxes.isEmpty { return boxes }
-                }
-                guard let data = FileManager.default.contents(atPath: ref.path + "/private/state/project.json"),
-                      let info = (try? JSONSerialization.jsonObject(with: data)) as? JSON,
-                      let box = info["bbox"] as? [Double], box.count == 4 else { return [] }
-                return [box]
-            }
-        }.value
+        searched = await Task.detached { ProjectStore.searchedBoxes(refs.map(\.path)) }.value
     }
 
     /// Count the sites on open record on a 4 by 4 grid around the middle of the map, at least a degree across, so a cell

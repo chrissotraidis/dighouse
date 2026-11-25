@@ -230,6 +230,10 @@ def _build(p, name, terrains, tiles, records, open_, decided, counts, screened, 
             labels = [ledger.LABELS.get(m["status"], m["status"]).lower() for m in decided]
             shown = ", ".join(f"{labels.count(l)} {l}" for l in dict.fromkeys(labels))
         ruled.append(f"{_s(len(decided), 'find')} {'has' if len(decided) == 1 else 'have'} been decided: {shown}")
+        followed = [m for m in decided if m.get("progress")]
+        if followed:
+            ruled.append("; ".join(f"{m['id']} {ledger.progress_words(m)}" for m in followed[:5])
+                         + (f", and {len(followed) - 5} more followed up" if len(followed) > 5 else ""))
     L += ["## What was ruled out or decided", "", (". ".join(r[0].upper() + r[1:] for r in ruled) + ".") if ruled else "Nothing yet.", ""]
 
     L += ["## What to try next", ""]

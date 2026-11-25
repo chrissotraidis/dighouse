@@ -306,12 +306,17 @@ struct HomeView: View {
 /// Where a search can go, on a map that starts a project wherever it is clicked.
 private struct WhereItReaches: View {
     @EnvironmentObject var app: AppState
+    /// Where the person's own projects have searched, so a new search can go elsewhere.
+    @State private var searched: [[Double]] = []
 
     var body: some View {
         PageSection(title: "Where you can search", caption: "Click anywhere on the map to start a project there. The shaded places have open data the tools fetch with no account.") {
             VStack(alignment: .leading, spacing: 14) {
-                CoverageMap(surveys: app.surveys.map(\.box))
+                CoverageMap(surveys: app.surveys.map(\.box), searched: searched)
                 VStack(alignment: .leading, spacing: 8) {
+                    if !searched.isEmpty {
+                        legend(.ring, "Where you have searched", "\(searched.count) area\(searched.count == 1 ? "" : "s") in your projects; only this Mac shows them")
+                    }
                     legend(.dot(Theme.tan), "Lidar, the United States", "raw laser points from USGS 3DEP")
                     legend(.dot(Theme.green), "Lidar, national ground models", "\(Reach.national.count) countries and regions, most of them in Europe, and Denmark with a free token")
                         .help(Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", "))
@@ -327,10 +332,14 @@ private struct WhereItReaches: View {
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
             .panel()
+            .task(id: app.store.projects.count) {
+                let roots = app.store.projects.map(\.path)
+                searched = await Task.detached { ProjectStore.searchedBoxes(roots) }.value
+            }
         }
     }
 
-    private enum Mark { case dot(Color), icon(String) }
+    private enum Mark { case dot(Color), icon(String), ring }
 
     /// A row of the legend: a dot in the map's colour for a layer drawn on it, an icon for one that is not.
     private func legend(_ mark: Mark, _ title: String, _ text: String) -> some View {
@@ -339,6 +348,7 @@ private struct WhereItReaches: View {
                 switch mark {
                 case .dot(let color): Circle().fill(color).frame(width: 9, height: 9)
                 case .icon(let name): Image(systemName: name).font(.system(size: 10.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
+                case .ring: Circle().strokeBorder(.white.opacity(0.9), lineWidth: 1.6).frame(width: 9, height: 9)
                 }
             }
             .frame(width: 14)

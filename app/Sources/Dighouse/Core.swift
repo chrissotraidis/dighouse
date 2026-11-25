@@ -423,6 +423,10 @@ struct Candidate: Identifiable {
     /// A measured rise kept on the map rather than put to a person (ProjectStore.layer).
     var inLayer = false
     var x = 0.5, y = 0.5
+    /// What happened to a lead after it was marked worth reporting: sent, answered, visited (OPEN_LOOP O9).
+    var progress: [(date: String, step: String, by: String, note: String)] = []
+    static let progressWords = ["sent": "Sent to the records office", "answered_known": "Answered: already on their record",
+                                "answered_new": "Answered: recorded by them as new", "visited": "Visited"]
 
     /// The find's tile with it ringed: a JPEG for new finds, a PNG in projects from before.
     var relief: String {

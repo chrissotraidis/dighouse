@@ -1385,6 +1385,15 @@ def undo_decision(project: str, candidate: str, by: str) -> dict:
 
 
 @tool
+def lead_progress(project: str, candidate: str, step: str, by: str, note: str = "") -> dict:
+    """The app's tool for a person recording what happened to a lead: sent, answered_known, answered_new, visited,
+    or undo. Agents do not call it."""
+    p = Project(project).check()
+    meta = ledger.lead_progress(p, candidate, step, by, note)
+    return {"candidate": candidate, "status": meta["status"], "progress": meta.get("progress", [])}
+
+
+@tool
 def raise_rise(project: str, candidate: str, by: str) -> dict:
     """The app's tool for a person who wants to decide a measured rise kept on the map. Agents do not call it."""
     p = Project(project).check()

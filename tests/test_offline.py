@@ -1208,3 +1208,30 @@ def test_a_land_search_on_usgs_ground_calibrates_on_land():
     sea = answers.calibration_site([-83.5, 45.0, -83.4, 45.1], "us:noaa-bag")
     assert land["site"] in {"cahokia", "mound-city", "angel-mounds", "serpent-mound"} and land["same_source"]
     assert sea["site"].startswith("thunder-bay")
+
+
+def test_lead_progress(tmp_path):
+    """After a person marks a lead worth reporting, its progress is dated and named on its record, the research record
+    and the report; sent moves it to reported, and undo takes the last step back."""
+    from dighouse import ledger
+    from dighouse import report
+
+    root = str(tmp_path / "leads")
+    p = Project.create(root, "Leads", "Which banks are built?", [0.0, 51.0, 0.01, 51.01])
+    cid = ledger.create(p, "Bank", "t1-r000c000", (0.005, 51.005), "a bank", "model-a")["id"]
+    with pytest.raises(ValueError, match="not a lead"):
+        server.lead_progress(root, cid, "sent", "Chris")
+    ledger.set_status(p, cid, "no_match_in_sources_read", "Chris", "nothing read matches it")
+    with pytest.raises(ValueError, match="person"):
+        server.lead_progress(root, cid, "sent", " ")
+    got = server.lead_progress(root, cid, "sent", "Chris", "Emailed the county office")
+    assert got["status"] == "reported" and got["progress"][0]["step"] == "sent"
+    server.lead_progress(root, cid, "answered_new", "Chris")
+    page = (tmp_path / "leads" / "candidates" / f"{cid}.md").read_text()
+    assert "## What happened next" in page and "Sent to the records office, recorded by Chris. Emailed the county office" in page
+    assert "answered: recorded by them as new on" in p.path("RESEARCH.md").read_text()
+    assert "answered: recorded by them as new" in p.path(report.write(p)["written"]).read_text()
+    server.lead_progress(root, cid, "undo", "Chris")
+    assert server.lead_progress(root, cid, "undo", "Chris")["status"] == "no_match_in_sources_read"
+    with pytest.raises(ValueError, match="no progress"):
+        server.lead_progress(root, cid, "undo", "Chris")

@@ -1178,6 +1178,13 @@ final class AppState: ObservableObject {
         store.reloadIfChanged()
     }
 
+    /// Record what happened to a lead: sent, answered_known, answered_new, visited, or undo.
+    func leadProgress(_ id: String, step: String, note: String) async throws {
+        guard let project = store.current else { return }
+        _ = try await engine.callTool("lead_progress", ["project": project.path, "candidate": id, "step": step, "by": userName, "note": note])
+        store.reloadIfChanged()
+    }
+
     /// A person asks to decide a measured rise kept on the map.
     func raiseRise(_ id: String) async throws {
         guard let project = store.current else { return }

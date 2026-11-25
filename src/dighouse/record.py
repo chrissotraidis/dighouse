@@ -262,6 +262,8 @@ def document(p: Project, commit_it: bool = True) -> dict:
             last = m["decisions"][-1] if m.get("decisions") else None
             state = (f"{ledger.LABELS.get(last['status'], last['status']).lower()}, decided by {last['by']}" if last
                      else "kept on the map" if m["id"] in on_map else "waiting for a person's decision")
+            if m.get("progress"):
+                state += "; " + ledger.progress_words(m)
             L.append(f"- [{m['id']} {_clean(m['name'], 70)}](candidates/{m['id']}.md): {state}.")
         if kept_line:
             L.append(f"- {len(on_map)} more are kept on the map, each with its own page in [candidates/](candidates/).")

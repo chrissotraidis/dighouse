@@ -31,6 +31,13 @@ LABELS = {
     "reported": "Reported to the heritage authority",
 }
 NOTES = "## Notes"
+# What happened to a lead after a person marked it worth reporting. Each step is dated and named on its record.
+PROGRESS = {
+    "sent": "Sent to the records office",
+    "answered_known": "Answered: already on their record",
+    "answered_new": "Answered: recorded by them as new",
+    "visited": "Visited",
+}
 
 
 def readable_link(link: str) -> str:
@@ -180,6 +187,49 @@ def undo_decision(p: Project, cid: str, by: str) -> dict:
     document(p, commit_it=False)
     commit(p.root, f"{cid}: decision undone by {by}")
     return meta
+
+
+def lead_progress(p: Project, cid: str, step: str, by: str, note: str = "") -> dict:
+    """Record what happened to a lead after a person marked it worth reporting: sent to the records office, answered
+    (already on their record, or recorded by them as new) or visited. "sent" moves it to reported. "undo" takes back
+    the last step. A person records each step; the answer is the office's to give, never the agent's."""
+    from .project import without_coordinates
+    if not by.strip():
+        raise ValueError("A person records a lead's progress. Pass their name as by.")
+    meta, notes = get(p, cid)
+    if step == "undo":
+        if not meta.get("progress"):
+            raise ValueError(f"{cid} has no progress to take back.")
+        last = meta["progress"].pop()
+        if last["step"] == "sent" and meta["status"] == "reported":
+            meta["status"] = last.get("was") or "no_match_in_sources_read"
+        message = f"{cid}: {by.strip()} took back {PROGRESS.get(last['step'], last['step']).lower()!r}"
+    else:
+        if step not in PROGRESS:
+            raise ValueError(f"step must be one of {tuple(PROGRESS)} or undo")
+        if meta["status"] not in ("no_match_in_sources_read", "reported"):
+            raise ValueError(f"{cid} is not a lead yet: a person marks it worth reporting (no match in the sources read) first.")
+        entry = {"date": today(), "step": step, "by": by.strip(), "note": without_coordinates(note.strip())}
+        if step == "sent" and meta["status"] != "reported":
+            entry["was"] = meta["status"]
+            meta["status"] = "reported"
+        meta.setdefault("progress", []).append(entry)
+        message = f"{cid}: {PROGRESS[step][0].lower() + PROGRESS[step][1:]}, recorded by {by.strip()}"
+    write(p, meta, notes)
+    p.note(message)
+    from .record import document
+    document(p, commit_it=False)
+    commit(p.root, message)
+    return meta
+
+
+def progress_words(meta: dict) -> str:
+    """The lead's last step, for lists: "sent to the records office on 2026-11-25"."""
+    last = (meta.get("progress") or [None])[-1]
+    if not last:
+        return ""
+    words = PROGRESS.get(last["step"], last["step"])
+    return f"{words[0].lower() + words[1:]} on {last['date']}"
 
 
 def suggest(p: Project, cid: str, status: str, reason: str, by: str) -> dict:
@@ -333,6 +383,10 @@ def _body(meta: dict, p=None) -> str:
         for d in meta["decisions"]:
             open_items = f" Open at the time: {'; '.join(d['open_items'])}." if d["open_items"] else ""
             out.append(f"- {d['date']} · {d['by']} marked this {LABELS[d['status']].lower()}. {d['reason']}{open_items}")
+    if meta.get("progress"):
+        out += ["", "## What happened next", ""]
+        out += [f"- {e['date']} · {PROGRESS.get(e['step'], e['step'])}, recorded by {e['by']}." + (f" {e['note']}" if e.get("note") else "")
+                for e in meta["progress"]]
     return "\n".join(out) + "\n"
 
 

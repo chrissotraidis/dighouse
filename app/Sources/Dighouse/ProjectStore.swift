@@ -314,6 +314,26 @@ final class ProjectStore: ObservableObject {
         return out
     }
 
+    /// The boxes of ground the person's projects searched, as west, south, east, north, read from each project's private
+    /// state. Blind tests are left out: they are known sites. Shown only on this Mac's maps.
+    nonisolated static func searchedBoxes(_ roots: [String]) -> [[Double]] {
+        // A box never set (all zero, or 0°, 0° in the sea off Africa) is no search, and is left off the map.
+        func real(_ b: [Double]) -> Bool { b.count == 4 && b[2] > b[0] && b[3] > b[1] && (abs(b[0] + b[2]) > 0.02 || abs(b[1] + b[3]) > 0.02) }
+        return roots.flatMap { root -> [[Double]] in
+            guard !FileManager.default.fileExists(atPath: root + "/private/state/test.json") else { return [] }
+            // Each area's own box where the project kept it: a region project's box is far bigger than what was searched.
+            if let data = FileManager.default.contents(atPath: root + "/private/state/terrains.json"),
+               let all = (try? JSONSerialization.jsonObject(with: data)) as? [String: JSON] {
+                let boxes = all.values.compactMap { $0["lonlat"] as? [Double] }.filter(real)
+                if !boxes.isEmpty { return boxes }
+            }
+            guard let data = FileManager.default.contents(atPath: root + "/private/state/project.json"),
+                  let info = (try? JSONSerialization.jsonObject(with: data)) as? JSON,
+                  let box = info["bbox"] as? [Double], real(box) else { return [] }
+            return [box]
+        }
+    }
+
     /// Changes whenever a file glance reads changes: how many find records there are, the newest of them, the tiles,
     /// and whether the project is a blind test.
     nonisolated static func glanceMark(_ root: String) -> String {
@@ -623,6 +643,9 @@ final class ProjectStore: ObservableObject {
                 c.suggestion = (st, why, sug["by"] as? String ?? "the agent")
             }
             c.raised = meta["raised"] != nil
+            c.progress = (meta["progress"] as? [JSON] ?? []).map {
+                ($0["date"] as? String ?? "", $0["step"] as? String ?? "", $0["by"] as? String ?? "", $0["note"] as? String ?? "")
+            }
             if let place = places[id] {
                 c.x = place["x"] as? Double ?? 0.5
                 c.y = place["y"] as? Double ?? 0.5

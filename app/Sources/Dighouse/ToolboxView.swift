@@ -614,6 +614,8 @@ struct CoverageMap: View {
     var highlight: String? = nil
     /// The boxes of the open surveys flown for archaeology, as west, south, east, north.
     var surveys: [[Double]] = []
+    /// The ground the person's own projects searched, as west, south, east, north: drawn as rings, kept on this Mac.
+    var searched: [[Double]] = []
     /// Clicking a spot opens New project with its map on that region.
     var pickable = true
     /// Europe drawn larger at the right. A map that zooms leaves it out: zooming in shows Europe better.
@@ -680,6 +682,11 @@ struct CoverageMap: View {
                     let p = frame.point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
                     layer.fill(Path(ellipseIn: CGRect(x: p.x - 3.5, y: p.y - 3.5, width: 7, height: 7)), with: .color(Theme.amber.opacity(shade("surveys"))))
                     layer.stroke(Path(ellipseIn: CGRect(x: p.x - 3.5, y: p.y - 3.5, width: 7, height: 7)), with: .color(.black.opacity(0.5 * shade("surveys"))), lineWidth: 0.8)
+                }
+                // A searched square km is too small to see across a continent, so each area is a ring at its middle.
+                for box in searched where box.count == 4 {
+                    let p = frame.point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+                    layer.stroke(Path(ellipseIn: CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8)), with: .color(.white.opacity(0.9)), lineWidth: 1.6)
                 }
                 context.stroke(Path(roundedRect: frame.rect, cornerRadius: 10), with: .color(Theme.line), lineWidth: 1)
             }

@@ -799,6 +799,58 @@ struct MapView: View {
     }
 }
 
+/// A lead after its letter: what the person did and what the office answered, each step dated and named on the record.
+private struct LeadProgress: View {
+    @EnvironmentObject var app: AppState
+    let candidate: Candidate
+    @State private var note = ""
+    @State private var busy = false
+    @State private var problem: String?
+
+    private var steps: [(id: String, label: String)] {
+        let done = Set(candidate.progress.map(\.step))
+        var out: [(String, String)] = []
+        if !done.contains("sent") { out.append(("sent", "Sent to the office")) }
+        if done.contains("sent"), !done.contains("answered_known"), !done.contains("answered_new") {
+            out += [("answered_known", "They have it on record"), ("answered_new", "They recorded it as new")]
+        }
+        if !done.contains("visited") { out.append(("visited", "Visited")) }
+        return out
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if candidate.progress.isEmpty {
+                Text("Once the letter goes, mark each step here, so the record keeps the answer. Only the office can say a place is new.")
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(Array(candidate.progress.enumerated()), id: \.offset) { _, e in
+                Text("\(e.date) · \(Candidate.progressWords[e.step] ?? e.step), recorded by \(e.by)" + (e.note.isEmpty ? "" : ". \(e.note)"))
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+            }
+            TextField("A note, such as who answered (optional)", text: $note).textFieldStyle(.plain).field()
+            Flow(spacing: 8) {
+                ForEach(steps, id: \.id) { step in
+                    Button(step.label) { record(step.id) }
+                }
+                if !candidate.progress.isEmpty { Button("Take back the last") { record("undo") } }
+            }
+            .buttonStyle(SecondaryButton()).disabled(busy)
+            if let problem { Text(problem).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber) }
+        }
+    }
+
+    private func record(_ step: String) {
+        busy = true
+        problem = nil
+        Task {
+            do { try await app.leadProgress(candidate.id, step: step, note: step == "undo" ? "" : note); note = "" }
+            catch { problem = error.localizedDescription }
+            busy = false
+        }
+    }
+}
+
 private struct TileView: View {
     // Given its folder rather than watching the project: a view that watches the project redraws whenever anything in it
     // changes, and a map holds a tile view for every tile of the area.
@@ -1181,6 +1233,9 @@ struct RecordsView: View {
                 section("Decisions") {
                     ForEach(c.decisions, id: \.self) { Text($0).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim) }
                 }
+            }
+            if !store.isBlindTest, c.status == "no_match_in_sources_read" || c.status == "reported" {
+                section("What happened next") { LeadProgress(candidate: c) }
             }
             if !store.isBlindTest, !c.waiting {
                 section("Change the decision") {
