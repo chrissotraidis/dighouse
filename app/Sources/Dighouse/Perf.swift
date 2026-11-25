@@ -65,7 +65,7 @@ extension AppState {
         try? await Task.sleep(for: .seconds(3))
         Perf.log("tour start: \(store.projects.count) projects")
         await Perf.step("Home") { self.route = .home }
-        let sizes = await Task.detached { [refs = store.projects] in refs.map { ProjectStore.glance($0.path).finds } }.value
+        let sizes: [Int] = await Task.detached { [refs = store.projects] in refs.map { ProjectStore.glance($0.path).finds } }.value
         if let i = sizes.indices.max(by: { sizes[$0] < sizes[$1] }) {
             let p = store.projects[i]
             await Perf.step("Open the largest project (\(sizes[i]) finds)",
@@ -83,6 +83,12 @@ extension AppState {
             for _ in 0..<5 { store.reloadNow() }
             Perf.log("read the project again after a change: \(Int(Date().timeIntervalSince(start) * 200)) ms each")
         }
+        // Clicking between ordinary projects, the way a person goes back and forth.
+        let small = store.projects.indices.filter { sizes.indices.contains($0) && sizes[$0] > 0 && sizes[$0] < 400 }.prefix(3).map { store.projects[$0] }
+        for p in small + small.prefix(1) {
+            await Perf.step("Switch to \(p.name)", ready: { self.store.current?.path == p.path && !self.store.candidates.isEmpty }) { self.open(p) }
+        }
+        await Perf.step("Home from a project") { self.goHome() }
         await Perf.step("Toolbox") { self.route = .toolbox }
         await Perf.step("Settings") { self.route = .settings }
         await Perf.step("New project") { self.route = .newProject }

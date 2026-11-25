@@ -83,6 +83,19 @@ struct MainView: View {
                 .padding(24).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
             }
         } else {
+            Group {
+                routed(width: width)
+            }
+            // A page fades in when you move to it. Only the new page fades: the old one goes at once, so a large project
+            // is not kept on screen while it fades.
+            .id(app.route)
+            .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 6)), removal: .identity))
+            .animation(Motion.ease(0.18), value: app.route)
+        }
+    }
+
+    @ViewBuilder private func routed(width: CGFloat) -> some View {
+        Group {
             switch app.route {
             case .home: HomeView()
             case .newProject: NewProjectView(point: app.draftProject).id(app.draftProject.id)

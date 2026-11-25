@@ -458,8 +458,19 @@ struct Candidate: Identifiable {
     /// Still waiting for a person's decision.
     var waiting: Bool { status == "flagged" || status == "ground_confirmed" }
 
+    /// What likely and group come to, worked out once when the project is read: in a large project they are asked
+    /// tens of thousands of times a redraw, and likely searches the sources' words.
+    private var settled: (likely: (status: String, reason: String, by: String)?, group: Group, agreement: Int)?
+    mutating func settle() {
+        settled = nil
+        let l = findLikely()
+        settled = (l, findGroup(l), countAgreement())
+    }
+
     /// What the find probably is: the agent's suggestion, or else a read source whose finding names it, or the map check.
-    var likely: (status: String, reason: String, by: String)? {
+    var likely: (status: String, reason: String, by: String)? { settled.map(\.likely) ?? findLikely() }
+
+    private func findLikely() -> (status: String, reason: String, by: String)? {
         if let s = suggestion { return s }
         if let named = sources.first(where: { $0.status == "read" && $0.finding.range(of: "\\b\(id)\\b", options: .regularExpression) != nil }) {
             return ("already_published", named.title, "the sources on its record")
@@ -488,7 +499,9 @@ struct Candidate: Identifiable {
     /// hollow with nothing against it), a model's eye (the agent or the bulk look marked it and the agent does not call
     /// it natural or modern) and the second model. A ranks for three, B for two, C for one or none. It orders finds;
     /// it never decides which ones wait for a person.
-    var agreement: Int {
+    var agreement: Int { settled?.agreement ?? countAgreement() }
+
+    private func countAgreement() -> Int {
         let hints = ((checks["shape"] as? JSON)?["hints"] as? [String]) ?? []
         let shapeSays = hints == ["a coherent, round rise"] || (hints.count == 1 && hints[0].hasPrefix("a hollow"))
         let eyeSays = !flaggedBy.hasPrefix("measured") && !["natural", "modern"].contains(likely?.status ?? "")
@@ -501,7 +514,9 @@ struct Candidate: Identifiable {
 
     /// Leads first, then the finds where the agent and the second model disagree, then the routine ones. A find the agent
     /// calls natural that the second model calls built is a disagreement; a modern find is built, so "built" agrees with it.
-    var group: Group {
+    var group: Group { settled?.group ?? findGroup(likely) }
+
+    private func findGroup(_ likely: (status: String, reason: String, by: String)?) -> Group {
         guard waiting else { return .decided }
         if inLayer { return .layer }
         switch likely?.status {

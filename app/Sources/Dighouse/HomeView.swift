@@ -608,8 +608,7 @@ private struct PathCard: View {
                     .offset(x: hover ? 3 : 0)
             }
             .padding(16).frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Theme.ink.opacity(0.22) : Theme.line))
+            .surface(hover: hover)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -627,23 +626,21 @@ private struct StartChoice: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    IconTile(name: icon, size: 36)
-                    Spacer(minLength: 0)
-                    Image(systemName: "arrow.right").font(.system(size: 12 * Theme.scale, weight: .semibold))
-                        .foregroundStyle(hover ? Theme.text : Theme.faint).offset(x: hover ? 3 : 0)
-                }
+            HStack(alignment: .top, spacing: 12) {
+                IconTile(name: icon, size: 34)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
+                    HStack(spacing: 6) {
+                        Text(title).font(.system(size: 14.5 * Theme.scale, weight: .semibold))
+                        Image(systemName: "arrow.right").font(.system(size: 11 * Theme.scale, weight: .semibold))
+                            .foregroundStyle(hover ? Theme.tan : Theme.faint).offset(x: hover ? 3 : 0)
+                    }
                     Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                         .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(16).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Theme.ink.opacity(0.22) : Theme.line))
+            .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .surface(hover: hover)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -687,8 +684,7 @@ struct StartCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: compact ? 0 : 270, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.07 : 0.035)))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(hover ? Theme.ink.opacity(0.22) : Theme.line))
+            .surface(hover: hover)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

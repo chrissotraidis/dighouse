@@ -20,6 +20,7 @@ Dighouse should feel like one calm, plain tool that a first-time user can follow
 - **Dense maps stay readable.** Labels show on hover, on selection or when zoomed in.
 - **An empty screen says what is missing** and offers the one next step.
 - **Progress shows in place,** not in a pop-up window.
+- **One surface.** A grouped panel or card uses `.panel()` or `.surface(hover:)`; a card that is a button uses `SurfaceButton`, which lifts and warms under the pointer. Do not draw a box by hand with a fill and a stroke.
 - **One spacing scale.** Paddings and gaps are 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 32 or 48 points (0 and 1 for hairlines). Pages sit 24 or 32 points in from their edges; a panel's rows are padded 14; a group heading sits 20 below the group before. A padding that lines something up under an icon or a bar may be any number, with a `// aligns` comment. `tests/test_app_spacing.py` checks it.
 
 ## Controls

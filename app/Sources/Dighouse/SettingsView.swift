@@ -146,29 +146,37 @@ private struct RunsSummary: View {
     }
 
     var body: some View {
-        // Three across, of one height, when there is room; one under the other when narrow. Never two and one.
+        // One panel in three parts, side by side when there is room and one under the other when narrow.
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 12) { cards }.fixedSize(horizontal: false, vertical: true)
-            VStack(spacing: 12) { cards }
+            HStack(alignment: .top, spacing: 0) {
+                part(0); Hairline(vertical: true); part(1); Hairline(vertical: true); part(2)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) { part(0); Hairline(); part(1); Hairline(); part(2) }
         }
+        .panel()
     }
 
-    @ViewBuilder private var cards: some View {
-        card(icon: "cpu", title: "The search", value: engine.ready ? app.modelName : (app.starting ? "Starting…" : "Not running"),
-             ok: engine.ready && engine.account != nil ? true : app.starting ? nil : false,
-             status: engine.ready ? "Runs on Codex, \(Self.version(setup.codexVersion))" : (engine.problem ?? (setup.codex == nil ? "Codex is not on this Mac" : "The engine is not running")),
-             cost: searchCost) {
-            if !engine.ready, !app.starting {
-                Button("Restart") { Task { await app.boot() } }.buttonStyle(SecondaryButton())
+    @ViewBuilder private func part(_ i: Int) -> some View {
+        switch i {
+        case 0:
+            column(icon: "cpu", title: "The search", value: engine.ready ? app.modelName : (app.starting ? "Starting…" : "Not running"),
+                   ok: engine.ready && engine.account != nil ? true : app.starting ? nil : false,
+                   status: engine.ready ? "Runs on Codex, \(Self.version(setup.codexVersion))" : (engine.problem ?? (setup.codex == nil ? "Codex is not on this Mac" : "The engine is not running")),
+                   cost: searchCost) {
+                if !engine.ready, !app.starting { Button("Restart") { Task { await app.boot() } }.buttonStyle(SecondaryButton()) }
             }
-        }
-        card(icon: "person.2", title: "Second opinions", value: app.secondModelName,
-             ok: app.secondModelID == nil ? false : app.opinionsWaiting == nil ? true : nil,
-             status: app.opinionsWaiting == nil ? "Asked only about finds a person will see" : "Waiting until usage resets",
-             cost: opinionCost) { EmptyView() }
-        card(icon: "map", title: "Open data", value: "Free and public", ok: true,
-             status: "No account needed", cost: "Two services ask for a free key") {
-            Button("Keys") { app.settingsSection = .data }.buttonStyle(SecondaryButton())
+        case 1:
+            column(icon: "person.2", title: "Second opinions", value: app.secondModelName,
+                   ok: app.secondModelID == nil ? false : app.opinionsWaiting == nil ? true : nil,
+                   status: app.opinionsWaiting == nil ? "Asked only about finds a person will see" : "Waiting until usage resets",
+                   cost: opinionCost) { EmptyView() }
+        default:
+            column(icon: "map", title: "Open data", value: "Free and public", ok: true,
+                   status: "No account needed", cost: "Two services ask for a free key") {
+                Button { app.settingsSection = .data } label: { Label("Keys", systemImage: "arrow.right").labelStyle(TrailingIcon()) }
+                    .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan)
+            }
         }
     }
 
@@ -177,18 +185,17 @@ private struct RunsSummary: View {
         text.split(separator: " ").last?.split(separator: "-").first.map(String.init) ?? text
     }
 
-    private func card<Action: View>(icon: String, title: String, value: String, ok: Bool?, status: String, cost: String,
-                                    @ViewBuilder action: () -> Action) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                IconTile(name: icon, size: 30)
-                Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
-                Spacer(minLength: 0)
+    private func column<Action: View>(icon: String, title: String, value: String, ok: Bool?, status: String, cost: String,
+                                      @ViewBuilder action: () -> Action) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Glyph(name: icon, size: 12 * Theme.scale).foregroundStyle(Theme.tan)
+                Text(title).font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
             }
-            Text(value).font(.system(size: 15 * Theme.scale, weight: .semibold)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Text(value).font(.system(size: 16 * Theme.scale, weight: .semibold)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
+                    Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 6, height: 6)
                     Text(status).foregroundStyle(ok == false ? Theme.amber : Theme.dim)
                 }
                 Text(cost).foregroundStyle(Theme.faint)
@@ -197,9 +204,15 @@ private struct RunsSummary: View {
             Spacer(minLength: 0)
             action()
         }
-        .padding(14)
-        .frame(minWidth: 0, idealWidth: 180 * Theme.scale, maxWidth: .infinity, minHeight: 150 * Theme.scale, maxHeight: .infinity, alignment: .topLeading)
-        .panel()
+        .padding(16)
+        .frame(minWidth: 0, idealWidth: 190 * Theme.scale, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+/// A label with its icon after the words: "Keys →".
+private struct TrailingIcon: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) { configuration.title; configuration.icon.font(.system(size: 10 * Theme.scale, weight: .bold)) }
     }
 }
 

@@ -272,8 +272,35 @@ struct MapView: View {
                             let byTile = Dictionary(spots.map { ($0.tile.id, $0) }, uniquingKeysWith: { a, _ in a })
                             // Hundreds of finds kept on the map would each be one more element for VoiceOver to read
                             // (and they stalled the accessibility tree at 1,246); the finds put to a person stay.
-                            let quietLayer = store.candidates.filter(\.inLayer).count > 50
-                            ForEach(store.candidates) { c in
+                            // Finds kept on the map are dots drawn in one picture, not a view each: a sweep keeps thousands,
+                            // and a view each made every redraw of a large project take seconds. A press near one selects it;
+                            // a press elsewhere selects the tile, as the tiles do.
+                            let layer = store.candidates.filter { $0.inLayer && $0.id != store.selectedCandidate }
+                            let dots: [(id: String, tile: String, at: CGPoint)] = layer.compactMap { c in
+                                byTile[c.tile].map { (c.id, c.tile, CGPoint(x: ($0.x + c.x * $0.w) * scale, y: ($0.y + c.y * $0.h) * scale)) }
+                            }
+                            Canvas { ctx, _ in
+                                for d in dots {
+                                    let r = CGRect(x: d.at.x - 3.5, y: d.at.y - 3.5, width: 7, height: 7)
+                                    ctx.fill(Path(ellipseIn: r), with: .color(.white.opacity(0.75)))
+                                    ctx.stroke(Path(ellipseIn: r), with: .color(.black.opacity(0.5)), lineWidth: 1)
+                                }
+                            }
+                            .frame(width: width * scale, height: height * scale)
+                            .contentShape(Rectangle())
+                            .gesture(SpatialTapGesture().onEnded { e in
+                                guard !drawing else { return }
+                                if let d = dots.min(by: { hypot($0.at.x - e.location.x, $0.at.y - e.location.y) < hypot($1.at.x - e.location.x, $1.at.y - e.location.y) }),
+                                   hypot(d.at.x - e.location.x, d.at.y - e.location.y) < 9 {
+                                    store.selectedCandidate = d.id
+                                    store.selectedTile = d.tile
+                                } else if let s = spots.first(where: { CGRect(x: $0.x * scale, y: $0.y * scale, width: $0.w * scale, height: $0.h * scale).contains(e.location) }) {
+                                    store.selectedTile = s.tile.id
+                                    store.selectedCandidate = nil
+                                }
+                            })
+                            .accessibilityHidden(true)
+                            ForEach(store.candidates.filter { !$0.inLayer || $0.id == store.selectedCandidate }) { c in
                                 if let spot = byTile[c.tile] {
                                     Pin(label: c.id, selected: store.selectedCandidate == c.id, onMap: c.inLayer, quiet: quiet,
                                         fresh: store.fresh.contains(c.id))
@@ -285,7 +312,6 @@ struct MapView: View {
                                             store.selectedTile = c.tile
                                         }
                                         .help("Click to see it, double-click to open its record")
-                                        .accessibilityHidden(quietLayer && c.inLayer)
                                 }
                             }
                         }
@@ -888,9 +914,7 @@ private struct LiveSearch: View {
     var body: some View {
         let tiles = store.tiles, looked = tiles.filter { $0.status != "unscreened" }.count
         let finds = store.candidates.filter { !$0.inLayer }
-        let leads = Array(finds.sorted { a, b in
-            a.agreement != b.agreement ? a.agreement > b.agreement : store.fresh.contains(a.id) && !store.fresh.contains(b.id)
-        }.prefix(3))
+        let leads = store.strongest(3, among: finds, first: store.fresh)
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 DigIndicator(size: 12)

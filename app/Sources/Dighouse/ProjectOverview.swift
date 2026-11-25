@@ -47,10 +47,8 @@ struct ProjectOverview: View {
 
     private var stages: [Stage] {
         let s = store.status, all = store.candidates
-        let decided = all.filter { !["flagged", "ground_confirmed"].contains($0.status) }.count
-        let checked = all.filter { $0.checks["section"] != nil && $0.checks["modern"] != nil }.count
-        let second = all.filter { $0.checks["second_look"] != nil }.count
-        let sourced = all.filter { !$0.sources.isEmpty }.count
+        let t = store.tally
+        let decided = all.count - t.open, checked = t.checked, second = t.seconded, sourced = t.sourced
         // A shared project: its ground was fetched and looked at on the Mac it came from.
         let before = store.terrains.isEmpty ? store.screenedBefore : nil
         let finds = "\(all.count) find\(all.count == 1 ? "" : "s")"
@@ -319,9 +317,7 @@ private struct FoundStrip: View {
         let all = store.candidates
         let needs = store.needsYou
         let waitingIDs = Set(needs.map(\.id))
-        // The strongest first: more checks that say built, then the older find.
-        let order: (Candidate, Candidate) -> Bool = { a, b in a.agreement != b.agreement ? a.agreement > b.agreement : a.id < b.id }
-        let best = Array((needs.sorted(by: order) + all.filter { !waitingIDs.contains($0.id) }.sorted(by: order)).prefix(4))
+        let best = store.strongest(4, first: waitingIDs)
         let decided = all.filter { !$0.waiting }.count
         let parts = ["\(needs.count) need\(needs.count == 1 ? "s" : "") you", "\(store.toAgree.count) to agree with",
                      "\(store.onMap) kept on the map", "\(decided) decided"]
@@ -372,10 +368,9 @@ private struct FoundStrip: View {
                         .font(.system(size: 12 * Theme.scale)).foregroundStyle(waiting ? Theme.accent : Theme.dim).lineLimit(1)
                 }
             }
-            .padding(8).frame(maxWidth: .infinity, alignment: .leading).panel()
-            .contentShape(Rectangle())
+            .padding(8).frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SurfaceButton())
         .accessibilityLabel("\(c.id), \(c.name), rank \(c.rank), \(waiting ? "needs you" : c.statusLabel)")
     }
 }

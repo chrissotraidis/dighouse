@@ -80,6 +80,28 @@ struct CardButton: ButtonStyle {
     }
 }
 
+/// A card that is a button, on the shared surface: it lifts under the pointer and dips a little when pressed.
+struct SurfaceButton: ButtonStyle {
+    var radius: CGFloat = 14
+    func makeBody(configuration: Configuration) -> some View { Face(configuration: configuration, radius: radius) }
+
+    private struct Face: View {
+        let configuration: Configuration
+        let radius: CGFloat
+        @State private var hover = false
+
+        var body: some View {
+            configuration.label
+                .surface(hover: hover, radius: radius)
+                .scaleEffect(configuration.isPressed ? 0.985 : 1)
+                .contentShape(Rectangle())
+                .onHover { hover = $0 }
+                .animation(Motion.ease(0.14), value: hover)
+                .animation(Motion.ease(0.1), value: configuration.isPressed)
+        }
+    }
+}
+
 /// A square icon button that lights up on hover.
 struct IconButton: ButtonStyle {
     var size: CGFloat = 30
@@ -148,11 +170,22 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.line))
     }
 
+    /// A grouped surface: a soft shade from top to bottom and a hairline edge, so it reads as a raised surface rather
+    /// than a flat box. A card that is a button passes hover: it lifts a little, its edge warms and it casts a shadow.
+    func surface(hover: Bool = false, radius: CGFloat = 14) -> some View {
+        self
+            .background(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.ink.opacity(hover ? 0.085 : 0.055), Theme.ink.opacity(hover ? 0.05 : 0.022)],
+                                     startPoint: .top, endPoint: .bottom)))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .strokeBorder(hover ? Theme.tan.opacity(0.45) : Theme.line, lineWidth: 1))
+            .shadow(color: .black.opacity(hover ? 0.28 : 0), radius: hover ? 12 : 0, y: hover ? 4 : 0)
+            .offset(y: hover ? -1 : 0)
+    }
+
     /// A grouped surface with a hairline edge.
     func panel(padding: CGFloat = 0, radius: CGFloat = 14) -> some View {
-        self.padding(padding)
-            .background(RoundedRectangle(cornerRadius: radius).fill(Theme.ink.opacity(0.035)))
-            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.line))
+        self.padding(padding).surface(radius: radius)
     }
 }
 
@@ -310,7 +343,7 @@ struct IconTile: View {
     var body: some View {
         Glyph(name: name, size: size * 0.44, weight: .medium).foregroundStyle(Theme.tan)
             .frame(width: size, height: size)
-            .background(RoundedRectangle(cornerRadius: size * 0.27).fill(Theme.ink.opacity(0.07)))
+            .background(RoundedRectangle(cornerRadius: size * 0.32, style: .continuous).fill(Theme.tan.opacity(0.13)))
     }
 }
 
@@ -377,11 +410,27 @@ struct MarkdownText: View {
 
     private enum Block {
         case paragraph(AttributedString), heading(AttributedString), bullet(String, AttributedString), code(String), table([[AttributedString]])
+        /// Part of a long table: rows in columns of equal width, so the parts line up, and only the parts on screen are
+        /// laid out (a research record can list thousands of tiles in one table).
+        case tablePart([[AttributedString]], first: Bool)
     }
 
     /// Parsing is the slow part (a research record holds hundreds of table cells), and views are rebuilt often, so each
     /// text is parsed once and kept. The cache is emptied when it grows, which costs only a parse.
     @MainActor private static var cache: [String: [Block]] = [:]
+
+    /// Read a long file and parse it in the background, so opening it later is instant (a research record can run to
+    /// 12,000 lines, which took over half a second to parse).
+    @MainActor static func warm(_ path: String) {
+        Task.detached(priority: .utility) {
+            guard let text = try? String(contentsOfFile: path, encoding: .utf8), text.count > 50_000 else { return }
+            let made = parse(text)
+            await MainActor.run {
+                if cache.count > 300 { cache.removeAll() }
+                cache[text] = made
+            }
+        }
+    }
 
     @MainActor private static func parsed(_ text: String) -> [Block] {
         if let hit = cache[text] { return hit }
@@ -391,14 +440,22 @@ struct MarkdownText: View {
         return made
     }
 
-    private static func parse(_ text: String) -> [Block] {
+    nonisolated private static func parse(_ text: String) -> [Block] {
         var out: [Block] = []
         var paragraph: [String] = []
         var code: [String]?
         var table: [[String]] = []
         func flush() {
             if !paragraph.isEmpty { out.append(.paragraph(paragraph.joined(separator: " ").inlineMarkdown)); paragraph = [] }
-            if !table.isEmpty { out.append(.table(table.map { $0.map(\.inlineMarkdown) })); table = [] }
+            if !table.isEmpty {
+                let rows = table.map { $0.map(\.inlineMarkdown) }
+                if rows.count <= 40 { out.append(.table(rows)) } else {
+                    for start in stride(from: 0, to: rows.count, by: 25) {
+                        out.append(.tablePart(Array(rows[start..<min(start + 25, rows.count)]), first: start == 0))
+                    }
+                }
+                table = []
+            }
         }
         var lastBullet: (String, String)?
         for raw in text.components(separatedBy: "\n") {
@@ -480,6 +537,21 @@ struct MarkdownText: View {
                     }
                     .padding(.horizontal, 12).frame(maxWidth: .infinity, alignment: .leading)
                     .panel(radius: 10)
+                case .tablePart(let rows, let first):
+                    VStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                            if index > 0 || !first { Hairline() }
+                            HStack(alignment: .top, spacing: 14) {
+                                ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
+                                    Text(cell).font(.system(size: 13 * Theme.scale, weight: first && index == 0 ? .semibold : .regular))
+                                        .foregroundStyle(first && index == 0 ? Theme.text : Theme.dim)
+                                        .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.top, first ? 0 : -10)
                 }
             }
         }

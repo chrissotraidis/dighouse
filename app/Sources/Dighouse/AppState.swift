@@ -513,6 +513,7 @@ final class AppState: ObservableObject {
               let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON else { return }
         if store.current?.path == path {
             store.screenedBefore = info["handed_over"] as? Bool == true ? info["screened_before"] as? Int ?? 0 : nil
+            MarkdownText.warm(path + "/RESEARCH.md")
         }
     }
 
@@ -741,7 +742,7 @@ final class AppState: ObservableObject {
         if store.isBlindTest, let root = store.current?.path, FileManager.default.fileExists(atPath: root + "/private/state/score.json") { return nil }
         let order = store.status.tiles == 0 ? ["terrain"] : ["screen", "check", "second", "prior", "decide"]
         // Once every find has been decided, the search is done; nothing is next.
-        if !store.candidates.isEmpty, store.candidates.allSatisfy({ $0.status != "flagged" && $0.status != "ground_confirmed" }) { return nil }
+        if !store.candidates.isEmpty, store.tally.open == 0 { return nil }
         return order.compactMap { id in ToolGuide.workflows.first { $0.id == id } }.first { state(of: $0).ready }
     }
 
@@ -888,27 +889,26 @@ final class AppState: ObservableObject {
         guard flow.scope == .project else { return (true, "") }
         guard store.current != nil else { return (false, "Needs a project") }
         if flow.id == "full", runningSearch != nil { return (false, "Running now") }
-        let s = store.status, all = store.candidates
-        let open = all.filter { $0.status == "flagged" || $0.status == "ground_confirmed" }
+        let s = store.status, all = store.candidates, t = store.tally
         func count(_ n: Int, _ noun: String) -> String { n == 0 ? "Done" : "\(n) \(noun)" }
         switch flow.id {
         case "terrain": return (true, s.tiles > 0 ? "Done" : "")
         case "screen": return (s.unscreened > 0, s.tiles == 0 ? "Needs the ground" : count(s.unscreened, "tiles left"))
         case "check":
-            let n = open.filter { $0.checks["section"] == nil || $0.checks["modern"] == nil }.count
+            let n = t.toCheck
             return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to check"))
         case "second":
-            let n = open.filter { $0.checks["second_look"] == nil }.count
+            let n = t.toAsk
             if n > 0, secondOpinionModels.isEmpty, secondModelID != nil { return (false, "No second model answers") }
             return (n > 0 && !secondOpinionModels.isEmpty, all.isEmpty ? "Needs finds" : secondOpinionModels.isEmpty ? "Choose a second model" : count(n, "to ask"))
         case "prior":
-            let n = open.filter { $0.sources.isEmpty }.count
+            let n = t.toSearch
             return (n > 0, all.isEmpty ? "Needs finds" : count(n, "to search"))
         case "decide":
-            let unprepared = open.filter { $0.suggestion == nil && !$0.inLayer }.count   // finds kept on the map need no suggestion
-            return (unprepared > 0, all.isEmpty ? "Needs finds" : open.isEmpty ? "All decided" : unprepared == 0 ? "Prepared" : "\(unprepared) to prepare")
+            let unprepared = t.unprepared   // finds kept on the map need no suggestion
+            return (unprepared > 0, all.isEmpty ? "Needs finds" : t.open == 0 ? "All decided" : unprepared == 0 ? "Prepared" : "\(unprepared) to prepare")
         case "report":
-            let n = all.filter { $0.status == "no_match_in_sources_read" }.count
+            let n = t.reportReady
             return (n > 0, n == 0 ? "Needs a decided find" : "\(n) ready")
         default: return (true, "")
         }

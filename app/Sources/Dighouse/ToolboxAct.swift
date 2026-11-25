@@ -92,8 +92,7 @@ private struct StepCard: View {
             }
         }
         .padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.06 : 0.035)))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line))
+        .surface()
         .onHover { hover = $0 }
         .animation(.easeOut(duration: 0.12), value: hover)
         .accessibilityElement(children: .combine)

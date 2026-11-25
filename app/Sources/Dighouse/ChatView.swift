@@ -704,8 +704,17 @@ struct StartTile: View {
                 }
             }
             .padding(strong ? 18 : 14).frame(maxWidth: .infinity, minHeight: strong ? 0 : 118, maxHeight: strong ? nil : .infinity, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.ink.opacity(hover ? 0.08 : strong ? 0.055 : 0.035)))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(strong ? Theme.tan.opacity(hover ? 0.9 : 0.5) : hover ? Theme.ink.opacity(0.22) : Theme.line))
+            // The main card carries a warm wash and a tan edge; every card lifts under the pointer.
+            .background {
+                if strong {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(LinearGradient(colors: [Theme.tan.opacity(0.12), Theme.tan.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+            }
+            .overlay {
+                if strong { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.tan.opacity(hover ? 0.85 : 0.45)) }
+            }
+            .surface(hover: hover)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -11,9 +11,39 @@ final class ProjectStore: ObservableObject {
     @Published var current: ProjectRef?
     @Published var terrains: [Terrain] = []
     @Published var tiles: [Tile] = []
-    @Published var candidates: [Candidate] = []
+    @Published var candidates: [Candidate] = [] { didSet { recount() } }
     /// Sources logged for the project as a whole, such as a survey's metadata or a search that found nothing of use.
-    @Published var projectSources: [Source] = []
+    @Published var projectSources: [Source] = [] { didSet { recount() } }
+
+    /// Counts the pages ask for on every redraw, made once whenever the finds are read: counting 8,065 finds five
+    /// times a redraw, each reading its checks, took a good part of a second.
+    struct Tally {
+        var open = 0, toCheck = 0, toAsk = 0, toSearch = 0, unprepared = 0, reportReady = 0
+        var checked = 0, seconded = 0, sourced = 0
+    }
+    private(set) var tally = Tally()
+    /// Every source the project logged, each title once: those on its records first, then those for the whole project.
+    private(set) var allSources: [Source] = []
+
+    private func recount() {
+        var t = Tally()
+        for c in candidates {
+            let section = c.checks["section"] != nil, modern = c.checks["modern"] != nil, second = c.checks["second_look"] != nil
+            if section && modern { t.checked += 1 }
+            if second { t.seconded += 1 }
+            if !c.sources.isEmpty { t.sourced += 1 }
+            if c.status == "no_match_in_sources_read" { t.reportReady += 1 }
+            guard c.waiting else { continue }
+            t.open += 1
+            if !section || !modern { t.toCheck += 1 }
+            if !second { t.toAsk += 1 }
+            if c.sources.isEmpty { t.toSearch += 1 }
+            if c.suggestion == nil && !c.inLayer { t.unprepared += 1 }
+        }
+        tally = t
+        var seen = Set<String>()
+        allSources = (candidates.flatMap(\.sources) + projectSources).filter { seen.insert($0.title).inserted }
+    }
     @Published var status = RunStatus()
     @Published var selectedTile: String?
     @Published var selectedCandidate: String?
@@ -311,10 +341,25 @@ final class ProjectStore: ObservableObject {
         if let data = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(data, forKey: "projects") }
     }
 
-    private func load(_ root: String, _ records: [String]) {
-        followName(root)
+    /// The strongest finds, the ones that wait for a person first, then by how many checks say built, then the oldest:
+    /// picked in one pass over light keys, since sorting thousands of whole finds on every redraw took over a second.
+    func strongest(_ n: Int, among finds: [Candidate]? = nil, first: Set<String> = []) -> [Candidate] {
+        let pool = finds ?? candidates
+        let keys = pool.indices.map { i in (first: first.contains(pool[i].id) ? 0 : 1, strength: -pool[i].agreement, id: pool[i].id, i: i) }
+        return keys.sorted { ($0.first, $0.strength, $0.id) < ($1.first, $1.strength, $1.id) }.prefix(n).map { pool[$0.i] }
+    }
+
+    /// What a project's folder holds, read without touching the window, so a large project can be read in the background.
+    struct Snapshot: Sendable {
+        var terrains: [Terrain] = [], tiles: [Tile] = [], candidates: [Candidate] = [], sources: [Source] = []
+    }
+    private var reading: Task<Void, Never>?
+
+    nonisolated static func read(_ root: String, _ records: [String]) -> Snapshot {
+        func json(_ path: String) -> Any? { FileManager.default.contents(atPath: path).flatMap { try? JSONSerialization.jsonObject(with: $0) } }
+        var out = Snapshot()
         let terrainState = json(root + "/private/state/terrains.json") as? [String: JSON] ?? [:]
-        terrains = terrainState.map { id, t in
+        out.terrains = terrainState.map { id, t in
             Terrain(id: id, dataset: t["dataset"] as? String ?? "", areaKm2: t["area_km2"] as? Double ?? 0,
                     groundPerM2: t["ground_points_per_m2"] as? Double ?? 0, res: t["res"] as? Double ?? 0.5,
                     box: (t["box"] as? [Double]) ?? [], epsg: t["epsg"] as? Int ?? 0,
@@ -322,16 +367,39 @@ final class ProjectStore: ObservableObject {
                     file: t["file"] as? String ?? "", points: t["points"] as? String,
                     area: t["area"] as? String, lonlat: (t["lonlat"] as? [Double]) ?? [])
         }.sorted { $0.id < $1.id }
-
         let tileState = json(root + "/private/state/tiles.json") as? [String: JSON] ?? [:]
-        tiles = tileState.compactMap { id, t in
+        out.tiles = tileState.compactMap { id, t in
             guard let w = t["window"] as? [Int], w.count == 4 else { return nil }
             return Tile(id: id, terrain: t["terrain"] as? String ?? "", row: w[0], col: w[1], rows: w[2], cols: w[3],
                         status: t["status"] as? String ?? "", verdict: t["verdict"] as? String,
                         note: t["note"] as? String, model: t["model"] as? String)
         }.sorted { $0.id < $1.id }
+        out.candidates = readCandidates(root, records)
+        out.sources = readProjectSources(root)
+        return out
+    }
 
-        candidates = Self.readCandidates(root, records)
+    /// Read the open project. A small one is read at once; a large one (a sweep leaves thousands of finds, and reading
+    /// 8,065 took 1.4 s) is read in the background while the window keeps answering, and shown when it is ready.
+    private func load(_ root: String, _ records: [String]) {
+        followName(root)
+        reading?.cancel()
+        guard records.count > 400 else { apply(root, Self.read(root, records)); return }
+        if knownRoot != root { terrains = []; tiles = []; candidates = []; projectSources = [] }
+        reading = Task.detached(priority: .userInitiated) { [weak self] in
+            let snapshot = Self.read(root, records)
+            guard !Task.isCancelled else { return }
+            await MainActor.run { [weak self] in
+                guard let self, self.current?.path == root else { return }
+                self.apply(root, snapshot)
+            }
+        }
+    }
+
+    private func apply(_ root: String, _ snapshot: Snapshot) {
+        terrains = snapshot.terrains
+        tiles = snapshot.tiles
+        candidates = snapshot.candidates
         // Finds that were not there at the last reading of the same project arrive on the map with a pulse.
         let ids = Set(candidates.map(\.id))
         if knownRoot == root {
@@ -348,7 +416,7 @@ final class ProjectStore: ObservableObject {
         }
         knownRoot = root
         known = ids
-        projectSources = Self.readProjectSources(root)
+        projectSources = snapshot.sources
         // Until the tools answer with the run status, the header counts what was just read: a large project took a few
         // seconds and showed "Ground ready, not cut into tiles · 1 find" meanwhile.
         if status.tiles == 0, status.candidates == 0 {
@@ -372,11 +440,6 @@ final class ProjectStore: ObservableObject {
         }
     }
 
-    /// Every source the project logged, each title once: those on its records first, then those for the whole project.
-    var allSources: [Source] {
-        var seen = Set<String>()
-        return (candidates.flatMap(\.sources) + projectSources).filter { seen.insert($0.title).inserted }
-    }
 
     /// The measured rises kept on the map rather than put to a person. The same rule as ledger.layer in the tools:
     /// a rise goes to a person when the second model calls it built and its shape ranks in the top half of this
@@ -449,7 +512,10 @@ final class ProjectStore: ObservableObject {
             return c
         }
         let kept = Self.layer(found)
-        for i in found.indices where kept.contains(found[i].id) { found[i].inLayer = true }
+        for i in found.indices {
+            if kept.contains(found[i].id) { found[i].inLayer = true }
+            found[i].settle()
+        }
         return found
     }
 
