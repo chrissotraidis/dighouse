@@ -203,7 +203,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 
 ## The open-concerns loop (OPEN_LOOP, started 2026-11-25)
 
-[OPEN_LOOP.md](OPEN_LOOP.md) works through the review below. Done so far: O1 to O6 in `Basics.swift`: `Awake` (an activity while `AppState.working`), `Notify` (asked once, said only when Dighouse is behind), `Updates` (GitHub's latest release, once a day, `-fakeLatest` to see the line), `DiskUse` and `DiskUseRow` (Data and keys; frees only cache points with one link), `ProblemReport` (a filled new-issue page, `clean` takes out coordinates), and GETTING_STARTED's Which account.
+[OPEN_LOOP.md](OPEN_LOOP.md) works through the review below. Done so far: O1 to O6 in `Basics.swift`: `Awake` (an activity while `AppState.working`), `Notify` (asked once, said only when Dighouse is behind), `Updates` (GitHub's latest release, once a day, `-fakeLatest` to see the line), `DiskUse` and `DiskUseRow` (Data and keys; frees only cache points with one link), `ProblemReport` (a filled new-issue page, `clean` takes out coordinates), and GETTING_STARTED's Which account. O7 and O8: `ProjectStore.Lead` (three per project, kept with the glances), Home's The strongest leads (`WelcomeBack.strongest`), `AppState.decide(in:on:limit:)`, and Decide's short session (`decideLimit`, `short`, `shown` for The next 20).
 
 ## What is missing (review, 2026-11-25)
 

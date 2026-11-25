@@ -27,6 +27,10 @@ struct DecideView: View {
     @State private var step = Step.needs
     /// Fixed when Decide opens, so a decision does not reorder what is left.
     @State private var needs: [String] = []
+    /// A short session's size: only the strongest finds that need a person, and nothing in bulk.
+    @State private var short: Int?
+    /// Finds an earlier short session in this sitting already put to the person, so the next one starts after them.
+    @State private var shown = Set<String>()
     @State private var bulk: [String] = []
     @State private var index = 0
     @State private var unticked = Set<String>()
@@ -79,12 +83,22 @@ struct DecideView: View {
         let tutorial = app.tutorialOn && app.tutorialProject == store.current?.path
         needs = waiting.filter { tutorial || !$0.group.confirmable }.map(\.id)
         bulk = tutorial ? [] : waiting.filter { $0.group.confirmable }.map(\.id)
+        let limit = app.decideLimit
+        short = limit
+        app.decideLimit = nil
+        if let limit {
+            let strongest = waiting.filter { (tutorial || !$0.group.confirmable) && !shown.contains($0.id) }
+                .sorted { $0.agreement != $1.agreement ? $0.agreement > $1.agreement : order($0, $1) }
+            needs = strongest.prefix(limit).map(\.id)
+            bulk = []
+        }
         if let focus = app.decideFocus {
             needs.removeAll { $0 == focus }
             bulk.removeAll { $0 == focus }
             needs.insert(focus, at: 0)
             app.decideFocus = nil
         }
+        if let limit { needs = Array(needs.prefix(limit)) }
         index = 0
         step = !needs.isEmpty ? .needs : !bulk.isEmpty ? .bulk : .done
     }
@@ -94,6 +108,9 @@ struct DecideView: View {
     private var header: some View {
         HStack(spacing: 14) {
             Text("Decide").font(.system(size: 17 * Theme.scale, weight: .semibold))
+            if let short {
+                Text("The strongest \(short)").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+            }
             if !store.isBlindTest {
                 HStack(spacing: 4) {
                     stepButton(.needs, "Needs you", needsLeft)
@@ -154,7 +171,16 @@ struct DecideView: View {
             }
         } else {
             VStack(spacing: 16) {
-                if !bulkLeft.isEmpty {
+                if let short {
+                    // A short session ends with what is left, not "nothing waits": the rest of the project still does.
+                    let left = store.needsYou.filter { $0.waiting && !needs.contains($0.id) && !shown.contains($0.id) }.count
+                    message("That was the strongest \(needs.count)." + (left > 0 ? " \(left) more need\(left == 1 ? "s" : "") you." : ""),
+                            button: left > 0 ? ("The next \(min(short, left))", {
+                                shown.formUnion(needs)
+                                app.decideLimit = short
+                                start()
+                            }) : ("Close", { dismiss() }))
+                } else if !bulkLeft.isEmpty {
                     message("Nothing more needs you one at a time. \(bulkLeft.count) routine find\(bulkLeft.count == 1 ? "" : "s") to agree with.",
                             button: ("Agree in bulk", { step = .bulk }))
                 } else {

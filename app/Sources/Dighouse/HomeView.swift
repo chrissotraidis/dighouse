@@ -457,6 +457,7 @@ private struct WelcomeBack: View {
         var project: ProjectRef?
         var session: (text: String, foot: String)?
         var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = []
+        var leads: [(ref: ProjectRef, lead: ProjectStore.Lead)] = []
     }
     @State private var waiting = WelcomeBack.last.waiting
     @State private var totals = WelcomeBack.last.totals
@@ -464,6 +465,8 @@ private struct WelcomeBack: View {
     @State private var session: (text: String, foot: String)? = WelcomeBack.last.session
     /// Projects with finds that wait for a person, most first: the inbox across projects.
     @State private var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = WelcomeBack.last.inbox
+    /// The strongest finds that wait for a person, across projects: where to spend ten minutes.
+    @State private var leads: [(ref: ProjectRef, lead: ProjectStore.Lead)] = WelcomeBack.last.leads
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -485,6 +488,36 @@ private struct WelcomeBack: View {
                     .arrives()
                     .padding(.bottom, inbox.isEmpty ? 22 : 12)
             }
+            if !leads.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("The strongest leads").font(.system(size: 14 * Theme.scale, weight: .semibold))
+                        Text("The finds most checks agree on, from every project. Look opens Decide on its project's strongest \(AppState.shortSession).")
+                            .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                    }
+                    VStack(spacing: 0) {
+                        ForEach(Array(leads.enumerated()), id: \.element.lead.id) { i, row in
+                            if i > 0 { Hairline() }
+                            HStack(spacing: 10) {
+                                Text(row.lead.rank).font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(Theme.bg)
+                                    .frame(width: 20, height: 20).background(Circle().fill(row.lead.agreement >= 3 ? Theme.green : Theme.tan))
+                                    .help("Rank \(row.lead.rank): \(row.lead.agreement) of 3 checks say built")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(row.lead.id) \(row.lead.name)").font(.system(size: 13 * Theme.scale, weight: .medium)).lineLimit(1)
+                                    Text(row.ref.name).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
+                                }
+                                Spacer(minLength: 8)
+                                Button("Look") { app.decide(in: row.ref, on: row.lead.id, limit: AppState.shortSession) }
+                                    .buttonStyle(SecondaryButton())
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                        }
+                    }
+                    .panel()
+                }
+                .arrives()
+                .padding(.bottom, 16)
+            }
             if !inbox.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Waiting for you").font(.system(size: 14 * Theme.scale, weight: .semibold))
@@ -497,13 +530,7 @@ private struct WelcomeBack: View {
                                 Text([row.needs > 0 ? "\(row.needs) need\(row.needs == 1 ? "s" : "") you" : nil, row.agree > 0 ? "\(row.agree) to agree with" : nil]
                                     .compactMap { $0 }.joined(separator: " · "))
                                     .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                                Button("Decide") {
-                                    app.open(row.ref)
-                                    Task { @MainActor in
-                                        try? await Task.sleep(for: .milliseconds(400))   // let the project load first
-                                        app.openDecide()
-                                    }
-                                }
+                                Button("Decide") { app.decide(in: row.ref) }
                                 .buttonStyle(SecondaryButton())
                             }
                             .padding(.horizontal, 14).padding(.vertical, 8)
@@ -551,6 +578,24 @@ private struct WelcomeBack: View {
                 ends.hasSuffix(".") ? ends : ends + ".")
     }
 
+    /// The strongest leads across projects: most agreement first, then in the order of the projects, at most two from
+    /// one project and five in all.
+    nonisolated static func strongest(_ refs: [ProjectRef], _ all: [ProjectStore.Glance], skipping blind: Set<String>)
+        -> [(ref: ProjectRef, lead: ProjectStore.Lead)] {
+        var rows: [(ref: ProjectRef, lead: ProjectStore.Lead, order: Int)] = []
+        for (ref, glance) in zip(refs, all) where !blind.contains(ref.path) {
+            for lead in glance.leads { rows.append((ref, lead, rows.count)) }
+        }
+        rows.sort { a, b in a.lead.agreement != b.lead.agreement ? a.lead.agreement > b.lead.agreement : a.order < b.order }
+        var perProject: [String: Int] = [:]
+        var out: [(ref: ProjectRef, lead: ProjectStore.Lead)] = []
+        for row in rows where out.count < 5 {
+            perProject[row.ref.path, default: 0] += 1
+            if perProject[row.ref.path]! <= 2 { out.append((row.ref, row.lead)) }
+        }
+        return out
+    }
+
     private func read() async {
         let began = Date()
         defer { Perf.log("Home read \(store.projects.count) projects in \(Int(Date().timeIntervalSince(began) * 1000)) ms") }
@@ -571,6 +616,7 @@ private struct WelcomeBack: View {
         inbox = zip(refs, all).filter { !blind.contains($0.0.path) && $0.1.needsYou + $0.1.toAgree > 0 }
             .map { (ref: $0.0, needs: $0.1.needsYou, agree: $0.1.toAgree) }
             .sorted { $0.needs * 10 + $0.agree > $1.needs * 10 + $1.agree }
+        leads = Self.strongest(refs, all, skipping: blind)
         func count(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
         project = last
         let test = FileManager.default.fileExists(atPath: last.path + "/private/state/test.json")
@@ -586,7 +632,7 @@ private struct WelcomeBack: View {
         let finds = all.reduce(0) { $0 + $1.finds }
         let decided = finds - all.reduce(0) { $0 + $1.undecided }
         totals = "\(count(all.count, "project")) · \(count(finds, "find")) · \(decided) decided"
-        Self.last = Reading(waiting: waiting, totals: totals, project: project, session: session, inbox: inbox)
+        Self.last = Reading(waiting: waiting, totals: totals, project: project, session: session, inbox: inbox, leads: leads)
     }
 }
 

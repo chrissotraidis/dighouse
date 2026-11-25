@@ -268,12 +268,19 @@ final class ProjectStore: ObservableObject {
         return projects.max { written($0) < written($1) }
     }
 
-    typealias Glance = (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int)
+    typealias Glance = (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int, leads: [Lead])
+
+    /// One of a project's strongest finds that wait for a person, for Home's short list.
+    struct Lead: Codable, Sendable, Hashable {
+        var id: String, name: String, agreement: Int
+        var rank: String { agreement >= 3 ? "A" : agreement == 2 ? "B" : "C" }
+    }
 
     /// What glance found for a project, kept with a mark of its files' last changes.
     private struct Kept: Codable, Sendable {
         var mark: String
         var counts: [Int]
+        var leads: [Lead]?
     }
 
     /// Where the glances are kept between launches.
@@ -285,21 +292,21 @@ final class ProjectStore: ObservableObject {
         // The version is in the key, so a new build that counts differently reads everything again.
         let version = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         var kept = (try? JSONDecoder().decode([String: Kept].self, from: Data(contentsOf: file))) ?? [:]
-        var out = [Glance](repeating: (0, 0, 0, 0, 0, 0), count: roots.count)
+        var out = [Glance](repeating: (0, 0, 0, 0, 0, 0, []), count: roots.count)
         var changed = false
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: roots.count) { i in
             let root = roots[i], mark = version + "|" + glanceMark(root)
             lock.lock(); let hit = kept[root]; lock.unlock()
-            if let hit, hit.mark == mark, hit.counts.count == 6 {
+            if let hit, hit.mark == mark, hit.counts.count == 6, let leads = hit.leads {
                 let c = hit.counts
-                lock.lock(); out[i] = (c[0], c[1], c[2], c[3], c[4], c[5]); lock.unlock()
+                lock.lock(); out[i] = (c[0], c[1], c[2], c[3], c[4], c[5], leads); lock.unlock()
                 return
             }
             let g = glance(root)
             lock.lock()
             out[i] = g
-            kept[root] = Kept(mark: mark, counts: [g.tiles, g.unscreened, g.finds, g.undecided, g.needsYou, g.toAgree])
+            kept[root] = Kept(mark: mark, counts: [g.tiles, g.unscreened, g.finds, g.undecided, g.needsYou, g.toAgree], leads: g.leads)
             changed = true
             lock.unlock()
         }
@@ -320,15 +327,19 @@ final class ProjectStore: ObservableObject {
     }
 
     /// What a project holds, read from its folder without opening it.
-    nonisolated static func glance(_ root: String) -> (tiles: Int, unscreened: Int, finds: Int, undecided: Int, needsYou: Int, toAgree: Int) {
+    nonisolated static func glance(_ root: String) -> Glance {
         let fm = FileManager.default
         let tiles = (fm.contents(atPath: root + "/private/state/tiles.json").flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: JSON] ?? [:]).values
         let records = ((try? fm.contentsOfDirectory(atPath: root + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
         let finds = readCandidates(root, records)
         let test = fm.fileExists(atPath: root + "/private/state/test.json")
-        let needs = test ? 0 : finds.filter { [.closer, .lookAgain, .open].contains($0.group) }.count
+        let waiting = test ? [] : finds.filter { [.closer, .lookAgain, .open].contains($0.group) }
         let agree = test ? 0 : finds.filter { $0.group.confirmable }.count
-        return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, finds.count, finds.filter(\.waiting).count, needs, agree)
+        // The three most checks agree on, the lowest number first among equals.
+        let leads = waiting.sorted { $0.agreement != $1.agreement ? $0.agreement > $1.agreement : $0.id < $1.id }
+            .prefix(3).map { Lead(id: $0.id, name: $0.name, agreement: $0.agreement) }
+        return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, finds.count, finds.filter(\.waiting).count,
+                waiting.count, agree, leads)
     }
 
     /// The finds a person decides one at a time: leads, disagreements, and finds with no suggestion. The one count

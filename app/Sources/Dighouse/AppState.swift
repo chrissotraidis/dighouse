@@ -87,6 +87,8 @@ final class AppState: ObservableObject {
     @Published var reviewing = false
     /// The find Decide opens on, when it is opened from that find's record.
     @Published var decideFocus: String?
+    /// How many finds a Decide session holds, when it is a short one.
+    @Published var decideLimit: Int?
     @Published var starting = true
     @Published var sidebarVisible = true
     @Published var sidebarPeek = false
@@ -1184,9 +1186,27 @@ final class AppState: ObservableObject {
     }
 
     /// Open Decide, on one find when it is given.
-    func openDecide(on id: String? = nil) {
+    func openDecide(on id: String? = nil, limit: Int? = nil) {
         decideFocus = id
+        decideLimit = limit
         reviewing = true
+    }
+
+    /// A short Decide session: the strongest twenty finds that need a person.
+    static let shortSession = 20
+
+    /// Open a project, and Decide on it once its finds are read: a large project is read in the background, and
+    /// Decide opened before that said nothing waited.
+    func decide(in project: ProjectRef, on id: String? = nil, limit: Int? = nil) {
+        open(project)
+        Task { @MainActor in
+            for _ in 0..<150 {
+                if store.current?.path == project.path, !store.candidates.isEmpty, id == nil || store.candidate(id) != nil { break }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            guard store.current?.path == project.path else { return }
+            openDecide(on: id, limit: limit)
+        }
     }
 
     /// Finds whose close views are being drawn now, so each is asked for once.

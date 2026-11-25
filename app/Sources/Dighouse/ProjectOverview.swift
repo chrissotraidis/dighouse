@@ -148,7 +148,11 @@ struct ProjectOverview: View {
                                           : "Look at each find and decide what it is.",
                           after: "About \(store.decideMinutes) minute\(store.decideMinutes == 1 ? "" : "s"). Nothing is final until you decide."
                             + (store.onMap > 0 ? " \(store.onMap) find\(store.onMap == 1 ? " stays" : "s stay") on the map." : ""),
-                          icon: "dig.brush", label: "Decide") { app.openDecide() }
+                          icon: "dig.brush", label: "Decide", action: { app.openDecide() },
+                          other: store.needsYou.count > AppState.shortSession
+                            ? ("The strongest \(AppState.shortSession)", "Decide only the \(AppState.shortSession) finds most checks agree on, then stop.",
+                               { app.openDecide(limit: AppState.shortSession) })
+                            : nil)
         // The second model refuses: asking again would fail the same way, so the card says why and offers the way out.
         if let refusal = app.refusedSecondModel, app.secondOpinionModels.isEmpty, open.contains(where: { $0.checks["second_look"] == nil }), app.chat.live.isEmpty,
            app.nextStep == nil || app.nextStep?.id == "decide" {
@@ -330,6 +334,14 @@ private struct FoundStrip: View {
                         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
+                if !needs.isEmpty {
+                    let n = min(AppState.shortSession, needs.count)
+                    Button { app.openDecide(limit: AppState.shortSession) } label: {
+                        Label { Text("Decide the strongest \(n)") } icon: { Glyph(name: "dig.brush", size: 12 * Theme.scale) }
+                    }
+                        .buttonStyle(SecondaryButton())
+                        .help("The \(n) finds most checks agree on, one at a time, then stop. Ten minutes or so.")
+                }
                 Button { app.tab = .map; app.route = .chat; if app.layout == .chat { app.layout = .split } } label: {
                     Label("On the map", systemImage: "map")
                 }
