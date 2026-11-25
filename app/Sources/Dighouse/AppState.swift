@@ -219,8 +219,8 @@ final class AppState: ObservableObject {
             let old = secondModelID
             if let next = ModelInfo.secondOpinionOrder.first(where: { id in engine.models.contains { $0.id == id && $0.readsImages } }) {
                 secondModelID = next
-                notes.append((old.map { "The second opinion model \($0) is no longer offered" } ?? "No second opinion model was chosen")
-                             + ", so Dighouse chose \(secondModelName). You can change it here.")
+                // A first choice on a new Mac is the default, not news; only a model that went away is said.
+                if let old { notes.append("The second opinion model \(old) is no longer offered, so Dighouse chose \(secondModelName). You can change it here.") }
             }
         }
         recentModels.removeAll { !offered.contains($0) || ModelInfo.unsupported($0) }

@@ -244,7 +244,18 @@ final class Engine: ObservableObject {
 
     /// Sign the engine in with an OpenAI API key, for a person without a ChatGPT plan. Each request is billed to the key.
     func signIn(apiKey: String) async throws {
-        _ = try await request("account/login/start", ["type": "apiKey", "apiKey": apiKey.trimmingCharacters(in: .whitespacesAndNewlines)])
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The engine takes any text as a key, so ask OpenAI first: a mistyped key should fail here, not at the first search.
+        var check = URLRequest(url: URL(string: "https://api.openai.com/v1/models")!)
+        check.setValue("Bearer " + key, forHTTPHeaderField: "Authorization")
+        check.timeoutInterval = 15
+        let status: Int
+        do { status = ((try await URLSession.shared.data(for: check)).1 as? HTTPURLResponse)?.statusCode ?? 0 }
+        catch { throw EngineError(message: "Could not reach OpenAI to check the key: \(error.localizedDescription)") }
+        guard status == 200 else {
+            throw EngineError(message: status == 401 ? "OpenAI did not accept the key. Check it and paste it again." : "OpenAI answered \(status) when the key was checked.")
+        }
+        _ = try await request("account/login/start", ["type": "apiKey", "apiKey": key])
         guard let acct = (try await request("account/read"))["account"] as? JSON else { throw EngineError(message: "The engine did not take the key.") }
         account = Self.who(acct)
         plan = nil

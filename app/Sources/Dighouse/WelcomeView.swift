@@ -351,9 +351,10 @@ struct APIKeySignIn: View {
                         .buttonStyle(SecondaryButton()).disabled(key.trimmingCharacters(in: .whitespaces).count < 20)
                     }
                 }
-                Text(problem ?? "Each request is billed to the key, so there is no plan limit to run into. The engine keeps the key the way Codex does, in a file only you can read.")
+                Text(problem ?? "Each request is billed to the key, so there is no plan limit to run into. The key is checked with OpenAI, then kept the way Codex keeps it, in a file only you can read.")
                     .font(.system(size: 12 * Theme.scale)).foregroundStyle(problem == nil ? Theme.faint : Theme.amber).fixedSize(horizontal: false, vertical: true)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
