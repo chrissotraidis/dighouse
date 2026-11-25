@@ -5,14 +5,13 @@
 <h1 align="center">Dighouse</h1>
 
 <p align="center">
-  <strong>Search public lidar for possible built features, check each one, and record what is already published.</strong><br>
-  You decide what they are.
+  <strong>An AI agent that searches open lidar for mounds, hillforts and other earthworks, and checks every find before you decide.</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/chrissotraidis/dighouse/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/chrissotraidis/dighouse?label=release&color=8B5E3C"></a>
   <img alt="macOS 14 or later on Apple silicon" src="https://img.shields.io/badge/macOS%2014%2B-Apple%20silicon-0A84FF?logo=apple">
-  <img alt="64 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-64%20tools-8B5E3C">
+  <img alt="65 tools over the Model Context Protocol" src="https://img.shields.io/badge/MCP-65%20tools-8B5E3C">
   <img alt="Free to use" src="https://img.shields.io/badge/price-free-30D158">
   <img alt="Site locations stay on your Mac" src="https://img.shields.io/badge/site%20locations-stay%20on%20your%20Mac-30D158">
   <img alt="No analytics" src="https://img.shields.io/badge/analytics-none-30D158">
@@ -34,12 +33,16 @@
 
 <sub>A search at Angel Mounds, Indiana, from open USGS lidar: 9 tiles looked at, 5 finds marked, each one sliced, given a second model's opinion and searched in the literature.</sub>
 
-Lidar is a laser scan from an aircraft that maps the ground through gaps in the trees, and a great deal of it is public. Most of it has never been searched for archaeology. Dighouse gives an AI model the tools to fetch that data, take the trees away, look over every square of ground, and check each thing it marks, then hands the decision to a person.
+The United States, Canada, much of Europe and New Zealand have flown lidar over their land and published it free. Lidar is a laser scan from an aircraft that reaches the ground through gaps in the trees, and on that bare ground the mounds, banks, ditches and old fields people left behind can still show. There is far more of it than anyone can look over by eye.
 
-A **find** in Dighouse is a shape that might be built and is not yet confirmed. Most finds on open lidar turn out to be published already, and a record that says so is a result too.
+Dighouse puts an AI agent to work on it. Pick a region, or let the agent choose one with open lidar and little on record. It downloads the ground, looks at every tile and marks what might be built. On a ready-made ground model it has looked over 65 km² of Ohio in an hour.
+
+In November 2026 Pietro Miotti's agents searched about 1,200 km² of NASA lidar overnight and marked a Maya site that turned out to be already published. Dighouse is built for the checking that comes after the marking. A slice through the laser points shows whether a find is in the ground, and a different model gives its own opinion without seeing the first one's. Open maps, and the site register where one is open, show whether it is modern or already recorded, and the agent searches the published literature for the area. Finds arrive ranked, with the evidence for and against each. You decide what each one is, and for a find worth reporting Dighouse drafts the letter to the records office for you to send.
+
+A **find** is a shape the agent marked that might be built. Most turn out to be modern, natural or already recorded, and a record that says which is a result too.
 
 > [!NOTE]
-> **This is an early release.** Dighouse finds large earthworks reliably and misses many small, low mounds. So far no find from a search has gone past "worth a closer look". The quickest way to see what it does is to run it on a known site and check its work against what is published.
+> **This is an early release.** Searching thirteen known sites blind, it found 67 of 105 published features ([Benchmarks](#benchmarks)). It finds large earthworks reliably and misses many small, low mounds. So far no find from a search has gone past "worth a closer look". The quickest way to see what it does is to run it on a known site and check its work against what is published.
 
 ## Download and set up
 
@@ -205,13 +208,11 @@ Measured rises are kept as a layer on the map and are not put to a person one by
 
 </details>
 
-## Why it exists
+## Why it needs its own tools
 
-In November 2026 Pietro Miotti let AI agents search about 1,200 km² of NASA lidar overnight, and they marked a Maya site. It turned out to be already published. Finding things was cheap. Checking them was the part that failed.
+A chat app can talk about archaeology, but it cannot download a survey, look at every tile of an area, cut a slice through the points, or keep a record that someone else can pick up. Given the Mound City blind test area with no tools, the same model that found 19 of 19 mounds there through Dighouse answered that it could not reliably identify, count or place any features from the coordinates alone.
 
-Dighouse is built around the check, and its tools refuse a status the evidence does not support. A chat app can talk about archaeology, but it cannot download a survey, look at every tile of an area, cut a slice through the points, or keep a record that someone else can pick up.
-
-We checked. Given the Mound City blind test box with no tools, the same model that found 19 of 19 mounds there through Dighouse answered that it could not reliably identify, count or place any features from the coordinates alone. That is the right answer for a chat app, and the reason the tools exist.
+The tools also refuse a status the evidence does not support, whichever model is running ([the rules](#rules-the-tools-enforce)).
 
 ## Questions people ask
 
@@ -242,7 +243,7 @@ Not yet. The app is for Macs with Apple silicon. The archaeology tools are plain
 <details>
 <summary><b>Which AI does it use?</b></summary>
 
-OpenAI's Codex engine, signed in with your ChatGPT account. Any model your account offers that can read images can run a search. The benchmarks used primary / 6.1 Terra, a low-cost one. With the [OpenCodex](https://github.com/lidge-jun/opencodex) router you can add models from other makers, so the second opinion on each find comes from a different company.
+OpenAI's Codex engine, signed in with your ChatGPT account or an OpenAI API key. Any model your account offers that can read images can run a search. The benchmarks used primary / 6.1 Terra, a low-cost one. With Claude Code, or the [OpenCodex](https://github.com/lidge-jun/opencodex) router, the second opinion on each find can come from a different company's model.
 </details>
 
 <details>
@@ -406,7 +407,7 @@ uv run python scripts/tidy.py        # free the space downloaded points take twi
 ### The tools
 
 <details>
-<summary><b>All 64 tools, by stage</b></summary>
+<summary><b>All 65 tools, by stage</b></summary>
 
 <br>
 
@@ -423,7 +424,7 @@ uv run python scripts/tidy.py        # free the space downloaded points take twi
 | Know what to look for | `feature_guide` |
 | Search what is published | `search_literature`, `read_source`, `view_source_page`, `log_source` |
 | Records and runs | `add_evidence`, `suggest_decision`, `set_status`, `list_candidates`, `run_status`, `write_summary`, `write_report`, `who_to_tell`, `document_project`, `export_finds`, `check_before_publishing` |
-| For the app, when a person decides | `decide_many`, `undo_decision`, `raise_rise`, `find_views`, `old_map_views` |
+| For the app, when a person decides | `decide_many`, `undo_decision`, `raise_rise`, `find_views`, `old_map_views`, `lead_progress` |
 | For the app, the second opinion | `opinion_pictures`, `ask_second_opinions`, `second_look_failed` |
 
 The ground is drawn as `composite`, `hillshade`, `local_relief` and `sky_view`. Tool names keep the project's older words (candidate, section, second look). `export_finds` writes GeoJSON for QGIS, ArcGIS or Google Earth, under `private/` because it holds coordinates.
