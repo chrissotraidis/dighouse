@@ -43,7 +43,7 @@ extension WorkspaceView {
         HStack(spacing: 4) {
             ForEach(WorkTab.allCases, id: \.self) { tab in
                 Button { app.tab = tab } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         if icons { Image(systemName: Self.icons[tab] ?? "circle") } else { Text(tab.rawValue) }
                         if let n = count(tab) { Text("\(n)").foregroundStyle(Theme.faint) }
                     }
@@ -394,7 +394,7 @@ struct MapView: View {
                          ?? "Drag a line across the ground, starting and ending on the ground around the shape.")
                         .font(.system(size: 12.5 * Theme.scale)).padding(.horizontal, 12).frame(height: 30)
                         .background(Capsule().fill(Theme.raised)).overlay(Capsule().strokeBorder(Theme.line))
-                        .padding(.top, 56)
+                        .padding(.top, 56)   // aligns under the map's controls
                 }
             }
             .task(id: style) { await render() }
@@ -424,7 +424,7 @@ struct MapView: View {
             if part != 2 { zoomAndStyle(short: short) }
             if part != 1 { overlays(short: short) }
         }
-        .padding(3).background(RoundedRectangle(cornerRadius: 11).fill(Theme.bg.opacity(0.92)))
+        .padding(4).background(RoundedRectangle(cornerRadius: 11).fill(Theme.bg.opacity(0.92)))
         .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Theme.line))
         .fixedSize()
     }
@@ -618,7 +618,7 @@ struct MapView: View {
     }
 
     private func key(_ color: Color, _ label: String) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             RoundedRectangle(cornerRadius: 2).strokeBorder(color, lineWidth: 1.5).frame(width: 10, height: 10)
             Text(label)
         }
@@ -891,8 +891,8 @@ private struct LiveSearch: View {
         let leads = Array(finds.sorted { a, b in
             a.agreement != b.agreement ? a.agreement > b.agreement : store.fresh.contains(a.id) && !store.fresh.contains(b.id)
         }.prefix(3))
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 7) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
                 DigIndicator(size: 12)
                 Text("Searching").font(.system(size: 13 * Theme.scale, weight: .semibold))
                 Spacer(minLength: 0)
@@ -917,7 +917,7 @@ private struct LiveSearch: View {
                             store.selectedCandidate = c.id
                             store.selectedTile = c.tile
                         } label: {
-                            HStack(spacing: 7) {
+                            HStack(spacing: 8) {
                                 Text(c.rank).font(.system(size: 10.5 * Theme.scale, weight: .bold, design: .rounded)).foregroundStyle(.black)
                                     .frame(width: 18, height: 18)
                                     .background(Circle().fill(c.rank == "A" ? Theme.green : c.rank == "B" ? Theme.tan : Theme.ink.opacity(0.45)))
@@ -1017,7 +1017,7 @@ struct RecordsView: View {
 
     private func groupHeader(_ group: Candidate.Group, count: Int) -> some View {
         // The title keeps its whole line, so its count always shows; the group's button sits under it.
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("\(group.title) · \(count)").font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                 .lineLimit(1)
             if group.confirmable {
@@ -1053,7 +1053,7 @@ struct RecordsView: View {
                                 .foregroundStyle(Theme.faint).lineLimit(1)
                         }
                     }
-                    .padding(.vertical, 5)
+                    .padding(.vertical, 4)
                 }
                 .buttonStyle(RowButton(selected: false))
                 if openTiles.contains(tile) {
@@ -1072,7 +1072,7 @@ struct RecordsView: View {
                     Text(c.statusLabel).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
                 }
             }
-            .padding(.vertical, 5)
+            .padding(.vertical, 4)
         }
         .buttonStyle(RowButton(selected: current?.id == c.id))
     }
@@ -1338,7 +1338,7 @@ struct RecordsView: View {
 
     @ViewBuilder private func figure(_ path: String, _ caption: String) -> some View {
         if let image = Images.load(path) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 230)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     // Drag a record's picture onto the message box to attach it.
@@ -1362,10 +1362,10 @@ private struct CheckRow<Action: View>: View {
                 .font(.system(size: 16 * Theme.scale))
                 .foregroundStyle(done == true ? Theme.green : done == false ? Theme.amber : Theme.faint)
                 .frame(width: 20).padding(.top, 1)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
                 Text(detail).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                action().padding(.top, 7)
+                action().padding(.top, 8)
             }
             Spacer(minLength: 0)
         }
@@ -1677,7 +1677,7 @@ struct SourcesView: View {
                         Spacer(minLength: 6)
                         if !source.link.isEmpty { Image(systemName: "chevron.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint) }
                     }
-                    .padding(.vertical, 5)
+                    .padding(.vertical, 4)
                 }
                 .buttonStyle(RowButton()).disabled(source.link.isEmpty)
             }

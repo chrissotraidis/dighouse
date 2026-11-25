@@ -13,7 +13,7 @@ struct WelcomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            steps.padding(.top, 52)
+            steps.padding(.top, 48)
 
             ScrollView {
                 Group {
@@ -25,7 +25,7 @@ struct WelcomeView: View {
                     }
                 }
                 .id(page).arrives()
-                .frame(width: 640, alignment: .leading).padding(.vertical, 36)
+                .frame(width: 640, alignment: .leading).padding(.vertical, 32)
                 .frame(maxWidth: .infinity)
             }
 
@@ -42,7 +42,7 @@ struct WelcomeView: View {
                         .keyboardShortcut(.defaultAction)
                 }
             }
-            .frame(width: 640).padding(.vertical, 18)
+            .frame(width: 640).padding(.vertical, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -56,7 +56,7 @@ struct WelcomeView: View {
         HStack(spacing: 10) {
             ForEach(titles.indices, id: \.self) { i in
                 Button { if reachable(i) { page = i } } label: {
-                    HStack(spacing: 7) {
+                    HStack(spacing: 8) {
                         ZStack {
                             Circle().fill(i == page ? Theme.primary : i < page ? Theme.green.opacity(0.9) : Theme.raised)
                             if i < page {
@@ -84,7 +84,7 @@ struct WelcomeView: View {
             }
             Text("Open archaeology on your Mac. AI agents search public lidar for places people built, and check each find. You decide what it is.")
                 .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForestReveal()
                 Text("Serpent Mound, Ohio. Drag the handle to take the trees away.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
@@ -106,7 +106,7 @@ struct WelcomeView: View {
     }
 
     private var how: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("How a search works").font(.system(size: 28 * Theme.scale, weight: .bold))
             Text("Six sets of tools, used in this order. Ask for a search and the agent runs them all, then reports back. Watch, steer by typing, or come back later.")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -127,7 +127,7 @@ struct WelcomeView: View {
     }
 
     private var setupPage: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Set up").font(.system(size: 28 * Theme.scale, weight: .bold))
             Text("Dighouse runs its agents on the Codex engine, using the models you already have. Your work goes only to the model provider you choose.")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -136,7 +136,7 @@ struct WelcomeView: View {
     }
 
     private var first: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Your first project").font(.system(size: 28 * Theme.scale, weight: .bold))
             Text("A project is a folder in ~/Dighouse with its own history: the question, the area, and everything the agents find. A published place makes a good first run, because it shows what a real site looks like.")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -206,7 +206,7 @@ struct WelcomeView: View {
     private func point(_ icon: String, _ title: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
             IconTile(name: icon)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 14 * Theme.scale, weight: .semibold))
                 Text(text).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
@@ -255,7 +255,7 @@ struct SetupChecklist: View {
                     }
                 }
                 if engine.account == nil, setup.codex != nil, engine.running, !signingIn {
-                    APIKeySignIn().padding(.leading, 50).padding(.trailing, 16).padding(.bottom, 14)
+                    APIKeySignIn().padding(.leading, 50).padding(.trailing, 16).padding(.bottom, 14)   // aligns under an icon
                 }
                 Rectangle().fill(Theme.line).frame(height: 1)
                 row(setup.toolsReady, "Archaeology tools", "\(ToolGuide.toolCount) tools that fetch lidar, build the bare ground, cut slices, check maps, read the literature and keep records.",
@@ -301,7 +301,7 @@ struct SetupChecklist: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: ok ? "checkmark.circle.fill" : "circle").font(.system(size: 16 * Theme.scale))
                 .foregroundStyle(ok ? Theme.green : Theme.faint).frame(width: 22).padding(.top, 1)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 14 * Theme.scale, weight: .semibold))
                 Text(what).foregroundStyle(Theme.faint)
                 Text(detail).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
@@ -327,7 +327,7 @@ struct APIKeySignIn: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button { withAnimation(.easeOut(duration: 0.15)) { open.toggle() } } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .bold)).rotationEffect(.degrees(open ? 90 : 0))
                     Text("Use an OpenAI API key instead")
                 }

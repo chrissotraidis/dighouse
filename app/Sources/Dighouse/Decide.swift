@@ -114,13 +114,13 @@ struct DecideView: View {
             Button("Close") { dismiss() }.buttonStyle(SecondaryButton())
                 .keyboardShortcut(changing == nil ? .cancelAction : nil)
         }
-        .padding(.horizontal, 22).padding(.vertical, 12)
+        .padding(.horizontal, 24).padding(.vertical, 12)
     }
 
     private func stepButton(_ s: Step, _ title: String, _ count: Int) -> some View {
         Button { step = s; changing = nil } label: {
             Text("\(title) · \(count)").font(.system(size: 13 * Theme.scale, weight: step == s ? .semibold : .regular))
-                .padding(.horizontal, 10).padding(.vertical, 5)
+                .padding(.horizontal, 10).padding(.vertical, 4)
                 .background(Capsule().fill(step == s ? Theme.ink.opacity(0.12) : .clear))
                 .foregroundStyle(step == s ? Theme.text : Theme.dim)
         }
@@ -144,9 +144,9 @@ struct DecideView: View {
     @ViewBuilder private var needsStep: some View {
         if let c = current {
             VStack(spacing: 0) {
-                ScrollView { FindCard(candidate: c, position: "\(index + 1) of \(needs.count)").padding(22).arrives() }.id(c.id)
+                ScrollView { FindCard(candidate: c, position: "\(index + 1) of \(needs.count)").padding(24).arrives() }.id(c.id)
                 Hairline()
-                decisionBar(c).padding(.horizontal, 22).padding(.vertical, 12)
+                decisionBar(c).padding(.horizontal, 24).padding(.vertical, 12)
             }
             // Draw the next find's views while this one is looked at.
             .task(id: c.id) {
@@ -328,7 +328,7 @@ struct DecideView: View {
         } else {
             VStack(spacing: 0) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
                         Text("Each picture is \(Int(ProjectStore.closeMetres)) m across, with the find ringed. Untick any that look wrong; they move to Needs you. The rest are recorded as suggested, each with its own reason.")
                             .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                         ForEach(["already_published", "modern", "natural"], id: \.self) { status in
@@ -344,7 +344,7 @@ struct DecideView: View {
                             }
                         }
                     }
-                    .padding(22)
+                    .padding(24)
                 }
                 Hairline()
                 HStack(spacing: 10) {
@@ -358,7 +358,7 @@ struct DecideView: View {
                     Button(chosen.isEmpty ? "Move \(unticked.count) to Needs you" : "Agree with \(chosen.count)") { agreeInBulk() }
                         .buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction).disabled(busy || bulkLeft.isEmpty)
                 }
-                .padding(.horizontal, 22).padding(.vertical, 12)
+                .padding(.horizontal, 24).padding(.vertical, 12)
             }
         }
     }
@@ -379,7 +379,7 @@ struct DecideView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     Image(systemName: on ? "checkmark.square.fill" : "square")
                         .font(.system(size: 16 * Theme.scale)).foregroundStyle(on ? Theme.accent : Theme.faint)
-                        .padding(5).background(Circle().fill(Theme.bg.opacity(0.7))).padding(5)
+                        .padding(4).background(Circle().fill(Theme.bg.opacity(0.7))).padding(4)
                 }
                 Text("\(c.id) \(c.name)").font(.system(size: 12 * Theme.scale, weight: .medium)).lineLimit(1)
                 Text(c.likely?.reason ?? "").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(2)
@@ -454,7 +454,7 @@ struct DecideView: View {
                             Hairline()
                         }
                     }
-                    .padding(22).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
+                    .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
                 }
                 layerOffer.padding(.bottom, 16)
                 if let problem { Text(problem).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber).padding(8) }
@@ -680,7 +680,7 @@ struct FindCard: View {
 
     private func reasonRow(_ title: String, _ items: [String], _ color: Color) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
                 Text("\(title) \(items.count)").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(color)
                     .frame(width: 74, alignment: .leading)
                 ForEach(0..<max(items.count, 0), id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(color.opacity(0.8)).frame(width: 7, height: 10) }
@@ -728,7 +728,7 @@ struct FindCard: View {
 
     private func chip(_ text: String) -> some View {
         Text(text).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
-            .padding(.horizontal, 9).padding(.vertical, 4)
+            .padding(.horizontal, 10).padding(.vertical, 4)
             .background(Capsule().fill(Theme.ink.opacity(0.07)))
     }
 
@@ -822,7 +822,7 @@ struct FindCard: View {
     }
 
     @ViewBuilder private func picture(_ image: NSImage?, _ caption: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
             if let image {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 280, alignment: .bottomLeading)
                     .clipShape(RoundedRectangle(cornerRadius: 8))

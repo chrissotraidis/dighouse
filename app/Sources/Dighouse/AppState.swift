@@ -1688,7 +1688,7 @@ struct RootView: View {
                     .padding(.horizontal, 14).frame(height: 30)
                     .background(Capsule().fill(Theme.pop).shadow(color: .black.opacity(0.35), radius: 10, y: 3))
                     .overlay(Capsule().strokeBorder(Theme.line))
-                    .padding(.top, 58)
+                    .padding(.top, 58)   // aligns under the title bar
                     .transition(.opacity.combined(with: .offset(y: -6)))
                     .accessibilityAddTraits(.updatesFrequently)
             }

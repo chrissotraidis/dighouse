@@ -18,7 +18,7 @@ struct ToolboxView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("Toolbox").font(.system(size: 26 * Theme.scale, weight: .bold))
                         Text("Start a search or any step of one, see the open data the \(ToolGuide.toolCount) tools read, and how a search works.")
                             .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -50,7 +50,7 @@ struct ToolboxView: View {
                 }
                 .id(tab).arrives()
             }
-            .padding(.horizontal, 32).padding(.top, 26).padding(.bottom, 32)
+            .padding(.horizontal, 32).padding(.top, 24).padding(.bottom, 32)
             .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity, minHeight: geo.size.height + 1, alignment: .top)
         }
         }
@@ -70,7 +70,7 @@ private struct Chips: View {
                 Button { pick = i } label: {
                     Text(names[i]).font(.system(size: 12.5 * Theme.scale, weight: .medium))
                         .foregroundStyle(pick == i ? .black : Theme.dim)
-                        .padding(.horizontal, 11).frame(height: 27)
+                        .padding(.horizontal, 12).frame(height: 27)
                         .background(Capsule().fill(pick == i ? Theme.tan : Theme.ink.opacity(0.06)))
                         .contentShape(Capsule())
                 }
@@ -134,7 +134,7 @@ private struct HowTab: View {
                 }
                 StageArt(stage: at).frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(18)
+            .padding(16)
             .id(at).arrives()
             Hairline()
             // One row when it fits. In a narrow window or with large text, the two ends take a row each.
@@ -160,14 +160,14 @@ private struct HowTab: View {
                 HStack(spacing: 10) { back; Spacer(minLength: 10); onward }
                 VStack(alignment: .leading, spacing: 8) { back; onward }
             }
-            .padding(.horizontal, 18).padding(.vertical, 12)
+            .padding(.horizontal, 16).padding(.vertical, 12)
         }
         .panel()
 
         Disclosure(title: "\(ToolGuide.rules.count) rules the tools enforce") {
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 10) {
                 ForEach(ToolGuide.rules, id: \.self) { rule in
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Image(systemName: "lock").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.tan)
                         Text(rule).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     }
@@ -183,7 +183,7 @@ private struct ToolList: View {
     let pack: ToolGuide.Pack
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(pack.tools) { tool in
                 VStack(alignment: .leading, spacing: 1) {
                     Text(tool.title).font(.system(size: 13 * Theme.scale, weight: .medium))
@@ -205,7 +205,7 @@ private struct StageRail: View {
         HStack(alignment: .top, spacing: 0) {
             ForEach(Array(ToolGuide.packs.enumerated()), id: \.offset) { index, pack in
                 Button { pick(index) } label: {
-                    VStack(spacing: 7) {
+                    VStack(spacing: 8) {
                         ZStack {
                             // The line to the neighbouring stops runs behind the number.
                             HStack(spacing: 0) {
@@ -313,9 +313,9 @@ private struct TileBoard: View {
     private var board: some View {
         GeometryReader { geo in
             let unit = (geo.size.width - 6) / 1175
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                    HStack(spacing: 3) {
+                    HStack(spacing: 4) {
                         ForEach(row) { tile in
                             Button { picked = tile.id } label: {
                                 Group {
@@ -379,7 +379,7 @@ private struct ChecksArt: View {
     }
 
     private func result(_ title: String, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: "checkmark.circle.fill").font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.green).padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold))
@@ -557,7 +557,7 @@ struct PapersArt: View {
                             }
                             Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 12).padding(.vertical, 9).contentShape(Rectangle())
+                        .padding(.horizontal, 12).padding(.vertical, 10).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain).disabled(then.0.isEmpty)
                 }
@@ -909,7 +909,7 @@ private struct DataTab: View {
             ForEach(shown) { source in tile(source) }
         }
         Disclosure(title: "Not read yet, and why (\(ToolGuide.notYet.count))") {
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(ToolGuide.notYet, id: \.0) { item in
                     (Text(item.0).fontWeight(.medium).foregroundColor(Theme.text) + Text("  " + item.1).foregroundColor(Theme.dim))
                         .font(.system(size: 12.5 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
@@ -940,7 +940,7 @@ private struct DataTab: View {
                 Spacer(minLength: 0)
                 dot(source)
             }
-            .padding(9).frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+            .padding(10).frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
             .panel(radius: 12).contentShape(Rectangle())
         }
         .buttonStyle(CardButton())
@@ -979,11 +979,11 @@ private struct DataTab: View {
 
     private func facts(_ source: ToolGuide.DataSource) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(source.name).font(.system(size: 22 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
                 Text(source.what).font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.86)).fixedSize(horizontal: false, vertical: true)
             }
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 dot(source)
                 Text(word(source)).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                 if online[source.name] == true, partly.contains(source.name) {
@@ -1112,14 +1112,14 @@ struct MoreTools: View {
                     Button { app.draft(addon.tryIt) } label: {
                         HStack(alignment: .top, spacing: 12) {
                             IconTile(name: addon.icon, size: 32)
-                            VStack(alignment: .leading, spacing: 3) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text(addon.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                                 Text("“\(addon.tryIt)”").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                                     .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                             }
                             Spacer(minLength: 0)
                         }
-                        .padding(11).frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
+                        .padding(12).frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
                         .panel(radius: 12).contentShape(Rectangle())
                     }
                     .buttonStyle(CardButton()).help(addon.use)
@@ -1163,7 +1163,7 @@ struct MoreTools: View {
                                     Spacer()
                                     Text(server.tools == 0 ? "Starts when used" : "\(server.tools) tools").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                                 }
-                                .padding(.horizontal, 14).padding(.vertical, 9)
+                                .padding(.horizontal, 14).padding(.vertical, 10)
                             }
                         }
                         .panel(radius: 10)

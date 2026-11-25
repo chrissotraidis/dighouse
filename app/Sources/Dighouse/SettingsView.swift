@@ -13,7 +13,7 @@ struct SettingsPage: View {
                     VStack(spacing: 2) {
                         ForEach(SettingsSection.allCases, id: \.self) { section in
                             Button { app.settingsSection = section } label: {
-                                HStack(spacing: 9) {
+                                HStack(spacing: 10) {
                                     Glyph(name: section.icon, size: 13.5 * Theme.scale).frame(width: 20)
                                     Text(section.rawValue).font(.system(size: 13.5 * Theme.scale))
                                 }
@@ -60,7 +60,7 @@ struct SettingsPage: View {
                         }
                         .id(app.settingsSection).arrives()
                     }
-                    .padding(.horizontal, 32).padding(.vertical, 26)
+                    .padding(.horizontal, 32).padding(.vertical, 24)
                     .frame(maxWidth: 760, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -115,7 +115,7 @@ private struct SettingRow<Content: View>: View {
     }
 
     private var label: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
             if !note.isEmpty {
                 Text(note).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
@@ -146,8 +146,11 @@ private struct RunsSummary: View {
     }
 
     var body: some View {
-        // Three across when there is room, one under the other when narrow.
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200 * Theme.scale), spacing: 12, alignment: .top)], spacing: 12) { cards }
+        // Three across, of one height, when there is room; one under the other when narrow. Never two and one.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) { cards }.fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 12) { cards }
+        }
     }
 
     @ViewBuilder private var cards: some View {
@@ -194,7 +197,9 @@ private struct RunsSummary: View {
             Spacer(minLength: 0)
             action()
         }
-        .padding(14).frame(maxWidth: .infinity, minHeight: 168 * Theme.scale, alignment: .topLeading).panel()
+        .padding(14)
+        .frame(minWidth: 0, idealWidth: 180 * Theme.scale, maxWidth: .infinity, minHeight: 150 * Theme.scale, maxHeight: .infinity, alignment: .topLeading)
+        .panel()
     }
 }
 
@@ -440,7 +445,7 @@ private struct LookSettings: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Capsule().fill(p.text).frame(width: 64, height: 6)
                                 Capsule().fill(p.dim).frame(width: 96, height: 5)
-                                HStack(spacing: 5) {
+                                HStack(spacing: 4) {
                                     Circle().fill(p.accent).frame(width: 12, height: 12)
                                     Circle().fill(p.tan).frame(width: 12, height: 12)
                                     Capsule().fill(p.primary).frame(width: 34, height: 12)
@@ -544,7 +549,7 @@ private struct AdvancedSettings: View {
                 HStack(alignment: .top, spacing: 0) { parts(arrow: "arrow.right") }
                 VStack(spacing: 6) { parts(arrow: "arrow.down") }
             }
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 Image(systemName: "arrow.uturn.backward").font(.system(size: 10 * Theme.scale, weight: .bold))
                 Text("Each result goes back to the model, until the job is done.")
             }
@@ -583,7 +588,7 @@ private struct AdvancedSettings: View {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 48, height: 48)
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Dighouse \(version)").font(.system(size: 15 * Theme.scale, weight: .semibold))
                     Text("A free, open tool for searching public lidar for places people built. Open source, Apache 2.0.")
                         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
@@ -655,14 +660,14 @@ private struct AdvancedSettings: View {
     /// One part of the picture: what it is, what it does, how it is now, and the one thing you can do about it.
     private func part<Action: View>(icon: String, tint: Color, title: String, role: String, ok: Bool?, status: String,
                                     @ViewBuilder action: () -> Action) -> some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 8) {
             Glyph(name: icon, size: 17 * Theme.scale).foregroundStyle(tint)
                 .frame(width: 44, height: 44).background(Circle().fill(Theme.ink.opacity(0.07)))
             VStack(spacing: 1) {
                 Text(title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Text(role).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).multilineTextAlignment(.center)
             }
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Circle().fill(ok == true ? Theme.green : ok == false ? Theme.amber : Theme.faint).frame(width: 7, height: 7)
                 Text(status).font(.system(size: 12 * Theme.scale)).foregroundStyle(ok == false ? Theme.amber : Theme.dim).lineLimit(2)
                     .multilineTextAlignment(.center)

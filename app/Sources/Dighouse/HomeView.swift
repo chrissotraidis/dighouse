@@ -108,7 +108,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 30) {
+            VStack(alignment: .leading, spacing: 32) {
                 CloudNotice()
                 VStack(spacing: 0) {
                     if !app.offersTutorial { WelcomeBack() }
@@ -146,7 +146,7 @@ struct HomeView: View {
                 WhereItReaches().arrives(2)
                 HowItWorks().arrives(3)
             }
-            .padding(.horizontal, 32).padding(.top, 34).padding(.bottom, 40)
+            .padding(.horizontal, 32).padding(.top, 32).padding(.bottom, 48)
             .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
@@ -156,11 +156,11 @@ struct HomeView: View {
     private var hero: some View {
         VStack(spacing: 20) {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 28) {
+                HStack(alignment: .center, spacing: 24) {
                     pitch.frame(minWidth: 330, idealWidth: 330, maxWidth: .infinity, alignment: .leading)
                     reveal.frame(width: 440)
                 }
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 16) {
                     pitch
                     reveal
                 }
@@ -218,7 +218,7 @@ struct HomeView: View {
                 startTab(0, "Known sites")
                 startTab(1, "Open surveys")
             }
-            .padding(3)
+            .padding(4)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.ink.opacity(0.06)))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
             if startKind == 0 {
@@ -270,7 +270,7 @@ struct HomeView: View {
                 ForEach(app.surveys) { survey in
                     HStack(alignment: .center, spacing: 12) {
                         IconTile(name: "dig.grid", size: 30)
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(survey.title).font(.system(size: 13.5 * Theme.scale, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                             Text((survey.collected.isEmpty ? "" : "Flown \(survey.collected) · ") + "OpenTopography")
                                 .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
@@ -293,7 +293,7 @@ struct HomeView: View {
                         Spacer()
                         Image(systemName: "arrow.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                     }
-                    .padding(.vertical, 5)
+                    .padding(.vertical, 4)
                 }
                 .buttonStyle(RowButton()).padding(4).help("Starts a chat in which the agent lists every survey in the catalog.")
             }
@@ -423,7 +423,7 @@ private struct HowItWorks: View {
     private var record: some View {
         VStack(alignment: .leading, spacing: 14) {
             line("Each project is its own folder and git repository, in ~/Dighouse. A person or an agent can open it and carry on without asking what was done.", strong: true)
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(layout, id: \.0) { item in
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                         Text(item.0).font(.system(size: 12.5 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.tan).frame(width: 130, alignment: .leading)
@@ -477,7 +477,7 @@ private struct WelcomeBack: View {
                 PathCard(icon: "clock", title: "Searching on its own", text: session.text, foot: session.foot) { app.showTimedSession() }
                     .help("Open the session's chat")
                     .arrives()
-                    .padding(.bottom, 22)
+                    .padding(.bottom, 24)
             } else if let project {
                 PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
                     .help("Open \(project.name)")
@@ -515,7 +515,7 @@ private struct WelcomeBack: View {
                     }
                 }
                 .arrives()
-                .padding(.bottom, 22)
+                .padding(.bottom, 24)
             }
         }
         .frame(maxWidth: .infinity)
@@ -672,11 +672,11 @@ struct StartCard: View {
                         .clipped()
                     if !point.source.isEmpty {
                         Text(point.source).font(.system(size: 11 * Theme.scale, weight: .medium)).foregroundStyle(.white)
-                            .padding(.horizontal, 7).frame(height: 20)
+                            .padding(.horizontal, 8).frame(height: 20)
                             .background(Capsule().fill(.black.opacity(0.62))).padding(8)
                     }
                 }
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(point.title).font(.system(size: 14.5 * Theme.scale, weight: .semibold))
                     Text(point.place).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                     Text(compact ? StartingPoints.teaser[point.id] ?? point.about : point.about).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)

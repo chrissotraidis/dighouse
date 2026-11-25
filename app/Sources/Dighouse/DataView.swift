@@ -13,7 +13,7 @@ struct DataView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 24) {
                 section("Ground in this project") {
                     if store.terrains.isEmpty {
                         EmptyLine(icon: "dig.mound", text: store.screenedBefore != nil ? "The ground stayed on the Mac this project came from. Get it again, or add a file of your own below, only if you want to look at it yourself."
@@ -108,7 +108,7 @@ struct DataView: View {
         return HStack(alignment: .top, spacing: 12) {
             Image(systemName: t.isOwn ? "doc" : t.points == nil ? "square.stack.3d.up" : "circle.grid.3x3")
                 .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 20).padding(.top, 2)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 // The area's name first, as the map's area menu calls it, so several downloads of one survey read apart.
                 if let area = t.area, !area.isEmpty {
                     (Text(area).fontWeight(.medium) + Text("  \(t.name)").foregroundColor(Theme.dim)).font(.system(size: 13.5 * Theme.scale))
@@ -131,7 +131,7 @@ struct DataView: View {
     }
 
     private func exportRow(_ title: String, _ text: String, _ button: String, id: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        let words = VStack(alignment: .leading, spacing: 3) {
+        let words = VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
             Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
         }

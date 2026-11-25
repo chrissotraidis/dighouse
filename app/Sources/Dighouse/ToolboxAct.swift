@@ -13,7 +13,7 @@ struct ActTab: View {
     private let two = [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), spacing: 10, alignment: .top)]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 24) {
             section("Start a search", "The agent chooses the ground, or you do.") {
                 StartChoices()
             }
@@ -33,7 +33,7 @@ struct ActTab: View {
 
     private func section<Content: View>(_ title: String, _ caption: String, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 17 * Theme.scale, weight: .semibold))
                 Text(caption).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
             }
@@ -79,7 +79,7 @@ private struct StepCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     if !state.note.isEmpty {
-                        HStack(spacing: 5) {
+                        HStack(spacing: 4) {
                             if done { Image(systemName: "checkmark").font(.system(size: 10 * Theme.scale, weight: .bold)).foregroundStyle(Theme.green) }
                             Text(state.note).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(done ? Theme.green : Theme.faint)
                         }
@@ -153,7 +153,7 @@ struct ZoomableCoverage: View {
                 Button { withAnimation(Motion.ease(0.2)) { zoom = 1; pan = .zero } } label: { Image(systemName: "arrow.down.right.and.arrow.up.left") }
                     .buttonStyle(IconButton(size: 26)).disabled(zoom <= 1).help("The whole world")
             }
-            .padding(3).background(RoundedRectangle(cornerRadius: 9).fill(Theme.raised.opacity(0.92)))
+            .padding(4).background(RoundedRectangle(cornerRadius: 9).fill(Theme.raised.opacity(0.92)))
             .padding(8)
         }
     }

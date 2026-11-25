@@ -60,7 +60,7 @@ struct MainView: View {
     @ViewBuilder private func page(width: CGFloat) -> some View {
         if !engine.ready {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 16) {
                     let stopped = !app.starting && setup.codex != nil && setup.toolsReady && engine.problem != nil
                     Text(app.starting ? "Starting Dighouse" : stopped ? "The Codex engine stopped" : "Dighouse needs a few things")
                         .font(.system(size: 22 * Theme.scale, weight: .semibold))
@@ -80,7 +80,7 @@ struct MainView: View {
                         }
                     } else { SetupChecklist() }
                 }
-                .padding(28).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
+                .padding(24).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
             }
         } else {
             switch app.route {
@@ -273,10 +273,10 @@ struct Sidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Color.clear.frame(height: 40).background(WindowDragArea())
-            HStack(spacing: 9) {
+            HStack(spacing: 10) {
                 // The mark and the name are the way home, as a logo is on a website.
                 Button { app.goHome() } label: {
-                    HStack(spacing: 9) {
+                    HStack(spacing: 10) {
                         MoundMark(working: !chat.live.isEmpty || app.secondLookBusy != nil || app.starting, lively: true).frame(width: 34, height: 15)
                         Text("Dighouse").font(.system(size: 15 * Theme.scale, weight: .bold))
                     }
@@ -390,7 +390,7 @@ struct Sidebar: View {
     private func nav(_ icon: String, _ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             // The icons differ in width, so each sits in a column of its own and the words line up.
-            HStack(spacing: 9) {
+            HStack(spacing: 10) {
                 Glyph(name: icon, size: 13.5 * Theme.scale).frame(width: 20)
                 Text(title).font(.system(size: 13.5 * Theme.scale))
             }

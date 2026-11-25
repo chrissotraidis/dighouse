@@ -114,7 +114,7 @@ struct TestPicker: View {
             }
             .frame(maxHeight: max(320, app.windowSize.height - 260))
         }
-        .padding(22)
+        .padding(24)
         .frame(width: min(860, app.windowSize.width - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)
         .closesOnOutsideClick { dismiss() }
@@ -259,7 +259,7 @@ struct Scorecard: View {
     }
 
     private func legend(_ symbol: String, _ colour: Color, _ label: String) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Image(systemName: symbol).font(.system(size: 9 * Theme.scale)).foregroundStyle(colour)
             Text(label).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.dim)
         }

@@ -20,10 +20,10 @@ struct ReportSheet: View {
                     .buttonStyle(IconButton(size: 28)).help("Show the report's file in Finder")
                 Button("Done") { app.reportShown = nil }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
             }
-            .padding(.horizontal, 22).padding(.vertical, 14)
+            .padding(.horizontal, 24).padding(.vertical, 14)
             Hairline()
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 16) {
                     // A blind test opens on its scorecard; the report follows.
                     if let root = store.current?.path, FileManager.default.fileExists(atPath: root + "/private/state/score.json") {
                         Scorecard(root: root)
@@ -31,7 +31,7 @@ struct ReportSheet: View {
                     }
                     MarkdownText(text: text)
                 }
-                .padding(22).frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24).frame(maxWidth: .infinity, alignment: .leading)
             }
             // A link to a find opens its record; the link to the research record opens it.
             .environment(\.openURL, OpenURLAction { url in
@@ -67,7 +67,7 @@ struct ReportSheet: View {
                     }
                 }
             }
-            .padding(.horizontal, 22).padding(.vertical, 14)
+            .padding(.horizontal, 24).padding(.vertical, 14)
         }
         .frame(width: min(760, app.windowSize.width - 40), height: min(740, app.windowSize.height - 40))
         .background(Theme.bg).foregroundStyle(Theme.text)

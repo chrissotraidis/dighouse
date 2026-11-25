@@ -143,7 +143,7 @@ extension View {
     /// A text field that matches the dark surface.
     func field() -> some View {
         self.textFieldStyle(.plain)
-            .padding(.horizontal, 11).padding(.vertical, 8)
+            .padding(.horizontal, 12).padding(.vertical, 8)
             .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ink.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.line))
     }
@@ -252,7 +252,7 @@ struct MenuPanel: View {
                     Hairline().padding(.vertical, 4)
                 } else if entry.isHeader {
                     Text(entry.title).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.faint)
-                        .padding(.horizontal, 10).padding(.top, 5).padding(.bottom, 3)
+                        .padding(.horizontal, 10).padding(.top, 4).padding(.bottom, 4)
                 } else {
                     MenuRow(entry: entry) { close(); entry.action() }
                 }
@@ -271,7 +271,7 @@ struct PillMenu: View {
 
     var body: some View {
         Button { open.toggle() } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Text(title).lineLimit(1)
                 Image(systemName: "chevron.down").font(.system(size: 8.5 * Theme.scale, weight: .bold))
             }
@@ -473,7 +473,7 @@ struct MarkdownText: View {
                                 ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
                                     Text(cell).font(.system(size: 13 * Theme.scale, weight: index == 0 ? .semibold : .regular))
                                         .foregroundStyle(index == 0 ? Theme.text : Theme.dim)
-                                        .fixedSize(horizontal: false, vertical: true).padding(.vertical, 7)
+                                        .fixedSize(horizontal: false, vertical: true).padding(.vertical, 8)
                                 }
                             }
                         }
@@ -634,7 +634,7 @@ struct ModelPicker: View {
 
     var body: some View {
         Button { open = true } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Text(title).lineLimit(1)
                 Image(systemName: "chevron.down").font(.system(size: 8.5 * Theme.scale, weight: .bold))
             }
@@ -766,7 +766,7 @@ struct RevealSlider: View {
 
     private func tag(_ text: String) -> some View {
         Text(text).font(.system(size: 11.5 * Theme.scale, weight: .semibold)).foregroundStyle(.white)
-            .padding(.horizontal, 9).frame(height: 24)
+            .padding(.horizontal, 10).frame(height: 24)
             .background(Capsule().fill(.black.opacity(0.68)))
     }
 }
@@ -837,7 +837,7 @@ struct PageSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 16 * Theme.scale, weight: .semibold))
                 if !caption.isEmpty {
                     Text(caption).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)

@@ -221,7 +221,7 @@ struct ProjectOverview: View {
                 if let next {
                     let words = HStack(alignment: .top, spacing: 14) {
                         IconTile(name: next.icon, size: 38)
-                        VStack(alignment: .leading, spacing: 5) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(next.title).font(.system(size: 16 * Theme.scale, weight: .semibold))
                             Text(next.what).font(.system(size: 13.5 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.86)).lineSpacing(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -238,7 +238,7 @@ struct ProjectOverview: View {
                                 Button(other.label, action: other.action).buttonStyle(SecondaryButton()).help(other.help)
                             }
                         }
-                        .padding(.leading, 52)
+                        .padding(.leading, 52)   // aligns under an icon
                     }
                     .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Theme.tan.opacity(0.08)))
@@ -269,7 +269,7 @@ struct ProjectOverview: View {
                                     .opacity(stage.done ? 1 : 0).scaleEffect(stage.done ? 1 : 0.3).animation(Motion.settle, value: stage.done)
                                     .accessibilityLabel(stage.done ? "Done" : "Not done yet")
                             }
-                            .padding(.horizontal, 14).padding(.vertical, 9)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
                         }
                     }
                     .panel()
@@ -339,7 +339,7 @@ private struct FoundStrip: View {
                 }
                 .buttonStyle(SecondaryButton()).help("Every find on the map of the project.")
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 128 * Theme.scale), spacing: 10, alignment: .top)], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 128 * Theme.scale, maximum: 190 * Theme.scale), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
                 ForEach(best) { c in card(c, waiting: waitingIDs.contains(c.id)) }
             }
         }
@@ -349,7 +349,7 @@ private struct FoundStrip: View {
         Button {
             if waiting { app.openDecide(on: c.id) } else { app.showRecords(c.id) }
         } label: {
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 8) {
                 ZStack(alignment: .topLeading) {
                     Group {
                         if let image = Images.crop(c.relief, x: c.x, y: c.y, side: store.closeSide(c)) {
@@ -508,7 +508,7 @@ private struct ProjectHistory: View {
             case .blocked(let problems):
                 Label("Not published. These need fixing first, so that no location leaves this Mac:", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(problems, id: \.self) { Text("• " + $0).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true) }
                 }
                 Button("Close") { app.publishing = nil }.buttonStyle(SecondaryButton())

@@ -30,7 +30,7 @@ struct ChatView: View {
                 .frame(maxWidth: 760).padding(.horizontal, 16).padding(.bottom, 8)
             }
             Composer().frame(maxWidth: 760).padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 4)
-            StatusLine().frame(maxWidth: 760).padding(.horizontal, 28).padding(.bottom, 8)
+            StatusLine().frame(maxWidth: 760).padding(.horizontal, 24).padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
@@ -56,7 +56,7 @@ private struct GoalBar: View {
             Button { Task { @MainActor in await chat.stopGoal() } } label: { Label("Stop", systemImage: "stop.fill") }
                 .buttonStyle(SecondaryButton()).help("Pause the goal and end the turn running now (⌘.)")
         }
-        .padding(.horizontal, 14).padding(.vertical, 9)
+        .padding(.horizontal, 14).padding(.vertical, 10)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
         .background(Theme.tan.opacity(0.07))
         .overlay(alignment: .bottom) { Hairline() }
@@ -100,7 +100,7 @@ private struct RecoveryBar: View {
             }
             VStack(alignment: .leading, spacing: 10) {
                 words
-                HStack(spacing: 8) { buttons() }.padding(.leading, 28)
+                HStack(spacing: 8) { buttons() }.padding(.leading, 24)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -241,7 +241,7 @@ private struct Messages: View {
                     Color.clear.frame(height: 10).id("end")
                 }
                 .frame(maxWidth: 760, alignment: .leading)
-                .padding(.horizontal, 20).padding(.top, 18)
+                .padding(.horizontal, 20).padding(.top, 16)
                 .frame(maxWidth: .infinity)
             }
             .defaultScrollAnchor(.bottom)
@@ -296,7 +296,7 @@ private struct ChatRow: View {
                 }
                 if !item.text.isEmpty {
                     Text(item.text).font(.system(size: 14 * Theme.scale)).lineSpacing(3).textSelection(.enabled)
-                        .padding(.horizontal, 14).padding(.vertical, 9)
+                        .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(RoundedRectangle(cornerRadius: 18).fill(Theme.raised))
                         .frame(maxWidth: 520, alignment: .trailing)
                 }
@@ -394,14 +394,14 @@ private struct PlanCard: View {
     private var done: Int { item.plan.filter { $0.status == "completed" }.count }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Label("Plan", systemImage: "list.bullet.clipboard").font(.system(size: 12.5 * Theme.scale, weight: .semibold))
                 Spacer()
                 Text("\(done) of \(item.plan.count) done").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
             }
             ForEach(Array(item.plan.enumerated()), id: \.offset) { _, step in
-                HStack(alignment: .firstTextBaseline, spacing: 9) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Image(systemName: step.status == "completed" ? "checkmark.circle.fill"
                           : step.status.lowercased().contains("progress") ? "circle.dotted.circle" : "circle")
                         .font(.system(size: 13 * Theme.scale))
@@ -456,7 +456,7 @@ private struct OfferCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             IconTile(name: "folder.badge.plus")
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(offer.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
                 Text(offer.question).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                 if !offer.purpose.isEmpty {
@@ -573,12 +573,12 @@ private struct StepRow: View {
                 .font(.system(size: 11.5 * Theme.scale, design: .monospaced)).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .panel(padding: 12, radius: 10)
-                .padding(.leading, 26)
+                .padding(.leading, 26)   // aligns under an icon
             } else if item.showsImage, let path = item.images.first {
                 if item.tool == "quick_look" {
-                    QuickLookCard(item: item, path: path).padding(.leading, 26)
+                    QuickLookCard(item: item, path: path).padding(.leading, 26)   // aligns under an icon
                 } else {
-                    picture(path, height: 150).padding(.leading, 26)
+                    picture(path, height: 150).padding(.leading, 26)   // aligns under an icon
                 }
             }
         }
@@ -635,7 +635,7 @@ private struct EmptyChat: View {
     private var generalStart: some View {
         GeometryReader { geo in
             ScrollView {
-                VStack(spacing: 22) {
+                VStack(spacing: 24) {
                     VStack(spacing: 8) {
                         if store.current == nil { MoundMark(lively: true).frame(width: 64, height: 28).padding(.bottom, 4) }
                         Text(heading.0).font(.system(size: 26 * Theme.scale, weight: .semibold))
@@ -653,13 +653,13 @@ private struct EmptyChat: View {
 
     private var general: some View {
         // One main action, then four equal choices in two even columns (EASE_LOOP E3): nothing hangs on its own.
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             StartChoices()
             VStack(alignment: .leading, spacing: 4) {
                 Text("Or ask a question").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint).padding(.leading, 10)
                 VStack(spacing: 0) {
                     ForEach(Array(questions.enumerated()), id: \.offset) { index, question in
-                        if index > 0 { Hairline().padding(.leading, 40) }
+                        if index > 0 { Hairline().padding(.leading, 40) }   // aligns under an icon
                         Button { app.ask(question.1) } label: {
                             HStack(spacing: 12) {
                                 Glyph(name: question.0, size: 13 * Theme.scale).foregroundStyle(Theme.tan).frame(width: 18)
@@ -667,7 +667,7 @@ private struct EmptyChat: View {
                                 Spacer(minLength: 8)
                                 Image(systemName: "arrow.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
                             }
-                            .padding(.vertical, 5)
+                            .padding(.vertical, 4)
                         }
                         .buttonStyle(RowButton())
                     }
@@ -714,7 +714,7 @@ struct StartTile: View {
     }
 
     private var words: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.system(size: (strong ? 15.5 : 13.5) * Theme.scale, weight: .semibold))
             Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                 .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
@@ -777,7 +777,7 @@ struct ModelControl: View {
                         Text(Effort.note(effort, for: model)).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 10)
+                    .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10)
                     Hairline()
                 }
                 ModelList(models: engine.models, current: app.model?.id, recent: app.recentModels) { model in
@@ -873,7 +873,7 @@ struct Composer: View {
                 controls(wide: false)
             }
         }
-        .padding(.horizontal, 12).padding(.top, 13).padding(.bottom, 9)
+        .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 10)
         .background(RoundedRectangle(cornerRadius: 24).fill(Theme.raised))
         .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(dropping ? Theme.accent : Theme.line, lineWidth: dropping ? 1.5 : 1))
         .onDrop(of: [.fileURL], isTargeted: $dropping) { providers in
@@ -1035,13 +1035,13 @@ struct Composer: View {
                         }
                         .buttonStyle(.plain).help("Keep the words, drop the link")
                     }
-                    .padding(.horizontal, 9).frame(height: 30)
+                    .padding(.horizontal, 10).frame(height: 30)
                     .background(Capsule().fill(Theme.tan.opacity(0.12)))
                     .overlay(Capsule().strokeBorder(Theme.tan.opacity(0.3)))
                     .help(m.reference)
                 }
                 ForEach(chat.attachments) { file in
-                    HStack(spacing: 7) {
+                    HStack(spacing: 8) {
                         if file.kind == .image, let image = Images.load(file.path) {
                             Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
                                 .frame(width: 30, height: 30).clipShape(RoundedRectangle(cornerRadius: 6))
@@ -1056,7 +1056,7 @@ struct Composer: View {
                         }
                         .buttonStyle(.plain).help("Remove")
                     }
-                    .padding(.leading, 5).padding(.trailing, 6).frame(height: 40)
+                    .padding(.leading, 4).padding(.trailing, 6).frame(height: 40)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.05)))
                     .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
                 }
@@ -1079,7 +1079,7 @@ struct Composer: View {
             }
 
             Button { showFlows.toggle() } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Glyph(name: "dig.trowel", size: 12.5 * Theme.scale)
                     if wide { Text("Workflows").font(.system(size: 12.5 * Theme.scale)) }
                 }
@@ -1093,7 +1093,7 @@ struct Composer: View {
             // Before the first message, say where the chat will go and let the person move it.
             if chat.active == nil && !chat.running {
                 Button { showWhere.toggle() } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Image(systemName: store.current == nil ? "bubble.left" : "folder").font(.system(size: 11.5 * Theme.scale))
                         Text(chipName).font(.system(size: 12.5 * Theme.scale)).lineLimit(1)
                         Image(systemName: "chevron.down").font(.system(size: 9 * Theme.scale, weight: .semibold))

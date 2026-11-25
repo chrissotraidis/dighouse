@@ -188,7 +188,7 @@ struct NewProjectView: View {
                         .stroke(.white.opacity(0.35), lineWidth: 0.6)
                         Annotation("", coordinate: CLLocationCoordinate2D(latitude: (g.south + g.north) / 2, longitude: (g.west + g.east) / 2)) {
                             Text(g.lidar ? "\(g.sites)" : "no lidar").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(.white)
-                                .padding(.horizontal, 5).frame(height: 18).background(Capsule().fill(.black.opacity(0.6)))
+                                .padding(.horizontal, 4).frame(height: 18).background(Capsule().fill(.black.opacity(0.6)))
                                 .help(g.lidar ? "\(g.sites) site\(g.sites == 1 ? "" : "s") on open record in this cell" : "No open lidar the tools read covers this cell")
                         }
                     }
@@ -238,12 +238,12 @@ struct NewProjectView: View {
         .overlay(alignment: .bottomLeading) {
             VStack(alignment: .leading, spacing: 8) {
                 if zoomedOut {
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: 4) {
                         legend(Theme.tan, "Lidar, the United States")
                         legend(Theme.green, "Lidar, national ground models")
                         legend(Theme.amber, "Surveys flown for archaeology")
                         legend(Theme.water, "Sonar, the seafloor, for wrecks")
-                        HStack(spacing: 7) {
+                        HStack(spacing: 8) {
                             RoundedRectangle(cornerRadius: 2).strokeBorder(.white, lineWidth: 2).frame(width: 10, height: 8)
                             Text("Site register open: finds can be checked").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.9))
                         }
@@ -336,7 +336,7 @@ struct NewProjectView: View {
     }
 
     private func legend(_ color: Color, _ title: String) -> some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 8) {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(title).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.9))
         }
@@ -403,7 +403,7 @@ struct NewProjectView: View {
                         } label: {
                             Text(km < 1 ? "\(Int(km * 1000)) m" : "\(km.formatted()) km").font(.system(size: 12 * Theme.scale))
                                 .foregroundStyle(size == km ? Theme.text : Theme.dim)
-                                .padding(.horizontal, 9).frame(height: 24)
+                                .padding(.horizontal, 10).frame(height: 24)
                                 .background(Capsule().fill(size == km ? Theme.ink.opacity(0.12) : .clear))
                                 .contentShape(Capsule())
                         }
@@ -411,7 +411,7 @@ struct NewProjectView: View {
                     }
                 }
                 Button { showEdges.toggle() } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Image(systemName: "chevron.right").font(.system(size: 8.5 * Theme.scale, weight: .bold)).rotationEffect(.degrees(showEdges ? 90 : 0))
                         Text("Edges in degrees")
                         if let km = areaKm2 { Text("· \(km.formatted(.number.precision(.fractionLength(2)))) square km").foregroundStyle(Theme.faint) }
