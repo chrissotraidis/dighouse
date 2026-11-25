@@ -270,6 +270,7 @@ def score_project(p) -> dict:
     names = {m["id"]: m["name"] for m in ledger.everything(p)}
     finds = {cid: {"lon": v["lon"], "lat": v["lat"]} for cid, v in places.items() if cid in names}
     result = score(k, finds)
+    result["finds_to_review"] = len(finds)
     try:
         _where_lost(p, k, result)
     except Exception as exc:  # a score without the breakdown is still a score
@@ -353,8 +354,10 @@ def score_lines(p, short: bool = False) -> list[str]:
         if s.get("missed_by_stage"):
             L.append("Where they were lost: " + "; ".join(f"{n} {stage}" for stage, n in s["missed_by_stage"].items()) + ".")
         L.append("")
-    if s.get("extra_per_km2") is not None:
-        L += [f"{s['extra_per_km2']} finds not in the key per square kilometre searched ({s['area_km2']} sq km).", ""]
+    if s.get("area_km2"):
+        n = s.get("finds_to_review") or len(names)
+        L += [f"For a person to look over: {round(n / s['area_km2'], 1)} finds per square kilometre searched, "
+              f"{s.get('extra_per_km2') or 0} of them not in the key ({n} finds over {s['area_km2']} sq km).", ""]
     if s["extra"]:
         L.append("Not in the key:")
         L += [f"- {cid} {names.get(cid, '')}: {lab.get(cid, 'not yet labelled')}" for cid in s["extra"]]
@@ -603,7 +606,9 @@ def _where_lost(p, k: dict, result: dict) -> None:
     area = sum((terrains[tid].get("area_km2") or 0) for tid in used if tid in terrains)
     result["area_km2"] = round(area, 2)
     result["extra_per_km2"] = round(len(result["extra"]) / area, 2) if area else None
-    result["finds_to_review"] = len(result.get("finds", {})) or len(result["matches"]) + len(result["extra"])
+    result.setdefault("finds_to_review", len(result["matches"]) + len(result["extra"]))
+    # What a person has to look over for each square km, beside how many known features were found.
+    result["finds_per_km2"] = round(result["finds_to_review"] / area, 1) if area else None
     by_id = {f["id"]: f for f in k["features"]}
     grids: dict[str, tuple] = {}
     stages: dict[str, int] = {}

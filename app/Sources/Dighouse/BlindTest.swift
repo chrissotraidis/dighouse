@@ -203,8 +203,9 @@ struct Scorecard: View {
                     tally("\(found) of \(known)", "found", Theme.green)
                     tally("\(missed.count)", "missed", missed.isEmpty ? Theme.faint : Theme.amber)
                     tally("\(extra.count)", "not in the key", Theme.tan)
-                    if let perKm = s["extra_per_km2"] as? Double {
-                        tally(String(format: "%g", perKm), "per sq km not in the key", Theme.faint)
+                    if let area = s["area_km2"] as? Double, area > 0 {
+                        let toReview = s["finds_to_review"] as? Int ?? names.count
+                        tally(String(format: "%.0f", Double(toReview) / area), "to look over per sq km", Theme.dim)
                     }
                     Spacer()
                     if let minutes = s["minutes"] as? Int {

@@ -1235,3 +1235,22 @@ def test_lead_progress(tmp_path):
     assert server.lead_progress(root, cid, "undo", "Chris")["status"] == "no_match_in_sources_read"
     with pytest.raises(ValueError, match="no progress"):
         server.lead_progress(root, cid, "undo", "Chris")
+
+
+def test_benchmark_counts_finds_per_square_km(tmp_path):
+    """A scored blind test says how many finds a person looks over per square km, beside the found count."""
+    from dighouse import answers
+
+    p = Project.create(tmp_path / "bench", "Bench", "Scored?", [0.0, 51.0, 0.01, 51.01])
+    p.save("terrains", {"t1": {"area_km2": 0.5}, "t2": {"area_km2": 9.0}})
+    p.save("tiles", {"t1-r000c000": {"terrain": "t1", "window": [0, 0, 500, 500], "status": "screened"}})
+    result = {"found": 3, "known": 4, "matches": [{}, {}, {}], "missed": [], "extra": ["C-004", "C-005"], "finds_to_review": 6}
+    answers._where_lost(p, {"features": []}, result)
+    assert result["area_km2"] == 0.5          # only ground that was cut into tiles counts
+    assert result["finds_per_km2"] == 12.0 and result["extra_per_km2"] == 4.0
+
+    p.save("test", {"key": "borre", "blind": False})
+    p.save("score", {**result, "key": {"name": "Borre", "place": "Norway", "published": "", "sources": []},
+                     "scored": "2026-11-25", "finds": {}, "note": ""})
+    text = " ".join(answers.score_lines(p))
+    assert "12.0 finds per square kilometre" in text and "4.0 of them not in the key" in text

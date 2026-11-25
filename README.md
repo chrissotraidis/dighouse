@@ -155,23 +155,25 @@ These live in the tools, so they hold whichever model is running.
 
 Each test is **blind**. The agent is not told the site, looks at the ground tile by tile, marks what it finds, and is scored against an answer key of published features before it may read any literature. Try one yourself from Home with **Test it blind**.
 
-| Site | Data | Found of known | Missed | Not in the key |
-|---|---|---|---|---|
-| Mound City Group, Ohio * | USGS 3DEP | 19 of 19 | 0 | 17 (real mounds the key leaves out, and measured rises) |
-| Angel Mounds, Indiana | USGS 3DEP | 4 of 4 | 0 | 3 |
-| Cahokia, Monks Mound, Illinois * | USGS 3DEP | 1 of 1 | 0 | 12 |
-| Serpent Mound, Ohio | USGS 3DEP | 1 of 3 (the effigy) | 2 burial mounds | 2 |
-| Maiden Castle, England * | Environment Agency 1 m | 3 of 3 | 0 | 35 |
-| Borre, Norway * | Kartverket 1 m | 29 of 53 | 24 small burial mounds | 11 |
-| Oberhaching square enclosures, Bavaria | Bavarian DGM1 1 m | 2 of 3 | 1 enclosure | 3 |
-| Lauske ring forts, Saxony | Saxon DGM1 1 m | 3 of 3 | 0 | 5 |
-| Irulegi hill, Navarre | Navarre 2 m | 1 of 2 (the castle) | the Iron Age village | 0 |
-| Sierra de Andía megaliths, Navarre * | Navarre 2 m | 5 of 11 | 6 low mounds and dolmens | 133 |
-| Puketapu Pa, Auckland | LINZ 1 m | 1 of 1 | 0 | 8 |
-| Munoaundi hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (marked 141 m off its mapped line) | 1 |
-| Arrola hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (banks marked 97 m outside the mapped outline) | 1 |
-| **All thirteen on land** | | **67 of 105** | 38 | 202 |
-| Thunder Bay wrecks, Lake Huron (three areas) | NOAA sonar, 1 m | 4 of 7 charted wrecks | 3 | 5 |
+| Site | Data | Found of known | Missed | Not in the key | Per km² |
+|---|---|---|---|---|---|
+| Mound City Group, Ohio * | USGS 3DEP | 19 of 19 | 0 | 17 (real mounds the key leaves out, and measured rises) | 68 |
+| Angel Mounds, Indiana | USGS 3DEP | 4 of 4 | 0 | 3 | 8 |
+| Cahokia, Monks Mound, Illinois * | USGS 3DEP | 1 of 1 | 0 | 12 | 48 |
+| Serpent Mound, Ohio | USGS 3DEP | 1 of 3 (the effigy) | 2 burial mounds | 2 | 6 |
+| Maiden Castle, England * | Environment Agency 1 m | 3 of 3 | 0 | 35 | 40 |
+| Borre, Norway * | Kartverket 1 m | 29 of 53 | 24 small burial mounds | 11 | 29 |
+| Oberhaching square enclosures, Bavaria | Bavarian DGM1 1 m | 2 of 3 | 1 enclosure | 3 | 2 |
+| Lauske ring forts, Saxony | Saxon DGM1 1 m | 3 of 3 | 0 | 5 | 2 |
+| Irulegi hill, Navarre | Navarre 2 m | 1 of 2 (the castle) | the Iron Age village | 0 | 0 |
+| Sierra de Andía megaliths, Navarre * | Navarre 2 m | 5 of 11 | 6 low mounds and dolmens | 133 | 62 |
+| Puketapu Pa, Auckland | LINZ 1 m | 1 of 1 | 0 | 8 | 16 |
+| Munoaundi hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (marked 141 m off its mapped line) | 1 | 4 |
+| Arrola hillfort, Basque Country | Basque 1 m | 0 of 1 | the rampart (banks marked 97 m outside the mapped outline) | 1 | 5 |
+| **All thirteen on land** | | **67 of 105** | 38 | 202 | 19 |
+| Thunder Bay wrecks, Lake Huron (three areas) | NOAA sonar, 1 m | 4 of 7 charted wrecks | 3 | 5 | 0.5 |
+
+**Per km²** is the finds not in the key for each square kilometre of the test area: the false alarms, or unrecorded features, a person has to look over. Each scorecard also shows every find to look over per km², beside how many known features were found.
 
 \* Rerun on 2026-11-23, as the notes below explain. The rest ran on 2026-11-16 (the two Basque hillforts a day later) with primary / 6.1 Terra, a low-cost model, at medium effort, for about 3 to 10 minutes a site. Results will differ with other models.
 
@@ -392,7 +394,7 @@ Then start a chat in an empty folder and ask the agent to follow [skills/dighous
 **Tests.**
 
 ~~~sh
-uv run pytest            # offline, on a synthetic survey (65 tests)
+uv run pytest            # offline, on a synthetic survey (66 tests)
 uv run python scripts/smoke_test.py   # one tile end to end against the real services, about a minute
 uv run pytest -m live    # the same chain against the real data services (10 tests)
 uv run python scripts/funnel.py      # where finds stop, across the projects in the app's list (read-only)
