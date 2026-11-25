@@ -1,4 +1,5 @@
 import AppKit
+import UserNotifications
 
 /// Measuring how quickly the app answers. Off unless Dighouse is launched with -measure YES (and -measureTour YES for
 /// the scripted tour). A watcher thread notes every time the main thread stops answering for more than 250 ms, with
@@ -21,6 +22,22 @@ enum Perf {
             } else {
                 try? data.write(to: file)
             }
+        }
+    }
+
+    /// -noticeTest YES: post one notification after eight seconds (with Dighouse behind) and log what macOS delivered.
+    @MainActor
+    static func rehearseNotice() {
+        guard on, UserDefaults.standard.bool(forKey: "noticeTest") else { return }
+        Notify.ask()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(8))
+            Perf.log("notice test: Dighouse in front \(NSApp.isActive)")
+            Notify.say("Notification test", "Dighouse can tell you when work is done.")
+            try? await Task.sleep(for: .seconds(2))
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            let shown = await UNUserNotificationCenter.current().deliveredNotifications()
+            Perf.log("notice test: allowed \(settings.authorizationStatus.rawValue), delivered \(shown.count)")
         }
     }
 

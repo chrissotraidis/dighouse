@@ -48,7 +48,7 @@ You don't need a GitHub account, Terminal or any coding to use Dighouse.
 **What you need**
 
 - A Mac with Apple silicon (M1 or later) and macOS 14 Sonoma or later. Intel Macs are not supported yet.
-- A ChatGPT account on a plan that includes Codex, or an OpenAI API key. Dighouse runs its AI through your account, so a search counts toward your plan's usage (or is billed to the key). The chat box shows how much you have left.
+- A ChatGPT account on a plan that includes Codex, or an OpenAI API key. Dighouse runs its AI through your account, so a search counts toward your plan's usage (or is billed to the key). The chat box shows how much you have left. [Which account does what](docs/GETTING_STARTED.md#which-account), and what was measured.
 - Optional: [Claude Code](https://docs.claude.com/en/docs/claude-code/setup). With it, second opinions can come from Claude on your Claude account, and Claude Code can run searches with Dighouse's tools ([how](docs/SETUP.md#if-you-use-claude)).
 - An internet connection. A search downloads a few megabytes of ground for each square kilometre.
 

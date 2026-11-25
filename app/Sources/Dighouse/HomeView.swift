@@ -110,6 +110,7 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 CloudNotice()
+                UpdateLine()
                 VStack(spacing: 0) {
                     if !app.offersTutorial { WelcomeBack() }
                     hero.arrives()

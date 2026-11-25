@@ -101,7 +101,7 @@ private struct GroupTitle: View {
     }
 }
 
-private struct SettingRow<Content: View>: View {
+struct SettingRow<Content: View>: View {
     let title: String
     var note = ""
     @ViewBuilder let content: () -> Content
@@ -496,6 +496,7 @@ private struct DataSettings: View {
         ("Open data services", "Each sees the area or the search words in a request, and nothing else."),
         ("The map", "New project uses Apple Maps, which sees where you look."),
         ("Reports", "Nothing is sent. A report is a draft until you send it."),
+        ("Updates", "Once a day Dighouse asks GitHub for its latest version number. It can be turned off under Advanced, About."),
     ]
 
     var body: some View {
@@ -513,6 +514,8 @@ private struct DataSettings: View {
                     .buttonStyle(SecondaryButton())
                 }
             }
+            Hairline()
+            DiskUseRow()
             Hairline()
             SettingRow(title: "Chats, catalogs and the tools", note: Paths.support.path.tildePath) {
                 Button("Show") { NSWorkspace.shared.open(Paths.support) }.buttonStyle(SecondaryButton())
@@ -538,6 +541,7 @@ private struct DataSettings: View {
 /// How the parts fit together, the models on offer, the guide, and the version.
 private struct AdvancedSettings: View {
     @EnvironmentObject var app: AppState
+    @AppStorage("checkUpdates") private var checkUpdates = true
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var setup: Setup
 
@@ -619,6 +623,18 @@ private struct AdvancedSettings: View {
                     NSPasteboard.general.setString("Dighouse \(version), engine \(setup.codexVersion)", forType: .string)
                 }
                 .buttonStyle(SecondaryButton()).help("Copy these to include when you report a problem.")
+            }
+            Hairline()
+            SettingRow(title: "New versions", note: Updates.shared.newer == nil ? "Asks GitHub once a day whether a newer version is out. Nothing is downloaded." : "") {
+                HStack(spacing: 10) {
+                    UpdateLine()
+                    Toggle("", isOn: $checkUpdates).labelsHidden().toggleStyle(.switch)
+                        .onChange(of: checkUpdates) { Task { await Updates.shared.check() } }
+                }
+            }
+            Hairline()
+            SettingRow(title: "Report a problem", note: "Opens a new issue on GitHub with the versions filled in and locations taken out. You read it and send it.") {
+                Button("Report…") { ProblemReport.open(app: app) }.buttonStyle(SecondaryButton())
             }
             Hairline()
             SettingRow(title: "Welcome guide", note: "What Dighouse does, and what it needs on this Mac.") {

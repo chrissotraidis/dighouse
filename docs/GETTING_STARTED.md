@@ -8,6 +8,17 @@ Dighouse helps you look for earthworks and other remains that may not be on reco
 - A ChatGPT account that can use Codex. Searches use your account's models and its usage.
 - An internet connection. A search downloads a few megabytes of ground for each square km.
 
+## Which account
+
+| You have | Searches in the app | Second opinions | What it costs |
+|---|---|---|---|
+| A ChatGPT plan that includes Codex | Yes | GPT-6 Luna on the same account, by default | Measured on a Pro plan only: about 1.6% of the account's usage an hour of searching. Not measured on other plans; expect a session to stop sooner where the plan allows less. |
+| An OpenAI API key | Yes: press **Use an OpenAI API key instead** at sign-in | The same models, billed to the key | Billed per use by OpenAI. Not measured. |
+| A Claude plan | Not on its own: the app's search runs through Codex | Yes, with Claude Code signed in (Settings, Account and models, Claude) | Uses your Claude plan's usage. |
+| Claude Code or Codex, without the app | The tools run in either, on any computer with Python ([SETUP.md](SETUP.md#if-you-use-claude)) | Ask the agent | Your plan's usage. |
+
+Dighouse watches the account it searches with: second opinions wait while less than 20% of its usage is left, and a search closes, saving its record, below 10%. The [OpenCodex](https://github.com/lidge-jun/opencodex) router is optional; it adds other makers' models and lets every tile be looked at in bulk, which is a few times faster.
+
 ## Install it
 
 Download `Dighouse-<version>.dmg` from the [releases page](https://github.com/chrissotraidis/dighouse/releases), open it and drag Dighouse to Applications. It is signed and notarized by Apple, so it opens like any app you download.
@@ -60,13 +71,17 @@ On the Map, the pin-and-circle button marks what you see yourself: click a spot 
 - The models see pictures of the ground and the project's records, through your ChatGPT account (and, if you use the OpenCodex router, through the providers you set up there).
 - Downloads are kept in `~/.cache/dighouse`, so a second look at the same ground is quick. Laser points no project uses are kept up to 10 GB, oldest dropped first; a project's own points are never dropped.
 - **Publish to GitHub** checks that no location would leave your Mac before it makes a private repository.
+- **New versions.** Once a day Dighouse asks GitHub for the number of its latest release and says on Home when a newer one is out. Nothing is downloaded. Turn it off in Settings, Advanced, About.
+- **Space.** Settings, Data and keys, shows what projects and downloads take, and frees the downloads no project holds.
 
 ## When something goes wrong
 
+- **The Mac and sleep.** While a search or second opinions run, Dighouse keeps the Mac from going to sleep on its own; the screen can still turn off. Closing the lid on battery still puts it to sleep. Dighouse sends a notification when a search reports back, a session ends or second opinions are in, if you let it.
 - **A search is slow.** Looking at tiles in bulk needs a direct line to a model, through the [OpenCodex](https://github.com/lidge-jun/opencodex) router. Without it the agent looks at every tile itself, which takes a few times longer.
 - **Second opinions from the same maker.** By default the second opinion is GPT-6 Luna on your ChatGPT account, the lowest-cost choice, and the record says when it comes from the same maker as the agent. With Claude Code or OpenCodex you can choose Claude Sonnet in Settings, Account and models, which finds more of the known features and uses your Claude account instead.
 - **Second opinions wait.** They pause while less than 20% of your account's usage is left and carry on when it resets; a search closes, saving its record, below 10%.
 - **Denmark's ground needs a token.** Get a free one from Dataforsyningen and paste it in Settings, Data and keys.
 - **A data service does not answer.** National services go down for a while now and then. The search says which, carries on with the rest, and the check can be run again later.
 - **Something else.** [SETUP.md](SETUP.md) covers where projects and chats are kept and more fixes.
+- **Report a problem.** Settings, Advanced, About, **Report…** opens a new issue on GitHub with the versions filled in and locations taken out. Read it, say what happened, and send it.
 - **Still stuck.** Ask in **dighouse-help** on [Discord](https://discord.gg/xwHfUD2bxW): when you join, pick **Dighouse (lidar archaeology)**. Leave out anything that shows where a find is.

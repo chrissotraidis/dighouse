@@ -65,6 +65,11 @@ struct MainView: View {
             if let file = app.reportShown { ReportSheet(file: file).withApp(app) }
         }
         .modifier(RenameChat())
+        // The Mac stays awake while work runs, and a person who is elsewhere hears when second opinions are in.
+        .onChange(of: app.working, initial: true) { _, working in Awake.set(working) }
+        .onChange(of: app.secondOpinionsLeft) { old, new in
+            if old > 0, new == 0 { Notify.say("Second opinions are in", "Every find that was waiting has its second opinion.") }
+        }
         // The tutorial moves on when the project or the page changes in the way its step asked for.
         // Built only while the tutorial runs: it filters every tile and find, and MainView redraws often.
         .onChange(of: !app.tutorialOn ? "" : "\(app.tab.rawValue) \(store.tiles.count) \(store.tiles.filter { $0.status == "unscreened" }.count) \(store.candidates.count) \(store.candidates.filter { !$0.decisions.isEmpty }.count) \(chat.running) \(store.current?.path ?? "")") { _, _ in

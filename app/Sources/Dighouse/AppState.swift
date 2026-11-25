@@ -425,6 +425,8 @@ final class AppState: ObservableObject {
 
     /// Find the engine and the tools, then start the engine if everything is in place.
     func boot() async {
+        Task { await Updates.shared.check() }
+        Perf.rehearseNotice()
         starting = true
         let launched = Date()
         Perf.startWatching()
@@ -1077,6 +1079,7 @@ final class AppState: ObservableObject {
             }
             if !touched.isEmpty {
                 chat.note("The session is over. Dighouse is asking for second opinions on the open finds in \(touched.count) project\(touched.count == 1 ? "" : "s").")
+                Notify.say("The session is over", "It searched \(touched.count) project\(touched.count == 1 ? "" : "s"). Second opinions are being asked for.")
                 askSecondOpinions(in: touched)
             }
             return
@@ -1108,6 +1111,7 @@ final class AppState: ObservableObject {
     func writeReport(_ path: String) async {
         guard engine.ready, let reply = try? await engine.callTool("write_report", ["project": path]),
               let info = (try? JSONSerialization.jsonObject(with: Data(reply.utf8))) as? JSON, let file = info["written"] as? String else { return }
+        Notify.say("The search report is ready", store.projects.first { $0.path == path }?.name ?? "A project")
         store.reloadIfChanged()
         if store.current?.path == path {
             tab = .map
@@ -1443,6 +1447,9 @@ final class AppState: ObservableObject {
     }
 
     /// Second opinions still to come, in the open project and in projects a timed session touched.
+    /// Work a person may leave running: an agent's turn or goal, or second opinions.
+    var working: Bool { !chat.live.isEmpty || !chat.goals.isEmpty || secondOpinionsLeft > 0 }
+
     var secondOpinionsLeft: Int { secondLookQueue.count + sessionLooks.count + (secondLookBusy == nil ? 0 : max(directLeft, 1)) }
 
     /// Show the running timed session's chat.
