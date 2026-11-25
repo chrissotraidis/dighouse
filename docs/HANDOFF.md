@@ -201,6 +201,10 @@ Chris found Home long and the copy weak ("You decide what each one is"), and the
 
 Every project is a folder with a git history (data/ and private/ left out) and one method. RESEARCH.md is its research record, rebuilt by `record.py` when a run ends (with or without a summary), a person decides, a second opinion comes back, or the project is opened. METHODOLOGY.md says how the work and the record are kept, and the agent reads both first. Keep this method when changing anything that writes into a project: whatever a run looks at or reads should end up in the record, and nothing with a location may go into notes/, reports/ or the record.
 
+## What is missing (review, 2026-11-25)
+
+The full list, with reasons, is the first four sections of [ROADMAP.md](ROADMAP.md). In short: a public download lacks keeping the Mac awake during a search, notifications, an update check, a view of disk use, a Report a problem button and a plain page on what each plan gets; finds pile up far faster than anyone decides them (27,219 finds and 24 decisions across the test Mac's 104 projects), which is the biggest gap; nothing follows a lead after its letter is drafted; and no map shows where a person has already searched.
+
 ## Waiting on Chris
 
 - **Delete the test repository** `chrissotraidis/default-folder-check` (private), made to check publishing.
@@ -208,7 +212,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 - **Going public.** The README reads as if the repository were public. Making it public and publishing a release are his decisions. The release build is notarized and stapled (`DIGHOUSE_NOTARY_PROFILE='the keychain profile' app/scripts/release.sh`: that keychain profile belongs to the same team as the Developer ID), so a download opens without Open Anyway.
 
 - **Use this build and say what is still rough.** Loop 5 answered his list item by item (the Log has a picture for each), but his eye has not been over the result.
-- **Second opinions** run on Claude Sonnet 5.5 by default, falling back to GLM-5.3 and then Kimi K3 (opencode-go) when a provider refuses. Google models (Antigravity and Gemini by any route) no longer run through OpenCodex and are hidden from every model list (2026-11-21).
+- **Second opinions** run on GPT-6 Luna on the ChatGPT account by default (EASE_LOOP E1), and wait while less than 20% of the account is left; Claude Sonnet 5.5 stays a choice, and GLM-5.3 and Kimi K3 are no longer asked on their own. Google models (Antigravity and Gemini by any route) no longer run through OpenCodex and are hidden from every model list (2026-11-21).
 - **OpenAlex and a key.** Without a key, a network address shares about 100 literature searches a day, and Dighouse falls back to Crossref past that. A free key gives its own budget. Settings, Data and keys, now has a field for it (sent as a header, never in an address). Asking for one sends an email address to OpenAlex, so it is his to do. On 2026-11-25 this network had spent the day's keyless budget by midnight UTC.
 - **Real hands:** dragging a line across the mound in the Toolbox, dragging the sidebar edge and the chat divider with a mouse, dropping a file from Finder onto the message box, pinch zoom and two-finger panning on the map, the "…" button that shows under the pointer on a sidebar row, and how the menus in the menu bar look (test tooling opens them without drawing them).
 - **Decisions:** a Notion button, looking at tiles in bulk through the model router, the licence, and when the repository goes public.
