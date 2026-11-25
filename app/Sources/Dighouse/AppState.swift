@@ -31,7 +31,10 @@ final class AppState: ObservableObject {
     @Published var onboarded = UserDefaults.standard.bool(forKey: "onboarded")
     @Published var showWelcome = false
     @Published var textSize = UserDefaults.standard.string(forKey: "textSize") ?? "standard" {
-        didSet { UserDefaults.standard.set(textSize, forKey: "textSize") }
+        didSet {
+            UserDefaults.standard.set(textSize, forKey: "textSize")
+            TextScale.shared.value = TextSize.scale(textSize)
+        }
     }
     /// The text size just chosen from the keyboard, shown for a moment at the top of the window.
     @Published var sizeNote: String?
@@ -181,8 +184,8 @@ final class AppState: ObservableObject {
     /// A second model's name as the record keeps it: from the same maker as the agent's, when no other maker is on offer.
     func secondOpinionLabel(_ id: String) -> String {
         let name = engine.models.first { $0.id == id }?.name ?? id
-        let fallback = !([secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder).contains(id)
-        return fallback ? name + " (same maker as the agent)" : name
+        let same = ModelInfo.maker(id) == ModelInfo.maker(modelID ?? engine.defaultModel ?? "")
+        return same ? name + " (same maker as the agent)" : name
     }
 
     /// After the model list loads: a saved model that is no longer offered (Google's, for one) is replaced.
@@ -193,6 +196,15 @@ final class AppState: ObservableObject {
         if let id = modelID, !offered.contains(id) || ModelInfo.unsupported(id) {
             modelID = nil
             notes.append("The agent model \(id) is no longer offered, so the default model runs searches now.")
+        }
+        // Once, for those who had the old default (Sonnet, then GLM and Kimi): second opinions move to the economical model.
+        if !UserDefaults.standard.bool(forKey: "secondDefaultEase1") {
+            UserDefaults.standard.set(true, forKey: "secondDefaultEase1")
+            if let id = secondModelID, ["anthropic/claude-sonnet-5-5", "opencode-go-secondary/glm-5.3", "opencode-go/kimi-k3"].contains(id),
+               let next = ModelInfo.secondOpinionOrder.first(where: { id in engine.models.contains { $0.id == id && $0.readsImages } }) {
+                secondModelID = next
+                notes.append("Second opinions now use \(secondModelName) on your ChatGPT account, so testing does not use up another account. Sonnet finds more of the known features; you can choose it here.")
+            }
         }
         if secondModelID == nil || !offered.contains(secondModelID ?? "") || ModelInfo.unsupported(secondModelID ?? "") {
             let old = secondModelID
@@ -516,8 +528,22 @@ final class AppState: ObservableObject {
         route = .chat
     }
 
+    /// Where Settings was opened from, so the gear pressed again (or Escape) goes back there.
+    private var beforeSettings: Route = .home
+
+    /// The Settings gear: opens Settings, and pressed again goes back where you were.
+    func toggleSettings() {
+        if route == .settings { closeSettings() } else { show(.settings) }
+    }
+
+    func closeSettings() {
+        guard route == .settings else { return }
+        route = beforeSettings == .settings ? .home : beforeSettings
+    }
+
     func show(_ page: Route) {
         sidebarPeek = false
+        if page == .settings, route != .settings { beforeSettings = route }
         // Toolbox in the sidebar always lands on a tab's first page, so it is a way back from any detail.
         if page == .toolbox { toolboxDetail = nil }
         route = page
@@ -870,8 +896,7 @@ final class AppState: ObservableObject {
         if flow.id == "choose" { startProject(); return }
         if flow.scope == .general, store.current != nil { store.close() }
         if flow.id == "second" {
-            secondLookQueue = store.candidates
-                .filter { ($0.status == "flagged" || $0.status == "ground_confirmed") && $0.checks["second_look"] == nil }.map(\.id)
+            secondLookQueue = ProjectStore.worthAsking(store.candidates)
             showRecords(secondLookQueue.first)
             nextSecondLook()
         } else if flow.scope == .general, chat.project != nil || route != .chat {
@@ -900,6 +925,12 @@ final class AppState: ObservableObject {
     /// it chooses, with every area it searches added to it. Its chat lives in that project.
     func startTimedResearch(minutes: Int) {
         guard minutes > 0, let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) else { return }
+        if let left = chat.usageLeft, left < TimedResearch.usageFloor {
+            choosingDuration = false
+            route = .chat
+            chat.note("Only \(left)% of the account's usage is left, so a session would stop almost at once. Try again after it resets.")
+            return
+        }
         choosingDuration = false
         route = .chat
         if layout == .workspace { layout = .split }
@@ -1173,8 +1204,42 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// The usage left below which second opinions billed to this account wait (EASE_LOOP E1).
+    static let opinionFloor = 20
+
+    /// Why second opinions are waiting, when the account they are billed to is nearly used up.
+    @Published private(set) var opinionsWaiting: String?
+    private var opinionsRecheck: Task<Void, Never>?
+
+    /// Whether a model's opinions are billed to the account whose usage the engine reports: the engine's own models, and
+    /// the router's "primary" account, which is the same sign-in.
+    private func onThisAccount(_ model: String) -> Bool { !model.contains("/") || model.hasPrefix("primary/") }
+
+    /// False, and second opinions wait, while the account they use has less than the floor left. Checked again every five
+    /// minutes; they carry on by themselves once there is room.
+    private func roomForOpinions() -> Bool {
+        guard let model = secondOpinionModels.first, onThisAccount(model), let left = chat.usageLeft, left < Self.opinionFloor else {
+            opinionsWaiting = nil
+            return true
+        }
+        opinionsWaiting = "Second opinions wait: \(left)% of the account's usage is left. They carry on when it resets."
+        if opinionsRecheck == nil {
+            opinionsRecheck = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(300))
+                guard let self else { return }
+                self.opinionsRecheck = nil
+                if let read = try? await self.engine.request("account/rateLimits/read"), let limits = read["rateLimits"] as? JSON {
+                    self.chat.usageLeft = ChatModel.left(limits)
+                }
+                self.nextSecondLook()
+                self.nextSessionLook()
+            }
+        }
+        return false
+    }
+
     private func nextSecondLook() {
-        guard secondLookBusy == nil, !secondLookQueue.isEmpty else { return }
+        guard secondLookBusy == nil, !secondLookQueue.isEmpty, roomForOpinions() else { return }
         if directOpinions, let path = store.current?.path {
             let ids = Array(secondLookQueue.prefix(40))
             secondLookQueue.removeFirst(ids.count)
@@ -1370,7 +1435,7 @@ final class AppState: ObservableObject {
     @Published private(set) var sessionLooks: [SecondLookItem] = []
 
     private func nextSessionLook() {
-        guard secondLookBusy == nil, secondLookQueue.isEmpty, !sessionLooks.isEmpty else { return }
+        guard secondLookBusy == nil, secondLookQueue.isEmpty, !sessionLooks.isEmpty, roomForOpinions() else { return }
         if directOpinions, let path = sessionLooks.first?.path {
             let batch = Array(sessionLooks.prefix { $0.path == path }.prefix(40))
             sessionLooks.removeFirst(batch.count)
@@ -1383,16 +1448,12 @@ final class AppState: ObservableObject {
     /// Queue a second opinion for every open find without one in these project folders, and start.
     func askSecondOpinions(in folders: [String]) {
         for folder in folders {
-            let places = (try? JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: folder + "/private/state/locations.json")))) as? [String: JSON] ?? [:]
-            let files = (try? FileManager.default.contentsOfDirectory(atPath: folder + "/candidates")) ?? []
-            for file in files.sorted() where file.hasSuffix(".md") {
-                let id = String(file.dropLast(3))
-                guard let place = places[id], let tile = place["tile"] as? String,
-                      let text = try? String(contentsOfFile: folder + "/candidates/" + file, encoding: .utf8),
-                      text.contains("status: \"flagged\"") || text.contains("status: \"ground_confirmed\""),
-                      !text.contains("\"second_look\": {"),
-                      !sessionLooks.contains(where: { $0.path == folder && $0.id == id }) else { continue }
-                sessionLooks.append(SecondLookItem(path: folder, id: id, tile: tile, x: place["x"] as? Double ?? 0.5, y: place["y"] as? Double ?? 0.5))
+            let records = ((try? FileManager.default.contentsOfDirectory(atPath: folder + "/candidates")) ?? []).filter { $0.hasSuffix(".md") }.sorted()
+            let all = ProjectStore.readCandidates(folder, records)
+            let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            for id in ProjectStore.worthAsking(all) where !sessionLooks.contains(where: { $0.path == folder && $0.id == id }) {
+                guard let c = byID[id], !c.tile.isEmpty else { continue }
+                sessionLooks.append(SecondLookItem(path: folder, id: id, tile: c.tile, x: c.x, y: c.y))
             }
         }
         nextSessionLook()
@@ -1441,7 +1502,7 @@ struct DighouseApp: App {
         .defaultSize(width: 1380, height: 880)
         .commands {
             CommandGroup(replacing: .appSettings) {
-                Button("Settings…") { app.show(.settings) }.keyboardShortcut(",")
+                Button("Settings…") { app.toggleSettings() }.keyboardShortcut(",")
             }
             CommandGroup(replacing: .newItem) {
                 Button("New Chat") { app.newChat() }.keyboardShortcut("n")
@@ -1593,7 +1654,7 @@ struct RootView: View {
         }
         .foregroundStyle(Theme.text)
         .tint(Theme.accent)
-        .id("\(app.look.rawValue)-\(app.textSize)")   // colours and sizes are read when a view is built, so a change rebuilds the window
+        .id(app.look.rawValue)   // colours are read when a view is built, so a new look rebuilds the window; sizes are observed
         .overlay(alignment: .top) {
             if let note = app.sizeNote {
                 Text(note).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.text)

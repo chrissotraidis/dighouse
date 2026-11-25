@@ -71,6 +71,10 @@ extension AppState {
             await Perf.step("Open the largest project (\(sizes[i]) finds)",
                             ready: { self.store.current?.path == p.path && self.store.candidates.count >= sizes[i] }) { self.open(p) }
             for tab in [WorkTab.records, .notes, .sources, .data, .map] { await Perf.step("Tab \(tab.rawValue)") { self.tab = tab } }
+            // ⌘+ and ⌘− on the largest project, with the map showing: the size a person feels.
+            let size = textSize
+            await Perf.step("Bigger text (⌘+)") { self.textSize = "large" }
+            await Perf.step("Smaller text (⌘−)") { self.textSize = size }
             // What a running search costs: the project is polled every 2 seconds, and read again whenever a file changes.
             var start = Date()
             for _ in 0..<10 { store.reloadIfChanged() }

@@ -87,7 +87,11 @@ struct MainView: View {
             case .home: HomeView()
             case .newProject: NewProjectView(point: app.draftProject).id(app.draftProject.id)
             case .toolbox: ToolboxView()
-            case .settings: SettingsPage()
+            case .settings:
+                SettingsPage()
+                    // Escape goes back where Settings was opened from, wherever the focus is.
+                    .background(Button("") { app.closeSettings() }.keyboardShortcut(.escape, modifiers: [])
+                        .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true))
             case .chat:
                 if store.current == nil { ChatView() } else { split(width: width) }
             }
@@ -326,13 +330,13 @@ struct Sidebar: View {
             // Work going on in the background, from every page: one quiet line with a count.
             if app.secondOpinionsLeft > 0 {
                 HStack(spacing: 8) {
-                    DigIndicator()
+                    if app.opinionsWaiting == nil { DigIndicator() } else { Image(systemName: "pause.circle").foregroundStyle(Theme.amber) }
                     Text("Second opinions: \(app.secondOpinionsLeft) left").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
                 }
                 .padding(.horizontal, 12).padding(.bottom, 4)
-                .help("A second model is looking at each open find on its own. The records fill in as the answers come back.")
+                .help(app.opinionsWaiting ?? "A second model is looking at each open find on its own. The records fill in as the answers come back.")
             }
-            nav("gearshape", "Settings", selected: app.route == .settings) { app.show(.settings) }
+            nav("gearshape", "Settings", selected: app.route == .settings) { app.toggleSettings() }
         }
         .padding(.horizontal, 8).padding(.bottom, 10)
         .frame(maxHeight: .infinity, alignment: .top)

@@ -236,7 +236,7 @@ private struct ModelSettings: View {
     }
 
     var body: some View {
-        Text("One model runs the search. A second, from a different maker, gives each find its own opinion.")
+        Text("One model runs the search. A second model gives each find its own opinion, without seeing the first one.")
             .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
         if !warnings.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
@@ -255,7 +255,7 @@ private struct ModelSettings: View {
             Hairline()
             effortRow
             Hairline()
-            SettingRow(title: "Second opinion model", note: "Gives the second opinion on each find. If it does not answer, the next one below is asked.") {
+            SettingRow(title: "Second opinion model", note: "Gives the second opinion on each find. GPT-6 Luna, on your ChatGPT account, is the economical choice and waits when less than 20% of the account is left. Claude Sonnet 5.5 found more of the known features in a test (19 of 24, against 9) and uses your Claude account.") {
                 ModelPicker(title: app.secondModelName, models: engine.models.filter { $0.readsImages },
                             current: app.secondModelID) { app.secondModelID = $0.id; app.modelNotice = nil }
             }
@@ -271,7 +271,11 @@ private struct ModelSettings: View {
 
     /// The second-opinion models in the order they are asked, each with a check that sends it one lidar picture.
     private var secondOrder: some View {
-        let ids = ([app.secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        // The chosen model, then the defaults this Mac offers (the same model is listed once whichever way it is reached).
+        let ids = ([app.secondModelID].compactMap { $0 } + ModelInfo.secondOpinionOrder.filter { id in engine.models.contains { $0.id == id } })
+            .reduce(into: [String]()) { list, id in
+                if !list.contains(where: { $0 == id || $0.split(separator: "/").last == id.split(separator: "/").last }) { list.append(id) }
+            }
         return VStack(alignment: .leading, spacing: 8) {
             Text("Asked in this order").font(.system(size: 13.5 * Theme.scale, weight: .medium))
             ForEach(Array(ids.enumerated()), id: \.element) { i, id in

@@ -777,6 +777,7 @@ final class ChatModel: ObservableObject {
         if Perf.on { Perf.label = "engine message " + method }
         if method == "account/rateLimits/updated", let limits = params["rateLimits"] as? JSON {
             usageLeft = Self.left(limits)
+            if let left = usageLeft, left < TimedResearch.usageFloor { timed.closeForUsage(left: left) }
         }
         guard let thread = params["threadId"] as? String else { return }
         // Runs carry on while another chat is on screen, so keep track of every chat's turn.

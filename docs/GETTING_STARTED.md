@@ -64,7 +64,8 @@ On the Map, the pin-and-circle button marks what you see yourself: click a spot 
 ## When something goes wrong
 
 - **A search is slow.** Looking at tiles in bulk needs a direct line to a model, through the [OpenCodex](https://github.com/lidge-jun/opencodex) router. Without it the agent looks at every tile itself, which takes a few times longer.
-- **No second opinion from another maker.** Without OpenCodex every model comes from one maker, so the second opinion is from a different model of the same maker, and the record says so.
+- **Second opinions from the same maker.** By default the second opinion is GPT-6 Luna on your ChatGPT account, the lowest-cost choice, and the record says when it comes from the same maker as the agent. With OpenCodex you can choose Claude Sonnet 5.5 in Settings, Models, which finds more of the known features.
+- **Second opinions wait.** They pause while less than 20% of your account's usage is left and carry on when it resets; a search closes, saving its record, below 10%.
 - **Denmark's ground needs a token.** Get a free one from Dataforsyningen and paste it in Settings, Data and privacy.
 - **A data service does not answer.** National services go down for a while now and then. The search says which, carries on with the rest, and the check can be run again later.
 - **Something else.** [SETUP.md](SETUP.md) covers where projects and chats are kept and more fixes.

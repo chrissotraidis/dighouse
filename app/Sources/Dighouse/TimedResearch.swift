@@ -75,6 +75,23 @@ final class TimedResearch {
     /// The longest goal objective the engine accepts. A longer one is refused, and the session never starts.
     static let objectiveLimit = 4000
 
+    /// The usage left at which a running session is closed (EASE_LOOP E1): it saves its record first, as at its deadline.
+    static let usageFloor = 10
+
+    /// The account is nearly used up: every running session is asked to close now, as the timer does near the deadline,
+    /// and ends within ten minutes. Nothing prepared in the background is fetched after this.
+    func closeForUsage(left: Int, now: Date = Date()) {
+        for (id, s) in sessions where !s.closing && s.closeAt > now {
+            var closing = s
+            closing = Session(model: s.model, deadline: min(s.deadline, now.addingTimeInterval(600)), closeAt: now,
+                              retries: s.retries, reopened: true)
+            sessions[id] = closing
+            if let path = folder(id) { Self.markClose(path, at: now) }
+            announce(id, "Only \(left)% of the account's usage is left, so Dighouse is closing the session now. It saves its record first.")
+            schedule(id)
+        }
+    }
+
     func remove(_ id: String) {
         checkFailures.removeValue(forKey: id)
         timers.removeValue(forKey: id)?.cancel()

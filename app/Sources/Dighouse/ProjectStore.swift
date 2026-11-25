@@ -323,6 +323,22 @@ final class ProjectStore: ObservableObject {
     /// The measured rises kept on the map rather than put to a person. The same rule as ledger.layer in the tools:
     /// a rise goes to a person when the second model calls it built and its shape ranks in the top half of this
     /// project's measured rises, or when a person raises it.
+    /// The open finds worth a second opinion, best first. A measured rise reaches a person only when the second model
+    /// calls it built and its shape ranks in the top half of the project's rises (see layer), so a rise below that cut is
+    /// never asked: the same finds reach a person, for some 40% fewer opinions (EASE_LOOP E1, run 18: 4,777 of 8,065).
+    /// Finds the agent marked come first, then the rest by how well their shape ranks.
+    nonisolated static func worthAsking(_ all: [Candidate]) -> [String] {
+        let rank: (Candidate) -> Double = { c in
+            let r = (c.checks["shape"] as? JSON)?["rank"]
+            return (r as? Double) ?? (r as? Int).map(Double.init) ?? 0
+        }
+        let ranks = all.filter { $0.flaggedBy.hasPrefix("measured") }.map(rank).sorted()
+        let cut = ranks.isEmpty ? 0 : ranks[min(Int(Double(ranks.count) * 0.5), ranks.count - 1)]
+        let open = all.filter { $0.waiting && $0.checks["second_look"] == nil && ($0.raised || !$0.flaggedBy.hasPrefix("measured") || rank($0) >= cut) }
+        let byAgent = { (c: Candidate) in !c.flaggedBy.hasPrefix("measured") && !c.flaggedBy.hasPrefix("seen in bulk") }
+        return open.sorted { a, b in byAgent(a) != byAgent(b) ? byAgent(a) : rank(a) > rank(b) }.map(\.id)
+    }
+
     nonisolated static func layer(_ all: [Candidate]) -> Set<String> {
         let rank: (Candidate) -> Double = { c in
             let r = (c.checks["shape"] as? JSON)?["rank"]

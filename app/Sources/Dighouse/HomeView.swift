@@ -402,7 +402,7 @@ private struct HowItWorks: View {
                 }
             }
             line("A small area takes 5 to 15 minutes. A bar at the top of the chat shows how far it has got, with Stop.")
-            line("Then a model from another company gives each find a second opinion. Nothing is called a site until you say so.")
+            line("Then a second model gives each find its own opinion. Nothing is called a site until you say so.")
         }
     }
 

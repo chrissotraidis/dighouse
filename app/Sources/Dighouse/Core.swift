@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -69,9 +70,18 @@ enum Motion {
     static var settle: Animation? { reduce ? nil : .spring(response: 0.35, dampingFraction: 0.62) }
 }
 
+/// The text size, observed: a view that reads Theme.scale while it is drawn is drawn again when the size changes, and only
+/// that view. Before, a change rebuilt the whole window, so ⌘+ froze it for most of a second on a large project and lost
+/// the map's place and the open sheets (EASE_LOOP E2).
+@Observable
+final class TextScale: @unchecked Sendable {
+    static let shared = TextScale()   // set only on the main thread, from AppState.textSize
+    var value: CGFloat = TextSize.scale(UserDefaults.standard.string(forKey: "textSize") ?? "standard")
+}
+
 enum Theme {
     /// How large text is drawn, from ⌘+ and ⌘− or Settings › Personalize. Every font size is multiplied by it.
-    static var scale: CGFloat { TextSize.scale(UserDefaults.standard.string(forKey: "textSize") ?? "standard") }
+    static var scale: CGFloat { TextScale.shared.value }
 
     static var palette = (Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth).palette
 
@@ -274,7 +284,16 @@ struct ModelInfo: Identifiable, Hashable {
 
     /// The second opinion, in the order Dighouse tries them: each from a different maker than the GPT models that
     /// run searches, and each checked on a lidar tile through the router on 2026-11-21.
-    static let secondOpinionOrder = ["anthropic/claude-sonnet-5-5", "opencode-go-secondary/glm-5.3", "opencode-go/kimi-k3"]
+    /// Second opinions by default: GPT-6 Luna on the ChatGPT account (through OpenCodex's "primary", or the engine's own
+    /// list), the lowest-cost model there that reads images, with the account's usage watched (EASE_LOOP E1). GLM and
+    /// Kimi are no longer asked on their own: a fall-through to them used up other accounts without saying so. Sonnet
+    /// stays a choice; rated on 102 known views it finds more of the published features (19 of 24 against 9).
+    static let secondOpinionOrder = ["primary/gpt-6-luna", "gpt-6-luna"]
+
+    /// Who makes a model, from its id: "anthropic/claude-sonnet-5-5" and "primary/gpt-6-luna" give "claude" and "gpt".
+    static func maker(_ id: String) -> String {
+        (id.split(separator: "/").last.map(String.init) ?? id).split(separator: "-").first.map { $0.lowercased() } ?? id
+    }
 }
 
 struct ProjectRef: Identifiable, Codable, Hashable {
