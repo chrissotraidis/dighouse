@@ -5,7 +5,8 @@
 <h1 align="center">Dighouse</h1>
 
 <p align="center">
-  <strong>An AI agent that searches open lidar for mounds, hillforts and other earthworks, and checks every find before you decide.</strong>
+  <strong>Agentic open archaeology on your Mac.</strong><br>
+  Use AI agents to search public lidar for mounds, hillforts and other earthworks, check every find against open records, and decide what each one is.
 </p>
 
 <p align="center">
@@ -35,7 +36,7 @@
 
 The United States, Canada, much of Europe and New Zealand have flown lidar over their land and published it free. Lidar is a laser scan from an aircraft that reaches the ground through gaps in the trees, and on that bare ground the mounds, banks, ditches and old fields people left behind can still show. There is far more of it than anyone can look over by eye.
 
-Dighouse puts an AI agent to work on it. Pick a region, or let the agent choose one with open lidar and little on record. It downloads the ground, looks at every tile and marks what might be built. On a ready-made ground model it has looked over 65 km² of Ohio in an hour.
+Dighouse is a free, open-source Mac app that puts AI agents to work on it, on your own ChatGPT or Claude account. Pick a region, or let the agent choose one with open lidar and little on record. It downloads the ground, looks at every tile and marks what might be built. On a ready-made ground model it has looked over 65 km² of Ohio in an hour.
 
 In November 2026 Pietro Miotti's agents searched about 1,200 km² of NASA lidar overnight and marked a Maya site that turned out to be already published. Dighouse is built for the checking that comes after the marking. A slice through the laser points shows whether a find is in the ground, and a different model gives its own opinion without seeing the first one's. Open maps, and the site register where one is open, show whether it is modern or already recorded, and the agent searches the published literature for the area. Finds arrive ranked, with the evidence for and against each. You decide what each one is, and for a find worth reporting Dighouse drafts the letter to the records office for you to send.
 
@@ -52,7 +53,7 @@ You don't need a GitHub account, Terminal or any coding to use Dighouse.
 
 - A Mac with Apple silicon (M1 or later) and macOS 14 Sonoma or later. Intel Macs are not supported yet.
 - A ChatGPT account on a plan that includes Codex, or an OpenAI API key. Dighouse runs its AI through your account, so a search counts toward your plan's usage (or is billed to the key). The chat box shows how much you have left. [Which account does what](docs/GETTING_STARTED.md#which-account), and what was measured.
-- Optional: [Claude Code](https://docs.claude.com/en/docs/claude-code/setup). With it, second opinions can come from Claude on your Claude account, and Claude Code can run searches with Dighouse's tools ([how](docs/SETUP.md#if-you-use-claude)).
+- Or a Claude plan with [Claude Code](https://docs.claude.com/en/docs/claude-code/setup). Claude Code then runs the search with Dighouse's tools, and you decide the finds in the app. With a ChatGPT account as well, Claude can give the second opinion on each find ([how](docs/SETUP.md#if-you-use-claude)).
 - An internet connection. A search downloads a few megabytes of ground for each square kilometre.
 
 **Install it**
@@ -61,7 +62,7 @@ You don't need a GitHub account, Terminal or any coding to use Dighouse.
 2. Open the downloaded file and drag **Dighouse** into **Applications**.
 3. Open Dighouse from Applications. It is signed and notarized by Apple, so macOS opens it like any app you download.
 
-On the first launch a guide of three steps does the setting up. While you read the first, Dighouse puts OpenAI's Codex engine in its own folder and prepares the archaeology tools, in about a minute. Then you sign in with ChatGPT in your browser (Dighouse never sees your password) or paste an OpenAI API key, pick a model that can read images, and take a guided first search.
+On the first launch a guide of three steps does the setting up. While you read the first, Dighouse puts OpenAI's Codex engine in its own folder and prepares the archaeology tools, in about a minute. Then you sign in with ChatGPT in your browser (Dighouse never sees your password), paste an OpenAI API key, or choose a Claude account through Claude Code. You pick a model that can read images and take a guided first search.
 
 **Good first steps**, all on Home:
 
@@ -82,7 +83,7 @@ On the first launch a guide of three steps does the setting up. While you read t
   </tr>
 </table>
 
-1. **Choose where to look.** Ask "What should I research?" and the agent proposes three searches, weighing open lidar, how little is on record and where earthworks survive. Or press **Pick a place on the map** on Home and click a shaded area.
+1. **Choose where to look.** Ask "What should I research?" and the agent proposes three searches, weighing open lidar, how little is on record and where earthworks survive. Or press **Pick a place on the map** on Home and click a gold area.
 2. **Calibrate.** Before searching where nothing is on record, the agent runs a blind test on the nearest known site with the same kind of lidar. If it finds less than half of what is published there, the search stops. One test can vary by a few features, so the mark is judged over the last ten tests of that site on that lidar on your Mac.
 3. **Take the trees away.** The tools download the raw laser points, or a national ground model, and keep the ground.
 4. **Look at every tile.** The ground is cut into squares called tiles. A low-cost vision model looks at every tile in bulk, then the agent looks closely at the ones worth it, in two renderings. A feature guide tells both what mounds, banks and terraces look like, and what to rule out (sinkholes, tree throws, craters, tracks). Without the [OpenCodex](https://github.com/lidge-jun/opencodex) router the agent looks at every tile itself, which is slower.
@@ -114,7 +115,7 @@ These live in the tools, so they hold whichever model is running.
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/record.png" alt="A find's record at Angel Mounds beside the project page: its relief, its slice, what the agent suggests, the evidence and each check, with Location kept on this Mac at the top"><br><sub><b>A record.</b> Each find with its relief, its slice and every check. Its location stays on your Mac.</sub></td>
-    <td width="50%"><img src="docs/images/new-project.png" alt="New project on a world map shaded where open lidar reaches: the United States, Canada, Europe, and dots for surveys flown for archaeology, with a legend"><br><sub><b>New project.</b> The shaded areas have open lidar. Click to zoom in, click again to place the area, and see which surveys cover it.</sub></td>
+    <td width="50%"><img src="docs/images/new-project.png" alt="New project on a world map with gold where open lidar reaches: the United States, Canada, Europe, and dots for surveys flown for archaeology, with a legend"><br><sub><b>New project.</b> The gold areas have open lidar. Click to zoom in, click again to place the area, and see which surveys cover it.</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/toolbox.png" alt="The Toolbox on the Check stage of a real search at Cahokia: a line dragged across Monks Mound and the slice it cuts drawn beside it"><br><sub><b>Toolbox.</b> One real search at Cahokia in six stages, each a picture to press or drag. Here a line across Monks Mound draws its slice.</sub></td>
@@ -130,9 +131,12 @@ These live in the tools, so they hold whichever model is running.
 - **The rank**, A, B or C, counts how many of three checks call a find built: the shape, the agent's eye and the second opinion. It never changes what needs you.
 - **Compare two flights** works where two dated USGS flights cover a find in the United States. It slides the older over the newer and says whether the find was there in both, appeared between them (possibly modern) or went.
 - **Old maps beside the ground** lays the oldest USGS sheets over the bare ground, or in France the État-major map and the 1950s photographs, with a divider to slide and a fade.
-- **See it in 3D** turns the ground 120 m around a find, with heights ×1, ×2 or ×4, a light you can move, a person 1.70 m tall for scale and a ruler.
+- **Turn it in 3D** turns the ground 120 m around a find, with heights ×1, ×2 or ×4, a light you can move, a person 1.70 m tall for scale and a ruler.
 - **Mark a spot** on the Map makes anything you see into a find in your name, with its slice and checks. Drag a box instead and the agent looks closely at the tiles under it, up to 24.
+- **Not sure what it is?** **Ask the agent about it** puts a question about the find in a new chat for you to send.
 - **Agree in bulk** shows the routine finds as a grid. Untick any that look wrong and agree with the rest in one press. **Done** lists what you decided, with Undo.
+
+**Settings** shows your ChatGPT and Claude accounts side by side, what Dighouse keeps on disk part by part with a way to clear it, and what leaves your Mac.
 
 **Also in the app:** a chat with `/` commands, `@` mentions and ⌘K, any model through the [OpenCodex](https://github.com/lidge-jun/opencodex) router, and Claude through Claude Code (so a different maker's model can give the second opinion), three colour looks and five text sizes.
 
@@ -219,7 +223,7 @@ The tools also refuse a status the evidence does not support, whichever model is
 <details>
 <summary><b>Is it free?</b></summary>
 
-Yes. Dighouse is free and open source under the Apache 2.0 licence. The AI runs on your own ChatGPT account, so it uses your plan's Codex usage. The public data it reads is free, and only Denmark's ground model needs a token, which is also free.
+Yes. Dighouse is free and open source under the Apache 2.0 licence. The AI runs on your own ChatGPT or Claude account, so it uses your plan's usage. The public data it reads is free, and only Denmark's ground model needs a token, which is also free.
 </details>
 
 <details>
@@ -243,7 +247,7 @@ Not yet. The app is for Macs with Apple silicon. The archaeology tools are plain
 <details>
 <summary><b>Which AI does it use?</b></summary>
 
-OpenAI's Codex engine, signed in with your ChatGPT account or an OpenAI API key. Any model your account offers that can read images can run a search. The benchmarks used primary / 6.1 Terra, a low-cost one. With Claude Code, or the [OpenCodex](https://github.com/lidge-jun/opencodex) router, the second opinion on each find can come from a different company's model.
+Inside the app, OpenAI's Codex engine, signed in with your ChatGPT account or an OpenAI API key. Any model your account offers that can read images can run a search. With a Claude plan, Claude Code runs the search with the same tools. The benchmarks used primary / 6.1 Terra, a low-cost one. With Claude Code, or the [OpenCodex](https://github.com/lidge-jun/opencodex) router, the second opinion on each find can come from a different company's model.
 </details>
 
 <details>
@@ -279,7 +283,7 @@ Don't post the location anywhere, and don't visit or dig. Mark the find **Worth 
 <details>
 <summary><b>Where can it search?</b></summary>
 
-The United States, Canada, much of Europe, New Zealand and Shizuoka in Japan, plus the seafloor of US and Irish waters. The map on Home shades where open data reaches, and [Open data](#open-data) lists every source. Anywhere else, you can give the agent your own data.
+The United States, Canada, much of Europe, New Zealand and Shizuoka in Japan, plus the seafloor of US and Irish waters. The map on Home shows where open data reaches, and [Open data](#open-data) lists every source. Anywhere else, you can give the agent your own data.
 </details>
 
 <details>
@@ -455,7 +459,7 @@ Markdown is the record of truth, so a project works offline and can be handed to
 
 ### Where the work stands
 
-The state of the work is in [HANDOFF.md](docs/HANDOFF.md), what comes next in the [roadmap](docs/ROADMAP.md), and the loop under way, on what a public download still needs, in [OPEN_LOOP.md](docs/loops/OPEN_LOOP.md). Every loop log, newest first, is listed in [docs/loops](docs/loops/README.md). The concept is in [concept.md](docs/concept.md) and the design rules in [DESIGN.md](docs/DESIGN.md). The [eight-hour research session and replays](docs/loops/2026-11-20-research-session.md) record where the coordinator intervened and what still needs a full-session test. Earlier app tests are in [TEST_LOOP.md](docs/loops/TEST_LOOP.md), [REFINE_LOOP.md](docs/loops/REFINE_LOOP.md), [POLISH_LOOP.md](docs/loops/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/loops/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/loops/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/loops/GOAL_LOOP.md).
+The state of the work is in [HANDOFF.md](docs/HANDOFF.md), what comes next in the [roadmap](docs/ROADMAP.md), and what a public download needed in [OPEN_LOOP.md](docs/loops/OPEN_LOOP.md). Every loop log, newest first, is listed in [docs/loops](docs/loops/README.md). The concept is in [concept.md](docs/concept.md) and the design rules in [DESIGN.md](docs/DESIGN.md). The [eight-hour research session and replays](docs/loops/2026-11-20-research-session.md) record where the coordinator intervened and what still needs a full-session test. Earlier app tests are in [TEST_LOOP.md](docs/loops/TEST_LOOP.md), [REFINE_LOOP.md](docs/loops/REFINE_LOOP.md), [POLISH_LOOP.md](docs/loops/POLISH_LOOP.md), [USABILITY_LOOP.md](docs/loops/USABILITY_LOOP.md), [NEXT_LOOP.md](docs/loops/NEXT_LOOP.md) and [GOAL_LOOP.md](docs/loops/GOAL_LOOP.md).
 
 ## Contributing
 

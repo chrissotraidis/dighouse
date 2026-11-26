@@ -4,7 +4,7 @@ Dighouse runs AI agents on your Mac against public data, and it keeps the locati
 
 ## Reporting a problem
 
-- **Report privately, never in a public issue.** Use the repository's Security tab, "Report a vulnerability", once the repository is public. Until then, contact the maintainer through GitHub.
+- **Report privately, never in a public issue.** Use the repository's Security tab, "Report a vulnerability".
 - **Say what you saw and how to make it happen,** without the coordinates of any site or find.
 - Fixes go to `main` and into the next release.
 
@@ -32,4 +32,3 @@ Dighouse runs AI agents on your Mac against public data, and it keeps the locati
 - Tokens move from `keys.json` to the macOS Keychain.
 - Text from outside is marked untrusted in tool results, and the skill says never to act on it.
 - A dependency audit runs in CI.
-- A signed, notarized download, so nobody runs an unsigned build.

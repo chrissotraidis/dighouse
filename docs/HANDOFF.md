@@ -249,7 +249,7 @@ The full list, with reasons, is the first four sections of [ROADMAP.md](ROADMAP.
 
 - **Delete the test repository** `chrissotraidis/default-folder-check` (private), made to check publishing.
 - **The promotional video** is 65 seconds, made from real app footage and 3D renders of open lidar. Everything it is built from, its music, and how to build it again are in [docs/promo](promo/README.md). Posting it is his decision.
-- **Going public.** The README reads as if the repository were public. Making it public and publishing a release are his decisions. The release build is notarized and stapled (`DIGHOUSE_NOTARY_PROFILE=<the keychain profile> app/scripts/release.sh`: that keychain profile belongs to the same team as the Developer ID), so a download opens without Open Anyway.
+- **Public since 2026-11-26.** Chris opened the repository that day, and 0.2.1 is the first public release: a notarized and stapled disk image from app/scripts/release.sh, run with DIGHOUSE_NOTARY_PROFILE set to the keychain profile of the Developer ID team. A download opens without Open Anyway.
 
 - **Use this build and say what is still rough.** Loop 5 answered his list item by item (the Log has a picture for each), but his eye has not been over the result.
 - **Second opinions** run on GPT-6 Luna on the ChatGPT account by default (EASE_LOOP E1), and wait while less than 20% of the account is left; Claude Sonnet 5.5 stays a choice, and GLM-5.3 and Kimi K3 are no longer asked on their own. Google models (Antigravity and Gemini by any route) no longer run through OpenCodex and are hidden from every model list (2026-11-21).

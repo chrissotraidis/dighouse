@@ -1,18 +1,17 @@
 # Roadmap
 
-Where Dighouse goes next, in rough order. Nothing here is promised by a date. What already works is in the [README](../README.md); what was checked, and how, is in the loop logs ([EASE_LOOP.md](loops/EASE_LOOP.md) is the newest). The first four sections come from a review on 2026-11-25 of what a person who downloads the app would still miss.
+Where Dighouse goes next, in rough order. Nothing here is promised by a date. What already works is in the [README](../README.md); what was checked, and how, is in the loop logs ([PLAIN_LOOP.md](loops/PLAIN_LOOP.md) is the newest). The first four sections come from a review on 2026-11-25 of what a person who downloads the app would still miss.
 
-## What a public download still lacks
+## What a public download needed
 
-These are things a stranger meets in the first day. Each was checked in the code on 2026-11-25.
+A review on 2026-11-25 listed what a stranger would miss in the first day. All of it is in the first public release, 0.2.1:
 
-- **Keeping the Mac awake.** Nothing stops the Mac from sleeping while a search runs, so a timed session left overnight stops when the Mac sleeps. Hold an activity (`ProcessInfo.beginActivity`) while a search or second opinions run, and say so in the bar.
-- **Saying when it is done.** There are no notifications. A person who leaves a search running learns that it finished, or that finds wait, only by coming back to look. One notification when a search reports back, one when second opinions finish, none for each step.
-- **Updates.** Nothing tells a person that a newer version exists. A check against the repository's latest release at launch, with a quiet line on Home, is enough to start; Sparkle later.
-- **Disk use.** A five-hour session left 4.5 GB. The cache keeps up to 10 GB of points and `scripts/tidy.py` frees more, but the app shows neither what is used nor a way to free it. A line in Settings with the size and a Free space button.
-- **Reporting a problem.** Settings, About has details to copy. A Report a problem button that opens a GitHub issue filled with the version, the macOS version and the last log lines, with locations taken out, would let strangers help.
-- **What each plan gets.** Searches run through Codex, signed in with ChatGPT or an OpenAI API key; second opinions can also use Claude Code. Someone with only a Claude plan can run the tools in Claude Code but not the app's search. How much an hour costs was measured only on a ChatGPT Pro plan (about 1.6% of the account an hour). [GETTING_STARTED.md](GETTING_STARTED.md) should say plainly what works on which plan, and what was not measured.
-- **Other computers.** The app needs Apple silicon and macOS 14. The tools run on any computer with Python, inside Codex or Claude Code, and that path should be its own short page.
+- The Mac stays awake while a search runs, and a notification says when it is done ([OPEN_LOOP.md](loops/OPEN_LOOP.md)).
+- The app says when a newer version is out, and Settings has Report a problem.
+- Settings shows what is on disk, part by part, with a way to clear it ([PLAIN_LOOP.md](loops/PLAIN_LOOP.md)).
+- [GETTING_STARTED.md](GETTING_STARTED.md) says what works on which plan, and a person with a Claude plan alone can search from Claude Code.
+
+Still open: a short page for running the tools on other computers, updates that install themselves, and keys kept in the macOS Keychain.
 
 ## The biggest gap: finds pile up faster than people decide
 
