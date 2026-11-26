@@ -40,7 +40,7 @@ Each goal is done when its check passes in the running app. Record the date and 
 - **Locations stay under private/.** Nothing in a record, a report or a chat carries coordinates.
 - **Say only what was checked.** A hover, drag or pinch made by test tooling is not proof that a real pointer works.
 - **One branch and pull request per goal,** squash-merged when its check passes: codex/ prefix, then gh pr merge --squash --delete-branch. Log first.
-- **Work in the existing checkout,** /Users/chrissotraidis/GitHub/dighouse. No sibling clones in ~/GitHub.
+- **Work in the existing checkout,** ~/GitHub/dighouse. No sibling clones in ~/GitHub.
 - **Leave Chris's things as you found them:** his settings, his projects list, his models. His settings at the start of this loop are saved in ~/Documents/Codex/2026-11-14/dighouse-loop5/backup. Archive the test chats you make.
 
 ## How to build, check and drive the app

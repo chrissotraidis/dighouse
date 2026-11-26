@@ -80,7 +80,7 @@ Each goal is done when its check passes in the running app. Record the date and 
 - **Plain words:** find, slice, look at, second opinion, the ground, the seafloor. Write lidar in lowercase. Never call a site or a wreck new. A person decides and a person sends.
 - **Say only what was checked.** Recheck every control you rewire, and the ones next to it.
 - **One branch and pull request per goal:** codex/ prefix, logged first, squash-merged with gh pr merge --squash --delete-branch.
-- **Work in the existing checkout,** /Users/chrissotraidis/GitHub/dighouse. `rm` is blocked; move files to /tmp.
+- **Work in the existing checkout,** ~/GitHub/dighouse. `rm` is blocked; move files to /tmp.
 - **Nothing is released.** The repository stays private until Chris says so.
 - **Leave Chris's things as you found them.** Back up the settings plist before driving the app and restore it afterwards. Use `-projectsHome $HOME/dighouse-ui-test` so the macOS Documents prompt does not appear, and do not click that prompt.
 

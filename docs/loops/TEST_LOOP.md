@@ -42,7 +42,7 @@ Each goal is done when its check passes in the running app. Record the date and 
 - **Plain words:** find, slice, look at, second opinion, the ground. Write lidar in lowercase. Never call a site new. A person decides and a person sends.
 - **Say only what was checked.** Recheck every control you rewire, and the ones next to it.
 - **One branch and pull request per goal:** codex/ prefix, logged first, squash-merged with gh pr merge --squash --delete-branch.
-- **Work in the existing checkout,** /Users/chrissotraidis/GitHub/dighouse. No sibling clones in ~/GitHub.
+- **Work in the existing checkout,** ~/GitHub/dighouse. No sibling clones in ~/GitHub.
 - **Nothing is released.** The repository stays private until Chris says so.
 - **Leave Chris's things as you found them:** his settings, projects list and model choice. Archive the test chats and remove test projects from the sidebar list (keep their folders) when a goal is done.
 
@@ -203,7 +203,7 @@ Checks, primary / 6.1 Terra at medium effort, headless (the app still waits on t
 
 ### 2026-11-16, why macOS kept asking
 
-The build was signed ad hoc, so every rebuild looked like a new app to macOS, and it asked again for the Documents folder. When answered, the next rebuild asked again, over whatever Chris was doing. app/scripts/bundle.sh now signs with the first "Apple Development" identity on the Mac (DIGHOUSE_SIGN overrides it, and a Mac without one falls back to ad hoc). The designated requirement is the certificate, so one Allow lasts across rebuilds. Checked with codesign -d: Authority "Apple Development: the maintainer's Apple ID (P52SY73DYK)". Dighouse is left closed until Chris allows it once.
+The build was signed ad hoc, so every rebuild looked like a new app to macOS, and it asked again for the Documents folder. When answered, the next rebuild asked again, over whatever Chris was doing. app/scripts/bundle.sh now signs with the first "Apple Development" identity on the Mac (DIGHOUSE_SIGN overrides it, and a Mac without one falls back to ad hoc). The designated requirement is the certificate, so one Allow lasts across rebuilds. Checked with codesign -d: Authority "the Apple Development identity on this Mac". Dighouse is left closed until Chris allows it once.
 
 ### 2026-11-16, T7: the benchmark
 

@@ -129,6 +129,7 @@ enum ToolGuide {
                      Tool(name: "decide_many", title: "Decide many at once", does: "Records a person's decisions on many finds at once. Only the app calls it."),
                      Tool(name: "undo_decision", title: "Undo a decision", does: "Takes back a person's last decision on a find. Only the app calls it."),
                      Tool(name: "raise_rise", title: "Raise a measured rise", does: "Puts a measured rise kept on the map to the person. Only the app calls it."),
+                     Tool(name: "lead_progress", title: "Follow a lead", does: "Records what happened to a lead you reported: sent, answered or visited. Only the app calls it."),
                      Tool(name: "who_to_tell", title: "Who to tell", does: "Names the body that keeps the official record of sites where the project is, whether that record is open, and what to do before sending anything."),
                      Tool(name: "check_before_publishing", title: "Check before publishing", does: "Checks that no location or download would leave the Mac before the person publishes the project."),
                      Tool(name: "suggest_project", title: "Offer a project", does: "Offers to turn a chat into a project. Nothing is made until you press Make this a project."),

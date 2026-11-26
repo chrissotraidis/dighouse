@@ -142,7 +142,7 @@ final class Engine: ObservableObject {
         input = stdin.fileHandleForWriting
         do {
             // The experimental API is needed to read chats the engine stores page by page.
-            _ = try await request("initialize", ["clientInfo": ["name": "dighouse", "title": "Dighouse", "version": "0.2.0"],
+            _ = try await request("initialize", ["clientInfo": ["name": "dighouse", "title": "Dighouse", "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.1"],
                                                  "capabilities": ["experimentalApi": true]])
             send(["method": "initialized"])
             let who = try await request("account/read")

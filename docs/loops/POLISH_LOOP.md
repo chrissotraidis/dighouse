@@ -36,7 +36,7 @@ Each goal is done when its check passes in the running app. Record the date and 
 - **Locations stay under private/.** Nothing in the research record, reports or chats carries coordinates.
 - **Say only what was checked.** A drag, hover or pinch done by test tooling is not proof that a real mouse or trackpad works; say it is unverified.
 - **One branch and pull request per goal,** squash-merged when its check passes: codex/ prefix, then gh pr merge --squash --delete-branch. Log first.
-- **Work in the existing checkout,** /Users/chrissotraidis/GitHub/dighouse. No sibling clones in ~/GitHub.
+- **Work in the existing checkout,** ~/GitHub/dighouse. No sibling clones in ~/GitHub.
 - **Leave Chris's things as you found them:** his settings, his projects list, his model choice (primary/gpt-6.1-terra). Archive the test chats you make.
 
 ## How to build, check and drive the app

@@ -25,14 +25,14 @@ Denmark is an option for anyone with a free Dataforsyningen token (Chris chose n
   - another model gives a **second opinion** (not a second look);
   - the bare-ground model is **the ground** (not terrain).
   - Tool names, file names and code keep the older words. The agent's skill tells it to use the new ones when it writes to a person.
-- Work in the existing checkout, `/Users/chrissotraidis/GitHub/dighouse`. No sibling clones or worktrees in `~/GitHub`.
+- Work in the existing checkout, `~/GitHub/dighouse`. No sibling clones or worktrees in `~/GitHub`.
 - The repository stays private and nothing is released until Chris says so. Licence is Apache 2.0 for now.
 - Nothing is ever called new. Locations stay under `private/`. A person decides and sends.
 - Write "lidar" in lowercase. A first-time user must understand every label.
 - Tests that send a message to a model use a cheap one: primary / 6.1 Terra (Chris, 2026-11-14). Never test with Opus.
 - Say only what was checked. Do not claim a model, a service or a control works unless you saw it work.
 - Leave Chris's settings, projects list and model as you found them. Back up `~/Library/Preferences/com.chrissotraidis.dighouse.plist` before a check that changes them, and compare afterwards.
-- Final replies to Chris link only files under `/Users/chrissotraidis/Documents/Codex/2026-11-12/vb/outputs`. Copies of this file and the loop logs are kept there.
+- Final replies to Chris link only files under `the outputs folder of his Codex chat`. Copies of this file and the loop logs are kept there.
 
 ## Where things stand
 
@@ -249,7 +249,7 @@ The full list, with reasons, is the first four sections of [ROADMAP.md](ROADMAP.
 
 - **Delete the test repository** `chrissotraidis/default-folder-check` (private), made to check publishing.
 - **The promotional video** is 65 seconds, made from real app footage and 3D renders of open lidar. Everything it is built from, its music, and how to build it again are in [docs/promo](promo/README.md). Posting it is his decision.
-- **Going public.** The README reads as if the repository were public. Making it public and publishing a release are his decisions. The release build is notarized and stapled (`DIGHOUSE_NOTARY_PROFILE='the keychain profile' app/scripts/release.sh`: that keychain profile belongs to the same team as the Developer ID), so a download opens without Open Anyway.
+- **Going public.** The README reads as if the repository were public. Making it public and publishing a release are his decisions. The release build is notarized and stapled (`DIGHOUSE_NOTARY_PROFILE=<the keychain profile> app/scripts/release.sh`: that keychain profile belongs to the same team as the Developer ID), so a download opens without Open Anyway.
 
 - **Use this build and say what is still rough.** Loop 5 answered his list item by item (the Log has a picture for each), but his eye has not been over the result.
 - **Second opinions** run on GPT-6 Luna on the ChatGPT account by default (EASE_LOOP E1), and wait while less than 20% of the account is left; Claude Sonnet 5.5 stays a choice, and GLM-5.3 and Kimi K3 are no longer asked on their own. Google models (Antigravity and Gemini by any route) no longer run through OpenCodex and are hidden from every model list (2026-11-21).
