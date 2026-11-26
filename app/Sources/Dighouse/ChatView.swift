@@ -153,10 +153,6 @@ private struct StatusLine: View {
                     .help("How much of the model's memory this chat uses. Near full, /compact shortens it.")
             }
             Spacer()
-            if let left = chat.usageLeft {
-                Text("\(left)% of usage left").foregroundStyle(left < 15 ? Theme.amber : Theme.faint)
-                    .help("From your account's limits, as the engine reports them. /status gives the details.")
-            }
         }
         .font(.system(size: 11.5 * Theme.scale))
     }
@@ -662,7 +658,8 @@ private struct EmptyChat: View {
                         if index > 0 { Hairline().padding(.leading, 40) }   // aligns under an icon
                         Button { app.ask(question.1) } label: {
                             HStack(spacing: 12) {
-                                Glyph(name: question.0, size: 13 * Theme.scale).foregroundStyle(Theme.tan).frame(width: 18)
+                                Glyph(name: question.0, size: 13 * Theme.scale)
+                                    .foregroundStyle([Theme.tan, Theme.sky, Theme.green, Theme.clay][index % 4]).frame(width: 18)
                                 Text(question.1).font(.system(size: 13.5 * Theme.scale)).multilineTextAlignment(.leading)
                                 Spacer(minLength: 8)
                                 Image(systemName: "arrow.right").font(.system(size: 10 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
@@ -683,6 +680,10 @@ private struct EmptyChat: View {
 struct StartTile: View {
     let icon: String, title: String, text: String
     var strong = false
+    /// The card's own colour: its icon, a faint wash, and its edge under the pointer.
+    var tint: Color = Theme.tan
+    /// Larger words, for the welcome guide.
+    var grow: CGFloat = 1
     let action: () -> Void
     @State private var hover = false
 
@@ -691,28 +692,33 @@ struct StartTile: View {
             Group {
                 if strong {
                     HStack(alignment: .center, spacing: 14) {
-                        IconTile(name: icon, size: 42)
+                        IconTile(name: icon, size: 42, tint: tint)
                         words
                         Spacer(minLength: 8)
-                        Image(systemName: "arrow.right").font(.system(size: 13 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.tan)
+                        Image(systemName: "arrow.right").font(.system(size: 13 * Theme.scale, weight: .semibold)).foregroundStyle(tint)
+                            .offset(x: hover ? 3 : 0)
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 10) {
-                        IconTile(name: icon, size: 30)
+                        HStack {
+                            IconTile(name: icon, size: 30, tint: tint)
+                            Spacer()
+                            Image(systemName: "arrow.right").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(tint)
+                                .opacity(hover ? 1 : 0).offset(x: hover ? 0 : -4)
+                        }
                         words
                     }
                 }
             }
             .padding(strong ? 18 : 14).frame(maxWidth: .infinity, minHeight: strong ? 0 : 118, maxHeight: strong ? nil : .infinity, alignment: .topLeading)
-            // The main card carries a warm wash and a tan edge; every card lifts under the pointer.
+            // The main card carries a warm wash and its edge. The others keep the page's own surface, with their colour
+            // in the icon and, under the pointer, in a faint wash and the edge: four full washes side by side clashed.
             .background {
-                if strong {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(LinearGradient(colors: [Theme.tan.opacity(0.12), Theme.tan.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                }
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(LinearGradient(colors: [tint.opacity(strong ? 0.14 : hover ? 0.12 : 0.03), tint.opacity(0.01)], startPoint: .topLeading, endPoint: .bottomTrailing))
             }
             .overlay {
-                if strong { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.tan.opacity(hover ? 0.85 : 0.45)) }
+                RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(tint.opacity(strong ? (hover ? 0.85 : 0.45) : hover ? 0.6 : 0))
             }
             .surface(hover: hover)
             .contentShape(Rectangle())
@@ -724,8 +730,8 @@ struct StartTile: View {
 
     private var words: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.system(size: (strong ? 15.5 : 13.5) * Theme.scale, weight: .semibold))
-            Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
+            Text(title).font(.system(size: (strong ? 15.5 : 13.5) * grow * Theme.scale, weight: .semibold))
+            Text(text).font(.system(size: 12.5 * grow * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                 .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -816,6 +822,7 @@ struct Composer: View {
     /// What "@" can point at in the open project, read when the list opens, and the mentions picked so far.
     @State private var pool: [Mention] = []
     @State private var picked: [Mention] = []
+    @State private var dialHover = false
     @FocusState private var focused: Bool
 
     private var commands: [SlashCommand] { dismissed == chat.draft ? [] : SlashCommands.matches(chat.draft) }
@@ -873,6 +880,18 @@ struct Composer: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.06)))
             }
             if !chat.attachments.isEmpty || !shownMentions.isEmpty { chips }
+            if let example = chat.example {
+                // A request placed here from a card: say what it is, and that nothing has been sent.
+                HStack(spacing: 8) {
+                    Image(systemName: "lightbulb").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.tan)
+                    Text("\(example.about). Change it if you like, then press Return to send it.")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    Button("Clear") { chat.draft = ""; chat.example = nil }.buttonStyle(SecondaryButton())
+                }
+                .padding(.leading, 10).padding(.trailing, 4).padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.tan.opacity(0.08)))
+            }
             TextField(placeholder, text: $chat.draft, axis: .vertical)
                 .textFieldStyle(.plain).lineLimit(1...8).font(.system(size: 14 * Theme.scale))
                 .focused($focused).onSubmit { listCount == 0 ? send() : runSelected() }
@@ -906,6 +925,7 @@ struct Composer: View {
                 : commands.firstIndex { $0.id == typed } ?? commands.firstIndex { app.unavailable($0) == nil } ?? 0
             if dismissed != draft { dismissed = nil }
             if draft.isEmpty { picked = [] }
+            if let example = chat.example, draft != example.text { chat.example = nil }
         }
         .onChange(of: listCount == 0) { _, empty in empty ? stopKeys() : startKeys() }
         .onDisappear { stopKeys() }
@@ -1114,7 +1134,7 @@ struct Composer: View {
                                            : "This chat starts in \(store.current!.name). Choose No project for a chat of its own.")
                 .accessibilityLabel("Project: \(store.current?.name ?? "No project")")
                 .popover(isPresented: $showWhere, arrowEdge: .top) {
-                    MenuPanel(entries: whereChoices, width: 280) { showWhere = false }.popoverSurface()
+                    MenuPanel(entries: whereChoices, width: 340) { showWhere = false }.popoverSurface()
                 }
             }
 
@@ -1123,14 +1143,36 @@ struct Composer: View {
             if chat.preparing {
                 DigIndicator().padding(.trailing, 4).help("Reading the attachments")
             }
+            if let left = chat.usageLeft {
+                // How much of the plan is left, as a dial in the box rather than a line of its own under it.
+                // Under the pointer the dial says its number, in a label of its own just above it.
+                Button { app.settingsSection = .account; app.show(.settings) } label: { UsageDial(left: left).frame(width: 30, height: 30).contentShape(Rectangle()) }
+                    .buttonStyle(.plain)
+                    .onHover { dialHover = $0 }
+                    .overlay(alignment: .top) {
+                        if dialHover {
+                            Text("\(left)% of your plan's usage is left")
+                                .font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.text).fixedSize()
+                                .padding(.horizontal, 10).frame(height: 26)
+                                .background(Capsule().fill(Theme.pop).shadow(color: .black.opacity(0.35), radius: 8, y: 2))
+                                .overlay(Capsule().strokeBorder(Theme.line))
+                                .offset(y: -32)   // aligns just above the dial
+                                .allowsHitTesting(false).transition(.opacity)
+                        }
+                    }
+                    .animation(Motion.ease(0.12), value: dialHover)
+                    .accessibilityHint("Opens your account in Settings")
+            }
             ModelControl()
-            if chat.running && !canSend {
+            // A run can always be stopped, even with words in the box; the words then go to the agent with Send.
+            if chat.running {
                 Button { Task { await chat.stop() } } label: {
                     Image(systemName: "stop.fill").font(.system(size: 11 * Theme.scale)).foregroundStyle(.black)
                         .frame(width: 30, height: 30).background(Circle().fill(Theme.primary))
                 }
-                .buttonStyle(.plain).help("Stop the run").padding(.leading, 6)
-            } else {
+                .buttonStyle(.plain).help("Stop the run").accessibilityLabel("Stop the run").padding(.leading, 6)
+            }
+            if !chat.running || canSend {
                 Button(action: send) {
                     Image(systemName: "arrow.up").font(.system(size: 13 * Theme.scale, weight: .bold)).foregroundStyle(.black)
                         .frame(width: 30, height: 30).background(Circle().fill(canSend ? Color.white : Theme.ink.opacity(0.25)))
@@ -1150,9 +1192,11 @@ struct Composer: View {
     /// Where a new chat goes: no project, or one of the projects in the list, the open one ticked.
     private var whereChoices: [MenuEntry] {
         var out: [MenuEntry] = [.header("Start this chat in"),
-                                MenuEntry(title: "No project", icon: "bubble.left", checked: store.current == nil) { app.newChat() }]
+                                MenuEntry(title: "No project", icon: "bubble.left", checked: store.current == nil) { app.newChat() },
+                                MenuEntry(title: "A new project…", icon: "plus") { app.startProject() }]
         out.append(.divider)
-        for project in store.projects.prefix(12) {
+        // Your own projects, newest first. Blind tests are the app's own checks, so they stay out of this list.
+        for project in store.projects.filter({ !store.blindTests.contains($0.path) || $0 == store.current }).prefix(12) {
             out.append(MenuEntry(title: project.name, icon: "folder", checked: project == store.current) {
                 if project != store.current { app.open(project) }
             })

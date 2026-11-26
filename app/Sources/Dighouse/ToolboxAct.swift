@@ -18,14 +18,46 @@ struct ActTab: View {
                 StartChoices()
             }
             section("In a project", store.current.map { "Each step of a search in \($0.name). Steps that are done or waiting say so." }
-                    ?? "Each step of a search. Open a project from the sidebar to run them.") {
-                LazyVGrid(columns: two, spacing: 10) {
-                    ForEach(projectSteps.compactMap { id in ToolGuide.workflows.first { $0.id == id } }) { flow in
-                        StepCard(flow: flow)
+                    ?? "The steps of a search, in order. They run on the open project.") {
+                let steps = projectSteps.compactMap { id in ToolGuide.workflows.first { $0.id == id } }
+                if store.current == nil {
+                    // No project is open: the steps as a short row to read, and a way to open a project, in place of nine cards
+                    // that can do nothing.
+                    VStack(alignment: .leading, spacing: 12) {
+                        Flow(spacing: 6) {
+                            ForEach(steps) { flow in
+                                HStack(spacing: 6) {
+                                    Glyph(name: flow.icon, size: 12 * Theme.scale).foregroundStyle(Theme.tan)
+                                    Text(flow.title).font(.system(size: 12.5 * Theme.scale))
+                                }
+                                .padding(.horizontal, 10).frame(height: 28)
+                                .background(Capsule().fill(Theme.ink.opacity(0.05)))
+                                .help(flow.summary)
+                            }
+                        }
+                        Hairline()
+                        HStack(spacing: 12) {
+                            Text(store.projects.isEmpty ? "No project yet. Start a search above, and its steps show here." : "Open a project to see where it stands on each step.")
+                                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            if !store.projects.isEmpty {
+                                PillMenu(title: "Open a project", width: 300) {
+                                    // The sidebar's own projects, in its order: blind tests have their own group there.
+                                    store.projects.filter { !store.blindTests.contains($0.path) }.prefix(14).map { ref in
+                                        MenuEntry(title: ref.name) { app.open(ref) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(14).panel()
+                } else {
+                    LazyVGrid(columns: two, spacing: 10) {
+                        ForEach(steps) { flow in StepCard(flow: flow, next: app.nextStep?.id == flow.id) }
                     }
                 }
             }
-            section("With your other apps", "The agent can also use what your Codex app has. Press one to put a request in a new chat.") {
+            section("With your other apps", "The agent can also use the apps connected in Codex on this Mac.") {
                 MoreTools()
             }
         }
@@ -46,16 +78,18 @@ struct ActTab: View {
 struct StartChoices: View {
     @EnvironmentObject var app: AppState
     private let two = [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), spacing: 10, alignment: .top)]
+    /// A colour for each way to start, so the four are told apart at a glance.
+    static var tints: [String: Color] { ["research": Theme.clay, "choose": Theme.sky, "place": Theme.green, "surveys": Theme.amber] }
 
     var body: some View {
         let all = ToolGuide.workflows
         VStack(alignment: .leading, spacing: 10) {
             if let main = all.first(where: { $0.id == "timed-research" }) {
-                StartTile(icon: main.icon, title: main.title, text: main.summary, strong: true) { app.run(main) }
+                StartTile(icon: main.icon, title: main.title, text: main.summary, strong: true) { app.preview(main) }
             }
             LazyVGrid(columns: two, spacing: 10) {
                 ForEach(["research", "choose", "place", "surveys"].compactMap { id in all.first { $0.id == id } }) { flow in
-                    StartTile(icon: flow.icon, title: flow.title, text: flow.summary) { app.run(flow) }
+                    StartTile(icon: flow.icon, title: flow.title, text: flow.summary, tint: Self.tints[flow.id] ?? Theme.tan) { app.preview(flow) }
                 }
             }
         }
@@ -66,6 +100,8 @@ struct StartChoices: View {
 private struct StepCard: View {
     @EnvironmentObject var app: AppState
     let flow: ToolGuide.Workflow
+    /// The step the project is waiting on: it wears a tan edge and says so.
+    var next = false
     @State private var hover = false
 
     var body: some View {
@@ -74,7 +110,10 @@ private struct StepCard: View {
         HStack(alignment: .top, spacing: 12) {
             IconTile(name: flow.icon, size: 34)
             VStack(alignment: .leading, spacing: 4) {
-                Text(flow.title).font(.system(size: 14 * Theme.scale, weight: .semibold))
+                HStack(spacing: 8) {
+                    Text(flow.title).font(.system(size: 14 * Theme.scale, weight: .semibold))
+                    if next { Badge(text: "Next", color: Theme.tan) }
+                }
                 Text(flow.summary).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
@@ -93,6 +132,7 @@ private struct StepCard: View {
         }
         .padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .surface()
+        .overlay { if next { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.tan.opacity(0.55)) } }
         .onHover { hover = $0 }
         .animation(.easeOut(duration: 0.12), value: hover)
         .accessibilityElement(children: .combine)
@@ -204,6 +244,15 @@ extension Reach {
         if contains(unitedStates, lon, lat) { return "United States" }
         if let irish = sonar.last, contains(irish, lon, lat) { return "Irish waters" }
         return nil
+    }
+
+    /// The country the open data names under a point, as its middle and its width and height in degrees, so a small map
+    /// can show the whole of it. Nil elsewhere.
+    static func frame(lon: Double, lat: Double) -> (lon: Double, lat: Double, width: Double, height: Double)? {
+        guard let ring = national.first(where: { contains($0.ring, lon, lat) })?.ring ?? (contains(unitedStates, lon, lat) ? unitedStates : nil) else { return nil }
+        let lons = stride(from: 0, to: ring.count - 1, by: 2).map { ring[$0] }, lats = stride(from: 1, to: ring.count, by: 2).map { ring[$0] }
+        guard let west = lons.min(), let east = lons.max(), let south = lats.min(), let north = lats.max() else { return nil }
+        return ((west + east) / 2, (south + north) / 2, east - west, north - south)
     }
 
     /// Whether a ring of longitude, latitude pairs holds a point (the even-odd rule).

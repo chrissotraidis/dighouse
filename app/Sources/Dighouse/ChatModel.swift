@@ -77,6 +77,9 @@ final class ChatModel: ObservableObject {
     @Published var loading = false
     @Published var approval: Approval?
     @Published var draft = ""
+    /// A request put in the message box as an example for an app, and the app it is for. The box says so while the text
+    /// is unchanged, and the text is cleared on leaving for another chat.
+    @Published var example: (about: String, text: String)?
     @Published var attachments: [Attachment] = []
     /// The chats with a run in progress, and the turn each is on.
     @Published private(set) var live: [String: String] = [:]
@@ -248,7 +251,14 @@ final class ChatModel: ObservableObject {
         remember()
     }
 
+    /// An example that was never changed or sent does not follow the person into another chat.
+    private func dropExample() {
+        if let example, draft == example.text { draft = "" }
+        example = nil
+    }
+
     func newChat() {
+        dropExample()
         active = nil
         items = []
         running = false
@@ -259,6 +269,7 @@ final class ChatModel: ObservableObject {
     func select(_ thread: ChatThread) async {
         guard let engine else { return }
         if let previous = active, !items.isEmpty { remember(previous, items) }
+        dropExample()
         active = thread.id
         // A chat opened before shows at once from memory while the engine reads it again.
         items = shown[thread.id] ?? []

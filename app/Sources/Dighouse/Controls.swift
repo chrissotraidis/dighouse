@@ -233,7 +233,9 @@ struct MenuRow: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.title).font(.system(size: 13.5 * Theme.scale, weight: second == nil ? .regular : .medium)).lineLimit(1)
+                    // A long name takes a second line rather than being cut short.
+                    Text(entry.title).font(.system(size: 13.5 * Theme.scale, weight: second == nil ? .regular : .medium))
+                        .lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                     if let second {
                         Text(second).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                             .lineLimit(3).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
@@ -247,7 +249,7 @@ struct MenuRow: View {
                     Image(systemName: "checkmark").font(.system(size: 11 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.accent)
                 }
             }
-            .padding(.horizontal, 10).padding(.vertical, second == nil ? 0 : 6).frame(minHeight: 30)
+            .padding(.horizontal, 10).padding(.vertical, second == nil ? 4 : 6).frame(minHeight: 30)
             .background(RoundedRectangle(cornerRadius: 8).fill(
                 selected || entry.checked ? Theme.ink.opacity(0.09) : hover && entry.blocked == nil ? Theme.hover : .clear))
             .contentShape(Rectangle())
@@ -343,11 +345,13 @@ struct Badge: View {
 struct IconTile: View {
     let name: String
     var size: CGFloat = 34
+    /// Tan unless the tile stands for one of several choices, each with its own colour.
+    var tint: Color = Theme.tan
 
     var body: some View {
-        Glyph(name: name, size: size * 0.44, weight: .medium).foregroundStyle(Theme.tan)
+        Glyph(name: name, size: size * 0.44, weight: .medium).foregroundStyle(tint)
             .frame(width: size, height: size)
-            .background(RoundedRectangle(cornerRadius: size * 0.32, style: .continuous).fill(Theme.tan.opacity(0.13)))
+            .background(RoundedRectangle(cornerRadius: size * 0.32, style: .continuous).fill(tint.opacity(0.15)))
     }
 }
 
@@ -356,6 +360,60 @@ struct Hairline: View {
 
     var body: some View {
         Rectangle().fill(Theme.line).frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
+    }
+}
+
+/// A switch between a few choices: the chosen one is raised, the others are plain words that brighten under the pointer.
+/// Every page uses this one, so a choice of this kind looks the same everywhere.
+struct Segmented<Value: Hashable>: View {
+    struct Choice {
+        let value: Value, title: String
+        var icon: String? = nil
+    }
+
+    let choices: [Choice]
+    @Binding var pick: Value
+    /// A little shorter, for a switch that sits inside a row of settings.
+    var compact = false
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(choices, id: \.value) { choice in
+                Face(choice: choice, chosen: pick == choice.value, compact: compact) {
+                    withAnimation(Motion.ease(0.15)) { pick = choice.value }
+                }
+            }
+        }
+        .padding(compact ? 2 : 4)
+        .background(RoundedRectangle(cornerRadius: compact ? 9 : 10, style: .continuous).fill(Theme.ink.opacity(0.06)))
+        .overlay(RoundedRectangle(cornerRadius: compact ? 9 : 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
+    }
+
+    private struct Face: View {
+        let choice: Choice
+        let chosen: Bool
+        let compact: Bool
+        let action: () -> Void
+        @State private var hover = false
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    if let icon = choice.icon { Glyph(name: icon, size: 12 * Theme.scale, weight: .medium) }
+                    Text(choice.title)
+                }
+                .font(.system(size: (compact ? 12.5 : 13) * Theme.scale, weight: chosen ? .semibold : .medium))
+                .foregroundStyle(chosen || hover ? Theme.text : Theme.dim)
+                .lineLimit(1).fixedSize()
+                .padding(.horizontal, compact ? 10 : 14).frame(height: compact ? 26 : 28)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(chosen ? Theme.raised : .clear)
+                    .shadow(color: .black.opacity(chosen ? 0.3 : 0), radius: 2, y: 1))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { hover = $0 }
+            .accessibilityAddTraits(chosen ? .isSelected : [])
+        }
     }
 }
 
@@ -896,11 +954,13 @@ struct RevealSlider: View {
 /// The forest and the bare ground at Serpent Mound, from the same open lidar points.
 struct ForestReveal: View {
     var animateIn = true
+    /// A fixed height, where the whole picture would push the page past the window: the pictures fill it and are cut at the sides.
+    var height: CGFloat? = nil
 
     var body: some View {
         if let top = Tour.image("serpent-canopy"), let ground = Tour.image("serpent-ground") {
-            RevealSlider(left: top, right: ground, leftLabel: "Treetops", rightLabel: "Bare ground", animateIn: animateIn)
-                .aspectRatio(938.0 / 586.0, contentMode: .fit)
+            let slider = RevealSlider(left: top, right: ground, leftLabel: "Treetops", rightLabel: "Bare ground", animateIn: animateIn)
+            if let height { slider.frame(height: height) } else { slider.aspectRatio(938.0 / 586.0, contentMode: .fit) }
         }
     }
 }
@@ -959,10 +1019,12 @@ struct PageSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 16 * Theme.scale, weight: .semibold))
-                if !caption.isEmpty {
-                    Text(caption).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            if !title.isEmpty || !caption.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    if !title.isEmpty { Text(title).font(.system(size: 16 * Theme.scale, weight: .semibold)) }
+                    if !caption.isEmpty {
+                        Text(caption).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             content()

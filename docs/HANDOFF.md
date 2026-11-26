@@ -65,7 +65,43 @@ The plan is [EASE_LOOP.md](loops/EASE_LOOP.md), from Chris's review of the runni
 - **E2, spacing:** one scale (DESIGN.md, Layout), kept by `tests/test_app_spacing.py`; a padding that aligns with an icon carries `// aligns`.
 - **E8, the live map:** `ProjectStore.watching` (set every 2 s by `AppState.watchRuns` while a search or a chat runs in the open project; `-watchAlways YES` forces it) shows `LiveSearch` on the map; `ProjectStore.fresh` holds finds new since the last reading for 8 s, and `Pin(fresh:)` rings them; `TileView` glows when a tile's status leaves unscreened. `triage.sort_tiles` records each verdict as it arrives (`as_completed`), then sorts the shortlist back into tile order. The map's find card has Look closely, 3D and Record; `FindCard` runs `compare_flights` and `old_map_views` by itself 1.2 s after a waiting find's card opens. `ProjectStore.adoptNew` lists project folders made in the projects folder since `adoptSince`, on activation and every ten seconds; removing a project adds it to `removedProjects`.
 - **E7, the project page:** `FoundStrip` in ProjectOverview.swift, under the next-step card: the count of finds by where they stand and the four strongest (needs-you first, then by `agreement`), each a card with `Images.crop` of its relief picture and its rank; a press opens Decide (`openDecide(on:)`) or the record (`showRecords`). `record.still_to_do` leaves finds kept on the map out of "Decide …", and `_ids` shortens lists longer than eight.
-- **E6, Settings in five parts:** Account and models (three cards first: what runs the search, what checks it, what each costs; then you and the sign-in, the agent model, second opinions, Claude), Data and keys, How it looks, Tools, Advanced (how it runs, models on offer, About). `SettingsSection` has `icon` and `about`; `GroupTitle` heads every group.
+- **E6, Settings in five parts (six since LAUNCH_LOOP, which gave About its own):** Account and models (three cards first: what runs the search, what checks it, what each costs; then you and the sign-in, the agent model, second opinions, Claude), Data and keys, How it looks, Tools, Advanced (how it runs, models on offer, About; named How it runs since PLAIN_LOOP). `SettingsSection` has `icon` and `about`; `GroupTitle` heads every group.
+
+## The plain loop (PLAIN_LOOP, 2026-11-26)
+
+[PLAIN_LOOP.md](loops/PLAIN_LOOP.md) is Chris's third review that day: say what each thing is, and what happens next. Its Log lists what was not pressed. In the code:
+
+- **Looks:** the colours are observed (`LookNow` in `Core.swift`), so `RootView` no longer rebuilds the window on a new look. A colour read outside a view's body (a `static let`) would not follow a change, so keep them computed.
+- **Settings** has six parts, and Advanced is now **How it runs** (`SettingsSection.runs`, `RunSettings`). Account and models leads with two account cards (`AccountSettings.account`, `ClaudeAccount`). Data and keys has `StorageSettings` (`DiskUse.byProject`, `kept` and `clear` in `Basics.swift`), and `KeyRow` checks a key with `Keys.accepted` before it is kept.
+- **Claude alone:** `AppState.searchesFromClaude` (default `searchesFromClaude`) is true once Claude Code holds Dighouse's tools. The welcome guide then lets a person on (`SetupChecklist.claudeChoice`, `WelcomeView.firstFromClaude`), and Home says the chat needs an account (`HomeView.claudeOnly`).
+- **Starting:** `AppState.preview` shows `StartSheet` (in `MainView.swift`) before a card's workflow runs. `previewing` replaced `choosingDuration`. `AppState.draft(_:about:)` puts an example in the message box with a line over it (`ChatModel.example`), cleared on leaving the chat.
+- **Other apps' icons:** `PluginIcons` reads each plugin's logo from the Codex plugin folder on the Mac.
+- **Where:** `Whereabouts.usState` (from a USGS survey's name), `Reach.frame` (the whole country in `Locator`), and `Whereabouts.nameNearest`, which asks Apple only on a press and writes `private/state/near.json`.
+- **Decide:** `FindCard.unsure` (ask the agent, ask a second model, 3D), `said` for the notes, `DecideView.whatNext` on Done.
+- **Data tab:** `DataView.row` and four groups. **New project map:** one gold for open lidar (`NewProjectView.lidar`).
+- **Keys still to add:** Finland and Sweden, once Chris makes the accounts. The Log's table says what each needs.
+
+## The clear loop (CLEAR_LOOP, 2026-11-26)
+
+[CLEAR_LOOP.md](loops/CLEAR_LOOP.md) is Chris's second review that day: what a person is looking at, and where. In the code:
+
+- **`Where.swift`** holds `Whereabouts` (a project's boxes from its private folder), `Locator` (a small map drawn from the app's own land outline, so no map service is asked), `TileGrid` (a find's tile among its area's tiles), `WherePanel` (the project page), `FindWhere` (the strip in Decide), `SliceChart` (the slice drawn from `data/views/<id>-surface.json`, with a readout under the pointer) and `UsageDial`.
+- **Decide:** `FindCard` has `viewPicker` as named buttons, `titled` over each picture and `slice`, which chooses `SliceChart` or the cut picture (`slicePoints` in defaults).
+- **Settings:** `PrivacyTable`, `KeyRow` with Add, the four parts as lines (`RunSettings.part` since PLAIN_LOOP), `SettingRow` padded 10.
+- **New project map:** `spots`, `clusters`, `hit` and `card` for the dots; `shownDot` is the card on show.
+- **Colour:** `IconTile(tint:)`, `StartTile(tint:)`, `StartChoices.tints`, `Theme.violet` and `Theme.rose`.
+
+## The launch loop (LAUNCH_LOOP, 2026-11-26)
+
+[LAUNCH_LOOP.md](loops/LAUNCH_LOOP.md) is Chris's review before a public release: a first run that sets itself up, and Settings, Home, the Toolbox and the New project map reorganized. What changed in the code:
+
+- **First run** (`WelcomeView.swift`): three steps, Welcome, Set up, First search. `AppState.getReady` fetches the engine and prepares the tools while the first page is read. `SetupChecklist` lists the engine, the tools and the model in the order they depend on each other, and offers a ChatGPT sign-in and an API key side by side (`APIKeySignIn(alwaysOpen:)`). `AppState.modelReady` is true only when someone is signed in or a router offers models: the engine lists models to a person who has not signed in. The last step starts the tutorial.
+- **Settings** (`SettingsView.swift`) has six parts: About is its own. `GroupTitle` takes a status at its right (`StatusWord`). Account and models leads with one account card (who, plan, how much is left, name). Data and keys shows Privacy as two cards (`PrivacyPanel`), and a key says Added with Replace and Remove (`KeyRow`). Tools folds the tools into the six stages.
+- **`Segmented`** in `Controls.swift` is the one switch between a few choices: text size, how a project opens, thinking effort, the Toolbox's tabs, Home's tabs.
+- **Home** (`HomeView.swift`): a first visit shows the pitch, the first project and `HowStrip`; after that `Desk` shows the greeting, the message box, Where you left off and Waiting for you (`LeadCard`, a picture of each lead cut around the find; `ProjectStore.Lead` keeps `x` and `y`). Places to start holds the known sites, the open surveys and the map as three tabs.
+- **Toolbox**: with no project open, In a project is one row of steps and an Open a project menu; with one open, the next step wears a tan edge (`StepCard(next:)`).
+- **New project map**: a plain map while more than about 200 km shows and photographs closer in (`photo`), shading until about 50 km (`shaded`), a click that goes from the world to a region and then places the area and goes to it (`go`), the map's own zoom buttons, The world, and searched ground as `MapCircle`s.
+- **For checks:** `-openPage settings` (or toolbox, new, welcome), `-settingsPart "Data and keys"`, `-hideSidebar YES` and `-windowSize 1440x900`. New default: `homeWaiting`.
 
 ## The seeing loop (SEE_LOOP, started 2026-11-24)
 
@@ -194,7 +230,7 @@ Chris found Home long and the copy weak ("You decide what each one is"), and the
 
 - **Text size:** five steps (`TextSize` in `Core.swift`), ⌘=, ⌘+ and ⌘− in the View menu, a short note at the top of the window, and the same five in Settings, How it looks. The workflow lanes and the Toolbox stage card hold at Largest.
 - **Movement:** `Motion` in `Core.swift` and `.arrives()` in `Controls.swift` (fade and rise, in order); `CardButton` for cards that are buttons. All of it is off with Reduce Motion. Use these for anything new rather than adding another animation.
-- **Personal:** Home's greeting card (`WelcomeBack` in `HomeView.swift`) shows the last project, what it waits for and the person's totals, read from the folders by `ProjectStore.glance`. The overview's card says "Your turn, Chris".
+- **Personal:** Home's greeting (`Desk` in `HomeView.swift`) shows the person's totals, the three projects worked in last and what each waits for, read from the folders by `ProjectStore.glance`. The overview's card says "Your turn, Chris".
 - **Docs:** the README is written for a public release, and [ROADMAP.md](ROADMAP.md) holds what comes next, including the open astronomy field.
 
 ## How a project documents itself (Chris's priority)
@@ -203,7 +239,7 @@ Every project is a folder with a git history (data/ and private/ left out) and o
 
 ## The open-concerns loop (OPEN_LOOP, started 2026-11-25)
 
-[OPEN_LOOP.md](loops/OPEN_LOOP.md) works through the review below. Done so far: O1 to O6 in `Basics.swift`: `Awake` (an activity while `AppState.working`), `Notify` (asked once, said only when Dighouse is behind), `Updates` (GitHub's latest release, once a day, `-fakeLatest` to see the line), `DiskUse` and `DiskUseRow` (Data and keys; frees only cache points with one link), `ProblemReport` (a filled new-issue page, `clean` takes out coordinates), and GETTING_STARTED's Which account. O7 and O8: `ProjectStore.Lead` (three per project, kept with the glances), Home's The strongest leads (`WelcomeBack.strongest`), `AppState.decide(in:on:limit:)`, and Decide's short session (`decideLimit`, `short`, `shown` for The next 20). O9 and O10: `ledger.lead_progress` and `PROGRESS` (the `lead_progress` tool, `LeadProgress` in Workspace.swift, `Candidate.progress`), and `ProjectStore.searchedBoxes` for both maps (`CoverageMap(searched:)`). O11: `finds_to_review` and `finds_per_km2` in a blind test's score (`answers._where_lost`), the scorecard's "to look over per sq km", and the README table's Per km² column. O12: the loop logs and their screenshots live in [loops/](loops/README.md), newest first, and `tests/test_docs_links.py` fails on a broken relative link.
+[OPEN_LOOP.md](loops/OPEN_LOOP.md) works through the review below. Done so far: O1 to O6 in `Basics.swift`: `Awake` (an activity while `AppState.working`), `Notify` (asked once, said only when Dighouse is behind), `Updates` (GitHub's latest release, once a day, `-fakeLatest` to see the line), `DiskUse` and `DiskUseRow` (Data and keys; frees only cache points with one link), `ProblemReport` (a filled new-issue page, `clean` takes out coordinates), and GETTING_STARTED's Which account. O7 and O8: `ProjectStore.Lead` (three per project, kept with the glances), Home's strongest leads (`Desk.strongest`), `AppState.decide(in:on:limit:)`, and Decide's short session (`decideLimit`, `short`, `shown` for The next 20). O9 and O10: `ledger.lead_progress` and `PROGRESS` (the `lead_progress` tool, `LeadProgress` in Workspace.swift, `Candidate.progress`), and `ProjectStore.searchedBoxes` for both maps (`CoverageMap(searched:)`). O11: `finds_to_review` and `finds_per_km2` in a blind test's score (`answers._where_lost`), the scorecard's "to look over per sq km", and the README table's Per km² column. O12: the loop logs and their screenshots live in [loops/](loops/README.md), newest first, and `tests/test_docs_links.py` fails on a broken relative link.
 
 ## What is missing (review, 2026-11-25)
 

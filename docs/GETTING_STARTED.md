@@ -14,7 +14,7 @@ Dighouse helps you look for earthworks and other remains that may not be on reco
 |---|---|---|---|
 | A ChatGPT plan that includes Codex | Yes | GPT-6 Luna on the same account, by default | Measured on a Pro plan only: about 1.6% of the account's usage an hour of searching. Not measured on other plans; expect a session to stop sooner where the plan allows less. |
 | An OpenAI API key | Yes: press **Use an OpenAI API key instead** at sign-in | The same models, billed to the key | Billed per use by OpenAI. Not measured. |
-| A Claude plan | Not on its own: the app's search runs through Codex | Yes, with Claude Code signed in (Settings, Account and models, Claude) | Uses your Claude plan's usage. |
+| A Claude plan | From Claude Code: choose **A Claude account** in the welcome guide, then ask Claude Code to search. The chat inside the app runs through Codex, so it needs one of the two rows above | Yes, with Claude Code signed in (Settings, Account and models, Claude) | Uses your Claude plan's usage. |
 | Claude Code or Codex, without the app | The tools run in either, on any computer with Python ([SETUP.md](SETUP.md#if-you-use-claude)) | Ask the agent | Your plan's usage. |
 
 Dighouse watches the account it searches with: second opinions wait while less than 20% of its usage is left, and a search closes, saving its record, below 10%. The [OpenCodex](https://github.com/lidge-jun/opencodex) router is optional; it adds other makers' models and lets every tile be looked at in bulk, which is a few times faster.
@@ -27,12 +27,11 @@ To build it yourself instead, see [SETUP.md](SETUP.md).
 
 ## The first launch
 
-Dighouse shows a short checklist and fixes what it can:
+Dighouse opens on a guide of three steps:
 
-1. **Agent engine (Codex).** If your Mac has none, press **Install it**: Dighouse downloads OpenAI's Codex engine from its GitHub releases into its own folder.
-2. **Signed in.** Press **Sign in with ChatGPT**. Your browser opens; sign in there. Dighouse never sees your password.
-3. **Archaeology tools.** Dighouse prepares its tools, about a minute the first time. A downloaded Dighouse carries everything they need.
-4. **AI models.** Pick the model that runs the search. It must be able to read images.
+1. **Welcome.** What Dighouse does. While you read, it fetches what it runs on: OpenAI's Codex engine from its GitHub releases, into Dighouse's own folder, if your Mac has none, and its archaeology tools, about a minute the first time. A downloaded Dighouse carries everything the tools need.
+2. **Set up.** Give it a model to think with. Press **Sign in with ChatGPT** and sign in in your browser (Dighouse never sees your password), or paste an OpenAI API key. Then pick the model that runs the search. It must be able to read images.
+3. **First search.** **Start the guided search** takes you through one real search at Serpent Mound, a step at a time.
 
 ## Your first search
 
@@ -71,7 +70,7 @@ On the Map, the pin-and-circle button marks what you see yourself: click a spot 
 - The models see pictures of the ground and the project's records, through your ChatGPT account (and, if you use the OpenCodex router, through the providers you set up there).
 - Downloads are kept in `~/.cache/dighouse`, so a second look at the same ground is quick. Laser points no project uses are kept up to 10 GB, oldest dropped first; a project's own points are never dropped.
 - **Publish to GitHub** checks that no location would leave your Mac before it makes a private repository.
-- **New versions.** Once a day Dighouse asks GitHub for the number of its latest release and says on Home when a newer one is out. Nothing is downloaded. Turn it off in Settings, Advanced, About.
+- **New versions.** Once a day Dighouse asks GitHub for the number of its latest release and says on Home when a newer one is out. Nothing is downloaded. Turn it off in Settings, About.
 - **Space.** Settings, Data and keys, shows what projects and downloads take, and frees the downloads no project holds.
 
 ## When something goes wrong
@@ -83,5 +82,5 @@ On the Map, the pin-and-circle button marks what you see yourself: click a spot 
 - **Denmark's ground needs a token.** Get a free one from Dataforsyningen and paste it in Settings, Data and keys.
 - **A data service does not answer.** National services go down for a while now and then. The search says which, carries on with the rest, and the check can be run again later.
 - **Something else.** [SETUP.md](SETUP.md) covers where projects and chats are kept and more fixes.
-- **Report a problem.** Settings, Advanced, About, **Report…** opens a new issue on GitHub with the versions filled in and locations taken out. Read it, say what happened, and send it.
+- **Report a problem.** Settings, About, **Report…** opens a new issue on GitHub with the versions filled in and locations taken out. Read it, say what happened, and send it.
 - **Still stuck.** Ask in **dighouse-help** on [Discord](https://discord.gg/xwHfUD2bxW): when you join, pick **Dighouse (lidar archaeology)**. Leave out anything that shows where a find is.

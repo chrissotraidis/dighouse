@@ -17,7 +17,7 @@ enum WorkTab: String, CaseIterable {
 }
 
 enum SettingsSection: String, CaseIterable {
-    case account = "Account and models", data = "Data and keys", look = "How it looks", tools = "Tools", advanced = "Advanced"
+    case account = "Account and models", data = "Data and keys", look = "How it looks", tools = "Tools", runs = "How it runs", about = "About"
 }
 
 @MainActor
@@ -47,7 +47,12 @@ final class AppState: ObservableObject {
     /// Whether the "Find a chat" sheet is open.
     @Published var findingChat = false
     @Published var jumping = false
-    @Published var choosingDuration = false
+    /// A way to start that is on show before it runs: what the agent will do, and Start.
+    @Published var previewing: ToolGuide.Workflow?
+    /// Claude Code has Dighouse's tools, so a person with Claude alone can search from there and decide here.
+    @Published var searchesFromClaude = UserDefaults.standard.bool(forKey: "searchesFromClaude") {
+        didSet { UserDefaults.standard.set(searchesFromClaude, forKey: "searchesFromClaude") }
+    }
     /// Whole searches under way ("Find and report back"): the chat each runs in, and its project's folder.
     @Published var investigating: [String: String] = [:]
     /// The search report on show, as a file, or nil.
@@ -461,6 +466,13 @@ final class AppState: ObservableObject {
                     if let project = store.projects.first(where: { $0.path == folder }) {
                         self.open(project)
                         if let name = arguments["openTab"] as? String, let tab = WorkTab(rawValue: name) { self.tab = tab }
+                        // For checks: -openDecide YES opens Decide on the project's strongest finds once they are read.
+                        if (arguments["openDecide"] as? String) == "YES" {
+                            Task { @MainActor in
+                                for _ in 0..<50 where self.store.candidates.isEmpty { try? await Task.sleep(for: .milliseconds(200)) }
+                                self.openDecide(limit: AppState.shortSession)
+                            }
+                        }
                         // For checks: -secondOpinions YES asks for second opinions on the open project's finds once it has loaded.
                         if (arguments["secondOpinions"] as? String) == "YES" {
                             Task { @MainActor in
@@ -473,6 +485,23 @@ final class AppState: ObservableObject {
                             }
                         }
                     }
+                }
+                // For checks: -openPage settings (or toolbox, new, welcome) opens that page at launch, -settingsPart "Data and keys"
+                // picks the part of Settings, -hideSidebar YES hides the sidebar, and -windowSize 1440x900 sizes the window.
+                if let part = (arguments["settingsPart"] as? String).flatMap(SettingsSection.init(rawValue:)) { settingsSection = part }
+                if (arguments["hideSidebar"] as? String) == "YES" { sidebarVisible = false }
+                switch arguments["openPage"] as? String {
+                case "settings": show(.settings)
+                case "toolbox": show(.toolbox)
+                case "new": startProject()
+                case "chat": newChat()
+                case "welcome": showWelcome = true
+                default: break
+                }
+                if let size = (arguments["windowSize"] as? String)?.split(separator: "x").compactMap({ Double($0) }), size.count == 2,
+                   let window = NSApp.windows.first(where: { $0.isVisible && $0.canBecomeMain }) {
+                    let top = Double(window.screen?.visibleFrame.maxY ?? 900)
+                    window.setFrame(NSRect(x: 0, y: top - size[1], width: size[0], height: size[1]), display: true)
                 }
                 // A scripted run (open Dighouse.app --args -startTimedResearch 120) starts a timed session on its own.
                 // The argument lives only for this launch, so nothing is saved.
@@ -588,6 +617,22 @@ final class AppState: ObservableObject {
         tab = .records
         route = .chat
         if layout == .chat { layout = .split }
+    }
+
+    /// Whether a model can answer: the engine runs, and someone is signed in or a router on this Mac offers models. The
+    /// engine lists models to a person who has not signed in, and none of them would answer.
+    var modelReady: Bool { engine.ready && (engine.account != nil || engine.models.contains { $0.id.contains("/") }) }
+
+    /// On a first run, fetch what is missing without a press: the engine, then the tools, then start the engine so a
+    /// sign-in can follow. A step that failed waits for its Try again in the checklist.
+    func getReady() async {
+        // The check of this Mac at launch has to finish first: before it has, the engine only looks missing.
+        while starting { try? await Task.sleep(for: .milliseconds(200)) }
+        if setup.codex == nil, !setup.engineBusy, setup.engineProblem == nil { await setup.installEngine() }
+        if setup.codex != nil, !setup.toolsReady, !setup.toolsBusy, setup.uv != nil, setup.toolsSource != nil, setup.toolsProblem == nil {
+            await setup.prepareTools()
+        }
+        if setup.codex != nil, setup.toolsReady, !engine.running, !starting { await boot() }
     }
 
     func finishOnboarding() {
@@ -922,10 +967,16 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// From a card: show what a way to start will do, so nothing begins until Start is pressed. The map needs no asking.
+    func preview(_ flow: ToolGuide.Workflow) {
+        guard state(of: flow).ready else { return }
+        if flow.id == "choose" { run(flow) } else { previewing = flow }
+    }
+
     func run(_ flow: ToolGuide.Workflow) {
         guard state(of: flow).ready else { return }
         // Choosing a place is done on the map, not in a chat.
-        if flow.id == "timed-research" { choosingDuration = true; return }
+        if flow.id == "timed-research" { previewing = flow; return }
         if flow.id == "choose" { startProject(); return }
         if flow.scope == .general, store.current != nil { store.close() }
         if flow.id == "second" {
@@ -959,12 +1010,12 @@ final class AppState: ObservableObject {
     func startTimedResearch(minutes: Int) {
         guard minutes > 0, let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) else { return }
         if let left = chat.usageLeft, left < TimedResearch.usageFloor {
-            choosingDuration = false
+            previewing = nil
             route = .chat
             chat.note("Only \(left)% of the account's usage is left, so a session would stop almost at once. Try again after it resets.")
             return
         }
-        choosingDuration = false
+        previewing = nil
         route = .chat
         if layout == .workspace { layout = .split }
         let end = Date().addingTimeInterval(TimeInterval(minutes) * 60)
@@ -1123,13 +1174,16 @@ final class AppState: ObservableObject {
 
     /// Put a request in the message box of a new chat, for the person to change or send.
     /// The chat belongs to the open project when there is one, since most requests are about it.
-    func draft(_ text: String) {
+    /// An example says what it is ("A request to try with Gmail"): the message box then says so, and the text does not
+    /// follow the person into another chat.
+    func draft(_ text: String, about: String? = nil) {
         sidebarPeek = false
         route = .chat
         if layout == .workspace { layout = .split }
         Task { @MainActor in
             if store.current == nil { await chat.open(project: nil) } else { chat.newChat() }
             chat.draft = text
+            chat.example = about.map { ($0, text) }
         }
     }
 
@@ -1731,7 +1785,6 @@ struct RootView: View {
         }
         .foregroundStyle(Theme.text)
         .tint(Theme.accent)
-        .id(app.look.rawValue)   // colours are read when a view is built, so a new look rebuilds the window; sizes are observed
         .overlay(alignment: .top) {
             if let note = app.sizeNote {
                 Text(note).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.text)

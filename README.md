@@ -61,7 +61,7 @@ You don't need a GitHub account, Terminal or any coding to use Dighouse.
 2. Open the downloaded file and drag **Dighouse** into **Applications**.
 3. Open Dighouse from Applications. It is signed and notarized by Apple, so macOS opens it like any app you download.
 
-On the first launch a short checklist installs OpenAI's Codex engine into Dighouse's own folder, signs you in with ChatGPT in your browser (Dighouse never sees your password), prepares the archaeology tools in about a minute, and asks you to pick a model that can read images.
+On the first launch a guide of three steps does the setting up. While you read the first, Dighouse puts OpenAI's Codex engine in its own folder and prepares the archaeology tools, in about a minute. Then you sign in with ChatGPT in your browser (Dighouse never sees your password) or paste an OpenAI API key, pick a model that can read images, and take a guided first search.
 
 **Good first steps**, all on Home:
 
@@ -109,7 +109,7 @@ These live in the tools, so they hold whichever model is running.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.png" alt="Home: the headline beside a slider that takes the trees off Serpent Mound, Find something, the message box, four ways in (Pick a place, Suggest a place, Test it blind, Open a project) and the start of Places to start"><br><sub><b>Home.</b> <b>Find something</b> sets the agent searching on its own, and known sites to try are one press away.</sub></td>
+    <td width="50%"><img src="docs/images/home.png" alt="Home on a first visit: the headline beside a slider that takes the trees off Serpent Mound, Find something, the message box, Start your first project, and How it works in three steps"><br><sub><b>Home.</b> <b>Find something</b> sets the agent searching on its own, and known sites to try are one press away.</sub></td>
     <td width="50%"><img src="docs/images/decide.png" alt="Decide at Angel Mounds: one find with a close view 60 m across, the whole tile and a slice through the laser points, its measurements, and keys for Natural, Modern, Published and Worth reporting"><br><sub><b>Decide.</b> One find at a time: a close view, the whole tile and a slice through the laser points. A key records your decision and your reason.</sub></td>
   </tr>
   <tr>
@@ -144,7 +144,7 @@ These live in the tools, so they hold whichever model is running.
 - **It cannot read everything published.** Many papers are behind paywalls, and official site registers in most countries are closed, so "no match in the sources read" often means little was readable. Dighouse reads the open registers of Denmark, Norway, Navarre and England's scheduled monuments. Every record names what it was checked against, and when, and each project says at the top whether its area has a register to check against.
 - **It sees shapes in the ground.** Lidar cannot show buried deposits, pottery scatters, or a feature's date or culture.
 - **Open services go down and rate-limit.** The tools then say "could not check" and never guess.
-- **It needs an Apple silicon Mac and a ChatGPT plan with Codex, or an OpenAI API key.** There is no Windows, Linux or iPad version. The tools also run on their own in any harness that speaks the Model Context Protocol.
+- **It needs an Apple silicon Mac and a ChatGPT plan with Codex, or an OpenAI API key.** With a Claude plan alone, the search runs from Claude Code and the app is where you decide the finds. There is no Windows, Linux or iPad version. The tools also run on their own in any harness that speaks the Model Context Protocol.
 
 ## Responsible use
 

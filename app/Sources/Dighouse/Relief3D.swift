@@ -12,15 +12,19 @@ struct Relief3D: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(title).font(.system(size: 16 * Theme.scale, weight: .semibold)).lineLimit(1)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.system(size: 16 * Theme.scale, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+                    Text("The bare ground around the find, as a model you can turn: the trees are gone and the heights are real. The find is at the white post.")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                }
                 Spacer()
                 Button("Close") { dismiss() }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
             }
             if let surface = Surface.load(path) {
                 SceneView(scene: Self.scene(surface, exaggerate: exaggerate, light: light), options: [.allowsCameraControl])
                     .id("\(exaggerate)-\(light)")
-                    .frame(minWidth: 640, minHeight: 420)
+                    .frame(maxWidth: .infinity).frame(height: 440)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .accessibilityLabel("The ground around the find in 3D, \(Int(surface.width)) m across, height ×\(Int(exaggerate))")
                 HStack(spacing: 14) {
@@ -34,14 +38,26 @@ struct Relief3D: View {
                     Spacer()
                 }
                 let top = Int((surface.z.max() ?? 1).rounded(.up))
-                Text("\(Int(surface.width)) m across. The white post is a person 1.70 m tall, at the find; the ruler at the near corner rises \(top) m from the lowest ground to the highest, marked every \(top > 12 ? 5 : 1) m. Heights are drawn ×\(Int(exaggerate)). Drag to turn, scroll to come closer.")
-                    .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                VStack(alignment: .leading, spacing: 4) {
+                    legend("arrow.left.and.right", "\(Int(surface.width)) m from side to side.")
+                    legend("figure.stand", "The white post is a person 1.70 m tall, standing at the find.")
+                    legend("ruler", "The ruler at the near corner rises \(top) m, from the lowest ground to the highest, marked every \(top > 12 ? 5 : 1) m.")
+                    legend("hand.draw", "Drag to turn it and scroll to come closer. Heights are drawn ×\(Int(exaggerate)), so a low rise shows.")
+                }
             } else {
                 Text("The 3D ground is drawn with the close views. Open the find again in a moment.")
-                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).frame(minWidth: 640, minHeight: 200)
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity, minHeight: 200)
             }
         }
-        .padding(20).background(Theme.bg).foregroundStyle(Theme.text)
+        // A set width: with words that wrap, a sheet left to size itself grew many screens tall.
+        .padding(20).frame(width: 760).background(Theme.bg).foregroundStyle(Theme.text)
+    }
+
+    private func legend(_ icon: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: icon).font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.tan).frame(width: 18)
+            Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     struct Surface {

@@ -4,6 +4,9 @@ Each loop is a plan agreed with Chris, then a log of what was built and what was
 
 | Started | Log | What it was for |
 |---|---|---|
+| 2026-11-26 | [PLAIN_LOOP.md](PLAIN_LOOP.md) | Say what it is and what happens next: Claude beside ChatGPT, space you can see and clear, keys that are checked, a look that changes in place, Tools and How it runs in plain words, a start that waits for you, Decide that answers back |
+| 2026-11-26 | [CLEAR_LOOP.md](CLEAR_LOOP.md) | What a person is looking at and where: Decide, a project's place, a usage dial, Settings again, map dots that answer, colour on the ways to start |
+| 2026-11-26 | [LAUNCH_LOOP.md](LAUNCH_LOOP.md) | A first run that sets itself up, and Settings, Home, the Toolbox and the New project map reorganized before a public release |
 | 2026-11-25 | [OPEN_LOOP.md](OPEN_LOOP.md) | **Under way.** Day-one basics for a public download, the review load, leads after a records-office letter, where you have searched, finds per km² in the benchmark, and this folder |
 | 2026-11-25 | [EASE_LOOP.md](EASE_LOOP.md) | Easy, fast, good-looking and exciting: Home, Toolbox, Settings, models and the live view |
 | 2026-11-24 | [SEE_LOOP.md](SEE_LOOP.md) | Seeing a find clearly |

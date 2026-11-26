@@ -205,7 +205,7 @@ enum ToolGuide {
                  steps: [Handoff(who: "You", does: "Click where you want to look"), Handoff(who: "Dighouse", does: "Shows the open data there"),
                          Handoff(who: "You", does: "Create the project"), Handoff(who: "Agent", does: "Gets the ground")]),
         Workflow(id: "surveys", title: "Show open surveys", icon: "dig.grid",
-                 summary: "Lists the open lidar surveys flown with archaeology in mind.",
+                 summary: "The agent lists the lidar surveys archaeologists flew and shared, and what a search in each could add.",
                  prompt: "List the open lidar surveys flown with archaeology in mind. For each, say where it is, whether it can be fetched without an account, and what a search there could add.",
                  scope: .general, steps: [Handoff(who: "Agent", does: "Reads the open catalog")]),
         Workflow(id: "place", title: "Size up a place", icon: "mappin.and.ellipse",

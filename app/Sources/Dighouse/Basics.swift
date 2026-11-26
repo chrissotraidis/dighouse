@@ -121,6 +121,10 @@ struct DiskUse: Sendable {
     var projects: Int64 = 0, cache: Int64 = 0
     /// Downloaded points in the cache that no project holds: fetched again if a search needs them.
     var loose: Int64 = 0, looseFiles: [String] = []
+    /// Each project's folder and what it takes, largest first.
+    var byProject: [(path: String, bytes: Int64)] = []
+    /// What the cache's folders take, by name: files, national, quicklook, points, and "other" for its catalogs.
+    var kept: [String: Int64] = [:]
 
     nonisolated static var cacheFolder: String {
         ProcessInfo.processInfo.environment["DIGHOUSE_CACHE"] ?? Paths.home + "/.cache/dighouse"
@@ -137,8 +141,29 @@ struct DiskUse: Sendable {
                 add(Int64(s.st_blocks) * 512)
             }
         }
-        for root in projects { walk(root) { out.projects += $0 } }
-        walk(cacheFolder) { out.cache += $0 }
+        for root in projects {
+            var size: Int64 = 0
+            walk(root) { size += $0 }
+            out.projects += size
+            out.byProject.append((root, size))
+        }
+        out.byProject.sort { $0.bytes > $1.bytes }
+        for name in (try? FileManager.default.contentsOfDirectory(atPath: cacheFolder)) ?? [] {
+            var isFolder: ObjCBool = false
+            FileManager.default.fileExists(atPath: cacheFolder + "/" + name, isDirectory: &isFolder)
+            if isFolder.boolValue {
+                walk(cacheFolder + "/" + name) { out.kept[name, default: 0] += $0; out.cache += $0 }
+            } else {
+                var s = stat()
+                guard lstat(cacheFolder + "/" + name, &s) == 0 else { continue }
+                out.kept["other", default: 0] += Int64(s.st_blocks) * 512
+                out.cache += Int64(s.st_blocks) * 512
+            }
+        }
+        // Small folders of lists count with the catalogs.
+        for name in out.kept.keys where !["files", "national", "quicklook", "points", "other"].contains(name) {
+            out.kept["other", default: 0] += out.kept.removeValue(forKey: name) ?? 0
+        }
         let points = cacheFolder + "/points"
         for name in (try? FileManager.default.contentsOfDirectory(atPath: points)) ?? [] where name.hasSuffix(".npz") {
             var s = stat()
@@ -164,58 +189,28 @@ struct DiskUse: Sendable {
         return freed
     }
 
+    /// Empty one of the cache's folders of downloads: files, national or quicklook. Each is fetched again when needed.
+    nonisolated static func clear(_ folder: String) -> Int64 {
+        guard ["files", "national", "quicklook"].contains(folder) else { return 0 }
+        let root = cacheFolder + "/" + folder
+        var freed: Int64 = 0
+        for name in (try? FileManager.default.contentsOfDirectory(atPath: root)) ?? [] {
+            var size: Int64 = 0
+            if let items = FileManager.default.enumerator(atPath: root + "/" + name) {
+                for case let item as String in items {
+                    var s = stat()
+                    if lstat(root + "/" + name + "/" + item, &s) == 0, (s.st_mode & S_IFMT) == S_IFREG { size += Int64(s.st_blocks) * 512 }
+                }
+            }
+            var s = stat()
+            if lstat(root + "/" + name, &s) == 0, (s.st_mode & S_IFMT) == S_IFREG { size += Int64(s.st_blocks) * 512 }
+            if (try? FileManager.default.removeItem(atPath: root + "/" + name)) != nil { freed += size }
+        }
+        return freed
+    }
+
     nonisolated static func words(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    }
-}
-
-/// Settings' line on disk use, with a way to free the downloads no project holds.
-struct DiskUseRow: View {
-    @EnvironmentObject var store: ProjectStore
-    @State private var use: DiskUse?
-    @State private var asking = false
-    @State private var note = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SettingRow(title: "Space on this Mac", note: summary) {
-                if let use, use.loose > 0, !asking {
-                    Button("Free \(DiskUse.words(use.loose))") { asking = true }.buttonStyle(SecondaryButton())
-                }
-            }
-            if asking, let use {
-                HStack(spacing: 8) {
-                    Text("Remove \(use.looseFiles.count) download\(use.looseFiles.count == 1 ? "" : "s") no project holds? A search that needs \(use.looseFiles.count == 1 ? "it" : "one") fetches it again.")
-                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 8)
-                    Button("Cancel") { asking = false }.buttonStyle(SecondaryButton())
-                    Button("Remove") { remove(use.looseFiles) }.buttonStyle(PrimaryButton())
-                }
-                .padding(.horizontal, 14).padding(.bottom, 12)
-            }
-        }
-        .task { await measure() }
-    }
-
-    private var summary: String {
-        guard let use else { return "Measuring…" }
-        var words = "Projects \(DiskUse.words(use.projects)), downloads kept for later \(DiskUse.words(use.cache))."
-        if use.loose > 0 { words += " \(DiskUse.words(use.loose)) of those are held by no project." }
-        return note.isEmpty ? words : note + " " + words
-    }
-
-    private func measure() async {
-        let roots = store.projects.map(\.path)
-        use = await Task.detached { DiskUse.measure(roots) }.value
-    }
-
-    private func remove(_ files: [String]) {
-        asking = false
-        Task {
-            let freed = await Task.detached { DiskUse.free(files) }.value
-            note = "Freed \(DiskUse.words(freed))."
-            await measure()
-        }
     }
 }
 

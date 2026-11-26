@@ -273,6 +273,8 @@ final class ProjectStore: ObservableObject {
     /// One of a project's strongest finds that wait for a person, for Home's short list.
     struct Lead: Codable, Sendable, Hashable {
         var id: String, name: String, agreement: Int
+        /// Where the find sits on its tile's picture, as fractions from the top left, so Home can show the ground around it.
+        var x: Double? = nil, y: Double? = nil
         var rank: String { agreement >= 3 ? "A" : agreement == 2 ? "B" : "C" }
     }
 
@@ -296,7 +298,7 @@ final class ProjectStore: ObservableObject {
         var changed = false
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: roots.count) { i in
-            let root = roots[i], mark = version + "|" + glanceMark(root)
+            let root = roots[i], mark = version + "|2|" + glanceMark(root)   // 2: leads keep their place on the tile
             lock.lock(); let hit = kept[root]; lock.unlock()
             if let hit, hit.mark == mark, hit.counts.count == 6, let leads = hit.leads {
                 let c = hit.counts
@@ -357,7 +359,7 @@ final class ProjectStore: ObservableObject {
         let agree = test ? 0 : finds.filter { $0.group.confirmable }.count
         // The three most checks agree on, the lowest number first among equals.
         let leads = waiting.sorted { $0.agreement != $1.agreement ? $0.agreement > $1.agreement : $0.id < $1.id }
-            .prefix(3).map { Lead(id: $0.id, name: $0.name, agreement: $0.agreement) }
+            .prefix(3).map { Lead(id: $0.id, name: $0.name, agreement: $0.agreement, x: $0.x, y: $0.y) }
         return (tiles.count, tiles.filter { $0["status"] as? String == "unscreened" }.count, finds.count, finds.filter(\.waiting).count,
                 waiting.count, agree, leads)
     }

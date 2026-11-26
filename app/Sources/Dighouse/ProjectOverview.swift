@@ -220,6 +220,7 @@ struct ProjectOverview: View {
                     }
                 }
                 .arrives()
+                WherePanel().arrives()
                 if let next {
                     let words = HStack(alignment: .top, spacing: 14) {
                         IconTile(name: next.icon, size: 38)
@@ -374,7 +375,10 @@ private struct FoundStrip: View {
                         .help(c.rank == "A" ? "The shape, the agent's eye and the second opinion all say built." : c.rank == "B" ? "Two of the three checks say built." : "One check or none says built.")
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(c.id).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
+                    // In a project of several areas, each find says which one it is in.
+                    let area = store.areaCount > 1 ? store.terrains.first { g in store.tiles.first { $0.id == c.tile }?.terrain == g.id }?.area : nil
+                    (Text(c.id).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
+                        + Text(area.map { "  \($0)" } ?? "").font(.system(size: 11.5 * Theme.scale)).foregroundColor(Theme.faint)).lineLimit(1)
                     Text(c.name).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1).help(c.name)
                     Text(waiting ? "Needs you" : c.inLayer ? "Kept on the map" : c.statusLabel)
                         .font(.system(size: 12 * Theme.scale)).foregroundStyle(waiting ? Theme.accent : Theme.dim).lineLimit(1)

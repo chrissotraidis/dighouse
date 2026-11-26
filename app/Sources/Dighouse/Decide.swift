@@ -41,6 +41,8 @@ struct DecideView: View {
     @State private var busy = false
     @State private var progress = ""
     @State private var problem: String?
+    /// What the last decision did, said under the buttons until the next one.
+    @State private var said: String?
     @FocusState private var typing: Bool
 
     private func find(_ id: String) -> Candidate? { store.candidate(id) }
@@ -121,12 +123,18 @@ struct DecideView: View {
             Spacer()
             if let flow = ToolGuide.workflows.first(where: { $0.id == "second" }) {
                 let state = app.state(of: flow)
-                Button { app.run(flow) } label: {
-                    Label(app.secondLookBusy != nil ? "Asking…" : "Second opinions", systemImage: "person.2")
+                if state.ready || app.secondLookBusy != nil {
+                    Button { app.run(flow) } label: {
+                        Label(app.secondLookBusy != nil ? "Asking…" : "Ask for second opinions · \(state.note)", systemImage: "person.2")
+                    }
+                    .buttonStyle(SecondaryButton()).disabled(app.secondLookBusy != nil)
+                    .help("A different model looks at every find that has no second opinion yet.")
+                } else {
+                    // Nothing to press, so the words say why, in place of a greyed button.
+                    let done = state.note == "Done"
+                    Label(done ? "Every find has a second opinion" : state.note, systemImage: done ? "checkmark.circle.fill" : "person.2")
+                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(done ? Theme.dim : Theme.amber).fixedSize()
                 }
-                .buttonStyle(SecondaryButton()).disabled(!state.ready || app.secondLookBusy != nil)
-                .help(state.ready ? "A different model looks at every find that has no second opinion yet (\(state.note))."
-                                  : (state.note.isEmpty ? "Every find has a second opinion." : state.note))
             }
             Button("Close") { dismiss() }.buttonStyle(SecondaryButton())
                 .keyboardShortcut(changing == nil ? .cancelAction : nil)
@@ -275,11 +283,15 @@ struct DecideView: View {
             if let problem {
                 Text(problem).foregroundStyle(Theme.amber)
             } else {
-                Text(busy ? "Recording…" : "Recorded as decided by \(app.userName), with the reason. The agent only suggests.")
-                    .foregroundStyle(Theme.faint)
+                if let said, !busy {
+                    Label(said, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.green)
+                } else {
+                    Text(busy ? "Recording…" : "A decision is written in the find's record, signed \(app.userName). Nothing is sent to anyone: a report is a draft you make later, under Data.")
+                        .foregroundStyle(Theme.faint)
+                }
             }
         }
-        .font(.system(size: 11.5 * Theme.scale)).lineLimit(2)
+        .font(.system(size: 12 * Theme.scale)).fixedSize(horizontal: false, vertical: true)
     }
 
     private func keyCap(_ key: String) -> some View {
@@ -300,6 +312,7 @@ struct DecideView: View {
         changing = nil
         reason = ""
         problem = nil
+        said = nil
     }
 
     private func record(_ c: Candidate, _ status: String, _ why: String) {
@@ -313,6 +326,8 @@ struct DecideView: View {
                 try await app.decide(c, status: status, reason: why)
                 made.append(Made(id: c.id, name: c.name, status: status))
                 move(1)
+                said = "\(c.id) is recorded as \((Candidate.labels[status] ?? status).lowercased()), signed \(app.userName). "
+                    + (status == "no_match_in_sources_read" ? "Nothing was sent. Draft a report under Data when you are ready." : "Nothing was sent.")
                 if index >= needs.count, !bulkLeft.isEmpty { step = .bulk }
             } catch {
                 problem = error.localizedDescription
@@ -456,6 +471,26 @@ struct DecideView: View {
 
     // MARK: - Done
 
+    /// Where the decisions went, and the step after them. Nothing leaves the Mac from here.
+    private var whatNext: some View {
+        let worth = made.filter { !$0.undone && $0.status == "no_match_in_sources_read" }.count
+        return HStack(alignment: .center, spacing: 12) {
+            IconTile(name: "tray.full", size: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Where these went").font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                Text("Each decision is in its find's record in the project folder, with your name and reason. Nothing was sent to anyone."
+                     + (worth > 0 ? " \(worth) find\(worth == 1 ? " is" : "s are") marked worth reporting: the next step is a draft report, which you read and send yourself." : ""))
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            if worth > 0 {
+                Button("Go to the drafts") { app.tab = .data; if app.layout == .chat { app.layout = .split }; dismiss() }.buttonStyle(SecondaryButton())
+                    .help("Closes Decide and opens the project's Data tab, where a report and a letter to the records office are drafted.")
+            }
+        }
+        .padding(12).panel(radius: 12)
+    }
+
     @ViewBuilder private var doneStep: some View {
         if made.isEmpty {
             message("Nothing decided yet.", button: needsLeft > 0 ? ("Needs you", { step = .needs }) : bulkLeft.isEmpty ? nil : ("Agree in bulk", { step = .bulk }))
@@ -466,6 +501,7 @@ struct DecideView: View {
                         let kept = made.filter { !$0.undone }.count
                         Text("\(kept) decided here\(needsLeft + bulkLeft.count > 0 ? ", \(needsLeft + bulkLeft.count) still waiting" : "").")
                             .font(.system(size: 15 * Theme.scale, weight: .semibold)).padding(.bottom, 10)
+                        whatNext.padding(.bottom, 14)
                         ForEach(Array(made.enumerated()).reversed(), id: \.element.id) { i, m in
                             HStack(spacing: 10) {
                                 Text("\(m.id) \(m.name)").font(.system(size: 13 * Theme.scale)).lineLimit(1)
@@ -499,6 +535,10 @@ struct FindCard: View {
     @AppStorage("decideView") private var view = "composite"
     /// The slice last chosen: west to east, or north to south.
     @AppStorage("sliceNorthSouth") private var northSouth = false
+    /// The slice as the laser points drawn straight down, where there are any, in place of the ground line to point at.
+    @AppStorage("slicePoints") private var slicePoints = false
+    /// The ground around the find as a grid of heights, for the slice that can be pointed at.
+    @State private var surface: Relief3D.Surface?
     @State private var drawn = 0
     @State private var comparing = false
     @State private var cuttingMaps = false
@@ -543,29 +583,28 @@ struct FindCard: View {
                 Spacer()
                 if !position.isEmpty { Text(position).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint) }
             }
+            FindWhere(candidate: c)
             verdict(c)
             if let s = c.likely {
                 (Text(s.reason).font(.system(size: 13 * Theme.scale)).foregroundColor(Theme.dim)
                     + Text("  From \(s.by).").font(.system(size: 11.5 * Theme.scale)).foregroundColor(Theme.faint))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            HStack(alignment: .bottom, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    viewPicker
+            unsure(c)
+            viewPicker
+            HStack(alignment: .top, spacing: 14) {
+                titled("Close view", "\(Int(ProjectStore.closeMetres)) m across") {
                     let shown = Self.views.first { $0.style == view } ?? Self.views[0]
                     picture(Images.load(Self.viewPath(c, view)) ?? Images.crop(c.relief, x: c.x, y: c.y, side: store.closeSide(c)),
-                            "\(shown.shows). \(Int(ProjectStore.closeMetres)) m across, find ringed")
+                            "\(shown.shows). The find is ringed.")
                         .id(drawn)
                 }
-                .frame(maxWidth: 320)
-                picture(Images.load(c.relief), "The whole tile, \(Int(store.tileMetres(c))) m").frame(maxWidth: 300)
-                VStack(alignment: .leading, spacing: 6) {
-                    sliceSwitch(c)
-                    let ns = northSouth && FileManager.default.fileExists(atPath: c.sectionNS)
-                    picture(Images.load(ns ? c.sectionNS : c.section),
-                            "Slice \(ns ? "north to south" : "west to east"), straight down, a person 1.70 m for scale",
-                            missing: "Not cut yet. Checking the finds cuts one.")
+                .frame(maxWidth: 250)
+                titled("Its whole tile", "\(Int(store.tileMetres(c))) m across") {
+                    picture(Images.load(c.relief), "The square of ground the agent looked at.")
                 }
+                .frame(maxWidth: 250)
+                slice(c)
             }
             Text(numbers(c).joined(separator: "  ·  ")).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim)
             theCase(c)
@@ -573,8 +612,11 @@ struct FindCard: View {
         }
         .textSelection(.enabled)
         .task(id: c.id) {
+            surface = nil
             await app.ensureViews(c)
             drawn += 1
+            let grid = (c.folder as NSString).deletingLastPathComponent + "/data/views/\(c.id)-surface.json"
+            surface = await Task.detached { Relief3D.Surface.load(grid) }.value
             // The old maps and the two flights come by themselves for a find that waits for a person, after a moment on
             // its card, so going through cards quickly does not queue them (EASE_LOOP E8).
             try? await Task.sleep(for: .seconds(1.2))
@@ -598,45 +640,74 @@ struct FindCard: View {
         }
     }
 
-    /// The nine ways of drawing the close view, on the keys 1 to 9, with the chosen one named.
+    /// The nine ways of drawing the close view as named buttons, on the keys 1 to 9.
     private var viewPicker: some View {
-        HStack(spacing: 2) {
+        Flow(spacing: 6) {
+            Text("Draw the close view as").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).frame(height: 26)
             ForEach(Array(Self.views.enumerated()), id: \.element.style) { i, v in
                 Button { view = v.style } label: {
-                    Text("\(i + 1)").font(.system(size: 11 * Theme.scale, weight: view == v.style ? .bold : .regular, design: .monospaced))
-                        .frame(width: 22, height: 20)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(view == v.style ? Theme.ink.opacity(0.14) : .clear))
-                        .foregroundStyle(view == v.style ? Theme.text : Theme.dim)
+                    HStack(spacing: 6) {
+                        Text("\(i + 1)").font(.system(size: 10.5 * Theme.scale, weight: .bold, design: .monospaced))
+                            .foregroundStyle(view == v.style ? Color.black.opacity(0.55) : Theme.faint)
+                        Text(v.title).font(.system(size: 12 * Theme.scale, weight: view == v.style ? .semibold : .regular))
+                            .foregroundStyle(view == v.style ? Color.black : Theme.text.opacity(0.9))
+                    }
+                    .padding(.horizontal, 10).frame(height: 26)
+                    .background(Capsule().fill(view == v.style ? Theme.tan : Theme.ink.opacity(0.08)))
+                    .overlay(Capsule().strokeBorder(Theme.ink.opacity(view == v.style ? 0 : 0.14)))
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: [])
                 .help("\(v.title): \(v.shows) (\(i + 1))")
                 .accessibilityLabel(v.title)
                 .accessibilityHint(v.shows)
+                .accessibilityAddTraits(view == v.style ? .isSelected : [])
             }
-            Text(Self.views.first { $0.style == view }?.title ?? "").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
-                .lineLimit(1).padding(.leading, 6)
         }
     }
 
-    /// West to east or north to south, on the key D; north to south only where check_finds cut it.
-    private func sliceSwitch(_ c: Candidate) -> some View {
-        let both = FileManager.default.fileExists(atPath: c.sectionNS)
-        return HStack(spacing: 2) {
-            ForEach([false, true], id: \.self) { ns in
-                Button { northSouth = ns } label: {
-                    Text(ns ? "N–S" : "W–E").font(.system(size: 11 * Theme.scale, weight: northSouth == ns ? .bold : .regular))
-                        .frame(width: 38, height: 20)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(northSouth == ns ? Theme.ink.opacity(0.14) : .clear))
-                        .foregroundStyle(northSouth == ns ? Theme.text : Theme.dim)
-                }
-                .buttonStyle(.plain).disabled(ns && !both)
-                .accessibilityLabel(ns ? "Slice north to south" : "Slice west to east")
+    /// A picture with its name over it, what it measures, and any switch that belongs to it.
+    private func titled<Content: View>(_ title: String, _ note: String, trailing: AnyView? = nil, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 6) {
+                Text(title).font(.system(size: 12.5 * Theme.scale, weight: .semibold))
+                Text(note).font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint).lineLimit(1)
+                Spacer(minLength: 4)
+                if let trailing { trailing }
             }
-            Button("") { if both { northSouth.toggle() } }.keyboardShortcut("d", modifiers: []).opacity(0).frame(width: 0)
-                .accessibilityHidden(true)
+            .frame(minHeight: 26)
+            content()
         }
-        .help(both ? "Which way the slice runs (D)" : "Only the west-to-east slice was cut for this find")
+    }
+
+    /// The slice: the ground line to point at, drawn from the find's grid of heights, or the laser points drawn
+    /// straight down where check_finds cut them. West to east or north to south, on the key D.
+    @ViewBuilder private func slice(_ c: Candidate) -> some View {
+        let cut = FileManager.default.fileExists(atPath: c.section)
+        // Only a slice cut from raw points shows more than the ground line does.
+        let hasPoints = cut && (c.checks["section"] as? JSON)?["from_ground_model_only"] as? Bool != true
+        let asPoints = surface == nil || (slicePoints && hasPoints)
+        let bothCut = FileManager.default.fileExists(atPath: c.sectionNS)
+        let ns = northSouth && (!asPoints || bothCut)
+        titled("A slice through it", asPoints ? "the laser points, straight down" : "the ground line",
+               trailing: AnyView(HStack(spacing: 6) {
+                   if hasPoints, surface != nil {
+                       Segmented(choices: [.init(value: false, title: "Ground"), .init(value: true, title: "Points")], pick: $slicePoints, compact: true)
+                           .help("The ground line to point at, or the laser points as they were measured.")
+                   }
+                   Segmented(choices: [.init(value: false, title: "W–E"), .init(value: true, title: "N–S")], pick: $northSouth, compact: true)
+                       .help(asPoints && !bothCut ? "Only the west-to-east slice was cut from the points for this find" : "Which way the slice runs (D)")
+                   Button("") { northSouth.toggle() }.keyboardShortcut("d", modifiers: []).opacity(0).frame(width: 0).accessibilityHidden(true)
+               })) {
+            if let surface, !asPoints {
+                SliceChart(surface: surface, northSouth: ns)
+            } else {
+                picture(Images.load(ns ? c.sectionNS : c.section),
+                        "Slice \(ns ? "north to south" : "west to east"), straight down, a person 1.70 m for scale",
+                        missing: "Not cut yet. Checking the finds cuts one.")
+            }
+        }
     }
 
     /// What marked the find, and the four numbers: its height, its size, the ground under it, and the finds near it.
@@ -697,8 +768,12 @@ struct FindCard: View {
                 Text("Records").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.dim)
                     .frame(width: 120, alignment: .leading)
                 Flow(spacing: 6) { ForEach(other, id: \.self) { chip($0) } }
-                Spacer(minLength: 0)
-                Text("A count of reasons, not a probability").font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.faint)
+            }
+            HStack(spacing: 8) {
+                // The note sits under the chips it is about, not at the far side of the card.
+                Color.clear.frame(width: 120, height: 1)
+                Text("For and against are counted, not weighed: a count of reasons, not a probability.")
+                    .font(.system(size: 11.5 * Theme.scale)).foregroundStyle(Theme.faint)
             }
         }
         .accessibilityElement(children: .contain)
@@ -751,6 +826,37 @@ struct FindCard: View {
         .accessibilityLabel("The agent says \(agentWord). The second model says \(secondWord)."
                             + (together.map { " \($0.0.capitalizedFirst)." } ?? "")
                             + (c.flaggedBy.hasPrefix("measured") ? " Measured, not seen by a model." : ""))
+    }
+
+    /// For when the pictures do not settle it: put a question about this find to the agent, or get another model's
+    /// opinion where there is none yet.
+    private func unsure(_ c: Candidate) -> some View {
+        HStack(spacing: 8) {
+            Text("Not sure what it is?").font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.dim)
+            Button {
+                app.reviewing = false
+                app.draft("What is \(c.id) most likely to be, and what evidence would settle it?", about: "A question about \(c.id)")
+            } label: { Label("Ask the agent about it", systemImage: "bubble.left") }
+                .buttonStyle(SecondaryButton())
+                .help("Closes Decide and puts a question about \(c.id) in a new chat in this project. Nothing is sent until you press Return.")
+            if c.checks["second_look"] == nil {
+                let busy = app.secondLookBusy != nil
+                Button { app.secondLook(c) } label: { Label(app.secondLookBusy == c.id ? "Asking…" : "Ask a second model", systemImage: "person.2") }
+                    .buttonStyle(SecondaryButton()).disabled(busy || app.secondOpinionModels.isEmpty)
+                    .help("A different model looks at this find's pictures, without the agent's verdict.")
+                if app.secondOpinionModels.isEmpty {
+                    Text("No second model is chosen, in Settings.").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.amber)
+                }
+            }
+            if let surface {
+                Button { showing3D = true } label: { Label("Turn it in 3D", systemImage: "rotate.3d") }.buttonStyle(SecondaryButton())
+                    .help("The ground 120 m around the find as a model you can turn, with a person 1.70 m tall for scale.")
+                    .sheet(isPresented: $showing3D) {
+                        Relief3D(title: "\(c.id) \(c.name)", path: (c.folder as NSString).deletingLastPathComponent + "/data/views/\(c.id)-surface.json")
+                    }
+                    .accessibilityHint("\(Int(surface.width)) metres across")
+            }
+        }
     }
 
     private func chip(_ text: String) -> some View {
@@ -812,34 +918,35 @@ struct FindCard: View {
         VStack(alignment: .leading, spacing: 6) {
             flights(c)
             oldMaps(c)
-            let surface = (c.folder as NSString).deletingLastPathComponent + "/data/views/\(c.id)-surface.json"
-            if FileManager.default.fileExists(atPath: surface) {
-                Button("See it in 3D") { showing3D = true }.buttonStyle(SecondaryButton())
-                    .help("The ground 120 m around the find in 3D, with a person 1.70 m tall for scale")
-                    .sheet(isPresented: $showing3D) { Relief3D(title: "\(c.id) in 3D", path: surface) }
-            }
-            if let look = c.checks["second_look"] as? JSON, let note = look["note"] as? String, !note.isEmpty {
-                DisclosureGroup("What the second model said") {
-                    Text("\(look["model"] as? String ?? ""): \(note) " + RecordsView.secondMeaning(look["agrees"] as? Bool == true))
-                        .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
-                }
-            }
-            if !c.sources.isEmpty {
-                DisclosureGroup("Sources (\(c.sources.count))") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(c.sources) { s in
-                            Text(s.title).font(.system(size: 12.5 * Theme.scale, weight: .medium))
-                                + Text(" · \(s.statusLabel) · \(s.finding)").font(.system(size: 12 * Theme.scale)).foregroundColor(Theme.dim)
+            // The words behind the verdict, each under a plain name and in view: who said it, then what they said.
+            let look = c.checks["second_look"] as? JSON
+            let note = (look?["note"] as? String) ?? ""
+            if !note.isEmpty || !c.sources.isEmpty || !c.evidence.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    if !c.evidence.isEmpty {
+                        said("bubble.left", "The agent's notes", "What the agent wrote when it marked and checked this find.") {
+                            Text(c.evidence.joined(separator: "\n\n"))
                         }
                     }
-                    .padding(.top, 4)
+                    if !note.isEmpty {
+                        if !c.evidence.isEmpty { Hairline() }
+                        said("person.2", "The second opinion", "\(look?["model"] as? String ?? "A second model") saw the pictures without the agent's verdict.") {
+                            Text(note + " " + RecordsView.secondMeaning(look?["agrees"] as? Bool == true))
+                        }
+                    }
+                    if !c.sources.isEmpty {
+                        if !c.evidence.isEmpty || !note.isEmpty { Hairline() }
+                        said("book.closed", "What was read", "\(c.sources.count) source\(c.sources.count == 1 ? "" : "s") opened for this find, and what each says.") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(c.sources) { s in
+                                    Text(s.title).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundColor(Theme.text)
+                                        + Text(" · \(s.statusLabel) · \(s.finding)")
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-            if !c.evidence.isEmpty {
-                DisclosureGroup("What the agent saw") {
-                    Text(c.evidence.joined(separator: "\n\n")).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                        .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
-                }
+                .panel(radius: 12).padding(.top, 4)
             }
             if !c.decisions.isEmpty {
                 Text("Decided before: " + c.decisions.joined(separator: "; ")).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
@@ -848,10 +955,25 @@ struct FindCard: View {
         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint)
     }
 
+    /// One block of words on the card: whose they are and what they are, then the words.
+    private func said<Content: View>(_ icon: String, _ title: String, _ about: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Glyph(name: icon, size: 12.5 * Theme.scale, weight: .medium).foregroundStyle(Theme.tan).frame(width: 18).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                (Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold)).foregroundColor(Theme.text)
+                    + Text("  " + about).font(.system(size: 12 * Theme.scale)).foregroundColor(Theme.faint))
+                    .fixedSize(horizontal: false, vertical: true)
+                content().font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     @ViewBuilder private func picture(_ image: NSImage?, _ caption: String, missing: String = "None yet") -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if let image {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 280, alignment: .bottomLeading)
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).frame(maxHeight: 240, alignment: .bottomLeading)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 RoundedRectangle(cornerRadius: 8).fill(Theme.side).frame(height: 160)

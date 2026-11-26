@@ -14,69 +14,73 @@ struct DataView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                section("Ground in this project") {
+                // In the order a search uses them: the ground it has, more of it, then what comes out at the end.
+                section("The ground", summary) {
                     if store.terrains.isEmpty {
                         EmptyLine(icon: "dig.mound", text: store.screenedBefore != nil ? "The ground stayed on the Mac this project came from. Get it again, or add a file of your own below, only if you want to look at it yourself."
                                   : "None yet. Get the ground, or add a file of your own below.")
+                    } else {
+                        VStack(spacing: 0) {
+                            let sorted = store.terrains.sorted { ($0.area ?? $0.id).localizedStandardCompare($1.area ?? $1.id) == .orderedAscending }
+                            ForEach(Array(sorted.enumerated()), id: \.element.id) { index, t in
+                                if index > 0 { Hairline() }
+                                terrainRow(t)
+                            }
+                        }
+                        .panel(radius: 12)
                     }
-                    ForEach(store.terrains.sorted { ($0.area ?? $0.id).localizedStandardCompare($1.area ?? $1.id) == .orderedAscending }) { t in terrainRow(t) }
-                    // Wraps in a narrow pane; a row that cannot wrap would widen the window past the screen.
-                    Flow(spacing: 8) {
-                        Button(store.terrains.isEmpty ? "Get the ground" : "Fetch more") {
-                            if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }), store.terrains.isEmpty { app.run(flow) }
-                            else { app.ask("Find open lidar for any part of this project's area that has no ground yet, fetch it with the same survey where possible, and cut it into tiles. If the whole area is covered, say so.") }
+                }
+
+                section("Get more ground", "Each of these asks the agent, in a chat in this project.") {
+                    VStack(spacing: 0) {
+                        if store.terrains.isEmpty {
+                            row("Get the ground", "Fetches the open lidar for this project's area and takes the trees away.", "Get it") {
+                                if let flow = ToolGuide.workflows.first(where: { $0.id == "terrain" }) { app.run(flow) }
+                            }
+                        } else {
+                            row("Fill the gaps", "Fetches ground for any part of the area that has none yet, from the same survey where it can.", "Fetch") {
+                                app.ask("Find open lidar for any part of this project's area that has no ground yet, fetch it with the same survey where possible, and cut it into tiles. If the whole area is covered, say so.")
+                            }
+                            Hairline()
+                            row("Widen the area", "Adds the ground around what was already searched.", "Widen") {
+                                app.ask(ToolGuide.widen, title: "Widen the search")
+                            }
+                            Hairline()
+                            row("Use another survey", "Lists every open survey over this area, and asks which to fetch. Nothing is fetched yet.", "List them") {
+                                app.ask("List every open lidar survey that covers this project's area with find_data: for each, who flew it, when, and how dense it is likely to be. Mark the one already fetched. Then ask me which to fetch; do not fetch anything yet.")
+                            }
                         }
-                        .buttonStyle(SecondaryButton())
-                        Button("Widen the area") {
-                            app.ask(ToolGuide.widen, title: "Widen the search")
-                        }
-                        .buttonStyle(SecondaryButton()).disabled(store.terrains.isEmpty)
-                        Button("Use another survey") {
-                            app.ask("List every open lidar survey that covers this project's area with find_data: for each, who flew it, when, and how dense it is likely to be. Mark the one already fetched. Then ask me which to fetch; do not fetch anything yet.")
-                        }
-                        .buttonStyle(SecondaryButton())
+                        Hairline()
+                        ownFile
                     }
+                    .panel(radius: 12)
                     .disabled(busy != nil)
                 }
 
-                section("Your own data") {
-                    Text("Drop a ground model (GeoTIFF) or a point cloud (LAS or LAZ) here, or choose one. It needs a coordinate system in metres, such as UTM or a national grid. The file stays where it is; Dighouse reads it into the project.")
-                        .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                    let label = HStack(spacing: 10) {
-                        Image(systemName: "tray.and.arrow.down").font(.system(size: 18 * Theme.scale)).foregroundStyle(dropping ? Theme.accent : Theme.faint)
-                        Text(busy == "import" ? "Reading the file…" : "Drop a file here").foregroundStyle(Theme.dim).fixedSize()
+                let report = ToolGuide.workflows.first { $0.id == "report" }
+                let ready = report.map { app.state(of: $0) } ?? (ready: false, note: "")
+                section("Report what you decided", ready.ready ? "Drafts only. You read each one and send it yourself."
+                        : "These open once you have decided a find is worth reporting, in Decide.") {
+                    VStack(spacing: 0) {
+                        row("A report for the heritage authority", "A draft from the finds you decided are worth reporting.", "Draft a report",
+                            id: "report", disabled: !ready.ready) { if let report { app.run(report) } }
+                        Hairline()
+                        // Where the official record is closed, the person asks the office that keeps it whether a find is known.
+                        let records = ToolGuide.workflows.first { $0.id == "records" }
+                        row("A question for the records office", "Where the official site record is not open: a short letter asking whether your strongest finds are already recorded.",
+                            "Draft the letter", id: "records", keeps: true, disabled: !ready.ready) { if let records { app.run(records) } }
                     }
-                    let pick = Button("Choose a file…", action: choose).buttonStyle(SecondaryButton()).disabled(busy != nil)
-                    // The button beside the words when there is room, under them in a narrow pane.
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 10) { label; Spacer(minLength: 10); pick }
-                        VStack(alignment: .leading, spacing: 10) { label; pick }.frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: 12).strokeBorder(dropping ? Theme.accent : Theme.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
-                    .onDrop(of: [.fileURL], isTargeted: $dropping) { providers in
-                        _ = providers.first?.loadObject(ofClass: URL.self) { url, _ in
-                            if let url { Task { @MainActor in await importFile(url) } }
-                        }
-                        return true
-                    }
+                    .panel(radius: 12)
                 }
 
-                section("Take it with you") {
-                    exportRow("Finds for mapping software", "A GeoJSON file of the finds for QGIS, ArcGIS or Google Earth. It holds their locations, so it is saved under private/ in the project.",
-                              "Export finds", id: "finds", action: exportFinds)
-                    exportRow("The project to share", "A zip of the records, notes, sources and reports, without the downloaded data or anything under private/, so it holds no locations.",
-                              "Export project…", id: "zip", action: exportProject)
-                    let report = ToolGuide.workflows.first { $0.id == "report" }
-                    let ready = report.map { app.state(of: $0) } ?? (ready: false, note: "")
-                    exportRow("A report for the heritage authority", ready.ready ? "A draft from the decided finds. You read it and send it yourself." : "Needs a find you have decided has no match in the sources read.",
-                              "Draft a report", id: "report", disabled: !ready.ready) { if let report { app.run(report) } }
-                    // Where the official record is closed, the person asks the office that keeps it whether a find is known.
-                    let records = ToolGuide.workflows.first { $0.id == "records" }
-                    exportRow("A question for the records office", ready.ready
-                              ? "Where the official site record is not open, a short letter asking whether your strongest finds are already recorded. It holds the locations, so it is kept under private/. You send it yourself."
-                              : "Needs a find you have decided is worth reporting.",
-                              "Draft the letter", id: "records", disabled: !ready.ready) { if let records { app.run(records) } }
+                section("Take it elsewhere", "") {
+                    VStack(spacing: 0) {
+                        row("The finds, for mapping software", "A GeoJSON file for QGIS, ArcGIS or Google Earth.", "Export finds", id: "finds", keeps: true, action: exportFinds)
+                        Hairline()
+                        row("The project, to share", "A zip of the records, notes, sources and reports, without the downloaded data.", "Export project…",
+                            id: "zip", keeps: false, action: exportProject)
+                    }
+                    .panel(radius: 12)
                 }
 
                 if let message {
@@ -91,10 +95,69 @@ struct DataView: View {
 
     // MARK: pieces
 
-    private func section<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+    /// The whole of the ground in a few words: how many areas, how much of it, how many tiles.
+    private var summary: String {
+        guard !store.terrains.isEmpty else { return "" }
+        let km2 = store.terrains.reduce(0) { $0 + $1.areaKm2 }
+        return "\(store.terrains.count) area\(store.terrains.count == 1 ? "" : "s") · \(String(format: "%.1f", km2)) sq km · \(store.tiles.count) tiles"
+    }
+
+    private func section<Content: View>(_ title: String, _ about: String, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(title).font(.system(size: 15 * Theme.scale, weight: .semibold))
+                if !about.isEmpty {
+                    Text(about).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             content()
+        }
+    }
+
+    /// One thing to do, on one line: what it is, what it does, whether its file holds locations, and its button.
+    private func row(_ title: String, _ text: String, _ button: String, id: String = "", keeps: Bool? = nil, disabled: Bool = false,
+                     action: @escaping () -> Void) -> some View {
+        let words = VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
+            Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+            if let keeps {
+                Label(keeps ? "Holds locations, so it is saved under private/ and stays on this Mac" : "Holds no locations",
+                      systemImage: keeps ? "lock.fill" : "checkmark.shield")
+                    .font(.system(size: 11.5 * Theme.scale, weight: .medium)).foregroundStyle(keeps ? Theme.tan : Theme.green)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        let control = HStack(spacing: 8) {
+            if !id.isEmpty, busy == id { DigIndicator() }
+            Button(button, action: action).buttonStyle(SecondaryButton()).disabled(disabled || busy != nil)
+        }
+        // The words wrap, so the button always sits at the right, on every row alike.
+        return HStack(alignment: .center, spacing: 12) {
+            words.frame(maxWidth: .infinity, alignment: .leading)
+            control.fixedSize()
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A ground model or a point cloud of the person's own, dropped on the row or chosen.
+    private var ownFile: some View {
+        let words = VStack(alignment: .leading, spacing: 4) {
+            Text(busy == "import" ? "Reading the file…" : "Add a file of your own").font(.system(size: 13.5 * Theme.scale, weight: .medium))
+            Text("Drop a ground model (GeoTIFF) or a point cloud (LAS or LAZ) here. It needs a coordinate system in metres, such as UTM. The file stays where it is.")
+                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        }
+        let pick = Button("Choose a file…", action: choose).buttonStyle(SecondaryButton()).disabled(busy != nil)
+        return HStack(alignment: .center, spacing: 12) {
+            words.frame(maxWidth: .infinity, alignment: .leading)
+            pick.fixedSize()
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])).opacity(dropping ? 1 : 0))
+        .onDrop(of: [.fileURL], isTargeted: $dropping) { providers in
+            _ = providers.first?.loadObject(ofClass: URL.self) { url, _ in
+                if let url { Task { @MainActor in await importFile(url) } }
+            }
+            return true
         }
     }
 
@@ -126,24 +189,7 @@ struct DataView: View {
                 .buttonStyle(SecondaryButton())
             }
         }
-        .padding(12).background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.035)))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
-    }
-
-    private func exportRow(_ title: String, _ text: String, _ button: String, id: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        let words = VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.system(size: 13.5 * Theme.scale, weight: .medium))
-            Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-        }
-        let control = HStack(spacing: 8) {
-            if busy == id { DigIndicator() }
-            Button(button, action: action).buttonStyle(SecondaryButton()).disabled(disabled || busy != nil)
-        }
-        // The button beside the words when there is room, under them in a narrow pane.
-        return ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 12) { words.frame(minWidth: 260, alignment: .leading); Spacer(minLength: 12); control }
-            VStack(alignment: .leading, spacing: 8) { words; control }
-        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
     }
 
     /// Disk space the terrain's files take in the project.

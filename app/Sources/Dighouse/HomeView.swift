@@ -93,16 +93,17 @@ enum StartingPoints {
     }
 }
 
-/// Home: a message box, two ways in, and places where a search can begin today.
+/// Home. A first visit shows what Dighouse is and a first search to take; after that it opens on your own work: a
+/// message box, where you left off, and the finds that wait for you. Ways to start a new search follow on both.
 struct HomeView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
     @EnvironmentObject var engine: Engine
 
     private let cards = [GridItem(.adaptive(minimum: 200), spacing: 12, alignment: .top)]
-    /// Four ways to start, always in one row that spans the column, like the chat box above them.
+    /// Three ways to start, always in one row that spans the column, like the chat box above them.
     private let paths = Array(repeating: GridItem(.flexible(minimum: 160), spacing: 12, alignment: .top), count: 3)
-    /// 0 shows the known sites, 1 the open surveys.
+    /// 0 shows the known sites, 1 the open surveys, 2 the map of where open data reaches.
     @AppStorage("startTab") private var startKind = 0
     @State private var allSites = false
 
@@ -111,11 +112,9 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 32) {
                 CloudNotice()
                 UpdateLine()
-                VStack(spacing: 0) {
-                    if !app.offersTutorial { WelcomeBack() }
-                    hero.arrives()
-                }
+                if !app.modelReady, app.searchesFromClaude, !app.starting { claudeOnly }
                 if app.offersTutorial {
+                    hero.arrives()
                     // For a first visit, and for anyone part-way through: one real search, a step at a time.
                     StartTile(icon: "dig.trowel", title: app.tutorialProject == nil ? "Start your first project" : "Continue your first project",
                               text: "Ten minutes at Serpent Mound, a step at a time: get the ground, look at it, open a find, read the record and make a decision. You can leave and come back.",
@@ -123,35 +122,33 @@ struct HomeView: View {
                         .coach(.start, radius: 14)
                         .padding(.top, -8)
                         .arrives(1)
+                    HowStrip().arrives(1)
+                } else {
+                    Desk()
                 }
-                LazyVGrid(columns: paths, spacing: 12) {
-                    StartChoice(icon: "map", title: "Pick a place",
-                                text: "Click anywhere on the map with open lidar and start a search there.") {
-                        app.startProject()
-                    }
-                    .help("Opens New project on a map that shades where open lidar reaches.")
-                    StartChoice(icon: "sparkle.magnifyingglass", title: "Suggest a place",
-                                text: "The agent weighs open data against what is on record and proposes three searches.") {
-                        if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.run(flow) }
-                    }
-                    .help("Starts a chat with your AI model.")
-                    StartChoice(icon: "dig.grid", title: "Test it blind",
-                                text: "It searches a famous site without being told which, then gets a score.") {
-                        app.testPicking = true
-                    }
-                    .help("Choose a site; the agent's finds are scored against the published features.")
-                }
-                .padding(.top, -8)
-                .arrives(1)
+                ways.arrives(1)
                 starts.arrives(2)
-                WhereItReaches().arrives(2)
-                HowItWorks().arrives(3)
             }
             .padding(.horizontal, 32).padding(.top, 32).padding(.bottom, 48)
             .frame(maxWidth: 940, alignment: .leading).frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
         .task(id: engine.ready) { await app.loadSurveys() }
+    }
+
+    /// For a person with Claude alone: where the search is asked for, and what stays off here until an account is added.
+    private var claudeOnly: some View {
+        HStack(alignment: .center, spacing: 14) {
+            IconTile(name: "asterisk", size: 38)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("You search from Claude Code").font(.system(size: 15 * Theme.scale, weight: .semibold))
+                Text("In Terminal, run claude and ask it to use Dighouse on a place. The project appears in the sidebar, with its finds for you to decide. The chat and the searches on this page need ChatGPT or an OpenAI key.")
+                    .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("Add an account") { app.settingsSection = .account; app.show(.settings) }.buttonStyle(SecondaryButton())
+        }
+        .padding(14).panel()
     }
 
     private var hero: some View {
@@ -182,23 +179,9 @@ struct HomeView: View {
             Text("Dighouse searches public lidar, laser scans that see the ground through the trees, for mounds, walls and earthworks. An AI agent does the slow work and writes down every step, so you can check it.")
                 .font(.system(size: 17 * Theme.scale)).foregroundStyle(Theme.text.opacity(0.78)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
-                // The one thing Dighouse is for, one press away: the agent picks a region and searches it for as long as you choose.
-                Button {
-                    if let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) { app.run(flow) }
-                } label: { Label("Find something", systemImage: "sparkle.magnifyingglass") }
-                .buttonStyle(PrimaryButton(large: true))
-                .help("The agent picks a region with open lidar and little on record, searches it on its own for as long as you choose, and brings back what needs your decision.")
-                Button("See how it works") {
-                    UserDefaults.standard.set(ToolboxView.Tab.how.rawValue, forKey: "toolboxPart")
-                    app.show(.toolbox)
-                }
-                .buttonStyle(SecondaryButton(large: true))
+                FindSomething()
+                Button("See how it works") { app.showHow() }.buttonStyle(SecondaryButton(large: true))
             }
-            // A project someone shared, or one from before: a folder, opened like any folder.
-            Button("Open a project folder…") { app.chooseProjectFolder() }
-                .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan)
-                .help("A project is a folder of Markdown records, so it opens like any folder, yours or one someone shared.")
-            .padding(.top, 2)
         }
     }
 
@@ -210,19 +193,46 @@ struct HomeView: View {
         }
     }
 
-    /// Where a first project can begin: known sites to learn on, or open surveys still worth searching.
+    /// Three ways to start a search, and a project folder to open.
+    private var ways: some View {
+        PageSection(title: app.offersTutorial ? "" : "Start a new search") {
+            LazyVGrid(columns: paths, spacing: 12) {
+                StartChoice(icon: "map", title: "Pick a place",
+                            text: "Click anywhere on the map with open lidar and start a search there.", tint: Theme.sky) {
+                    app.startProject()
+                }
+                .help("Opens New project on a map that shades where open lidar reaches.")
+                StartChoice(icon: "sparkle.magnifyingglass", title: "Suggest a place",
+                            text: "The agent weighs open data against what is on record and proposes three searches.", tint: Theme.clay) {
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "research" }) { app.preview(flow) }
+                }
+                .help("Shows what the agent will do, with Start.")
+                StartChoice(icon: "dig.grid", title: "Test it blind",
+                            text: "It searches a famous site without being told which, then gets a score.", tint: Theme.amber) {
+                    app.testPicking = true
+                }
+                .help("Choose a site; the agent's finds are scored against the published features.")
+            }
+            HStack(spacing: 16) {
+                // A project someone shared, or one from before: a folder, opened like any folder.
+                Button("Open a project folder…") { app.chooseProjectFolder() }
+                    .help("A project is a folder of Markdown records, so it opens like any folder, yours or one someone shared.")
+                if !app.offersTutorial { Button("How a search works") { app.showHow() } }
+            }
+            .buttonStyle(.plain).font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan)
+        }
+    }
+
+    /// Where a search can begin: known sites to learn on, open surveys still worth searching, or anywhere on the map.
     private var starts: some View {
         PageSection(title: "Places to start",
                     caption: startKind == 0 ? "Real earthworks, a ring fort and a wreck, each with open data ready. One press sets up the project."
-                        : "Lidar flown for archaeology and published openly, from OpenTopography's live catalog.") {
-            HStack(spacing: 2) {
-                startTab(0, "Known sites")
-                startTab(1, "Open surveys")
-            }
-            .padding(4)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.ink.opacity(0.06)))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.ink.opacity(0.1)))
-            if startKind == 0 {
+                        : startKind == 1 ? "Lidar flown for archaeology and published openly, from OpenTopography's live catalog."
+                        : "The shaded places have open data the tools fetch with no account. Click anywhere to start a project there.") {
+            Segmented(choices: [.init(value: 0, title: "Known sites"), .init(value: 1, title: "Open surveys"), .init(value: 2, title: "The map", icon: "map")],
+                      pick: $startKind)
+            switch startKind {
+            case 0:
                 // A mix first: earthworks, a ring fort in Saxony and a wreck, then the rest.
                 let lead = ["cahokia", "newark", "lauske", "thunder-bay"]
                 let ordered = StartingPoints.all.filter { lead.contains($0.id) } + StartingPoints.all.filter { !lead.contains($0.id) }
@@ -234,24 +244,10 @@ struct HomeView: View {
                     withAnimation(.easeOut(duration: 0.2)) { allSites.toggle() }
                 }
                 .buttonStyle(SecondaryButton())
-            } else {
-                surveys
+            case 1: surveys
+            default: WhereItReaches()
             }
         }
-    }
-
-    private func startTab(_ kind: Int, _ title: String) -> some View {
-        // Two sides of one switch: the chosen side is raised, the other is plain text that changes on hover.
-        Button { withAnimation(.easeOut(duration: 0.15)) { startKind = kind } } label: {
-            Text(title).font(.system(size: 13 * Theme.scale, weight: startKind == kind ? .semibold : .medium))
-                .foregroundStyle(startKind == kind ? Theme.text : Theme.dim)
-                .padding(.horizontal, 14).frame(height: 28)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(startKind == kind ? Theme.raised : .clear)
-                    .shadow(color: .black.opacity(startKind == kind ? 0.3 : 0), radius: 2, y: 1))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(startKind == kind ? .isSelected : [])
     }
 
     @ViewBuilder private var surveys: some View {
@@ -287,7 +283,7 @@ struct HomeView: View {
                     Hairline()
                 }
                 Button {
-                    if let flow = ToolGuide.workflows.first(where: { $0.id == "surveys" }) { app.run(flow) }
+                    if let flow = ToolGuide.workflows.first(where: { $0.id == "surveys" }) { app.preview(flow) }
                 } label: {
                     HStack {
                         Text("See every open survey").font(.system(size: 13 * Theme.scale))
@@ -303,6 +299,60 @@ struct HomeView: View {
     }
 }
 
+extension AppState {
+    /// Open the Toolbox on its walk through one real search.
+    func showHow(stage: Int? = nil) {
+        if let stage { UserDefaults.standard.set(stage, forKey: "tourStage") }
+        UserDefaults.standard.set(ToolboxView.Tab.how.rawValue, forKey: "toolboxPart")
+        show(.toolbox)
+    }
+}
+
+/// The one thing Dighouse is for, one press away: the agent picks a region and searches it for as long as you choose.
+private struct FindSomething: View {
+    @EnvironmentObject var app: AppState
+
+    var body: some View {
+        Button {
+            if let flow = ToolGuide.workflows.first(where: { $0.id == "timed-research" }) { app.run(flow) }
+        } label: { Label("Find something", systemImage: "sparkle.magnifyingglass") }
+        .buttonStyle(PrimaryButton(large: true))
+        .help("The agent picks a region with open lidar and little on record, searches it on its own for as long as you choose, and brings back what needs your decision.")
+    }
+}
+
+/// How a search goes, in three steps. Each opens the walk through a real search at that step.
+private struct HowStrip: View {
+    @EnvironmentObject var app: AppState
+
+    private let steps: [(icon: String, title: String, text: String, stage: Int)] = [
+        ("dig.grid", "It searches", "The agent fetches open lidar, takes the trees away and looks at every tile of ground.", 2),
+        ("dig.layers", "It checks", "Each find gets a slice, a second model's opinion, open maps and what is published.", 3),
+        ("dig.brush", "You decide", "Every step is kept in a folder you can read. Nothing is called a site until you say so.", 5),
+    ]
+
+    var body: some View {
+        PageSection(title: "How it works", caption: "A small area takes 5 to 15 minutes. Press a step to see it in a real search.") {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 160), spacing: 12, alignment: .top), count: 3), spacing: 12) {
+                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                    Button { app.showHow(stage: step.stage) } label: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 10) {
+                                IconTile(name: step.icon, size: 34, tint: [Theme.green, Theme.amber, Theme.tan][index % 3])
+                                Text("\(index + 1). \(step.title)").font(.system(size: 14.5 * Theme.scale, weight: .semibold))
+                            }
+                            Text(step.text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
+                                .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }
+                    .buttonStyle(SurfaceButton())
+                }
+            }
+        }
+    }
+}
+
 /// Where a search can go, on a map that starts a project wherever it is clicked.
 private struct WhereItReaches: View {
     @EnvironmentObject var app: AppState
@@ -310,40 +360,39 @@ private struct WhereItReaches: View {
     @State private var searched: [[Double]] = []
 
     var body: some View {
-        PageSection(title: "Where you can search", caption: "Click anywhere on the map to start a project there. The shaded places have open data the tools fetch with no account.") {
-            VStack(alignment: .leading, spacing: 14) {
-                CoverageMap(surveys: app.surveys.map(\.box), searched: searched)
-                VStack(alignment: .leading, spacing: 8) {
-                    if !searched.isEmpty {
-                        legend(.ring, "Where you have searched", "\(searched.count) area\(searched.count == 1 ? "" : "s") in your projects; only this Mac shows them")
-                    }
-                    legend(.dot(Theme.tan), "Lidar, the United States", "raw laser points from USGS 3DEP")
-                    legend(.dot(Theme.green), "Lidar, national ground models", "\(Reach.national.count) countries and regions, most of them in Europe, and Denmark with a free token")
-                        .help(Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", "))
-                    legend(.dot(Theme.amber), "Lidar, surveys worldwide", "flown for archaeology and published on OpenTopography")
-                    legend(.dot(Theme.water), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks")
-                    legend(.icon("plus.circle"), "Anywhere else", "give the agent your own ground model or point cloud, and it searches that")
+        VStack(alignment: .leading, spacing: 12) {
+            CoverageMap(surveys: app.surveys.map(\.box), searched: searched)
+            // What each colour is, in a row; pointing at one says more.
+            Flow(spacing: 6) {
+                if !searched.isEmpty {
+                    legend(.ring, "You have searched", "\(searched.count) area\(searched.count == 1 ? "" : "s") in your projects. Only this Mac shows them.")
                 }
-                Button("Data sources and their status") {
-                    UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxPart")
-                    app.show(.toolbox)
-                }
-                .buttonStyle(SecondaryButton())
+                legend(.dot(Theme.tan), "The United States", "Raw laser points from USGS 3DEP.")
+                legend(.dot(Theme.green), "\(Reach.national.count) national ground models",
+                       Reach.national.map { $0.name.replacingOccurrences(of: ", Spain", with: " (Spain)") }.joined(separator: ", ") + ", and Denmark with a free token.")
+                legend(.dot(Theme.amber), "Surveys for archaeology", "Flown for archaeology and published on OpenTopography.")
+                legend(.dot(Theme.water), "Sonar, the seafloor", "NOAA's surveys of US waters and the Great Lakes, and INFOMAR's of Irish waters, for wrecks.")
+                legend(.icon("plus.circle"), "Your own data", "Anywhere else, give the agent your own ground model or point cloud, and it searches that.")
             }
-            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .panel()
-            .task(id: app.store.projects.count) {
-                let roots = app.store.projects.map(\.path)
-                searched = await Task.detached { ProjectStore.searchedBoxes(roots) }.value
+            Button("Data sources and their status") {
+                UserDefaults.standard.set(ToolboxView.Tab.data.rawValue, forKey: "toolboxPart")
+                app.show(.toolbox)
             }
+            .buttonStyle(SecondaryButton())
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .panel()
+        .task(id: app.store.projects.count) {
+            let roots = app.store.projects.map(\.path)
+            searched = await Task.detached { ProjectStore.searchedBoxes(roots) }.value
         }
     }
 
     private enum Mark { case dot(Color), icon(String), ring }
 
-    /// A row of the legend: a dot in the map's colour for a layer drawn on it, an icon for one that is not.
+    /// One entry of the legend: a dot in the map's colour for a layer drawn on it, an icon for one that is not.
     private func legend(_ mark: Mark, _ title: String, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(spacing: 6) {
             Group {
                 switch mark {
                 case .dot(let color): Circle().fill(color).frame(width: 9, height: 9)
@@ -351,132 +400,39 @@ private struct WhereItReaches: View {
                 case .ring: Circle().strokeBorder(.white.opacity(0.9), lineWidth: 1.6).frame(width: 9, height: 9)
                 }
             }
-            .frame(width: 14)
-            (Text(title).font(.system(size: 13 * Theme.scale, weight: .semibold)) + Text(": " + text).font(.system(size: 13 * Theme.scale)).foregroundColor(Theme.dim))
-                .fixedSize(horizontal: false, vertical: true)
+            Text(title).font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.dim)
         }
+        .padding(.horizontal, 10).frame(height: 26)
+        .background(Capsule().fill(Theme.ink.opacity(0.05)))
+        .help(text)
+        .accessibilityElement().accessibilityLabel("\(title). \(text)")
     }
 }
 
-/// How Dighouse works, for someone deciding whether to trust it: how a search runs on its own, and what it writes down.
-private struct HowItWorks: View {
-    @EnvironmentObject var app: AppState
-    @State private var picked = 0
-
-    private let tabs = [("It searches on its own", "dig.trowel"), ("It writes everything down", "dig.brush")]
-
-    var body: some View {
-        PageSection(title: "How it works", caption: "Ask for a search and leave it. Everything it does is kept in a folder you can read, check and share.") {
-            VStack(alignment: .leading, spacing: 0) {
-                Flow(spacing: 6) {
-                    ForEach(tabs.indices, id: \.self) { i in
-                        Button { withAnimation(.easeOut(duration: 0.15)) { picked = i } } label: {
-                            Label(tabs[i].0, glyph: tabs[i].1).font(.system(size: 12.5 * Theme.scale, weight: .medium))
-                                .foregroundStyle(picked == i ? .black : Theme.dim)
-                                .padding(.horizontal, 12).frame(height: 30)
-                                .background(Capsule().fill(picked == i ? Theme.tan : Theme.ink.opacity(0.06)))
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(14)
-                Hairline()
-                Group {
-                    switch picked {
-                    case 0: alone
-                    default: record
-                    }
-                }
-                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .panel()
-        }
-    }
-
-    private func line(_ text: String, strong: Bool = false) -> some View {
-        Text(text).font(.system(size: (strong ? 15 : 13.5) * Theme.scale, weight: strong ? .medium : .regular))
-            .foregroundStyle(strong ? Theme.text : Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-    }
-
-    private var alone: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            line("Type a place and press Find and report back. The agent does the rest:", strong: true)
-            Flow(spacing: 6) {
-                ForEach(Array(ToolGuide.stages.enumerated()), id: \.offset) { i, stage in
-                    HStack(spacing: 6) {
-                        Glyph(name: stage.icon, size: 12.5 * Theme.scale).foregroundStyle(Theme.tan)
-                        Text(stage.title).font(.system(size: 12.5 * Theme.scale))
-                        if i < ToolGuide.stages.count - 1 {
-                            Image(systemName: "chevron.right").font(.system(size: 9 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
-                        }
-                    }
-                    .padding(.horizontal, 10).frame(height: 28)
-                    .background(Capsule().fill(Theme.ink.opacity(0.05)))
-                }
-            }
-            line("A small area takes 5 to 15 minutes. A bar at the top of the chat shows how far it has got, with Stop.")
-            line("Then a second model gives each find its own opinion. Nothing is called a site until you say so.")
-        }
-    }
-
-    private let layout: [(String, String)] = [
-        ("PROJECT.md", "the question, why this area, and how the folder is kept"),
-        ("METHODOLOGY.md", "how searches are done here, and lessons learned"),
-        ("RESEARCH.md", "every tile looked at, every find and its checks, every source, what is left"),
-        ("candidates/", "a page for each find, with its pictures and decision"),
-        ("notes/", "every step, dated, and a summary of each run"),
-        ("sources/", "every source, read or could not be opened"),
-        ("reports/", "the search report, and drafts only you send"),
-        ("private/, data/", "locations and downloads, which never leave this Mac"),
-    ]
-
-    private var record: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            line("Each project is its own folder and git repository, in ~/Dighouse. A person or an agent can open it and carry on without asking what was done.", strong: true)
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(layout, id: \.0) { item in
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(item.0).font(.system(size: 12.5 * Theme.scale, design: .monospaced)).foregroundStyle(Theme.tan).frame(width: 130, alignment: .leading)
-                        Text(item.1).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink.opacity(0.04)))
-            VStack(alignment: .leading, spacing: 4) {
-                Text("The top of a real RESEARCH.md, from a blind test at Angel Mounds").font(.system(size: 12 * Theme.scale, weight: .semibold)).foregroundStyle(Theme.faint)
-                Text("“So far 9 of 9 squares of ground have been looked at, and 6 features that looked built were marked. A person has decided 0 of 6. 3 published sources were read, and 4 could not be opened.”")
-                    .font(.system(size: 13 * Theme.scale)).italic().foregroundStyle(Theme.text.opacity(0.85)).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-            }
-            line("A search that finds nothing is still written down, so nobody looks at the same ground twice. Publish to GitHub is there when you want to share it, and only privately.")
-        }
-    }
-
-}
-
-/// For someone coming back: a greeting by name, the project they last had open, and what it is waiting for.
-private struct WelcomeBack: View {
+/// For someone coming back: a greeting, the message box, the projects they last worked in, and the finds that wait.
+private struct Desk: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var store: ProjectStore
     /// The last reading, kept while the app runs: Home shows it at once when you come back to it, and the page does not
     /// jump as 80 project folders are read again (EASE_LOOP E3).
     @MainActor private static var last = Reading()
     private struct Reading {
-        var waiting = "", totals = ""
-        var project: ProjectRef?
+        var totals = ""
+        var recents: [(ref: ProjectRef, standing: String)] = []
         var session: (text: String, foot: String)?
         var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = []
         var leads: [(ref: ProjectRef, lead: ProjectStore.Lead)] = []
     }
-    @State private var waiting = WelcomeBack.last.waiting
-    @State private var totals = WelcomeBack.last.totals
-    @State private var project: ProjectRef? = WelcomeBack.last.project
-    @State private var session: (text: String, foot: String)? = WelcomeBack.last.session
+    @State private var totals = Desk.last.totals
+    /// The projects worked in last, newest first, each with where it stands.
+    @State private var recents: [(ref: ProjectRef, standing: String)] = Desk.last.recents
+    @State private var session: (text: String, foot: String)? = Desk.last.session
     /// Projects with finds that wait for a person, most first: the inbox across projects.
-    @State private var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = WelcomeBack.last.inbox
+    @State private var inbox: [(ref: ProjectRef, needs: Int, agree: Int)] = Desk.last.inbox
     /// The strongest finds that wait for a person, across projects: where to spend ten minutes.
-    @State private var leads: [(ref: ProjectRef, lead: ProjectStore.Lead)] = WelcomeBack.last.leads
+    @State private var leads: [(ref: ProjectRef, lead: ProjectStore.Lead)] = Desk.last.leads
+    /// 0 lists the strongest leads, 1 the projects with finds waiting.
+    @AppStorage("homeWaiting") private var waitingKind = 0
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -485,76 +441,47 @@ private struct WelcomeBack: View {
     }
 
     var body: some View {
-        // A stack rather than a Group: an empty Group is no view at all, so its task would never start.
-        VStack(spacing: 0) {
-            if let session {
-                PathCard(icon: "clock", title: "Searching on its own", text: session.text, foot: session.foot) { app.showTimedSession() }
-                    .help("Open the session's chat")
-                    .arrives()
-                    .padding(.bottom, 24)
-            } else if let project {
-                PathCard(icon: "dig.trowel", title: greeting, text: "You left off at \(project.name). \(waiting)", foot: totals) { app.open(project) }
-                    .help("Open \(project.name)")
-                    .arrives()
-                    .padding(.bottom, inbox.isEmpty ? 22 : 12)
-            }
-            if !leads.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("The strongest leads").font(.system(size: 14 * Theme.scale, weight: .semibold))
-                        Text("The finds most checks agree on, from every project. Look opens Decide on its project's strongest \(AppState.shortSession).")
-                            .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(greeting).font(.system(size: 28 * Theme.scale, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                        if !totals.isEmpty { Text(totals).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim) }
                     }
-                    VStack(spacing: 0) {
-                        ForEach(Array(leads.enumerated()), id: \.element.lead.id) { i, row in
-                            if i > 0 { Hairline() }
-                            HStack(spacing: 10) {
-                                Text(row.lead.rank).font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(Theme.bg)
-                                    .frame(width: 20, height: 20).background(Circle().fill(row.lead.agreement >= 3 ? Theme.green : Theme.tan))
-                                    .help("Rank \(row.lead.rank): \(row.lead.agreement) of 3 checks say built")
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("\(row.lead.id) \(row.lead.name)").font(.system(size: 13 * Theme.scale, weight: .medium)).lineLimit(1)
-                                    Text(row.ref.name).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim).lineLimit(1)
+                    Spacer(minLength: 12)
+                    FindSomething()
+                }
+                if let session {
+                    PathCard(icon: "clock", title: "Searching on its own", text: session.text, foot: session.foot) { app.showTimedSession() }
+                        .help("Open the session's chat")
+                }
+                Composer()
+            }
+            .arrives()
+            if !recents.isEmpty {
+                PageSection(title: "Where you left off") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 160), spacing: 12, alignment: .top), count: min(recents.count, 3)), spacing: 12) {
+                        ForEach(recents, id: \.ref.path) { row in
+                            Button { app.open(row.ref) } label: {
+                                HStack(alignment: .center, spacing: 12) {
+                                    IconTile(name: "dig.trowel", size: 34)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(row.ref.name).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                                        Text(row.standing).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    Spacer(minLength: 0)
                                 }
-                                Spacer(minLength: 8)
-                                Button("Look") { app.decide(in: row.ref, on: row.lead.id, limit: AppState.shortSession) }
-                                    .buttonStyle(SecondaryButton())
+                                .padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                             }
-                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .buttonStyle(SurfaceButton()).help("Open \(row.ref.name)")
                         }
                     }
-                    .panel()
                 }
-                .arrives()
-                .padding(.bottom, 16)
+                .arrives(1)
             }
-            if !inbox.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Waiting for you").font(.system(size: 14 * Theme.scale, weight: .semibold))
-                    VStack(spacing: 0) {
-                        ForEach(Array(inbox.prefix(4).enumerated()), id: \.element.ref.path) { i, row in
-                            if i > 0 { Hairline() }
-                            HStack(spacing: 10) {
-                                Text(row.ref.name).font(.system(size: 13 * Theme.scale, weight: .medium)).lineLimit(1)
-                                Spacer(minLength: 8)
-                                Text([row.needs > 0 ? "\(row.needs) need\(row.needs == 1 ? "s" : "") you" : nil, row.agree > 0 ? "\(row.agree) to agree with" : nil]
-                                    .compactMap { $0 }.joined(separator: " · "))
-                                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
-                                Button("Decide") { app.decide(in: row.ref) }
-                                .buttonStyle(SecondaryButton())
-                            }
-                            .padding(.horizontal, 14).padding(.vertical, 8)
-                        }
-                    }
-                    .panel()
-                    if inbox.count > 4 {
-                        Text("\(inbox.count - 4) more project\(inbox.count - 4 == 1 ? "" : "s") with finds waiting, in the sidebar.")
-                            .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
-                    }
-                }
-                .arrives()
-                .padding(.bottom, 24)
-            }
+            if !leads.isEmpty || !inbox.isEmpty { waiting.arrives(1) }
         }
         .frame(maxWidth: .infinity)
         // The folders are read off the main thread: a project kept in iCloud can take a long time to answer.
@@ -565,6 +492,64 @@ private struct WelcomeBack: View {
                 try? await Task.sleep(for: .seconds(30))
             }
         }
+    }
+
+    /// The finds that wait for a person: the strongest across every project as pictures, or the projects that hold them.
+    private var waiting: some View {
+        // With only one of the two to show, there is nothing to switch between.
+        let both = !leads.isEmpty && !inbox.isEmpty
+        let byProject = leads.isEmpty || (both && waitingKind == 1)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Waiting for you").font(.system(size: 16 * Theme.scale, weight: .semibold))
+                    Text(byProject ? "Projects with finds to decide, most first." : "The finds most checks agree on, from every project. Press one to decide it.")
+                        .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                if both {
+                    Segmented(choices: [.init(value: 0, title: "Strongest leads"), .init(value: 1, title: "By project")], pick: $waitingKind, compact: true)
+                }
+            }
+            if byProject {
+                VStack(spacing: 0) {
+                    ForEach(Array(inbox.prefix(5).enumerated()), id: \.element.ref.path) { i, row in
+                        if i > 0 { Hairline() }
+                        HStack(spacing: 10) {
+                            Text(row.ref.name).font(.system(size: 13 * Theme.scale, weight: .medium)).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text([row.needs > 0 ? "\(row.needs) need\(row.needs == 1 ? "s" : "") you" : nil, row.agree > 0 ? "\(row.agree) to agree with" : nil]
+                                .compactMap { $0 }.joined(separator: " · "))
+                                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                            Button("Decide") { app.decide(in: row.ref) }
+                            .buttonStyle(SecondaryButton())
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                    }
+                }
+                .panel()
+                if inbox.count > 5 {
+                    Text("\(inbox.count - 5) more project\(inbox.count - 5 == 1 ? "" : "s") with finds waiting, in the sidebar.")
+                        .font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.faint)
+                }
+            } else {
+                // Five across when there is room, three when the window is narrow.
+                ViewThatFits(in: .horizontal) {
+                    leadRow(leads)
+                    leadRow(Array(leads.prefix(3)))
+                }
+            }
+        }
+    }
+
+    private func leadRow(_ rows: [(ref: ProjectRef, lead: ProjectStore.Lead)]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ForEach(rows, id: \.lead) { row in
+                LeadCard(ref: row.ref, lead: row.lead) { app.decide(in: row.ref, on: row.lead.id, limit: AppState.shortSession) }
+                    .frame(minWidth: 150, idealWidth: 150, maxWidth: .infinity)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// What a running timed session has done so far: the areas it fetched since it started, their size and finds.
@@ -606,43 +591,107 @@ private struct WelcomeBack: View {
         return out
     }
 
+    /// Where a project stands, in a few words, from its counts and whether it is a blind test.
+    nonisolated static func standing(_ it: ProjectStore.Glance, root: String) -> String {
+        func count(_ n: Int, _ word: String) -> String { "\(n.formatted()) \(word)\(n == 1 ? "" : "s")" }
+        let test = FileManager.default.fileExists(atPath: root + "/private/state/test.json")
+        let scored = FileManager.default.fileExists(atPath: root + "/private/state/score.json")
+        return test && scored ? "Its blind test is scored"
+            : it.tiles == 0 && it.finds == 0 ? "Its search has not started"
+            : it.unscreened > 0 ? "\(count(it.unscreened, "tile")) still to look at"
+            : test ? "Its blind test is not scored yet"
+            : it.needsYou > 0 ? "\(count(it.needsYou, "find")) \(it.needsYou == 1 ? "needs" : "need") you" + (it.toAgree > 0 ? ", \(it.toAgree.formatted()) to agree with" : "")
+            : it.toAgree > 0 ? "\(count(it.toAgree, "find")) to agree with"
+            : it.finds == 0 ? "Every tile looked at, nothing marked"
+            : "Every find is decided"
+    }
+
     private func read() async {
         let began = Date()
         defer { Perf.log("Home read \(store.projects.count) projects in \(Int(Date().timeIntervalSince(began) * 1000)) ms") }
         session = await readSession()
         let refs = store.projects
         let file = ProjectStore.glanceFile
-        let found: (ProjectRef, ProjectStore.Glance, [ProjectStore.Glance])? = await Task.detached {
+        let found: ([(ref: ProjectRef, standing: String)], [ProjectStore.Glance])? = await Task.detached {
             func written(_ ref: ProjectRef) -> Date {
                 ["/RESEARCH.md", "/PROJECT.md"].lazy.compactMap { FileInfo.modified(ref.path + $0) }.first ?? .distantPast
             }
-            guard let last = refs.max(by: { written($0) < written($1) }) else { return nil }
+            guard !refs.isEmpty else { return nil }
             let all = ProjectStore.glances(refs.map(\.path), keptIn: file)
-            guard let i = refs.firstIndex(of: last) else { return nil }
-            return (last, all[i], all)
+            // The three projects whose records changed last.
+            let newest = zip(refs, all).map { (ref: $0.0, glance: $0.1, at: written($0.0)) }.sorted { $0.at > $1.at }.prefix(3)
+            return (newest.map { (ref: $0.ref, standing: Desk.standing($0.glance, root: $0.ref.path)) }, all)
         }.value
-        guard let (last, it, all) = found else { project = nil; inbox = []; return }
+        guard let (newest, all) = found else { recents = []; inbox = []; leads = []; return }
         let blind = Set(store.blindTests)
         inbox = zip(refs, all).filter { !blind.contains($0.0.path) && $0.1.needsYou + $0.1.toAgree > 0 }
             .map { (ref: $0.0, needs: $0.1.needsYou, agree: $0.1.toAgree) }
             .sorted { $0.needs * 10 + $0.agree > $1.needs * 10 + $1.agree }
         leads = Self.strongest(refs, all, skipping: blind)
-        func count(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
-        project = last
-        let test = FileManager.default.fileExists(atPath: last.path + "/private/state/test.json")
-        let scored = FileManager.default.fileExists(atPath: last.path + "/private/state/score.json")
-        waiting = test && scored ? "Its blind test is scored."
-            : it.tiles == 0 && it.finds == 0 ? "Its search has not started."
-            : it.unscreened > 0 ? "\(count(it.unscreened, "tile")) \(it.unscreened == 1 ? "is" : "are") still to be looked at."
-            : test ? "Its blind test is not scored yet."
-            : it.needsYou > 0 ? "\(count(it.needsYou, "find")) \(it.needsYou == 1 ? "needs" : "need") you" + (it.toAgree > 0 ? ", and \(it.toAgree) to agree with." : ".")
-            : it.toAgree > 0 ? "\(count(it.toAgree, "find")) to agree with."
-            : it.finds == 0 ? "Every tile was looked at and nothing was marked."
-            : "Every find is decided."
+        recents = newest
+        func count(_ n: Int, _ word: String) -> String { "\(n.formatted()) \(word)\(n == 1 ? "" : "s")" }
         let finds = all.reduce(0) { $0 + $1.finds }
         let decided = finds - all.reduce(0) { $0 + $1.undecided }
-        totals = "\(count(all.count, "project")) · \(count(finds, "find")) · \(decided) decided"
-        Self.last = Reading(waiting: waiting, totals: totals, project: project, session: session, inbox: inbox, leads: leads)
+        totals = "\(count(all.count, "project")) · \(count(finds, "find")) · \(decided.formatted()) decided"
+        Self.last = Reading(totals: totals, recents: recents, session: session, inbox: inbox, leads: leads)
+    }
+}
+
+/// One of the strongest leads, as a picture of its ground with its rank: a press opens Decide on it.
+private struct LeadCard: View {
+    let ref: ProjectRef
+    let lead: ProjectStore.Lead
+    let action: () -> Void
+    @State private var hover = false
+    @State private var picture: NSImage?
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                Theme.ink.opacity(0.04).aspectRatio(4 / 3, contentMode: .fit)
+                    .overlay {
+                        if let picture {
+                            Image(nsImage: picture).resizable().aspectRatio(contentMode: .fill).scaleEffect(hover ? 1.04 : 1)
+                        } else {
+                            Glyph(name: "dig.mound", size: 22 * Theme.scale).foregroundStyle(Theme.faint)
+                        }
+                    }
+                    .clipped()
+                    .overlay(alignment: .topLeading) {
+                        Text(lead.rank).font(.system(size: 11 * Theme.scale, weight: .bold)).foregroundStyle(.black)
+                            .frame(width: 20, height: 20).background(Circle().fill(lead.agreement >= 3 ? Theme.green : Theme.tan))
+                            .padding(8)
+                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(lead.name.replacingOccurrences(of: "Seen in bulk: ", with: "")).font(.system(size: 13 * Theme.scale, weight: .medium))
+                        .multilineTextAlignment(.leading).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    Text("\(lead.id) · \(ref.name)").font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.dim)
+                        .multilineTextAlignment(.leading).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(10)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .surface(hover: hover)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Rank \(lead.rank): \(lead.agreement) of 3 checks say built. Opens Decide on \(ref.name)'s strongest \(AppState.shortSession).")
+        .onHover { hover = $0 }
+        .animation(.easeOut(duration: 0.12), value: hover)
+        .task(id: lead) {
+            let (root, lead) = (ref.path, lead)
+            picture = await Task.detached { Self.picture(of: lead, in: root) }.value
+        }
+    }
+
+    /// The find's own picture, cut to the ground around it where its place on the tile is known.
+    nonisolated private static func picture(of lead: ProjectStore.Lead, in root: String) -> NSImage? {
+        let base = "\(root)/candidates/img/\(lead.id)-relief"
+        guard let path = [base + ".jpg", base + ".png"].first(where: { FileManager.default.fileExists(atPath: $0) }) else { return nil }
+        if let x = lead.x, let y = lead.y, let cut = Images.crop(path, x: x, y: y, side: 0.5) { return cut }
+        return Images.load(path)
     }
 }
 
@@ -683,18 +732,19 @@ private struct PathCard: View {
 /// One of the four ways in on Home: an icon, a short title and one line on what happens.
 private struct StartChoice: View {
     let icon: String, title: String, text: String
+    var tint: Color = Theme.tan
     let action: () -> Void
     @State private var hover = false
 
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
-                IconTile(name: icon, size: 34)
+                IconTile(name: icon, size: 34, tint: tint)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(title).font(.system(size: 14.5 * Theme.scale, weight: .semibold))
                         Image(systemName: "arrow.right").font(.system(size: 11 * Theme.scale, weight: .semibold))
-                            .foregroundStyle(hover ? Theme.tan : Theme.faint).offset(x: hover ? 3 : 0)
+                            .foregroundStyle(hover ? tint : Theme.faint).offset(x: hover ? 3 : 0)
                     }
                     Text(text).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2)
                         .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
@@ -702,6 +752,9 @@ private struct StartChoice: View {
                 Spacer(minLength: 0)
             }
             .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(LinearGradient(colors: [tint.opacity(hover ? 0.2 : 0.1), tint.opacity(0.01)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(tint.opacity(hover ? 0.75 : 0.24)))
             .surface(hover: hover)
             .contentShape(Rectangle())
         }

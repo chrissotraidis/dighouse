@@ -87,11 +87,22 @@ final class WindowSize: @unchecked Sendable {
     var value = CGSize(width: 1380, height: 880)
 }
 
+/// The look, observed like the text size: a view that reads a colour while it is drawn is drawn again when the look
+/// changes, in place. Before, a new look rebuilt the whole window, so every page arrived again and lost its scroll.
+@Observable
+final class LookNow: @unchecked Sendable {
+    static let shared = LookNow()   // set only on the main thread, from AppState.look
+    var palette = (Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth).palette
+}
+
 enum Theme {
     /// How large text is drawn, from ⌘+ and ⌘− or Settings › How it looks. Every font size is multiplied by it.
     static var scale: CGFloat { TextScale.shared.value }
 
-    static var palette = (Look(rawValue: UserDefaults.standard.string(forKey: "look") ?? "") ?? .earth).palette
+    static var palette: Palette {
+        get { LookNow.shared.palette }
+        set { LookNow.shared.palette = newValue }
+    }
 
     static var bg: Color { palette.bg }
     static var side: Color { palette.side }
@@ -112,6 +123,13 @@ enum Theme {
     static var amber: Color { palette.amber }
     /// The seafloor from sonar, the same in every look.
     static let water = Color(red: 0.38, green: 0.62, blue: 0.86)
+    /// Two more colours for telling choices apart, the same in every look.
+    static let violet = Color(red: 0.68, green: 0.6, blue: 0.92)
+    static let rose = Color(red: 0.9, green: 0.55, blue: 0.56)
+    /// Fired clay: a warm colour that sits with the tan and the green in every look.
+    static let clay = Color(red: 0.89, green: 0.6, blue: 0.47)
+    /// A sky seen through haze: the cool colour among the warm ones, quieter than the water.
+    static let sky = Color(red: 0.55, green: 0.72, blue: 0.84)
     /// The fill of the one main button on a screen.
     static var primary: Color { palette.primary }
 }
@@ -164,6 +182,64 @@ enum Keys {
         guard let data = try? JSONSerialization.data(withJSONObject: all, options: [.prettyPrinted, .sortedKeys]) else { return }
         FileManager.default.createFile(atPath: file.path, contents: data, attributes: [.posixPermissions: 0o600])
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+    }
+
+    /// Whether a key's own service takes it: true, false, or nil when the service gave no clear answer. The key goes
+    /// to that service and nowhere else. Denmark's token is tried on a question about its ground model, which the
+    /// service answers only for a known token; OpenAlex refuses an unknown key outright.
+    static func accepted(_ name: String, _ key: String) async -> Bool? {
+        var request: URLRequest
+        switch name {
+        case "dataforsyningen":
+            var parts = URLComponents(string: "https://api.dataforsyningen.dk/dhm_wcs_DAF")
+            parts?.queryItems = [URLQueryItem(name: "service", value: "WCS"), URLQueryItem(name: "version", value: "1.0.0"),
+                                 URLQueryItem(name: "request", value: "DescribeCoverage"), URLQueryItem(name: "coverage", value: "dhm_terraen"),
+                                 URLQueryItem(name: "token", value: key)]
+            guard let url = parts?.url else { return nil }
+            request = URLRequest(url: url)
+        case "openalex":
+            guard let url = URL(string: "https://api.openalex.org/works?per-page=1&select=id") else { return nil }
+            request = URLRequest(url: url)
+            request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization")
+        default:
+            return nil
+        }
+        request.timeoutInterval = 15
+        guard let status = ((try? await URLSession.shared.data(for: request))?.1 as? HTTPURLResponse)?.statusCode else { return nil }
+        return status == 200 ? true : [401, 403].contains(status) ? false : nil
+    }
+}
+
+/// The icon an app connected in Codex ships with, read from its plugin folder on this Mac, so a card for Gmail or
+/// Notion wears that app's own mark. Nothing is fetched.
+@MainActor
+enum PluginIcons {
+    private static var found: [String: NSImage?] = [:]
+
+    static func icon(_ plugin: String) -> NSImage? {
+        if let known = found[plugin] { return known }
+        let fm = FileManager.default
+        let cache = Paths.codexHome.appendingPathComponent("plugins/cache")
+        var image: NSImage?
+        search: for market in ((try? fm.contentsOfDirectory(atPath: cache.path)) ?? []).sorted() {
+            let folder = cache.appendingPathComponent(market).appendingPathComponent(plugin)
+            for version in ((try? fm.contentsOfDirectory(atPath: folder.path)) ?? []).sorted().reversed() {
+                let root = folder.appendingPathComponent(version).standardizedFileURL
+                guard let data = try? Data(contentsOf: root.appendingPathComponent(".codex-plugin/plugin.json")),
+                      let face = (try? JSONSerialization.jsonObject(with: data) as? JSON)?["interface"] as? JSON else { continue }
+                for key in ["logo", "composerIcon"] {
+                    // The path comes from the plugin's own file, so it is kept inside the plugin's folder.
+                    guard let name = face[key] as? String else { continue }
+                    let file = root.appendingPathComponent(name).standardizedFileURL
+                    if file.path.hasPrefix(root.path + "/"), let read = NSImage(contentsOf: file) {
+                        image = read
+                        break search
+                    }
+                }
+            }
+        }
+        found[plugin] = image
+        return image
     }
 }
 

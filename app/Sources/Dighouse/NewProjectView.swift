@@ -46,6 +46,60 @@ struct NewProjectView: View {
     @State private var gapsOn = false
     /// The search boxes of the person's own projects, shaded on the map.
     @State private var searched: [[Double]] = []
+    /// The same ground with the project each area belongs to, so a dot on the map can say whose it is.
+    @State private var spots: [Spot] = []
+    /// What the dot that was clicked stands for, shown in a card over the map.
+    @State private var shownDot: Picked?
+
+    private struct Spot {
+        let name: String, path: String, box: [Double]
+    }
+
+    /// Searched areas that fall on one dot at this zoom.
+    private struct Cluster: Identifiable {
+        let id: String
+        let lat: Double, lon: Double
+        let names: [String], paths: [String]
+        let count: Int
+    }
+
+    private struct Picked {
+        let title: String, lines: [String]
+        let lat: Double, lon: Double
+        var project: String? = nil
+        var survey: Survey? = nil
+    }
+
+    /// The searched areas gathered into dots: zoomed out, a hundred areas a few kilometres apart are a handful of places.
+    private var clusters: [Cluster] {
+        let cell = max(span / 26, 0.02)
+        var groups: [String: [Spot]] = [:]
+        for spot in spots {
+            let lon = (spot.box[0] + spot.box[2]) / 2, lat = (spot.box[1] + spot.box[3]) / 2
+            groups["\(Int((lon / cell).rounded(.down))),\(Int((lat / cell).rounded(.down)))", default: []].append(spot)
+        }
+        return groups.map { key, list in
+            var names: [String] = [], paths: [String] = []
+            for spot in list where !paths.contains(spot.path) { names.append(spot.name); paths.append(spot.path) }
+            return Cluster(id: key, lat: list.map { ($0.box[1] + $0.box[3]) / 2 }.reduce(0, +) / Double(list.count),
+                           lon: list.map { ($0.box[0] + $0.box[2]) / 2 }.reduce(0, +) / Double(list.count),
+                           names: names, paths: paths, count: list.count)
+        }
+    }
+
+    /// The searched ground or the open survey under a click, if the click landed on its dot.
+    private func hit(_ place: CLLocationCoordinate2D) -> Picked? {
+        let reach = span / 45
+        func near(_ lat: Double, _ lon: Double) -> Bool {
+            abs(lat - place.latitude) < reach && abs(lon - place.longitude) * cos(lat * .pi / 180) < reach
+        }
+        if span > 3, let c = clusters.first(where: { near($0.lat, $0.lon) }) {
+            return Picked(title: c.count == 1 ? "You searched here" : "You searched \(c.count) areas here",
+                          lines: Array(c.names.prefix(4)) + (c.names.count > 4 ? ["and \(c.names.count - 4) more projects"] : []),
+                          lat: c.lat, lon: c.lon, project: c.paths.count == 1 ? c.paths[0] : nil)
+        }
+        return nil
+    }
     @State private var gaps: [Gap] = []
     @State private var gapsBusy = false
     @State private var gapsNote: String?
@@ -84,9 +138,17 @@ struct NewProjectView: View {
         }
     }
 
-    /// Zoomed out past this, a click zooms in on the spot; closer in, a click places the search area.
-    private static let wide = 1.5
+    /// Zoomed out past this, a click zooms in to a region; closer in, a click places the search area and goes to it.
+    private static let wide = 8.0
+    /// Open lidar on the map: a gold no basemap uses, the same in every look.
+    private static let lidar = Color(red: 1.0, green: 0.8, blue: 0.3)
+
     private var zoomedOut: Bool { span > Self.wide }
+    /// Where open data reaches is drawn roughly, so it shows while a region or more is in view and not close in, where
+    /// the list beside the map is exact.
+    private var shaded: Bool { span > 0.5 }
+    /// Close in, the map shows the land itself; further out a plain map loads at once and the shading reads clearly on it.
+    private var photo: Bool { span <= 2 }
     /// Close enough in to count what is on record: the grid is at most 2 degrees across.
     private var countable: Bool { span <= 3 }
 
@@ -151,11 +213,13 @@ struct NewProjectView: View {
     private var map: some View {
         MapReader { proxy in
             Map(position: $camera) {
-                if zoomedOut {
+                if shaded {
                     // Where open data reaches, roughly: enough to choose a region by. The list beside the map is exact.
-                    MapPolygon(coordinates: Self.coordinates(Reach.unitedStates)).foregroundStyle(Theme.tan.opacity(0.35)).stroke(Theme.tan, lineWidth: 1)
+                    // One bright colour for every place with open lidar, so covered ground stands apart from the map's own
+                    // greens and browns. Two colours for two kinds of source read as shading everywhere.
+                    MapPolygon(coordinates: Self.coordinates(Reach.unitedStates)).foregroundStyle(Self.lidar.opacity(0.4)).stroke(Self.lidar, lineWidth: 1.5)
                     ForEach(Reach.national.indices, id: \.self) { i in
-                        MapPolygon(coordinates: Self.coordinates(Reach.national[i].ring)).foregroundStyle(Theme.green.opacity(0.35)).stroke(Theme.green, lineWidth: 1)
+                        MapPolygon(coordinates: Self.coordinates(Reach.national[i].ring)).foregroundStyle(Self.lidar.opacity(0.4)).stroke(Self.lidar, lineWidth: 1.5)
                     }
                     // Where a site register is open: a find there is checked against the official record.
                     ForEach(Reach.registers.indices, id: \.self) { i in
@@ -169,8 +233,15 @@ struct NewProjectView: View {
                     ForEach(Array(app.surveys.enumerated()), id: \.offset) { _, survey in
                         if survey.box.count == 4 {
                             Annotation("", coordinate: CLLocationCoordinate2D(latitude: (survey.box[1] + survey.box[3]) / 2, longitude: (survey.box[0] + survey.box[2]) / 2)) {
-                                Circle().fill(Theme.amber).frame(width: 9, height: 9).overlay(Circle().stroke(.black.opacity(0.5), lineWidth: 0.8))
-                                    .help(survey.title)
+                                Button {
+                                    shownDot = Picked(title: survey.title,
+                                                    lines: ["An open lidar survey flown for archaeology" + (survey.collected.isEmpty ? "" : ", in \(survey.collected)") + ". Its data is on OpenTopography."],
+                                                    lat: (survey.box[1] + survey.box[3]) / 2, lon: (survey.box[0] + survey.box[2]) / 2, survey: survey)
+                                } label: {
+                                    Circle().fill(Theme.clay).frame(width: 12, height: 12).overlay(Circle().stroke(.white, lineWidth: 1.5))
+                                        .padding(4).contentShape(Circle())
+                                }
+                                .buttonStyle(.plain).help(survey.title)
                             }
                         }
                     }
@@ -194,19 +265,21 @@ struct NewProjectView: View {
                     }
                 }
                 // Ground your own projects have searched (not blind tests), so a new search can go elsewhere.
-                ForEach(Array(searched.enumerated()), id: \.offset) { _, n in
-                    MapPolygon(coordinates: [
-                        CLLocationCoordinate2D(latitude: n[1], longitude: n[0]), CLLocationCoordinate2D(latitude: n[1], longitude: n[2]),
-                        CLLocationCoordinate2D(latitude: n[3], longitude: n[2]), CLLocationCoordinate2D(latitude: n[3], longitude: n[0]),
-                    ])
-                    .foregroundStyle(.white.opacity(0.25))
-                    .stroke(.white, lineWidth: 1.5)
-                    if zoomedOut {
-                        // A square km is invisible across a continent, so each searched area is also a dot.
-                        Annotation("", coordinate: CLLocationCoordinate2D(latitude: (n[1] + n[3]) / 2, longitude: (n[0] + n[2]) / 2)) {
-                            Circle().fill(.white).frame(width: 7, height: 7).overlay(Circle().stroke(.black.opacity(0.6), lineWidth: 0.8))
-                                .allowsHitTesting(false)
-                        }
+                if span > 3 {
+                    // A square km is invisible across a continent, so the areas gather into dots that keep their size on
+                    // screen. Circles the map draws itself: a hundred views laid over the map made it slow to move.
+                    ForEach(clusters) { c in
+                        MapCircle(center: CLLocationCoordinate2D(latitude: c.lat, longitude: c.lon), radius: span * 111_000 * (c.count > 1 ? 0.0065 : 0.0045))
+                            .foregroundStyle(.white.opacity(0.92)).stroke(.black.opacity(0.6), lineWidth: 0.8)
+                    }
+                } else {
+                    ForEach(Array(searched.enumerated()), id: \.offset) { _, n in
+                        MapPolygon(coordinates: [
+                            CLLocationCoordinate2D(latitude: n[1], longitude: n[0]), CLLocationCoordinate2D(latitude: n[1], longitude: n[2]),
+                            CLLocationCoordinate2D(latitude: n[3], longitude: n[2]), CLLocationCoordinate2D(latitude: n[3], longitude: n[0]),
+                        ])
+                        .foregroundStyle(.white.opacity(0.25))
+                        .stroke(.white, lineWidth: 1.5)
                     }
                 }
                 if let n = numbers {
@@ -218,7 +291,12 @@ struct NewProjectView: View {
                     .stroke(Theme.accent, lineWidth: 2)
                 }
             }
-            .mapStyle(.hybrid)
+            .mapStyle(photo ? .hybrid : .standard(elevation: .flat, emphasis: .muted))
+            .mapControls {
+                MapZoomStepper()
+                MapCompass()
+                MapScaleView()
+            }
             .onMapCameraChange(frequency: .onEnd) { context in
                 span = context.region.span.latitudeDelta
                 center = context.region.center
@@ -227,28 +305,32 @@ struct NewProjectView: View {
             .task(id: app.store.projects.count) { await loadSearched() }
             .onTapGesture { spot in
                 guard let place = proxy.convert(spot, from: .local) else { return }
+                // A click on a dot says what the dot is, before anything moves.
+                if let dot = hit(place) { withAnimation(Motion.ease(0.15)) { shownDot = dot }; return }
+                if shownDot != nil { withAnimation(Motion.ease(0.15)) { shownDot = nil } }
                 if zoomedOut {
-                    withAnimation(.easeInOut(duration: 0.6)) { camera = Self.region(lat: place.latitude, lon: place.longitude, span: 0.12) }
-                    span = 0.12
+                    // From a continent to a region, a few hundred kilometres across: the shading and the place names still show.
+                    go(lat: place.latitude, lon: place.longitude, span: 5)
                 } else {
                     setCentre(lat: place.latitude, lon: place.longitude)
+                    // From a region, go to the area just placed; close in, the map stays where it is.
+                    if span > 0.3 { go(lat: place.latitude, lon: place.longitude, span: 0.08) }
                 }
             }
         }
         .overlay(alignment: .bottomLeading) {
             VStack(alignment: .leading, spacing: 8) {
-                if zoomedOut {
+                if shaded {
                     VStack(alignment: .leading, spacing: 4) {
-                        legend(Theme.tan, "Lidar, the United States")
-                        legend(Theme.green, "Lidar, national ground models")
-                        legend(Theme.amber, "Surveys flown for archaeology")
+                        legend(Self.lidar, "Open lidar: the United States and \(Reach.national.count) national ground models")
+                        legend(Theme.clay, "Open surveys flown for archaeology: click a dot")
                         legend(Theme.water, "Sonar, the seafloor, for wrecks")
                         HStack(spacing: 8) {
                             RoundedRectangle(cornerRadius: 2).strokeBorder(.white, lineWidth: 2).frame(width: 10, height: 8)
                             Text("Site register open: finds can be checked").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.9))
                         }
                         .help("Norway, Denmark and Navarre list every recorded site; England's dashed outline lists scheduled monuments only. Elsewhere a find cannot be checked against the official record.")
-                        if !searched.isEmpty { legend(.white, "Ground you have searched") }
+                        if !searched.isEmpty { legend(.white, "Your own projects' searches: click a dot") }
                     }
                     .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.7)))
                     .allowsHitTesting(false)
@@ -277,19 +359,82 @@ struct NewProjectView: View {
             .padding(12)
         }
         .overlay(alignment: .top) {
-            Text(zoomedOut ? "Shaded areas have open lidar. Click where you want to look."
-                 : numbers == nil ? "Click the map to place the search area" : "Click the map to move the search area")
-                .font(.system(size: 12.5 * Theme.scale, weight: .medium))
-                .padding(.horizontal, 12).frame(height: 28)
-                .background(Capsule().fill(.black.opacity(0.7))).padding(12)
-                .allowsHitTesting(false)
+            HStack(spacing: 8) {
+                Text(zoomedOut ? "The gold areas have open lidar. Click one to go there."
+                     : numbers == nil ? "Click the map to place the search area" : "Click the map to move the search area")
+                    .font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(.white)
+                    .padding(.horizontal, 12).frame(height: 28)
+                    .background(Capsule().fill(.black.opacity(0.7)))
+                    .allowsHitTesting(false)
+                if !zoomedOut {
+                    // What the shading says about the middle of the map, in words, and the way back out.
+                    let here = Reach.place(lon: center.longitude, lat: center.latitude)
+                    if shaded {
+                        Label(here.map { "Open lidar: \($0)" } ?? "No open lidar here", systemImage: here == nil ? "xmark.circle" : "checkmark.circle.fill")
+                            .font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(here == nil ? Theme.amber : Theme.green)
+                            .padding(.horizontal, 12).frame(height: 28)
+                            .background(Capsule().fill(.black.opacity(0.7)))
+                            .help("From the rough outlines on the map. Open data here, beside the map, checks the live catalogs once an area is placed.")
+                    }
+                    Button { go(world: true) } label: {
+                        Label("The world", systemImage: "globe").font(.system(size: 12.5 * Theme.scale, weight: .medium)).foregroundStyle(.white)
+                            .padding(.horizontal, 12).frame(height: 28)
+                            .background(Capsule().fill(.black.opacity(0.7))).contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain).help("Zoom out to everywhere open lidar reaches")
+                }
+            }
+            .padding(12)
         }
+        .overlay(alignment: .topTrailing) {
+            if let shownDot { card(shownDot).padding(.top, 52).padding(.trailing, 12).transition(.opacity) }   // aligns under the hint
+        }
+    }
+
+    /// What a clicked dot stands for, and what can be done from it.
+    private func card(_ dot: Picked) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Circle().fill(dot.survey == nil ? Color.white : Theme.amber).frame(width: 9, height: 9).padding(.top, 4)
+                Text(dot.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold)).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button { withAnimation(Motion.ease(0.15)) { shownDot = nil } } label: { Image(systemName: "xmark").font(.system(size: 10 * Theme.scale, weight: .bold)) }
+                    .buttonStyle(.plain).foregroundStyle(.white.opacity(0.7)).help("Close")
+            }
+            ForEach(dot.lines, id: \.self) { line in
+                Text(line).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(.white.opacity(0.85)).fixedSize(horizontal: false, vertical: true)
+            }
+            if dot.survey == nil {
+                Text("From the projects in your sidebar. Only this Mac shows them.").font(.system(size: 11.5 * Theme.scale)).foregroundStyle(.white.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 8) {
+                Button("Go there") { go(lat: dot.lat, lon: dot.lon, span: 0.6); shownDot = nil }.buttonStyle(SecondaryButton())
+                if let path = dot.project, let ref = app.store.projects.first(where: { $0.path == path }) {
+                    Button("Open the project") { app.open(ref) }.buttonStyle(SecondaryButton())
+                }
+                if let survey = dot.survey {
+                    Button("Start a project here") { app.startProject(from: survey) }.buttonStyle(SecondaryButton())
+                }
+            }
+        }
+        .padding(12).frame(width: 300, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.black.opacity(0.82)))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.14)))
+    }
+
+    /// Move the map to a place, or back out to the whole world. How much the map shows is read when it arrives: changing
+    /// the kind of map while it is still moving stops the move.
+    private func go(lat: Double = 0, lon: Double = 0, span to: Double = 100, world: Bool = false) {
+        withAnimation(.easeInOut(duration: 0.6)) { camera = world ? Self.world : Self.region(lat: lat, lon: lon, span: to) }
     }
 
     /// The search boxes of the person's projects, read off the main thread. Blind tests are left out: they are known sites.
     private func loadSearched() async {
         let refs = app.store.projects
-        searched = await Task.detached { ProjectStore.searchedBoxes(refs.map(\.path)) }.value
+        let found = await Task.detached { refs.flatMap { ref in ProjectStore.searchedBoxes([ref.path]).map { Spot(name: ref.name, path: ref.path, box: $0) } } }.value
+        spots = found
+        searched = found.map(\.box)
     }
 
     /// Count the sites on open record on a 4 by 4 grid around the middle of the map, at least a degree across, so a cell
@@ -480,12 +625,9 @@ struct NewProjectView: View {
         } else if let coverage {
             if coverage.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("No open data Dighouse reads covers this spot. Try one of the shaded areas, or add your own ground model to a project later.")
+                    Text("No open data Dighouse reads covers this spot. Try one of the gold areas, or add your own ground model to a project later.")
                         .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.amber).fixedSize(horizontal: false, vertical: true)
-                    Button("Show where there is data") {
-                        withAnimation(.easeInOut(duration: 0.6)) { camera = Self.world }
-                        span = 100
-                    }
+                    Button("Show where there is data") { go(world: true) }
                     .buttonStyle(SecondaryButton())
                 }
             } else {

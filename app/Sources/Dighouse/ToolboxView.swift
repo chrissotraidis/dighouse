@@ -6,6 +6,8 @@ import SwiftUI
 struct ToolboxView: View {
     enum Tab: String, CaseIterable {
         case act = "Do something", data = "What it can read", how = "How a search works"
+
+        var icon: String { self == .act ? "bolt" : self == .data ? "map" : "list.number" }
     }
 
     @EnvironmentObject var app: AppState
@@ -23,22 +25,9 @@ struct ToolboxView: View {
                         Text("Start a search or any step of one, see the open data the \(ToolGuide.toolCount) tools read, and how a search works.")
                             .font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     }
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 4) {
-                            ForEach(Tab.allCases, id: \.self) { item in
-                                // Pressing a tab, even the one already open, goes to its first page.
-                                Button { tab = item; app.toolboxDetail = nil } label: {
-                                    Text(item.rawValue).font(.system(size: 13 * Theme.scale, weight: .medium))
-                                        .foregroundStyle(tab == item ? Theme.text : Theme.dim)
-                                        .padding(.horizontal, 12).frame(height: 30)
-                                        .background(Capsule().fill(tab == item ? Theme.ink.opacity(0.1) : .clear))
-                                        .contentShape(Capsule())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .animation(Motion.ease(0.15), value: tab)
-                    }
+                    // Pressing a tab, even the one already open, goes to its first page.
+                    Segmented(choices: Tab.allCases.map { .init(value: $0, title: $0.rawValue, icon: $0.icon) },
+                              pick: Binding(get: { tab }, set: { tab = $0; app.toolboxDetail = nil }))
                     Hairline()
                 }
                 Group {
@@ -624,7 +613,7 @@ struct CoverageMap: View {
     var onPick: ((Double, Double) -> Void)? = nil
     @State private var hover: CGPoint?
 
-    private static let land: [[Double]] = {
+    static let land: [[Double]] = {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent("tour/world.json"), let data = try? Data(contentsOf: url) else { return [] }
         return (try? JSONSerialization.jsonObject(with: data)) as? [[Double]] ?? []
     }()
@@ -1114,22 +1103,43 @@ struct MoreTools: View {
         } else if known.isEmpty {
             Text("Nothing else is connected in Codex on this Mac.").font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.faint)
         } else {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
-                ForEach(known, id: \.0) { _, addon in
-                    Button { app.draft(addon.tryIt) } label: {
-                        HStack(alignment: .top, spacing: 12) {
-                            IconTile(name: addon.icon, size: 32)
-                            VStack(alignment: .leading, spacing: 4) {
+            Text("Ask in any chat and the agent uses the app, with the access you gave it in Codex. Each card has a request to try.")
+                .font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.dim).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
+                ForEach(known, id: \.0) { id, addon in
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .center, spacing: 12) {
+                            // The app's own icon, from its plugin on this Mac; a drawn one where it ships none.
+                            if let icon = PluginIcons.icon(id) {
+                                Image(nsImage: icon).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
+                                    .frame(width: 32, height: 32).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .accessibilityHidden(true)
+                            } else {
+                                IconTile(name: addon.icon, size: 32)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text(addon.title).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
-                                Text("“\(addon.tryIt)”").font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
+                                Text(addon.use).font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim)
                                     .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                             }
                             Spacer(minLength: 0)
                         }
-                        .padding(12).frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
-                        .panel(radius: 12).contentShape(Rectangle())
+                        Button { app.draft(addon.tryIt, about: "A request to try with \(addon.title)") } label: {
+                            HStack(spacing: 8) {
+                                Text("“\(addon.tryIt)”").font(.system(size: 12.5 * Theme.scale)).multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                                Label("Try in a chat", systemImage: "arrow.right").labelStyle(.titleAndIcon)
+                                    .font(.system(size: 12 * Theme.scale, weight: .medium)).foregroundStyle(Theme.tan).fixedSize()
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Theme.ink.opacity(0.05)))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(CardButton())
+                        .help("Opens a new chat with this request in the message box. Nothing is sent until you press Return.")
                     }
-                    .buttonStyle(CardButton()).help(addon.use)
+                    .padding(12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .panel(radius: 12)
                 }
             }
         }

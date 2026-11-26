@@ -56,7 +56,7 @@ struct MainView: View {
         .background(GeometryReader { geo in
             Color.clear.onAppear { app.windowSize = geo.size }.onChange(of: geo.size) { _, size in app.windowSize = size }
         })
-        .sheet(isPresented: $app.choosingDuration) { ResearchDurationSheet().environmentObject(app) }
+        .sheet(item: $app.previewing) { flow in StartSheet(flow: flow).environmentObject(app) }
         .sheet(isPresented: $app.reviewing) { DecideView().withApp(app) }
         .sheet(isPresented: $app.testPicking) { TestPicker().withApp(app) }
         // On the window, not the sidebar, so they open when the sidebar is hidden too.
@@ -580,29 +580,98 @@ private struct RenameChat: ViewModifier {
     }
 }
 
-private struct ResearchDurationSheet: View {
+/// What a way to start will do, before it starts: what the agent reads, what you get, and Start. Find something asks
+/// how long; Size up a place asks which place, so the agent does not spend a turn asking.
+private struct StartSheet: View {
     @EnvironmentObject var app: AppState
+    let flow: ToolGuide.Workflow
     @State private var minutes = 60
+    @State private var place = ""
+    @FocusState private var typing: Bool
+
+    /// Under half an hour a session ends before its first sweep is looked at.
+    private static let lengths = [30, 60, 120, 240, 300, 480]
+
+    /// What happens, a line each: who does it and what.
+    private var steps: [(who: String, does: String)] {
+        switch flow.id {
+        case "timed-research":
+            return [("The agent", "picks a region with open lidar and little on record."),
+                    ("The agent", "searches it area by area and checks every find, until the time is up."),
+                    ("A second model", "gives its opinion on the finds a person will see."),
+                    ("You", "decide what each find is. Nothing is called new.")]
+        case "research":
+            return [("The agent", "reads the open archives and the catalog of surveys."),
+                    ("The agent", "proposes three searches, each with the closest published study."),
+                    ("You", "pick one. No project is made before that.")]
+        case "surveys":
+            return [("The agent", "reads the catalog of lidar surveys that archaeologists flew and shared."),
+                    ("You", "get a list: where each survey is, whether it needs an account, and what a search there could add.")]
+        case "place":
+            return [("You", "name a place."),
+                    ("The agent", "says which open lidar covers it and which sites are already recorded there. No project is made.")]
+        default:
+            return flow.steps.map { ($0.who, $0.does) }
+        }
+    }
+
+    private var asksPlace: Bool { flow.id == "place" }
+    private var named: String { place.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Find something").font(.system(size: 18 * Theme.scale, weight: .semibold))
-            Text("The agent picks a region with open lidar and little on record, where it can check finds against a site register if one is open, then searches it area by area and checks every find until the time is up. A second model gives its opinion on each area as it is finished. You decide what reaches you. You can stop it at any point.")
-                .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
-            Picker("How long", selection: $minutes) {
-                // Under half an hour a session ends before its first sweep is looked at.
-                ForEach([30, 60, 120, 240, 300, 480], id: \.self) { value in
-                    Text(value < 60 ? "\(value) minutes" : value == 60 ? "1 hour" : "\(value / 60) hours").tag(value)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                IconTile(name: flow.icon, size: 36, tint: StartChoices.tints[flow.id] ?? Theme.tan)
+                Text(flow.title).font(.system(size: 19 * Theme.scale, weight: .semibold))
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("\(index + 1)").font(.system(size: 11.5 * Theme.scale, weight: .bold)).foregroundStyle(Theme.tan)
+                            .frame(width: 20, height: 20).background(Circle().fill(Theme.tan.opacity(0.14)))
+                        (Text(step.who).font(.system(size: 13.5 * Theme.scale, weight: .semibold))
+                            + Text(" " + step.does).font(.system(size: 13.5 * Theme.scale)).foregroundColor(Theme.dim))
+                            .lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
-            .font(.system(size: 13 * Theme.scale))
-            HStack(spacing: 8) {
-                Spacer()
-                Button("Cancel") { app.choosingDuration = false }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
-                Button("Start") { app.startTimedResearch(minutes: minutes) }.buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction)
+            if flow.id == "timed-research" {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("How long").font(.system(size: 13 * Theme.scale, weight: .semibold))
+                    Segmented(choices: Self.lengths.map { .init(value: $0, title: $0 < 60 ? "\($0) min" : $0 == 60 ? "1 hour" : "\($0 / 60) hours") },
+                              pick: $minutes, compact: true)
+                        .accessibilityElement(children: .contain).accessibilityLabel("How long")
+                }
+            }
+            if asksPlace {
+                TextField("A place, such as Newark Earthworks, Ohio", text: $place).field().font(.system(size: 13.5 * Theme.scale))
+                    .focused($typing).onSubmit(start).onAppear { typing = true }
+            }
+            Hairline()
+            HStack(spacing: 10) {
+                Text(flow.id == "timed-research" ? "Starts at once in a project of its own. Stop it at any time."
+                     : asksPlace && named.count < 3 ? "Type a place, and Start lights up."
+                     : "Starts a chat, and the agent begins at once. Stop it at any time.")
+                    .font(.system(size: 12.5 * Theme.scale)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Button("Cancel") { app.previewing = nil }.buttonStyle(SecondaryButton()).keyboardShortcut(.cancelAction)
+                Button("Start", action: start).buttonStyle(PrimaryButton()).keyboardShortcut(.defaultAction)
+                    .disabled(asksPlace && named.count < 3)
             }
         }
-        .padding(24).frame(width: 420)
+        .padding(24).frame(width: 520)
         .background(Theme.bg).foregroundStyle(Theme.text)
-        .closesOnOutsideClick { app.choosingDuration = false }
+        .closesOnOutsideClick { app.previewing = nil }
+    }
+
+    private func start() {
+        if flow.id == "timed-research" { app.startTimedResearch(minutes: minutes); return }
+        if asksPlace, named.count < 3 { return }
+        app.previewing = nil
+        if asksPlace {
+            app.askGeneral("Which open lidar covers \(named), and which sites are already recorded there?")
+        } else {
+            app.run(flow)
+        }
     }
 }
