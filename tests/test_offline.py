@@ -1,6 +1,7 @@
 """The whole chain on synthetic data: fetch, tile, screen, flag, section, checks, statuses."""
 
 import json
+import sys
 import numpy as np
 import math
 from pathlib import Path
@@ -949,6 +950,7 @@ def test_measured_rises_go_on_possible_tiles_and_skip_existing_finds(tmp_path):
     assert added == 2 and server.add_measured_rises(str(p.root), 1000)["count"] == 0
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS names: /tmp is /private/tmp there, and pytest's own folder is outside it")
 def test_projects_never_land_in_tmp(tmp_path, monkeypatch):
     """A blind test asked for in /tmp goes to the projects folder instead; an ordinary folder is kept."""
     from dighouse.project import lasting_folder
