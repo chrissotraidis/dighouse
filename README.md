@@ -30,7 +30,7 @@
   <a href="#for-developers">Developers</a>
 </p>
 
-![Angel Mounds, Indiana, opened in Dighouse: the project page says what happens next and lists the search so far; five finds are marked on the bare-ground map](docs/images/angel-mounds-run.png)
+![Angel Mounds, Indiana, opened in Dighouse: the project page says where the ground is and what happens next, and shows the four strongest finds; five finds are marked on the bare-ground map](docs/images/angel-mounds-run.png)
 
 <sub>A search at Angel Mounds, Indiana, from open USGS lidar: 9 tiles looked at, 5 finds marked, each one sliced, given a second model's opinion and searched in the literature.</sub>
 
@@ -110,8 +110,8 @@ These live in the tools, so they hold whichever model is running.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.png" alt="Home on a first visit: the headline beside a slider that takes the trees off Serpent Mound, Find something, the message box, Start your first project, and How it works in three steps"><br><sub><b>Home.</b> <b>Find something</b> sets the agent searching on its own, and known sites to try are one press away.</sub></td>
-    <td width="50%"><img src="docs/images/decide.png" alt="Decide at Angel Mounds: one find with a close view 60 m across, the whole tile and a slice through the laser points, its measurements, and keys for Natural, Modern, Published and Worth reporting"><br><sub><b>Decide.</b> One find at a time: a close view, the whole tile and a slice through the laser points. A key records your decision and your reason.</sub></td>
+    <td width="50%"><img src="docs/images/home.png" alt="Home on a first visit: the headline beside a slider that takes the trees off Serpent Mound, Find something, the message box with its usage dial, Start your first project, and How it works in three steps"><br><sub><b>Home.</b> <b>Find something</b> sets the agent searching on its own, and known sites to try are one press away.</sub></td>
+    <td width="50%"><img src="docs/images/decide.png" alt="Decide at Angel Mounds: one find with where it is, a close view 60 m across in nine styles, the whole tile and a slice through the ground, the reasons for and against, and keys for Natural, Modern, Published and Worth reporting"><br><sub><b>Decide.</b> One find at a time: where it is, a close view, the whole tile and a slice through the ground, with the reasons for and against. A key records your decision and your reason.</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/record.png" alt="A find's record at Angel Mounds beside the project page: its relief, its slice, what the agent suggests, the evidence and each check, with Location kept on this Mac at the top"><br><sub><b>A record.</b> Each find with its relief, its slice and every check. Its location stays on your Mac.</sub></td>
