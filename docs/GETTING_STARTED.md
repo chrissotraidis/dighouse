@@ -30,7 +30,7 @@ To build it yourself instead, see [SETUP.md](SETUP.md).
 Dighouse opens on a guide of three steps:
 
 1. **Welcome.** What Dighouse does. While you read, it fetches what it runs on: OpenAI's Codex engine from its GitHub releases, into Dighouse's own folder, if your Mac has none, and its archaeology tools, about a minute the first time. A downloaded Dighouse carries everything the tools need.
-2. **Set up.** Give it a model to think with. Press **Sign in with ChatGPT** and sign in in your browser (Dighouse never sees your password), or paste an OpenAI API key. Then pick the model that runs the search. It must be able to read images.
+2. **Set up.** Give it a model to think with. Press **Sign in with ChatGPT** and sign in in your browser (Dighouse never sees your password), or paste an OpenAI API key. Then pick the model that runs the search. It must be able to read images. With a Claude plan and Claude Code, press **Use Claude Code** instead: Claude Code gets Dighouse's tools and runs the search, and you decide the finds in the app.
 3. **First search.** **Start the guided search** takes you through one real search at Serpent Mound, a step at a time.
 
 ## Your first search
@@ -50,7 +50,7 @@ At the top of every project, a line says what a search there can do:
 
 What needs you waits on Home under **Waiting for you**, across every project. Press **Decide**:
 
-- **Needs you** shows one find at a time: a close view, the whole tile, a slice through the laser points, and what the agent and a second model think. Return agrees; a letter picks another decision and asks for your reason.
+- **Needs you** shows one find at a time: where it is, a close view, the whole tile, a slice through the ground, and what the agent and a second model think. Return agrees; a letter picks another decision and asks for your reason. **Ask the agent about it** puts a question about the find in a new chat for you to send.
 - **Agree in bulk** shows routine finds as a grid; untick any that look wrong.
 - **Done** lists what you decided, with Undo.
 
@@ -67,11 +67,11 @@ On the Map, the pin-and-circle button marks what you see yourself: click a spot 
 ## What stays on your Mac
 
 - Every project is a folder of Markdown records with its own history. Locations live only under its `private/` folder, which never leaves your Mac or goes into its history.
-- The models see pictures of the ground and the project's records, through your ChatGPT account (and, if you use the OpenCodex router, through the providers you set up there).
+- The models see pictures of the ground and the project's records, through your ChatGPT account (and through Claude Code or the OpenCodex router, if you use them).
 - Downloads are kept in `~/.cache/dighouse`, so a second look at the same ground is quick. Laser points no project uses are kept up to 10 GB, oldest dropped first; a project's own points are never dropped.
 - **Publish to GitHub** checks that no location would leave your Mac before it makes a private repository.
 - **New versions.** Once a day Dighouse asks GitHub for the number of its latest release and says on Home when a newer one is out. Nothing is downloaded. Turn it off in Settings, About.
-- **Space.** Settings, Data and keys, shows what projects and downloads take, and frees the downloads no project holds.
+- **Space.** Settings, Data and keys, shows what takes the space, part by part and project by project, and clears the downloads that can be fetched again.
 
 ## When something goes wrong
 
